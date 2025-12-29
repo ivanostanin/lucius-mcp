@@ -1,0 +1,7 @@
+.claude/
+.codex/
+.gemini/
+.venv/
+_bmad/
+.idea/
+.agent/
