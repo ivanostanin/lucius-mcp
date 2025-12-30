@@ -1,6 +1,6 @@
 # Story 1.1: Project Initialization & Core Architecture
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -17,47 +17,47 @@ so that I have a production-ready, structured foundation for the MCP server.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Initialize Project with uv** (AC: #1, #2)
-  - [ ] 1.1: Run `uv init . --app --python 3.14` in the project root
-  - [ ] 1.2: Run `uv add "fastmcp<3" pydantic starlette uvicorn httpx`
-  - [ ] 1.3: Run `uv add --dev pytest pytest-asyncio pytest-cov allure-pytest mypy ruff respx`
-  - [ ] 1.4: Verify `pyproject.toml` and `uv.lock` are created correctly
-  - [ ] 1.5: Add `[tool.ruff]` and `[tool.mypy]` strict configurations to `pyproject.toml`
+- [x] **Task 1: Initialize Project with uv** (AC: #1, #2)
+  - [x] 1.1: Run `uv init . --app --python 3.14` in the project root
+  - [x] 1.2: Run `uv add "fastmcp<3" pydantic starlette uvicorn httpx`
+  - [x] 1.3: Run `uv add --dev pytest pytest-asyncio pytest-cov allure-pytest mypy ruff respx`
+  - [x] 1.4: Verify `pyproject.toml` and `uv.lock` are created correctly
+  - [x] 1.5: Add `[tool.ruff]` and `[tool.mypy]` strict configurations to `pyproject.toml`
 
-- [ ] **Task 2: Create Directory Structure** (AC: #1)
-  - [ ] 2.1: Create `src/` directory with `__init__.py`
-  - [ ] 2.2: Create `src/client/` with `__init__.py` (for future API client)
-  - [ ] 2.3: Create `src/tools/` with `__init__.py` (for MCP tool definitions)
-  - [ ] 2.4: Create `src/services/` with `__init__.py` (for business logic)
-  - [ ] 2.5: Create `src/utils/` with `__init__.py` (for shared utilities)
-  - [ ] 2.6: Create `tests/` directory structure (`unit/`, `integration/`, `conftest.py`)
-  - [ ] 2.7: Create `deployment/` with `scripts/` and `charts/` subdirectories
-  - [ ] 2.8: Create `.env.example` with placeholder for `ALLURE_API_TOKEN`
+- [x] **Task 2: Create Directory Structure** (AC: #1)
+  - [x] 2.1: Create `src/` directory with `__init__.py`
+  - [x] 2.2: Create `src/client/` with `__init__.py` (for future API client)
+  - [x] 2.3: Create `src/tools/` with `__init__.py` (for MCP tool definitions)
+  - [x] 2.4: Create `src/services/` with `__init__.py` (for business logic)
+  - [x] 2.5: Create `src/utils/` with `__init__.py` (for shared utilities)
+  - [x] 2.6: Create `tests/` directory structure (`unit/`, `integration/`, `conftest.py`)
+  - [x] 2.7: Create `deployment/` with `scripts/` and `charts/` subdirectories
+  - [x] 2.8: Create `.env.example` with placeholder for `ALLURE_API_TOKEN`
 
-- [ ] **Task 3: Implement Structured Logger** (AC: #4)
-  - [ ] 3.1: Create `src/utils/logger.py` with JSON structured logging
-  - [ ] 3.2: Configure log format: `{timestamp, level, logger, message, context, request_id}`
-  - [ ] 3.3: Implement `SecretStr` masking for sensitive values (API tokens)
-  - [ ] 3.4: Add correlation ID (Request ID) support for all log entries
+- [x] **Task 3: Implement Structured Logger** (AC: #4)
+  - [x] 3.1: Create `src/utils/logger.py` with JSON structured logging
+  - [x] 3.2: Configure log format: `{timestamp, level, logger, message, context, request_id}`
+  - [x] 3.3: Implement `SecretStr` masking for sensitive values (API tokens)
+  - [x] 3.4: Add correlation ID (Request ID) support for all log entries
 
-- [ ] **Task 4: Implement Global Exception Handler** (AC: #4)
-  - [ ] 4.1: Create `src/utils/error.py` with `AllureAPIError` base exception
-  - [ ] 4.2: Implement Starlette exception handler that converts exceptions to "Agent Hints"
-  - [ ] 4.3: Ensure all errors return text-based, LLM-friendly messages (not JSON dumps)
-  - [ ] 4.4: Implement specific error types: `ResourceNotFoundError`, `ValidationError`, `AuthenticationError`
+- [x] **Task 4: Implement Global Exception Handler** (AC: #4)
+  - [x] 4.1: Create `src/utils/error.py` with `AllureAPIError` base exception
+  - [x] 4.2: Implement Starlette exception handler that converts exceptions to "Agent Hints"
+  - [x] 4.3: Ensure all errors return text-based, LLM-friendly messages (not JSON dumps)
+  - [x] 4.4: Implement specific error types: `ResourceNotFoundError`, `ValidationError`, `AuthenticationError`
 
-- [ ] **Task 5: Create Main Application Entry Point** (AC: #3)
-  - [ ] 5.1: Create `src/main.py` with FastMCP server initialization
-  - [ ] 5.2: Mount FastMCP on Starlette application for HTTP transport
-  - [ ] 5.3: Register the global exception handler middleware
-  - [ ] 5.4: Add placeholder `@mcp.tool` decorator (no-op tool for testing)
-  - [ ] 5.5: Configure uvicorn startup with proper host/port settings
+- [x] **Task 5: Create Main Application Entry Point** (AC: #3)
+  - [x] 5.1: Create `src/main.py` with FastMCP server initialization
+  - [x] 5.2: Mount FastMCP on Starlette application for HTTP transport
+  - [x] 5.3: Register the global exception handler middleware
+  - [x] 5.4: Add placeholder `@mcp.tool` decorator (no-op tool for testing)
+  - [x] 5.5: Configure uvicorn startup with proper host/port settings
 
-- [ ] **Task 6: Quality Assurance Setup** (AC: implicit)
-  - [ ] 6.1: Run `ruff check src/` and fix any linting issues
-  - [ ] 6.2: Run `mypy --strict src/` and ensure zero type errors
-  - [ ] 6.3: Write basic unit test for logger in `tests/unit/test_logger.py`
-  - [ ] 6.4: Verify `uv run python src/main.py` starts the server successfully
+- [x] **Task 6: Quality Assurance Setup** (AC: implicit)
+  - [x] 6.1: Run `ruff check src/` and fix any linting issues
+  - [x] 6.2: Run `mypy --strict src/` and ensure zero type errors
+  - [x] 6.3: Write basic unit test for logger in `tests/unit/test_logger.py`
+  - [x] 6.4: Verify `uv run python src/main.py` starts the server successfully
 
 ## Dev Notes
 
@@ -194,12 +194,38 @@ app.mount("/mcp", mcp.get_asgi_app())
 
 ### Agent Model Used
 
-_To be filled by implementing agent_
+Google DeepMind Antigravity
 
 ### Completion Notes List
 
-_To be filled during implementation_
+- Initialized project with `uv` (Python 3.14).
+- Configured strict `ruff` and `mypy`.
+- Created directory structure for `src` (client, tools, services, utils), `tests`, and `deployment`.
+- Implemented structured JSON logger in `src/utils/logger.py` with secret masking.
+- Implemented global exception handler in `src/utils/error.py` with Agent Hints.
+- Implemented main application in `src/main.py` using FastMCP mounted on Starlette.
+- Added unit tests for logger, error handler, and main application.
+- Verified all code quality checks pass.
 
 ### File List
 
-_To be filled during implementation_
+- pyproject.toml
+- uv.lock
+- .env.example
+- src/__init__.py
+- src/main.py
+- src/client/__init__.py
+- src/tools/__init__.py
+- src/services/__init__.py
+- src/utils/__init__.py
+- src/utils/logger.py
+- src/utils/error.py
+- tests/__init__.py
+- tests/conftest.py
+- tests/unit/__init__.py
+- tests/unit/test_logger.py
+- tests/unit/test_error.py
+- tests/unit/test_main.py
+- tests/integration/__init__.py
+- deployment/scripts/
+- deployment/charts/
