@@ -1,6 +1,5 @@
 from starlette.testclient import TestClient
 
-# Import will fail until implemented
 from src.main import app
 
 client = TestClient(app)
