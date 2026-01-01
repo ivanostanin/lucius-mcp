@@ -1,4 +1,5 @@
 import pytest
+from starlette.applications import Starlette
 from starlette.routing import Mount
 
 # Fixtures are imported via pytest_plugins to avoid re-import warnings
@@ -10,7 +11,7 @@ pytest_plugins = [
 
 
 @pytest.fixture
-def app():
+def app() -> Starlette:
     """
     Fixture that returns the Starlette application with a FRESH FastMCP session manager.
     FastMCP's StreamableHTTPSessionManager is single-use, so we must recreate

@@ -1,7 +1,13 @@
+import typing
+from unittest.mock import MagicMock
+
+from pytest_mock import MockerFixture
+from starlette.testclient import TestClient
+
 from src.main import app as global_app
 
 
-def test_app_initialization(client):
+def test_app_initialization(client: TestClient) -> None:
     """
     Verify app initializes correctly using the client fixture which handles refresh.
     """
@@ -13,7 +19,7 @@ def test_app_initialization(client):
     assert global_app is not None
 
 
-def test_start_stdio_mode(mocker):
+def test_start_stdio_mode(mocker: MockerFixture) -> None:
     """
     Verify that start() invokes run_stdio_async when MCP_MODE is 'stdio'.
     """
@@ -40,4 +46,6 @@ def test_start_stdio_mode(mocker):
     mock_asyncio_run.assert_called_once()
 
     # Verify mcp.run_stdio_async was called
-    mcp.run_stdio_async.assert_called_once()
+    # We cast to MagicMock because it's patched
+    cast_mock = typing.cast(MagicMock, mcp.run_stdio_async)
+    cast_mock.assert_called_once()

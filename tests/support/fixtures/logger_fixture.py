@@ -1,13 +1,23 @@
 import json
 import logging
+from collections.abc import Callable, Generator
 
 import pytest
 
 from src.utils.logger import CustomJsonEncoder, CustomJsonFormatter
 
 
+class ListHandler(logging.Handler):
+    def __init__(self) -> None:
+        super().__init__()
+        self.records: list[logging.LogRecord] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.records.append(record)
+
+
 @pytest.fixture
-def capture_structured_logs():
+def capture_structured_logs() -> Generator[Callable[[], list[dict[str, object]]]]:
     """
     Fixture that configures logging to capture records in memory
     and provides a helper to retrieve and parse them.
@@ -22,14 +32,6 @@ def capture_structured_logs():
         root.removeHandler(h)
 
     # Create in-memory handler
-    class ListHandler(logging.Handler):
-        def __init__(self):
-            super().__init__()
-            self.records = []
-
-        def emit(self, record):
-            self.records.append(record)
-
     memory_handler = ListHandler()
 
     # We still need the formatter to test formatting logic (JSON structure)
@@ -40,14 +42,17 @@ def capture_structured_logs():
 
     root.addHandler(memory_handler)
 
-    def get_logs():
+    def get_logs() -> list[dict[str, object]]:
         """Returns a list of parsed JSON log entries."""
-        logs = []
+        logs: list[dict[str, object]] = []
         for record in memory_handler.records:
             # Format the record to get the JSON string string
             log_str = memory_handler.format(record)
             try:
-                logs.append(json.loads(log_str))
+                # json.loads returns Any, we cast it to Dict[str, object] for strictness if we expect a dict
+                parsed = json.loads(log_str)
+                if isinstance(parsed, dict):
+                    logs.append(parsed)
             except json.JSONDecodeError:
                 pass
         return logs

@@ -36,3 +36,6 @@ MANIFEST
 .ruff_cache/
 
 .mypy_cache/
+
+# Allure Report
+/allure-results/

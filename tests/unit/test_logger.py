@@ -1,11 +1,12 @@
 import json
+from collections.abc import Callable
 
 from pydantic import SecretStr
 
 from src.utils.logger import get_logger
 
 
-def test_logger_json_format(capture_structured_logs):
+def test_logger_json_format(capture_structured_logs: Callable[[], list[dict[str, object]]]) -> None:
     """Verify logs are output in structured JSON format with required fields."""
     logger = get_logger("test_json")
     logger.info("structure check", extra={"context": {"foo": "bar"}})
@@ -23,7 +24,7 @@ def test_logger_json_format(capture_structured_logs):
         assert entry["context"] == {"foo": "bar"}
 
 
-def test_logger_secret_masking(capture_structured_logs):
+def test_logger_secret_masking(capture_structured_logs: Callable[[], list[dict[str, object]]]) -> None:
     """Verify SecretStr values are masked in logs."""
     logger = get_logger("test_masking")
     secret = SecretStr("highly_sensitive_data")
@@ -42,7 +43,7 @@ def test_logger_secret_masking(capture_structured_logs):
     assert "**********" in log_dump
 
 
-def test_logger_correlation_id(capture_structured_logs):
+def test_logger_correlation_id(capture_structured_logs: Callable[[], list[dict[str, object]]]) -> None:
     """Verify correlation ID / Request ID is captured if present."""
     logger = get_logger("test_correlation")
     # Simulating request_id passed via extra - in real app this might come from contextvars
@@ -54,7 +55,7 @@ def test_logger_correlation_id(capture_structured_logs):
     assert entry.get("request_id") == "req-123"
 
 
-def test_logger_exception_traceback(capture_structured_logs):
+def test_logger_exception_traceback(capture_structured_logs: Callable[[], list[dict[str, object]]]) -> None:
     """Verify exceptions are captured structuredly."""
     logger = get_logger("test_exception")
     try:

@@ -6,5 +6,5 @@ fake = Faker()
 
 
 @pytest.fixture(scope="session")
-def faker():
+def faker() -> Faker:
     return fake
