@@ -17,8 +17,6 @@ configure_logging(log_level=settings.LOG_LEVEL)
 logger = get_logger("lucius-mcp")
 
 # Initialize FastMCP server
-# We define dependencies that the client needs to know about (if any),
-# though FastMCP usually infers them from tool signatures.
 mcp = FastMCP("lucius-mcp")
 
 
@@ -70,9 +68,6 @@ def start() -> None:
         try:
             asyncio.run(mcp.run_stdio_async())
         except KeyboardInterrupt:
-            # We use os._exit(0) to avoid the 'Fatal Python error' related to
-            # daemon threads and stdin locks during interpreter finalization
-            # which often occurs when multiple Ctrl+C signals are received.
             os._exit(0)
     else:
         uvicorn.run("src.main:app", host=settings.HOST, port=settings.PORT, reload=True, ws="wsproto")

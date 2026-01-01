@@ -1,46 +1,75 @@
 import pytest
 from starlette.requests import Request
-from starlette.types import Scope, Receive, Send
+from starlette.types import Scope
 
-# Import will fail initially
-from src.utils.error import AllureAPIError, ResourceNotFoundError, agent_hint_handler
+from src.utils.error import (
+    AllureAPIError,
+    AuthenticationError,
+    ResourceNotFoundError,
+    ValidationError,
+    agent_hint_handler,
+)
 
 
-def test_allure_api_error_structure():
-    err = AllureAPIError("Something went wrong", suggestions=["Check configuration"])
-    assert str(err) == "Something went wrong"
-    assert "Check configuration" in err.suggestions
+@pytest.fixture
+def mock_request():
+    scope: Scope = {"type": "http"}
 
+    async def receive():
+        return {}
 
-def test_specific_error_types():
-    err = ResourceNotFoundError("Test Case 123 not found")
-    assert isinstance(err, AllureAPIError)
-    assert "Test Case 123 not found" in str(err)
-    # Check if suggestions are populated by default or passed
-    assert err.suggestions
+    request = Request(scope, receive)
+    return request
 
 
 @pytest.mark.asyncio
-async def test_agent_hint_format():
-    # Mocking a basic request
-    scope: Scope = {"type": "http"}
+async def test_resource_not_found(mock_request):
+    exc = ResourceNotFoundError("Test Case 123 not found")
+    response = await agent_hint_handler(mock_request, exc)
 
-    async def receive() -> dict:
-        return {}
-
-    async def send(message: dict) -> None:
-        pass
-
-    request = Request(scope, receive)
-
-    exc = ResourceNotFoundError("Item missing", suggestions=["Create item first"])
-
-    response = await agent_hint_handler(request, exc)
-
-    assert response.status_code == 404  # Should map to 404
+    assert response.status_code == 404
     body = response.body.decode()
-
-    # Check Agent Hint format
-    assert "❌ Error: Item missing" in body
+    assert "❌ Error: Test Case 123 not found" in body
     assert "Suggestions:" in body
-    assert "- Create item first" in body
+    assert "Check if the ID is correct" in body
+
+
+@pytest.mark.asyncio
+async def test_validation_error(mock_request):
+    exc = ValidationError("Invalid email format")
+    response = await agent_hint_handler(mock_request, exc)
+
+    assert response.status_code == 400
+    body = response.body.decode()
+    assert "❌ Error: Invalid email format" in body
+
+
+@pytest.mark.asyncio
+async def test_authentication_error(mock_request):
+    exc = AuthenticationError("Invalid token")
+    response = await agent_hint_handler(mock_request, exc)
+
+    assert response.status_code == 401
+    body = response.body.decode()
+    assert "❌ Error: Invalid token" in body
+    assert "Check ALLURE_API_TOKEN" in body
+
+
+@pytest.mark.asyncio
+async def test_unexpected_exception(mock_request):
+    exc = ValueError("Database connection failed")
+    response = await agent_hint_handler(mock_request, exc)
+
+    assert response.status_code == 500
+    body = response.body.decode()
+    assert "❌ Unexpected Error: Database connection failed" in body
+    assert "check the logs" in body
+    # Stack trace should NOT be in the body for generic errors to avoid leaking internals
+    assert "Traceback" not in body
+
+
+def test_error_hierarchy():
+    """Ensure all custom errors inherit from AllureAPIError"""
+    assert issubclass(ResourceNotFoundError, AllureAPIError)
+    assert issubclass(ValidationError, AllureAPIError)
+    assert issubclass(AuthenticationError, AllureAPIError)
