@@ -8,6 +8,7 @@ from fastmcp import FastMCP
 from starlette.applications import Starlette
 from starlette.routing import Mount
 
+from src.tools.create_test_case import create_test_case
 from src.utils.config import settings
 from src.utils.error import agent_hint_handler
 from src.utils.logger import configure_logging, get_logger
@@ -18,6 +19,9 @@ logger = get_logger("lucius-mcp")
 
 # Initialize FastMCP server
 mcp = FastMCP("lucius-mcp")
+
+# Register tools
+mcp.tool()(create_test_case)
 
 
 @mcp.tool()

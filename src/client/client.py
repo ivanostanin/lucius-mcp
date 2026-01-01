@@ -1,5 +1,7 @@
 """Async HTTP client for Allure TestOps API."""
 
+import typing
+
 import httpx
 from pydantic import SecretStr
 
@@ -9,6 +11,30 @@ from .exceptions import (
     AllureNotFoundError,
     AllureRateLimitError,
     AllureValidationError,
+)
+from .models import AttachmentRow, TestCaseCreateV2Dto, TestCaseOverviewDto
+
+type RequestFiles = (
+    typing.Mapping[
+        str,
+        typing.IO[bytes]
+        | bytes
+        | str
+        | tuple[str | None, typing.IO[bytes] | bytes | str]
+        | tuple[str | None, typing.IO[bytes] | bytes | str, str | None]
+        | tuple[str | None, typing.IO[bytes] | bytes | str, str | None, typing.Mapping[str, str]],
+    ]
+    | typing.Sequence[
+        tuple[
+            str,
+            typing.IO[bytes]
+            | bytes
+            | str
+            | tuple[str | None, typing.IO[bytes] | bytes | str]
+            | tuple[str | None, typing.IO[bytes] | bytes | str, str | None]
+            | tuple[str | None, typing.IO[bytes] | bytes | str, str | None, typing.Mapping[str, str]],
+        ]
+    ]
 )
 
 
@@ -59,6 +85,7 @@ class AllureClient:
         json: object | None = None,
         params: dict[str, str | int | float | bool | None] | None = None,
         headers: dict[str, str] | None = None,
+        files: RequestFiles | None = None,
     ) -> httpx.Response:
         """Make HTTP request with error handling.
 
@@ -68,6 +95,7 @@ class AllureClient:
             json: JSON body data
             params: Query parameters
             headers: Additional headers
+            files: Files for multipart upload
 
         Returns:
             httpx.Response: The HTTP response
@@ -90,6 +118,7 @@ class AllureClient:
                 json=json,
                 params=params,
                 headers=headers,
+                files=files,
             )
             response.raise_for_status()
             return response
@@ -134,7 +163,7 @@ class AllureClient:
     # Test Case operations (Story 1.3, 1.4, 1.5)
     # ==========================================
 
-    async def create_test_case(self, project_id: int, data: object) -> object:
+    async def create_test_case(self, project_id: int, data: TestCaseCreateV2Dto) -> TestCaseOverviewDto:
         """Create a new test case.
 
         Args:
@@ -143,11 +172,38 @@ class AllureClient:
 
         Returns:
             Created test case
-
-        Note:
-            Implementation in Story 1.3
         """
-        raise NotImplementedError("To be implemented in Story 1.3")
+        response = await self._request(
+            "POST",
+            "/api/rs/testcase",
+            json=data.model_dump(mode="json", exclude_none=True, by_alias=True),
+            params={"projectId": project_id},
+        )
+        return TestCaseOverviewDto.model_validate(response.json())
+
+    async def upload_attachment(
+        self,
+        project_id: int,
+        files: RequestFiles,
+    ) -> list[AttachmentRow]:
+        """Upload attachments to Allure TestOps.
+
+        Args:
+            project_id: Project ID
+            files: Dictionary or list of tuples for multipart upload.
+                   Format: {'file': ('filename', b'content', 'content_type')}
+
+        Returns:
+            List of uploaded attachments info
+        """
+        # Allure TestOps expects 'file' field for uploads
+        response = await self._request(
+            "POST",
+            "/api/rs/attachment",
+            params={"projectId": project_id},
+            files=files,
+        )
+        return [AttachmentRow.model_validate(item) for item in response.json()]
 
     async def get_test_case(self, test_case_id: int) -> object:
         """Retrieve a test case by ID.

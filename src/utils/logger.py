@@ -1,7 +1,6 @@
 import datetime
 import logging
 import sys
-from typing import Any
 
 from pydantic import SecretStr
 from pythonjsonlogger import json
@@ -9,14 +8,16 @@ from pythonjsonlogger import json
 
 # Custom JSON encoder to handle SecretStr and other types
 class CustomJsonEncoder(json.JsonEncoder):
-    def default(self, obj: Any) -> Any:
+    def default(self, obj: object) -> object:
         if isinstance(obj, SecretStr):
             return "**********"
         return super().default(obj)
 
 
 class CustomJsonFormatter(json.JsonFormatter):
-    def add_fields(self, log_record: dict[str, Any], record: logging.LogRecord, message_dict: dict[str, Any]) -> None:
+    def add_fields(
+        self, log_record: dict[str, object], record: logging.LogRecord, message_dict: dict[str, object]
+    ) -> None:
         super().add_fields(log_record, record, message_dict)
 
         # Ensure consistent timestamp format

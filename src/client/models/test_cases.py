@@ -1,12 +1,16 @@
 """Test Case related models and DTOs."""
 
 from ._generated import (
+    BodyStepDto,
+    ExpectedBodyStepDto,
+    TestCaseAttachmentRowDto,
     TestCaseCreateV2Dto,
     TestCaseExampleDto,
     TestCaseImportDto,
     TestCaseOverviewDto,
     TestCaseParameterDto,
     TestCasePatchV2Dto,
+    TestCaseScenarioStepDto,
     TestCaseScenarioV2Dto,
     TestKeyDto,
     TestLayerCreateDto,
@@ -18,12 +22,16 @@ from ._generated import (
 )
 
 __all__ = [
+    "BodyStepDto",
+    "ExpectedBodyStepDto",
+    "TestCaseAttachmentRowDto",
     "TestCaseCreateV2Dto",
     "TestCaseExampleDto",
     "TestCaseImportDto",
     "TestCaseOverviewDto",
     "TestCaseParameterDto",
     "TestCasePatchV2Dto",
+    "TestCaseScenarioStepDto",
     "TestCaseScenarioV2Dto",
     "TestKeyDto",
     "TestLayerCreateDto",

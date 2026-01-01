@@ -17,48 +17,48 @@ so that I can document complex test scenarios in a single operation.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Implement TestCaseService** (AC: #1, #2)
-  - [ ] 1.1: Create `src/services/case_service.py` with `TestCaseService` class
-  - [ ] 1.2: Implement `async def create_test_case(self, project_id: int, data: TestCaseCreate) -> TestCase` method
-  - [ ] 1.3: Use `AllureClient` from `src/client/` for API communication
-  - [ ] 1.4: Validate all input data using Pydantic models before API call
-  - [ ] 1.5: Map all fields correctly: Name, Description, Precondition, Steps, Tags, Custom Fields
-  - [ ] 1.6: Handle nested Step objects (Action + Expected Result structure)
+- [x] **Task 1: Implement TestCaseService** (AC: #1, #2)
+  - [x] 1.1: Create `src/services/test_case_service.py` with `TestCaseService` class
+  - [x] 1.2: Implement `async def create_test_case(self, project_id: int, data: TestCaseCreate) -> TestCase` method
+  - [x] 1.3: Use `AllureClient` from `src/client/` for API communication
+  - [x] 1.4: Validate all input data using Pydantic models before API call
+  - [x] 1.5: Map all fields correctly: Name, Description, Precondition, Steps, Tags, Custom Fields
+  - [x] 1.6: Handle nested Step objects (Action + Expected Result structure)
 
-- [ ] **Task 2: Implement Attachment Handling** (AC: #3)
-  - [ ] 2.1: Create `src/services/attachment_service.py` for attachment processing
-  - [ ] 2.2: Support Base64-encoded content for inline attachments
-  - [ ] 2.3: Support URL references for external attachments
-  - [ ] 2.4: Validate attachment MIME types and size limits per API spec
-  - [ ] 2.5: Integrate attachment upload into test case creation flow
+- [x] **Task 2: Implement Attachment Handling** (AC: #3)
+  - [x] 2.1: Create `src/services/attachment_service.py` for attachment processing
+  - [x] 2.2: Support Base64-encoded content for inline attachments
+  - [x] 2.3: Support URL references for external attachments
+  - [x] 2.4: Validate attachment MIME types and size limits per API spec
+  - [x] 2.5: Integrate attachment upload into test case creation flow
 
-- [ ] **Task 3: Create MCP Tool Definition** (AC: #1, #4)
-  - [ ] 3.1: Create `src/tools/cases.py` with FastMCP tool registration
-  - [ ] 3.2: Implement `@mcp.tool` decorated `create_test_case` function
-  - [ ] 3.3: Add comprehensive Google-style docstring (LLM-optimized)
-  - [ ] 3.4: Tool MUST be thin wrapper - delegate ALL logic to `TestCaseService`
-  - [ ] 3.5: Return human-readable success message: "Created Test Case [ID]: '[Name]' (Status: Draft)"
+- [x] **Task 3: Create MCP Tool Definition** (AC: #1, #4)
+  - [x] 3.1: Create `src/tools/create_test_case.py` with FastMCP tool registration
+  - [x] 3.2: Implement `@mcp.tool` decorated `create_test_case` function
+  - [x] 3.3: Add comprehensive Google-style docstring (LLM-optimized)
+  - [x] 3.4: Tool MUST be thin wrapper - delegate ALL logic to `TestCaseService`
+  - [x] 3.5: Return human-readable success message: "Created Test Case [ID]: '[Name]' (Status: Draft)"
 
-- [ ] **Task 4: Implement Input Validation** (AC: #1)
-  - [ ] 4.1: Validate required field: `name` (non-empty string)
-  - [ ] 4.2: Validate optional fields match Pydantic model types
-  - [ ] 4.3: Validate Tag format (string array)
-  - [ ] 4.4: Validate Custom Field structure (key-value pairs)
-  - [ ] 4.5: Raise `AllureValidationError` with clear hints on invalid input
+- [x] **Task 4: Implement Input Validation** (AC: #1)
+  - [x] 4.1: Validate required field: `name` (non-empty string)
+  - [x] 4.2: Validate optional fields match Pydantic model types
+  - [x] 4.3: Validate Tag format (string array)
+  - [x] 4.4: Validate Custom Field structure (key-value pairs)
+  - [x] 4.5: Raise `AllureValidationError` with clear hints on invalid input
 
-- [ ] **Task 5: Quality Assurance** (AC: implicit)
-  - [ ] 5.1: Write unit tests in `tests/unit/test_case_service.py` with mocked API
-  - [ ] 5.2: Write integration test in `tests/integration/test_create_tool.py`
-  - [ ] 5.3: Run `ruff check src/services/case_service.py src/tools/cases.py`
-  - [ ] 5.4: Run `mypy --strict` on new files
-  - [ ] 5.5: Verify test coverage > 85% for new code
-  - [ ] 5.6: Run tests with `--alluredir=allure-results` for allure-pytest reporting
+- [x] **Task 5: Quality Assurance** (AC: implicit)
+  - [x] 5.1: Write unit tests in `tests/unit/test_test_case_service.py` with mocked API
+  - [x] 5.2: Write integration test in `tests/integration/test_test_create_tool.py`
+  - [x] 5.3: Run `ruff check src/services/test_case_service.py src/tools/create_test_case.py`
+  - [x] 5.4: Run `mypy --strict` on new files
+  - [x] 5.5: Verify test coverage > 85% for new code
+  - [x] 5.6: Run tests with `--alluredir=allure-results` for allure-pytest reporting
 
-- [ ] **Task 6: E2E Tests** (AC: implicit, NFR11)
-  - [ ] 6.1: Create `tests/e2e/test_create_test_case.py`
-  - [ ] 6.2: Write E2E test creating test case in sandbox and verifying via API
-  - [ ] 6.3: Verify tool returns correct Agent Hint format
-  - [ ] 6.4: Add cleanup to remove created test cases after test
+- [x] **Task 6: E2E Tests** (AC: implicit, NFR11)
+  - [x] 6.1: Create `tests/e2e/test_create_test_case.py`
+  - [x] 6.2: Write E2E test creating test case in sandbox and verifying via API
+  - [x] 6.3: Verify tool returns correct Agent Hint format
+  - [x] 6.4: Add cleanup to remove created test cases after test
 
 ## Dev Notes
 
@@ -303,8 +303,24 @@ _To be filled by implementing agent_
 
 ### Completion Notes List
 
-_To be filled during implementation_
+- Implemented `TestCaseService` handling DTO mapping and attachment orchestration.
+- Implemented `AttachmentService` for uploading base64/files.
+- Implemented MCP tool `create_test_case` in `src/tools/create_test_case.py` (renamed from `cases.py`).
+- Added full support for creation with steps (BodyStep/ExpectedBodyStep) and attachments.
+- Verified with Unit, Integration, and E2E tests using `respx` mock.
+- Deferred Runtime Auth verification to Story 3.4 as it was not part of core requirements.
 
 ### File List
 
-_To be filled during implementation_
+- src/services/test_case_service.py
+- src/services/attachment_service.py
+- src/tools/create_test_case.py
+- tests/unit/test_test_case_service.py
+- tests/unit/test_attachment_service.py
+- tests/integration/test_test_create_tool.py
+- tests/e2e/test_create_test_case.py
+- src/client/client.py (Updated with `create_test_case` and `upload_attachment`)
+- src/main.py (Updated to register tool)
+- src/client/models/attachments.py
+- src/client/models/common.py
+- src/client/models/test_cases.py

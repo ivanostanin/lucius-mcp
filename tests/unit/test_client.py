@@ -141,9 +141,6 @@ async def test_placeholder_methods_not_implemented(base_url: str, token: SecretS
     """Test that placeholder methods raise NotImplementedError."""
     async with AllureClient(base_url, token) as client:
         with pytest.raises(NotImplementedError):
-            await client.create_test_case(1, {})
-
-        with pytest.raises(NotImplementedError):
             await client.get_test_case(1)
 
         with pytest.raises(NotImplementedError):

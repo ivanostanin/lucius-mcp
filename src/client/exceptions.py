@@ -30,9 +30,9 @@ class AllureRateLimitError(AllureClientError):
 
 __all__ = [
     "AllureAPIError",
+    "AllureAuthError",
     "AllureClientError",
     "AllureNotFoundError",
-    "AllureValidationError",
-    "AllureAuthError",
     "AllureRateLimitError",
+    "AllureValidationError",
 ]
