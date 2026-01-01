@@ -182,20 +182,21 @@ def test_models_use_union_operator() -> None:
 
 
 def test_model_strict_validation() -> None:
-    """Test that Pydantic v2 strict validation is working."""
-    # This should fail in strict mode (string to int coercion disabled)
+    """Test that Pydantic v2 strict validation is working (if configured)."""
+    # This would fail if 'strict=True' was added to the model's ConfigDict
     data = {
         "name": "Test",
         "color": "#FF0000",
         "projectId": "123",  # String instead of int
     }
 
-    # Note: datamodel-code-generator might not add strict=True by default
-    # This test verifies the behavior
+    # Current generation does NOT use strict=True by default for all models
+    # but we can verify that Pydantic still parses it if coercion is allowed,
+    # or that it fails if we want to enforce strictness in the future.
     try:
-        CategoryCreateDto(**data)
-        # If this passes, strict mode is not enabled (coercion allowed)
-        # This is acceptable for generated models
+        category = CategoryCreateDto(**data)
+        assert isinstance(category.projectId, int)
+        # If we reach here, strict mode is NOT enabled (coercion occurred)
     except ValidationError:
-        # If this fails, strict mode is enabled
+        # If we reach here, strict mode IS enabled
         pass

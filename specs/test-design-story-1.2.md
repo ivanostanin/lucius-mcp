@@ -275,10 +275,10 @@ Lock `datamodel-code-generator` to a specific version in `pyproject.toml`. Add C
 
 ## Related Documents
 
-- PRD: [prd.md](file:///Users/anmaro/Code/personal/github.com/lucius-mcp/specs/prd.md)
-- Epic: [epics.md](file:///Users/anmaro/Code/personal/github.com/lucius-mcp/specs/project-planning-artifacts/epics.md#L136-L148)
-- Architecture: [architecture.md](file:///Users/anmaro/Code/personal/github.com/lucius-mcp/specs/architecture.md)
-- Epic Test Design: [test-design-epic-1.md](file:///Users/anmaro/Code/personal/github.com/lucius-mcp/specs/test-design-epic-1.md)
+- PRD: specs/prd.md
+- Epic: specs/project-planning-artifacts/epics.md#L136-L148
+- Architecture: specs/architecture.md
+- Epic Test Design: specs/test-design-epic-1.md
 
 ---
 

@@ -1,38 +1,38 @@
 """Custom exceptions for Allure TestOps API interactions."""
 
-
-class AllureAPIError(Exception):
-    """Base exception for all Allure API errors."""
-
-    def __init__(
-        self,
-        message: str,
-        status_code: int | None = None,
-        response_body: str | None = None,
-    ) -> None:
-        """Initialize AllureAPIError.
-
-        Args:
-            message: Human-readable error message
-            status_code: HTTP status code if available
-            response_body: Response body from the API for debugging
-        """
-        super().__init__(message)
-        self.status_code = status_code
-        self.response_body = response_body
+from src.utils.error import (
+    AllureAPIError,
+    AuthenticationError,
+    ResourceNotFoundError,
+    ValidationError,
+)
 
 
-class AllureNotFoundError(AllureAPIError):
+class AllureClientError(AllureAPIError):
+    """Base exception for client-side errors."""
+
+
+class AllureNotFoundError(ResourceNotFoundError):
     """Resource not found (404)."""
 
 
-class AllureValidationError(AllureAPIError):
+class AllureValidationError(ValidationError):
     """Validation failed (400)."""
 
 
-class AllureAuthError(AllureAPIError):
+class AllureAuthError(AuthenticationError):
     """Authentication failed (401/403)."""
 
 
-class AllureRateLimitError(AllureAPIError):
+class AllureRateLimitError(AllureClientError):
     """Rate limit exceeded (429)."""
+
+
+__all__ = [
+    "AllureAPIError",
+    "AllureClientError",
+    "AllureNotFoundError",
+    "AllureValidationError",
+    "AllureAuthError",
+    "AllureRateLimitError",
+]
