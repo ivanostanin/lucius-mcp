@@ -102,3 +102,70 @@ async def test_full_house_creation() -> None:
 
         assert s[2]["attachmentId"] == 500
         assert s[2]["type"] == "AttachmentStep"
+
+
+@pytest.mark.asyncio
+async def test_url_attachment_flow() -> None:
+    """
+    E2E-2: Test Case with URL Attachment.
+    Verifies that the tool downloads content from URL and uploads it to Allure.
+    """
+    project_id = 101
+    name = "URL Attachment Test"
+    url = "http://external.com/report.pdf"
+
+    attachments = [
+        {
+            "name": "report.pdf",
+            "url": url,
+            "content_type": "application/pdf",
+        }
+    ]
+
+    # Use a broader mock to capture both Allure API and external URL
+    async with respx.mock() as mock:
+        # 1. External Download Mock
+        download_route = mock.get(url).respond(
+            status_code=200,
+            content=b"%PDF-1.4-mock-content",
+        )
+
+        # 2. Allure Upload Mock
+        upload_route = mock.post(f"{settings.ALLURE_ENDPOINT}/api/rs/attachment").respond(
+            status_code=201,
+            json=[
+                {
+                    "id": 600,
+                    "name": "report.pdf",
+                    "entity": "ATTACHMENT",
+                    "contentLength": 100,
+                    "contentType": "application/pdf",
+                }
+            ],
+        )
+
+        # 3. Test Case Creation Mock
+        mock.post(f"{settings.ALLURE_ENDPOINT}/api/rs/testcase").respond(
+            status_code=200,
+            json={
+                "id": 201,
+                "name": name,
+                "description": None,
+                "automated": False,
+                "statusId": 1,
+                "workflowId": 1,
+                "projectId": project_id,
+            },
+        )
+
+        # Call Tool
+        result_msg = await create_test_case(project_id=project_id, name=name, attachments=attachments)
+
+        # Verifications
+        assert "Created Test Case ID: 201" in result_msg
+
+        # Verify Download
+        assert download_route.called
+
+        # Verify Upload
+        assert upload_route.called

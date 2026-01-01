@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -44,12 +44,40 @@ async def test_upload_base64_attachment(service: AttachmentService, mock_client:
 
 
 @pytest.mark.asyncio
-async def test_upload_url_attachment(service: AttachmentService) -> None:
-    """Test handling URL attachment (might just return a link object or similar)."""
-    # If API supports URL attachments directly?
-    # Or if we just embed it in Markdown?
-    # The Story says "Support URL references".
-    # Creating an 'attachment' from URL might mean downloading and uploading,
-    # OR creating a link step.
-    # Let's assume for now we just validate it.
-    pass
+async def test_upload_url_attachment(service: AttachmentService, mock_client: AsyncMock) -> None:
+    """Test uploading an attachment from a URL."""
+    project_id = 1
+    url = "http://example.com/logo.png"
+    attachment_data = {
+        "name": "logo.png",
+        "url": url,
+        "content_type": "image/png",
+    }
+
+    # Mock Allure upload result
+    result_mock = Mock()
+    result_mock.id = 501
+    mock_client.upload_attachment.return_value = [result_mock]
+
+    # Mock httpx response
+    mock_response = Mock()
+    mock_response.content = b"downloaded-content"
+    mock_response.raise_for_status = Mock()
+
+    # Patch httpx.AsyncClient
+    with patch("src.services.attachment_service.httpx.AsyncClient") as mock_httpx_cls:
+        mock_client_instance = AsyncMock()
+        mock_httpx_cls.return_value.__aenter__.return_value = mock_client_instance
+        mock_client_instance.get.return_value = mock_response
+
+        result = await service.upload_attachment(project_id, attachment_data)
+
+        assert result == result_mock
+
+        # Verify download triggered
+        mock_client_instance.get.assert_called_with(url, follow_redirects=True, timeout=10.0)
+
+        # Verify upload triggered with downloaded content
+        mock_client.upload_attachment.assert_called_once()
+        files = mock_client.upload_attachment.call_args[0][1]
+        assert files["file"] == ("logo.png", b"downloaded-content", "image/png")

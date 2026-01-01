@@ -30,7 +30,9 @@ async def create_test_case(
                Example: [{'action': 'Login', 'expected': 'Dashboard visible'}]
         tags: List of tag names.
         attachments: List of attachments.
-                     Example: [{'name': 's.png', 'content': '<base64>', 'content_type': 'image/png'}]
+                     Example Base64: [{'name': 's.png', 'content': '<base64>', 'content_type': 'image/png'}]
+                     Example URL: [{'name': 'report.pdf', 'url': 'http://example.com/report.pdf',
+                                    'content_type': 'application/pdf'}]
 
     Returns:
         A message confirming creation with the ID and Name.
