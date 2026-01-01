@@ -78,6 +78,26 @@ Run the test suite using `pytest`:
 uv run pytest
 ```
 
+## 🛠️ Development
+
+### Regenerating API Models
+
+The Allure TestOps API exposes a massive surface area with thousands of entities. To maintain both spec-fidelity and usability, we use a **Model Facade Pattern**:
+
+- **Internal (`src/client/models/_generated.py`)**: A monolithic, auto-generated file containing 5,800+ lines of Pydantic models with 100% schema fidelity.
+- **Facade (`src/client/models/`)**: A categorized package providing functional submodules for easier discovery:
+  - `common.py`: Pagination, Categories, Custom Fields.
+  - `test_cases.py`: Models specific to Test Case operations.
+  - `shared_steps.py`: Models for Shared Step management.
+
+**To regenerate internal models after updating the spec:**
+
+```bash
+./scripts/generate_models.sh
+```
+
+> **Note**: Do not manually edit `src/client/models/_generated.py`. For refinements or logical groupings, update the facade modules in `src/client/models/`.
+
 ## 🧹 Quality Checks
 
 **Formatting**:

@@ -26,7 +26,7 @@ The Allure TestOps MCP Server (`lucius-mcp`) is a specialized Model Context Prot
 
 ### What Makes This Special
 
-Unlike generic API wrappers, **lucius-mcp** is built with an **LLM-First Design**, ensuring all tools and prompts are thoroughly documented for machine understanding. It leverages **Spec-Driven Reliability** by generating the Python client directly from the OpenAPI 3.1 spec, guaranteeing type safety and accuracy. With a focus on **High Assurance** (>85% test coverage), it eliminates the guesswork for agents, preventing hallucinations and ensuring reliable test repository maintenance.
+Unlike generic API wrappers, **lucius-mcp** is built with an **LLM-First Design**, ensuring all tools and prompts are thoroughly documented for machine understanding. It leverages **Spec-Driven Reliability** by generating the Python client directly from the OpenAPI 3.1 spec, which is then structured into a **categorized Model Facade** to simplify entity discovery for agents. With a focus on **High Assurance** (>85% test coverage), it eliminates the guesswork for agents, preventing hallucinations and ensuring reliable test repository maintenance.
 
 ## Project Classification
 
@@ -53,7 +53,7 @@ Unlike generic API wrappers, **lucius-mcp** is built with an **LLM-First Design*
 
 *   **Reliability:** The server handles invalid inputs gracefully with descriptive errors, preventing agent loops.
 *   **Code Quality:** Maintained >85% test coverage and strict type-safety (Pydantic models generated from OpenAPI).
-*   **Maintainability:** Client code regeneration pipeline is robust, allowing easy updates when Allure TestOps API changes.
+*   **Maintainability:** Client code regeneration pipeline is robust, using an internal `models/_generated.py` backed by a human-and-agent-friendly `models/` facade.
 *   **Testability:** All functions are thoroughly documented to be understandable by llms. End-to-end tests are implemented involving verification of tool execution results in sandbox TestOps instance or project.
 
 ### Measurable Outcomes

@@ -9,7 +9,7 @@ inputDocuments:
   - 'lucius-mcp/specs/analysis/product-brief-lucius-mcp-2025-12-25.md'
 workflowType: 'architecture'
 project_name: 'lucius-mcp'
-user_name: 'Anmaro'
+user_name: 'Ivan Ostanin'
 date: '2025-12-26'
 ---
 
@@ -103,8 +103,11 @@ uv add "mcp[cli,fastapi]" pydantic starlette uvicorn
 
 ### Data Architecture
 *   **Models:** Pydantic v2 (Strict Mode).
-*   **Generation:** `datamodel-code-generator` from `openapi.json` at build time.
-*   **Validation:** Strict Input validation at MCP layer; Output validation skipped for speeed.
+*   **Generation:** `datamodel-code-generator` from `openapi.json` at build time into `src/client/models/_generated.py`.
+*   **Pattern: Model Facade:**
+    *   **Internal (`models/_generated.py`):** Monolithic auto-generated file containing 5000+ lines of code. This file should NEVER be edited manually.
+    *   **Facade Package (`models/`):** A public-facing package that categorizes internal models into functional modules (e.g., `test_cases.py`, `shared_steps.py`, `common.py`). This improves developer experience and agent discovery by grouping related entities.
+*   **Validation:** Strict Input validation at MCP layer; Output validation skipped for speed.
 
 ### Authentication & Security
 *   **Middleware:** Starlette Middleware to normalize Auth (Env vs Header vs Tool Arg).
@@ -180,8 +183,13 @@ lucius-mcp/
 ├── src/
 │   ├── main.py                 # Application Entrypoint (FastMCP)
 │   ├── client/                 # Allure TestOps API Client
-│   │   ├── client.py           # Auto-generated/Wrapped httpx client
-│   │   └── models.py           # Generated Pydantic Models for Allure
+│   │   ├── client.py           # Wrapped httpx client
+│   │   └── models/             # PUBLIC: Facade package for categorized access
+│   │       ├── __init__.py     # Re-exports everything for convenience
+│   │       ├── _generated.py   # INTERNAL: Monolithic auto-generated Pydantic Models
+│   │       ├── common.py       # Pagination, Categories, Custom Fields
+│   │       ├── test_cases.py   # Test Case specific DTOs
+│   │       └── shared_steps.py # Shared Step specific DTOs
 │   ├── tools/                  # MCP Tool Definitions (The "Interface")
 │   │   ├── cases.py            # Test Case CRUD Tools
 │   │   ├── shared_steps.py     # Shared Steps Tools
