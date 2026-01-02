@@ -1,0 +1,12 @@
+# TestCaseStyle
+
+
+## Enum
+
+* `REGULAR` (value: `'regular'`)
+
+* `CHECKLIST` (value: `'checklist'`)
+
+[[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
+
+

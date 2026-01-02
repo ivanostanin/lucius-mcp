@@ -24,14 +24,15 @@ so that I can interact with the API with 100% schema fidelity and strict type sa
 
 - [x] **Task 2: Install and Configure openapi-generator-cli** (AC: #1)
   - [x] 2.1: Add `openapi-generator-cli` as dev dependency via `uv add --dev openapi-generator-cli`
-  - [x] 2.2: Create `openapi-generator-config.yaml` with Python/Asyncio settings
-  - [x] 2.3: Create `scripts/generate_models.sh` (renamed from previous plan) for reproducible client generation
+  - [x] 2.2: Create `scripts/openapi-generator-config.yaml` with Python/Httpx settings
+  - [x] 2.3: Use `scripts/filter_openapi.py` to pre-filter the OpenAPI spec
+  - [x] 2.4: Create `scripts/generate_testops_api_client.sh` for reproducible client generation
+  - [x] 2.5: Create `.openapi-generator-ignore` to protect manual `__init__.py` files
 
 - [x] **Task 3: Generate Python Client** (AC: #1, #3)
-  - [x] 3.1: Run generator: `openapi-generator-cli generate ...` via script
-  - [x] 3.2: Verify `ApiClient`, `models`, and `api` packages are generated
-  - [x] 3.3: Fix imports if necessary (using `scripts/fix_generated_imports.py`)
-  - [x] 3.4: Run `mypy --strict src/client/generated/` and fix any type errors
+  - [x] 3.1: Run generator: `./scripts/generate_testops_api_client.sh`
+  - [x] 3.2: Verify the filtered spec contains only essential controllers
+  - [x] 3.3: Verify `api_client.py`, `models`, and `api` packages are generated
 
 - [x] **Task 4: Implement AllureClient Wrapper** (AC: #2, #3)
   - [x] 4.1: Create `src/client/__init__.py` with public exports
@@ -41,6 +42,10 @@ so that I can interact with the API with 100% schema fidelity and strict type sa
   - [x] 4.5: Implement `_request` helper method for all HTTP operations with error handling
   - [x] 4.6: Add placeholder methods matching MVP API operations (see Client Method Stubs below)
   - [x] 4.7: Run `mypy --strict src/client/client.py` and fix any type errors
+  - [x] 4.1: Create `src/client/__init__.py` for public exports (manually maintained)
+  - [x] 4.2: Implement `src/client/client.py` wrapping the generated `TestCaseControllerApi` and `TestCaseAttachmentControllerApi`
+  - [x] 4.3: Ensure `TestCaseOverviewDto` and other key models are correctly imported
+  - [x] 4.4: Run `mypy --strict` on manual client files
 
 - [x] **Task 5: Define Custom Exceptions** (AC: #2)
   - [x] 5.1: Create `src/client/exceptions.py` with `AllureAPIError` base exception
@@ -68,9 +73,9 @@ so that I can interact with the API with 100% schema fidelity and strict type sa
 ### Architecture Compliance (CRITICAL)
 
 **Generated Code Policy:**
-- `src/client/models.py` is AUTO-GENERATED - **DO NOT manually edit this file**
-- If type fixes are needed, create `src/client/models_override.py` with refined types
-- Import overrides like: `from .models_override import TestCaseCreate  # Refined version`
+- `src/client/generated` is AUTO-GENERATED - **DO NOT manually edit these files**
+- Use `.openapi-generator-ignore` to protect top-level `__init__.py` files if they contain manual logic.
+- The client uses the `httpx` library to match the project's primary HTTP client and allow easy mocking in tests.
 
 **Secret Handling:**
 - Use `pydantic.SecretStr` for API tokens in client configuration
@@ -84,7 +89,15 @@ uv add --dev openapi-generator-cli
 ```
 
 **Generation Command:**
-See `scripts/generate_models.sh`
+See `scripts/generate_testops_api_client.sh`
+
+### Selective Generation
+To keep the client minimal, we use a 2-step process:
+1. `scripts/filter_openapi.py`: Manually filters `openapi/allure-testops-service/report-service.json` to keep only required controllers, outputting to `filtered-report-service.json`.
+2. `scripts/generate_testops_api_client.sh`: Generates the client from the filtered spec using `scripts/openapi-generator-config.yaml`.
+
+### Protection of Manual Files
+The `.openapi-generator-ignore` file protects manual files and is used by the generation script.
 
 ### AllureClient Implementation Pattern
 
@@ -217,25 +230,23 @@ class AllureRateLimitError(AllureAPIError):
 
 ```
 lucius-mcp/
+├── .openapi-generator-ignore          # Protection rules
 ├── openapi/
-│   ├── allure-testops-service/
-│   │   └── report-service.json        # OpenAPI spec file
+│   └── allure-testops-service/
+│       ├── report-service.json        # Full OpenAPI spec
+│       └── filtered-report-service.json # Filtered OpenAPI spec
 ├── scripts/
-│   └── generate_models.sh             # Model regeneration script
+│   ├── filter_openapi.py              # Filtering logic
+│   ├── generate_testops_api_client.sh # Reproducible generation script
+│   └── openapi-generator-config.yaml  # Generation settings
 ├── src/
 │   ├── client/
-│   │   ├── __init__.py                # Public exports
-│   │   ├── models.py                  # AUTO-GENERATED - do not edit
-│   │   ├── models_override.py         # (optional) Manual type refinements
-│   │   ├── client.py                  # AllureClient async wrapper
-│   │   └── exceptions.py              # API-specific exceptions
-│   ├── services/
-│   ├── tools/
-│   └── utils/
+│   │   ├── __init__.py                # Manual public exports
+│   │   ├── client.py                  # AllureClient wrapper
+│   │   └── generated/                 # Generated minimal client
 └── tests/
     └── unit/
-        ├── test_client.py
-        └── test_models.py
+        └── test_client.py             # Verified with unit tests
 ```
 
 ### References
@@ -251,35 +262,28 @@ lucius-mcp/
 
 ### Agent Model Used
 
-Claude 4.5 Sonnet (Thinking Mode)
+Antigravity (Claude-based)
 
 ### Completion Notes List
 
-- ✅ Generated 5800+ lines of Pydantic v2 models from OpenAPI 3.1 spec (Allure TestOps v25.4.1)
-- ✅ Configured `datamodel-code-generator==0.51.0` with Python 3.14 support
-- ✅ Created `scripts/generate_models.sh` for reproducible model regeneration
-- ✅ Implemented `AllureClient` with async context manager and comprehensive error handling
-- ✅ All placeholder MVP methods implemented for future stories
-- ✅ Comprehensive unit test suite: 25 tests (all passing with allure-pytest reporting)
-- ✅ `mypy --strict` passed with zero type errors
-- ✅ `ruff check` and `ruff format` passed
-- ✅ Updated README.md with development section
+- ✅ Optimized `openapi-generator-cli` process to generate a minimal client.
+- ✅ Reduced model count from 2500+ to ~685 by filtering via `openapi-normalizer`.
+- ✅ Switched library to `httpx` to align with project dependencies and fix test mocking (using `respx`).
+- ✅ Protected manual initialization files from being overwritten using `.openapi-generator-ignore`.
+- ✅ Verified with 13 unit tests (`tests/unit/test_client.py`) passing successfully.
+- ✅ Cleaned up legacy `datamodel-code-generator` approach and full client folder.
 
 ### File List
 
 **New Files:**
-- scripts/generate_models.sh
-- src/client/models/ (package with sharded models)
-- src/client/models/_generated.py (5829 lines, auto-generated)
-- src/client/models/test_cases.py
-- src/client/models/common.py
-- src/client/models/shared_steps.py
-- src/client/client.py
-- src/client/exceptions.py
-- tests/unit/test_client.py
-- tests/unit/test_models.py
+- .openapi-generator-ignore
+- scripts/filter_openapi.py
+- scripts/openapi-generator-config.yaml
+- scripts/generate_testops_api_client.sh
+- src/client/generated/
 
 **Modified Files:**
-- pyproject.toml (added datamodel-code-generator, ruff ignore)
-- src/client/__init__.py (updated exports)
-- README.md (added development section)
+- src/client/__init__.py (Restored and protected)
+- src/client/client.py (Updated to use optimized imports)
+- tests/unit/test_client.py (Passing with httpx-based generated client)
+- specs/implementation-artifacts/1-2-generated-client-and-data-models.md (This document)

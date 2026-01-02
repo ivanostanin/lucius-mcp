@@ -9,7 +9,7 @@ KEEP_TAGS = {
     # Core Entities
     "test-case-controller",
     "shared-step-controller",
-    "project-controller",
+    # "project-controller",
     "launch-controller",
     # Test Case Details
     "test-case-attachment-controller",

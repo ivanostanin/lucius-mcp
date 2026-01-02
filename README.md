@@ -93,7 +93,7 @@ To maintain spec-fidelity while keeping the client lightweight, we use a 2-step 
 **To regenerate the client after updating the spec:**
 
 ```bash
-./scripts/generate_models.sh
+./scripts/generate_testops_api_client.sh
 ```
 
 > **Note**: Do not manually edit files in `src/client/generated/`.

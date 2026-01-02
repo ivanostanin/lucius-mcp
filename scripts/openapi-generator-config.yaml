@@ -1,0 +1,17 @@
+generatorName: python
+packageName: src.client.generated
+library: httpx
+inputSpec: openapi/allure-testops-service/filtered-report-service.json
+outputDir: .
+globalProperties:
+  apiTests: "false"
+  modelTests: "false"
+  apiDocs: "true"
+  modelDocs: "true"
+  apis: ""
+  models: ""
+  supportingFiles: ""
+additionalProperties:
+  projectName: allure-testops-client
+  generateSourceCodeOnly: true
+  usePydanticV2: true
