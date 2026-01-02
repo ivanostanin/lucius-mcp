@@ -1,5 +1,6 @@
 """Async HTTP client for Allure TestOps API."""
 
+import time
 import typing
 
 import httpx
@@ -56,19 +57,66 @@ class AllureClient:
 
         Args:
             base_url: Allure TestOps instance base URL (e.g., https://allure.example.com)
-            token: API authentication token (will be masked in logs)
+            token: API token (will be exchanged for JWT Bearer token)
             timeout: Request timeout in seconds (default: 30.0)
         """
         self._base_url = base_url.rstrip("/")
         self._token = token
         self._timeout = timeout
         self._client: httpx.AsyncClient | None = None
+        self._jwt_token: str | None = None
+        self._token_expires_at: float | None = None
+
+    async def _get_jwt_token(self) -> str:
+        """Exchange API token for JWT Bearer token.
+
+        Returns:
+            JWT access token string.
+
+        Raises:
+            AllureAuthError: If token exchange fails.
+        """
+        async with httpx.AsyncClient(base_url=self._base_url, timeout=self._timeout) as temp_client:
+            try:
+                response = await temp_client.post(
+                    "/api/uaa/oauth/token",
+                    data={
+                        "grant_type": "apitoken",
+                        "scope": "openid",
+                        "token": self._token.get_secret_value(),
+                    },
+                    headers={"Accept": "application/json"},
+                )
+                response.raise_for_status()
+                data = response.json()
+                access_token: str = data["access_token"]
+                expires_in: int = data.get("expires_in", 3600)  # Default 1 hour
+                self._jwt_token = access_token
+                # Refresh 60 seconds before expiry to avoid race conditions
+                self._token_expires_at = time.time() + expires_in - 60
+                return access_token
+            except httpx.HTTPStatusError as e:
+                raise AllureAuthError(
+                    f"Token exchange failed: {e.response.text}",
+                    status_code=e.response.status_code,
+                    response_body=e.response.text,
+                ) from e
+            except httpx.RequestError as e:
+                raise AllureAPIError(f"Token exchange request error: {e}") from e
+
+    async def _ensure_valid_token(self) -> None:
+        """Ensure the JWT token is valid, refreshing if expired."""
+        if self._token_expires_at is None or time.time() >= self._token_expires_at:
+            new_token = await self._get_jwt_token()
+            if self._client:
+                self._client.headers["Authorization"] = f"Bearer {new_token}"
 
     async def __aenter__(self) -> AllureClient:
         """Enter async context manager."""
+        jwt_token = await self._get_jwt_token()
         self._client = httpx.AsyncClient(
             base_url=self._base_url,
-            headers={"Authorization": f"Bearer {self._token.get_secret_value()}"},
+            headers={"Authorization": f"Bearer {jwt_token}"},
             timeout=self._timeout,
         )
         return self
@@ -110,6 +158,8 @@ class AllureClient:
         if not self._client:
             msg = "Client not initialized. Use 'async with AllureClient(...)' context manager."
             raise AllureAPIError(msg)
+
+        await self._ensure_valid_token()
 
         try:
             response = await self._client.request(
@@ -175,7 +225,7 @@ class AllureClient:
         """
         response = await self._request(
             "POST",
-            "/api/rs/testcase",
+            "/api/testcase",
             json=data.model_dump(mode="json", exclude_none=True, by_alias=True),
             params={"projectId": project_id},
         )
@@ -199,7 +249,7 @@ class AllureClient:
         # Allure TestOps expects 'file' field for uploads
         response = await self._request(
             "POST",
-            "/api/rs/attachment",
+            "/api/attachment",
             params={"projectId": project_id},
             files=files,
         )

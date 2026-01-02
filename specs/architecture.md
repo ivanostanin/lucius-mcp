@@ -110,6 +110,8 @@ uv add "mcp[cli,fastapi]" pydantic starlette uvicorn
 *   **Validation:** Strict Input validation at MCP layer; Output validation skipped for speed.
 
 ### Authentication & Security
+*   **JWT Token Exchange:** API tokens are exchanged for JWT Bearer tokens via `POST /api/uaa/oauth/token`.
+*   **Automatic Renewal:** Tokens are refreshed 60 seconds before expiry to ensure uninterrupted operation.
 *   **Middleware:** Starlette Middleware to normalize Auth (Env vs Header vs Tool Arg).
 *   **Secrets:** Never logged; `SecretStr` used in Pydantic models.
 
