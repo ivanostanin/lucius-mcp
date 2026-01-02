@@ -27,7 +27,7 @@ def service(mock_client: AsyncMock, mock_attachment_service: AsyncMock) -> TestC
 async def test_create_test_case_success_minimal(service: TestCaseService, mock_client: AsyncMock) -> None:
     """Test creating a test case with minimal required fields."""
     project_id = 1
-    data = TestCaseCreateV2Dto(name="Test Case 1", projectId=project_id, automation="manual")
+    data = TestCaseCreateV2Dto(name="Test Case 1", project_id=project_id, automation="manual")
     result_mock = Mock(id=100)
     result_mock.name = "Test Case 1"
     mock_client.create_test_case.return_value = result_mock
@@ -46,7 +46,7 @@ async def test_create_test_case_with_steps(service: TestCaseService, mock_client
     # We construct the DTO directly in the test to verify mapping
     scenario = TestCaseScenarioV2Dto(steps=[])
 
-    data = TestCaseCreateV2Dto(name="Steps Test", projectId=project_id, scenario=scenario)
+    data = TestCaseCreateV2Dto(name="Steps Test", project_id=project_id, scenario=scenario)
 
     result_mock = Mock(id=101)
     result_mock.name = "Steps Test"
@@ -64,7 +64,7 @@ async def test_create_test_case_with_attachments(
 ) -> None:
     """Test creating a test case with attachments."""
     project_id = 1
-    data = TestCaseCreateV2Dto(name="Attachment Test", projectId=project_id, automation="manual")
+    data = TestCaseCreateV2Dto(name="Attachment Test", project_id=project_id, automation="manual")
     attachments = [{"name": "img.png", "content": "...", "content_type": "image/png"}]
 
     mock_attachment_service.upload_attachment.return_value = Mock(id=999, name="img.png")
@@ -84,6 +84,7 @@ async def test_create_test_case_with_attachments(
     assert called_data.scenario is not None
     assert len(called_data.scenario.steps) == 1
     # Check if the step added is an attachment step
-    step = called_data.scenario.steps[0]
-    assert step.attachmentId == 999
+    step_wrapper = called_data.scenario.steps[0]
+    step = step_wrapper.actual_instance
+    assert step.attachment_id == 999
     assert step.type == "AttachmentStep"

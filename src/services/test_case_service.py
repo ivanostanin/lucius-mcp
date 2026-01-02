@@ -3,6 +3,7 @@
 from src.client import AllureClient
 from src.client.models.attachments import AttachmentStepDto
 from src.client.models.test_cases import (
+    SharedStepScenarioDtoStepsInner,
     TestCaseCreateV2Dto,
     TestCaseOverviewDto,
     TestCaseScenarioV2Dto,
@@ -49,6 +50,7 @@ class TestCaseService:
 
                 # Create attachment step
                 step = AttachmentStepDto(attachmentId=attachment_row.id, type="AttachmentStep")
-                data.scenario.steps.append(step)
+                wrapper = SharedStepScenarioDtoStepsInner(actual_instance=step)
+                data.scenario.steps.append(wrapper)
 
         return await self._client.create_test_case(project_id, data)

@@ -1,6 +1,11 @@
 """Allure TestOps API client and models."""
 
-from .client import AllureClient
+from .client import (
+    AllureClient,
+    AttachmentRow,
+    TestCaseCreateV2Dto,
+    TestCaseOverviewDto,
+)
 from .exceptions import (
     AllureAPIError,
     AllureAuthError,
@@ -16,4 +21,7 @@ __all__ = [
     "AllureNotFoundError",
     "AllureRateLimitError",
     "AllureValidationError",
+    "AttachmentRow",
+    "TestCaseCreateV2Dto",
+    "TestCaseOverviewDto",
 ]

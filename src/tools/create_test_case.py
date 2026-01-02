@@ -4,6 +4,7 @@ from src.client import AllureClient
 from src.client.models.test_cases import (
     BodyStepDto,
     ExpectedBodyStepDto,
+    SharedStepScenarioDtoStepsInner,
     TestCaseCreateV2Dto,
     TestCaseScenarioV2Dto,
     TestTagDto,
@@ -39,7 +40,7 @@ async def create_test_case(
     """
 
     # Construct Steps DTOs
-    step_dtos: list[BodyStepDto | ExpectedBodyStepDto] = []
+    step_dtos: list[SharedStepScenarioDtoStepsInner] = []
     if steps:
         for s in steps:
             # Simple step mapping. For more complex structures, more logic needed.
@@ -47,16 +48,20 @@ async def create_test_case(
             expected = s.get("expected", "")
             if action:
                 step_dtos.append(
-                    BodyStepDto(
-                        body=action,
-                        type="BodyStep",
+                    SharedStepScenarioDtoStepsInner(
+                        actual_instance=BodyStepDto(
+                            body=action,
+                            type="BodyStep",
+                        )
                     )
                 )
             if expected:
                 step_dtos.append(
-                    ExpectedBodyStepDto(
-                        body=expected,
-                        type="ExpectedBodyStep",
+                    SharedStepScenarioDtoStepsInner(
+                        actual_instance=ExpectedBodyStepDto(
+                            body=expected,
+                            type="ExpectedBodyStep",
+                        )
                     )
                 )
 
@@ -74,7 +79,7 @@ async def create_test_case(
         description=description,
         scenario=scenario,
         tags=tag_dtos,
-        projectId=project_id,
+        project_id=project_id,
         automation="manual",  # Assuming manual creation via tool implies manual kind
     )
 

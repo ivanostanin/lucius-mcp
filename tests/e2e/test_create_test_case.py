@@ -28,8 +28,14 @@ async def test_full_house_creation() -> None:
 
     # Expected API calls
     async with respx.mock(base_url=settings.ALLURE_ENDPOINT) as mock:
+        # 0. Auth Mock
+        mock.post("/api/uaa/oauth/token").respond(
+            status_code=200,
+            json={"access_token": "mock-token", "expires_in": 3600},
+        )
+
         # 1. Attachment Upload Mock
-        upload_route = mock.post("/api/rs/attachment").respond(
+        upload_route = mock.post("/api/attachment").respond(
             status_code=201,
             json=[
                 {
@@ -43,7 +49,7 @@ async def test_full_house_creation() -> None:
         )
 
         # 2. Test Case Creation Mock
-        create_route = mock.post("/api/rs/testcase").respond(
+        create_route = mock.post("/api/testcase").respond(
             status_code=200,
             json={
                 "id": 200,
@@ -130,8 +136,13 @@ async def test_url_attachment_flow() -> None:
             content=b"%PDF-1.4-mock-content",
         )
 
+        mock.post(f"{settings.ALLURE_ENDPOINT}/api/uaa/oauth/token").respond(
+            status_code=200,
+            json={"access_token": "mock-token", "expires_in": 3600},
+        )
+
         # 2. Allure Upload Mock
-        upload_route = mock.post(f"{settings.ALLURE_ENDPOINT}/api/rs/attachment").respond(
+        upload_route = mock.post(f"{settings.ALLURE_ENDPOINT}/api/attachment").respond(
             status_code=201,
             json=[
                 {
@@ -145,7 +156,7 @@ async def test_url_attachment_flow() -> None:
         )
 
         # 3. Test Case Creation Mock
-        mock.post(f"{settings.ALLURE_ENDPOINT}/api/rs/testcase").respond(
+        mock.post(f"{settings.ALLURE_ENDPOINT}/api/testcase").respond(
             status_code=200,
             json={
                 "id": 201,

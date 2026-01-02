@@ -10,9 +10,9 @@ so that I can interact with the API with 100% schema fidelity and strict type sa
 
 ## Acceptance Criteria
 
-1. **Given** the Allure TestOps OpenAPI 3.1 spec, **when** I run the model generator, **then** Pydantic v2 models are successfully created in `src/client/models.py`.
-2. A thin `httpx`-based `AllureClient` is created in `src/client/client.py`.
-3. `mypy --strict` passes for the generated models and client.
+1. **Given** the Allure TestOps OpenAPI 3.1 spec, **when** I run the client generator, **then** a full Python client is successfully created in `src/client/generated/`.
+2. A thin `httpx`-based `AllureClient` is created in `src/client/client.py` wrapping the generated client.
+3. `mypy --strict` passes for the generated client.
 
 ## Tasks / Subtasks
 
@@ -22,17 +22,16 @@ so that I can interact with the API with 100% schema fidelity and strict type sa
   - [x] 1.3: Download/Save the OpenAPI spec as `openapi/allure-testops-service/report-service.json`
   - [x] 1.4: Validate the spec file is valid OpenAPI 3.x format (use `datamodel-code-generator` validation)
 
-- [x] **Task 2: Install and Configure datamodel-code-generator** (AC: #1)
-  - [x] 2.1: Add `datamodel-code-generator>=0.49.0` as dev dependency via `uv add --dev datamodel-code-generator`
-  - [x] 2.2: Create `scripts/generate_models.sh` script for reproducible model generation
-  - [x] 2.3: Configure generator for Pydantic v2 strict mode with command flags (see Dev Notes)
+- [x] **Task 2: Install and Configure openapi-generator-cli** (AC: #1)
+  - [x] 2.1: Add `openapi-generator-cli` as dev dependency via `uv add --dev openapi-generator-cli`
+  - [x] 2.2: Create `openapi-generator-config.yaml` with Python/Asyncio settings
+  - [x] 2.3: Create `scripts/generate_models.sh` (renamed from previous plan) for reproducible client generation
 
-- [x] **Task 3: Generate Pydantic Models** (AC: #1, #3)
-  - [x] 3.1: Run generator: `datamodel-codegen --input openapi/allure-testops-service/report-service.json --output src/client/models.py --output-model-type pydantic_v2.BaseModel --use-standard-collections --use-union-operator`
-  - [x] 3.2: Add Pydantic `ConfigDict(strict=True)` to base model configuration
-  - [x] 3.3: Review generated models for key entities: `TestCase`, `TestStep`, `SharedStep`, `Tag`, `CustomField`
-  - [ ] 3.4: If needed, create `src/client/models_override.py` for manual type refinements (Optional - unimplemented)
-  - [x] 3.5: Run `mypy --strict src/client/models/` and fix any type errors
+- [x] **Task 3: Generate Python Client** (AC: #1, #3)
+  - [x] 3.1: Run generator: `openapi-generator-cli generate ...` via script
+  - [x] 3.2: Verify `ApiClient`, `models`, and `api` packages are generated
+  - [x] 3.3: Fix imports if necessary (using `scripts/fix_generated_imports.py`)
+  - [x] 3.4: Run `mypy --strict src/client/generated/` and fix any type errors
 
 - [x] **Task 4: Implement AllureClient Wrapper** (AC: #2, #3)
   - [x] 4.1: Create `src/client/__init__.py` with public exports
@@ -77,38 +76,15 @@ so that I can interact with the API with 100% schema fidelity and strict type sa
 - Use `pydantic.SecretStr` for API tokens in client configuration
 - Client MUST NOT log raw token values
 
-### datamodel-code-generator Configuration
+### openapi-generator-cli Configuration
 
 **Installation:**
 ```bash
-uv add --dev "datamodel-code-generator>=0.49.0"
+uv add --dev openapi-generator-cli
 ```
 
-**Generation Command (save as `scripts/generate_models.sh`):**
-```bash
-#!/bin/bash
-datamodel-codegen \
-  --input openapi/allure-testops-service/report-service.json \
-  --output src/client/models.py \
-  --output-model-type pydantic_v2.BaseModel \
-  --use-standard-collections \
-  --use-union-operator \
-  --target-python-version 3.12 \
-  --use-annotated \
-  --use-field-description \
-  --strict-nullable \
-  --collapse-root-models \
-  --field-constraints
-```
-
-**Key Flags Explained:**
-- `--output-model-type pydantic_v2.BaseModel`: Generates Pydantic v2 models
-- `--use-standard-collections`: Uses `list` instead of `typing.List`
-- `--use-union-operator`: Uses `X | None` instead of `Optional[X]`
-- `--use-annotated`: Uses `Annotated[...]` for field constraints
-- `--strict-nullable`: Ensures proper null handling
-- `--collapse-root-models`: Simplifies nested structures
-- `--target-python-version 3.12`: Target Python 3.12 syntax (3.14 compatible)
+**Generation Command:**
+See `scripts/generate_models.sh`
 
 ### AllureClient Implementation Pattern
 

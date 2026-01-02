@@ -80,23 +80,23 @@ uv run pytest
 
 ## 🛠️ Development
 
-### Regenerating API Models
+### Regenerating API Client
 
-The Allure TestOps API exposes a massive surface area with thousands of entities. To maintain both spec-fidelity and usability, we use a **Model Facade Pattern**:
+To maintain spec-fidelity while keeping the client lightweight, we use a 2-step process:
+1. **Filter Spec**: `scripts/filter_openapi.py` reduces the massive OpenAPI spec to only the essential controllers (Test Cases, Shared Steps, Projects).
+2. **Generate Client**: `openapi-generator-cli` builds the client from the filtered spec.
 
-- **Internal (`src/client/models/_generated.py`)**: A monolithic, auto-generated file containing 5,800+ lines of Pydantic models with 100% schema fidelity.
-- **Facade (`src/client/models/`)**: A categorized package providing functional submodules for easier discovery:
-  - `common.py`: Pagination, Categories, Custom Fields.
-  - `test_cases.py`: Models specific to Test Case operations.
-  - `shared_steps.py`: Models for Shared Step management.
+- **Generated Client (`src/client/generated/`)**: Auto-generated `ApiClient`, API controllers, and Pydantic v2 models.
+- **Client Facade (`src/client/client.py`)**: `AllureClient` wrapper that handles authentication, error mapping, and helper methods.
+- **Model Facade (`src/client/models/`)**: Re-exports generated models for simplified import paths and logical grouping.
 
-**To regenerate internal models after updating the spec:**
+**To regenerate the client after updating the spec:**
 
 ```bash
 ./scripts/generate_models.sh
 ```
 
-> **Note**: Do not manually edit `src/client/models/_generated.py`. For refinements or logical groupings, update the facade modules in `src/client/models/`.
+> **Note**: Do not manually edit files in `src/client/generated/`.
 
 ## 🧹 Quality Checks
 

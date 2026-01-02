@@ -1,43 +1,23 @@
-"""Test Case related models and DTOs."""
+"""Test case models facade."""
 
-from ._generated import (
-    BodyStepDto,
-    ExpectedBodyStepDto,
-    TestCaseAttachmentRowDto,
-    TestCaseCreateV2Dto,
-    TestCaseExampleDto,
-    TestCaseImportDto,
-    TestCaseOverviewDto,
-    TestCaseParameterDto,
-    TestCasePatchV2Dto,
-    TestCaseScenarioStepDto,
-    TestCaseScenarioV2Dto,
-    TestKeyDto,
-    TestLayerCreateDto,
-    TestLayerDto,
-    TestLayerPatchDto,
-    TestTagCreateDto,
-    TestTagDto,
-    TestTagPatchDto,
+from ..generated.models.attachment_row import AttachmentRow
+from ..generated.models.body_step_dto import BodyStepDto
+from ..generated.models.expected_body_step_dto import ExpectedBodyStepDto
+from ..generated.models.shared_step_scenario_dto_steps_inner import (
+    SharedStepScenarioDtoStepsInner,
 )
+from ..generated.models.test_case_create_v2_dto import TestCaseCreateV2Dto
+from ..generated.models.test_case_overview_dto import TestCaseOverviewDto
+from ..generated.models.test_case_scenario_v2_dto import TestCaseScenarioV2Dto
+from ..generated.models.test_tag_dto import TestTagDto
 
 __all__ = [
+    "AttachmentRow",
     "BodyStepDto",
     "ExpectedBodyStepDto",
-    "TestCaseAttachmentRowDto",
+    "SharedStepScenarioDtoStepsInner",
     "TestCaseCreateV2Dto",
-    "TestCaseExampleDto",
-    "TestCaseImportDto",
     "TestCaseOverviewDto",
-    "TestCaseParameterDto",
-    "TestCasePatchV2Dto",
-    "TestCaseScenarioStepDto",
     "TestCaseScenarioV2Dto",
-    "TestKeyDto",
-    "TestLayerCreateDto",
-    "TestLayerDto",
-    "TestLayerPatchDto",
-    "TestTagCreateDto",
     "TestTagDto",
-    "TestTagPatchDto",
 ]

@@ -1,5 +1,11 @@
-"""Async HTTP client for Allure TestOps API."""
+"""Async HTTP client for Allure TestOps API.
 
+This module provides a high-level wrapper around the auto-generated Allure TestOps
+client, adding features like token management, automatic refresh, and
+standardized error handling.
+"""
+
+import json
 import time
 import typing
 
@@ -13,7 +19,19 @@ from .exceptions import (
     AllureRateLimitError,
     AllureValidationError,
 )
-from .models import AttachmentRow, TestCaseCreateV2Dto, TestCaseOverviewDto
+from .generated.api.test_case_attachment_controller_api import TestCaseAttachmentControllerApi
+from .generated.api.test_case_controller_api import TestCaseControllerApi
+from .generated.api_client import ApiClient
+from .generated.configuration import Configuration
+from .generated.exceptions import (
+    ApiException,
+)
+from .generated.models.attachment_row import AttachmentRow
+from .generated.models.test_case_create_v2_dto import TestCaseCreateV2Dto
+from .generated.models.test_case_overview_dto import TestCaseOverviewDto
+
+# Export models for convenience
+__all__ = ["AllureClient", "AttachmentRow", "TestCaseCreateV2Dto", "TestCaseOverviewDto"]
 
 type RequestFiles = (
     typing.Mapping[
@@ -21,6 +39,7 @@ type RequestFiles = (
         typing.IO[bytes]
         | bytes
         | str
+        | tuple[str | None, typing.IO[bytes] | bytes | str]
         | tuple[str | None, typing.IO[bytes] | bytes | str]
         | tuple[str | None, typing.IO[bytes] | bytes | str, str | None]
         | tuple[str | None, typing.IO[bytes] | bytes | str, str | None, typing.Mapping[str, str]],
@@ -37,14 +56,28 @@ type RequestFiles = (
         ]
     ]
 )
+"""Complex type for files in httpx-style multipart requests."""
 
 
 class AllureClient:
     """Async client for Allure TestOps API.
 
-    Usage:
-        async with AllureClient(base_url, token) as client:
-            cases = await client.list_test_cases(project_id=123)
+    This client manages a session with the Allure TestOps API, handling
+    initial Bearer token exchange and automatic background renewal
+    before expiry.
+
+    Example:
+        ```python
+        from pydantic import SecretStr
+        from src.client import AllureClient
+
+        async with AllureClient(
+            base_url="https://demo.testops.cloud",
+            token=SecretStr("your-api-token")
+        ) as client:
+            # client is initialized and authenticated
+            pass
+        ```
     """
 
     def __init__(
@@ -56,26 +89,37 @@ class AllureClient:
         """Initialize AllureClient.
 
         Args:
-            base_url: Allure TestOps instance base URL (e.g., https://allure.example.com)
+            base_url: Allure TestOps instance base URL
             token: API token (will be exchanged for JWT Bearer token)
             timeout: Request timeout in seconds (default: 30.0)
         """
         self._base_url = base_url.rstrip("/")
         self._token = token
         self._timeout = timeout
-        self._client: httpx.AsyncClient | None = None
         self._jwt_token: str | None = None
         self._token_expires_at: float | None = None
 
+        # Generated client components
+        self._api_client: ApiClient | None = None
+        self._test_case_api: TestCaseControllerApi | None = None
+        self._attachment_api: TestCaseAttachmentControllerApi | None = None
+        self._is_entered = False
+
     async def _get_jwt_token(self) -> str:
-        """Exchange API token for JWT Bearer token.
+        """Exchange API token for a JWT Bearer token.
+
+        Uses a one-off httpx request to the auth endpoint since the
+        generated client is designed for use after authentication.
 
         Returns:
-            JWT access token string.
+            The raw JWT access token string.
 
         Raises:
-            AllureAuthError: If token exchange fails.
+            AllureAuthError: If the token exchange fails due to invalid credentials.
+            AllureAPIError: If a connection or system error occurs.
         """
+        # We use a temporary httpx client for the initial token exchange
+        # because the generated client expects a valid access token.
         async with httpx.AsyncClient(base_url=self._base_url, timeout=self._timeout) as temp_client:
             try:
                 response = await temp_client.post(
@@ -90,9 +134,10 @@ class AllureClient:
                 response.raise_for_status()
                 data = response.json()
                 access_token: str = data["access_token"]
-                expires_in: int = data.get("expires_in", 3600)  # Default 1 hour
+                expires_in: int = data.get("expires_in", 3600)
+
                 self._jwt_token = access_token
-                # Refresh 60 seconds before expiry to avoid race conditions
+                # Refresh 60 seconds before expiry
                 self._token_expires_at = time.time() + expires_in - 60
                 return access_token
             except httpx.HTTPStatusError as e:
@@ -105,285 +150,214 @@ class AllureClient:
                 raise AllureAPIError(f"Token exchange request error: {e}") from e
 
     async def _ensure_valid_token(self) -> None:
-        """Ensure the JWT token is valid, refreshing if expired."""
+        """Ensure the session has a valid JWT token.
+
+        Checks the token expiration and triggers a refresh if it's missing
+        or about to expire (within 60 seconds). Also initializes or updates
+        the internal ApiClient and controllers.
+        """
         if self._token_expires_at is None or time.time() >= self._token_expires_at:
             new_token = await self._get_jwt_token()
-            if self._client:
-                self._client.headers["Authorization"] = f"Bearer {new_token}"
+
+            # Initialize or update ApiClient
+            if self._api_client is None:
+                config = Configuration(host=self._base_url, access_token=new_token, retries=3)
+                self._api_client = ApiClient(configuration=config)
+                # Set custom timeout on the underlying REST client if possible
+                # The generated client typically uses default timeout or per-request
+            else:
+                self._api_client.configuration.access_token = new_token
+
+            # Re-initialize controllers
+            self._test_case_api = TestCaseControllerApi(self._api_client)
+            self._attachment_api = TestCaseAttachmentControllerApi(self._api_client)
 
     async def __aenter__(self) -> AllureClient:
-        """Enter async context manager."""
-        jwt_token = await self._get_jwt_token()
-        self._client = httpx.AsyncClient(
-            base_url=self._base_url,
-            headers={"Authorization": f"Bearer {jwt_token}"},
-            timeout=self._timeout,
-        )
+        """Initialize the client session within an async context.
+
+        Performs token exchange and prepares all generated API controllers.
+
+        Returns:
+            Self (authenticated and ready to use).
+        """
+        await self._ensure_valid_token()
+        if self._api_client:
+            # Generate client's __aenter__ is untyped
+            await self._api_client.__aenter__()  # type: ignore[no-untyped-call]
+        self._is_entered = True
         return self
 
     async def __aexit__(self, *args: object) -> None:
-        """Exit async context manager."""
-        if self._client:
-            await self._client.aclose()
+        """Cleanly close the client session and underlying HTTP transport."""
+        self._is_entered = False
+        if self._api_client:
+            # Generated client's __aexit__ is untyped
+            await self._api_client.__aexit__(*args)  # type: ignore[no-untyped-call]
 
-    async def _request(
-        self,
-        method: str,
-        path: str,
-        json: object | None = None,
-        params: dict[str, str | int | float | bool | None] | None = None,
-        headers: dict[str, str] | None = None,
-        files: RequestFiles | None = None,
-    ) -> httpx.Response:
-        """Make HTTP request with error handling.
+    def _handle_api_exception(self, e: ApiException) -> None:
+        """Map generated client exceptions to lucius-mcp custom exceptions.
 
         Args:
-            method: HTTP method (GET, POST, etc.)
-            path: API endpoint path (relative to base_url)
-            json: JSON body data
-            params: Query parameters
-            headers: Additional headers
-            files: Files for multipart upload
-
-        Returns:
-            httpx.Response: The HTTP response
+            e: The raw ApiException from the generated client.
 
         Raises:
-            AllureNotFoundError: Resource not found (404)
-            AllureValidationError: Request validation failed (400)
-            AllureAuthError: Authentication failed (401, 403)
-            AllureRateLimitError: Rate limit exceeded (429)
-            AllureAPIError: Other API errors
+            AllureNotFoundError: For 404 status.
+            AllureValidationError: For 400 status.
+            AllureAuthError: For 401/403 status.
+            AllureRateLimitError: For 429 status.
+            AllureAPIError: For all other non-success statuses.
         """
-        if not self._client:
-            msg = "Client not initialized. Use 'async with AllureClient(...)' context manager."
-            raise AllureAPIError(msg)
+        status = e.status
+        body = e.body if hasattr(e, "body") else str(e)
 
-        await self._ensure_valid_token()
+        if status == 404:
+            raise AllureNotFoundError(f"Resource not found: {body}", status_code=status, response_body=body) from e
+        if status == 400:
+            raise AllureValidationError(f"Validation error: {body}", status_code=status, response_body=body) from e
+        if status in (401, 403):
+            raise AllureAuthError(f"Authentication failed: {body}", status_code=status, response_body=body) from e
+        if status == 429:
+            raise AllureRateLimitError("Rate limit exceeded", status_code=status, response_body=body) from e
 
-        try:
-            response = await self._client.request(
-                method,
-                path,
-                json=json,
-                params=params,
-                headers=headers,
-                files=files,
-            )
-            response.raise_for_status()
-            return response
-        except httpx.HTTPStatusError as e:
-            status = e.response.status_code
-            body = e.response.text
-
-            if status == 404:
-                raise AllureNotFoundError(
-                    f"Resource not found: {path}",
-                    status_code=status,
-                    response_body=body,
-                ) from e
-            if status == 400:
-                raise AllureValidationError(
-                    f"Validation error: {body}",
-                    status_code=status,
-                    response_body=body,
-                ) from e
-            if status in (401, 403):
-                raise AllureAuthError(
-                    f"Authentication failed: {body}",
-                    status_code=status,
-                    response_body=body,
-                ) from e
-            if status == 429:
-                raise AllureRateLimitError(
-                    "Rate limit exceeded",
-                    status_code=status,
-                    response_body=body,
-                ) from e
-
-            raise AllureAPIError(
-                f"API request failed: {body}",
-                status_code=status,
-                response_body=body,
-            ) from e
-        except httpx.RequestError as e:
-            raise AllureAPIError(f"Request error: {e}") from e
+        raise AllureAPIError(f"API request failed: {body}", status_code=status, response_body=body) from e
 
     # ==========================================
-    # Test Case operations (Story 1.3, 1.4, 1.5)
+    # Test Case operations
     # ==========================================
 
     async def create_test_case(self, project_id: int, data: TestCaseCreateV2Dto) -> TestCaseOverviewDto:
-        """Create a new test case.
+        """Create a new test case in the specified project.
 
         Args:
-            project_id: Project ID
-            data: Test case creation data
+            project_id: Target project ID.
+            data: Test case definition (name, scenario, etc.).
 
         Returns:
-            Created test case
+            The created test case overview.
+
+        Raises:
+            AllureNotFoundError: If project doesn't exist.
+            AllureValidationError: If input data fails validation.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
         """
-        response = await self._request(
-            "POST",
-            "/api/testcase",
-            json=data.model_dump(mode="json", exclude_none=True, by_alias=True),
-            params={"projectId": project_id},
-        )
-        return TestCaseOverviewDto.model_validate(response.json())
+        if not self._is_entered:
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+
+        await self._ensure_valid_token()
+        if self._test_case_api is None:
+            # This should not happen if _is_entered is True
+            raise AllureAPIError("Internal error: test_case_api not initialized")
+
+        # Ensure project_id is set in the body as required by the model
+        if hasattr(data, "project_id") and not data.project_id:
+            data.project_id = project_id
+
+        try:
+            # create13 is the generated method name for POST /api/testcase
+            response = await self._test_case_api.create13(test_case_create_v2_dto=data, _request_timeout=self._timeout)
+            # Switch view from TestCaseDto to TestCaseOverviewDto
+            # Since fields are compatible (mostly optional), we can use model_dump/validate
+            return TestCaseOverviewDto.model_validate(response.model_dump())
+
+        except ApiException as e:
+            self._handle_api_exception(e)
+            raise  # Should not be reached
 
     async def upload_attachment(
         self,
         project_id: int,
         files: RequestFiles,
     ) -> list[AttachmentRow]:
-        """Upload attachments to Allure TestOps.
+        """Upload one or more attachments to a project.
 
         Args:
-            project_id: Project ID
-            files: Dictionary or list of tuples for multipart upload.
-                   Format: {'file': ('filename', b'content', 'content_type')}
+            project_id: Target project ID.
+            files: Dictionary or list of tuples containing file data for multipart upload.
 
         Returns:
-            List of uploaded attachments info
+            List of successfully created attachment records.
+
+        Raises:
+            AllureValidationError: If file types or sizes are rejected.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
         """
-        # Allure TestOps expects 'file' field for uploads
-        response = await self._request(
-            "POST",
-            "/api/attachment",
-            params={"projectId": project_id},
-            files=files,
-        )
-        return [AttachmentRow.model_validate(item) for item in response.json()]
+        if not self._is_entered:
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+
+        await self._ensure_valid_token()
+        if self._attachment_api is None or self._api_client is None:
+            # This should not happen if _is_entered is True
+            raise AllureAPIError("Internal error: attachment_api not initialized")
+
+        # Using raw rest client for maximum compatibility with existing 'files' structure
+        try:
+            if self._api_client.rest_client.pool_manager is None:
+                self._api_client.rest_client.pool_manager = self._api_client.rest_client._create_pool_manager()
+
+            if self._api_client.rest_client.pool_manager is None:
+                raise AllureAPIError("Failed to initialize pool manager for attachment upload")
+            host = self._api_client.configuration.host
+            response = await self._api_client.rest_client.pool_manager.request(
+                "POST",
+                f"{host}/api/attachment",
+                params={"projectId": str(project_id)},
+                files=files,
+                headers={"Authorization": f"Bearer {self._jwt_token}"},
+            )
+
+            # Response might be bytes, parse if needed
+            try:
+                data = response.json()
+            except json.JSONDecodeError:
+                data = response.content
+
+            if isinstance(data, bytes):
+                data = json.loads(data)
+
+            return [AttachmentRow.model_validate(item) for item in data]
+
+        except ApiException as e:
+            self._handle_api_exception(e)
+            raise
 
     async def get_test_case(self, test_case_id: int) -> object:
-        """Retrieve a test case by ID.
+        """Retrieve a specific test case by its ID.
 
         Args:
-            test_case_id: Test case ID
+            test_case_id: The unique ID of the test case.
 
         Returns:
-            Test case data
+            The test case data.
 
-        Note:
-            Implementation in Story 3.2
+        Raises:
+            NotImplementedError: Currently a placeholder for future story.
         """
         raise NotImplementedError("To be implemented in Story 3.2")
 
     async def update_test_case(self, test_case_id: int, data: object) -> object:
-        """Update an existing test case.
+        """Update an existing test case with new data.
 
         Args:
-            test_case_id: Test case ID
-            data: Updated test case data
+            test_case_id: The ID of the test case to update.
+            data: The new data to apply.
 
         Returns:
-            Updated test case
+            The updated test case overview.
 
-        Note:
-            Implementation in Story 1.4
+        Raises:
+            NotImplementedError: Currently a placeholder for future story.
         """
         raise NotImplementedError("To be implemented in Story 1.4")
 
     async def delete_test_case(self, test_case_id: int) -> None:
-        """Delete a test case.
+        """Permenantly delete a test case from the system.
 
         Args:
-            test_case_id: Test case ID
+            test_case_id: The ID of the test case to remove.
 
-        Note:
-            Implementation in Story 1.5
+        Raises:
+            NotImplementedError: Currently a placeholder for future story.
         """
         raise NotImplementedError("To be implemented in Story 1.5")
-
-    # ==========================================
-    # Shared Step operations (Story 2.1, 2.2, 2.3)
-    # ==========================================
-
-    async def create_shared_step(self, project_id: int, data: object) -> object:
-        """Create a new shared step.
-
-        Args:
-            project_id: Project ID
-            data: Shared step creation data
-
-        Returns:
-            Created shared step
-
-        Note:
-            Implementation in Story 2.1
-        """
-        raise NotImplementedError("To be implemented in Story 2.1")
-
-    async def list_shared_steps(self, project_id: int) -> list[object]:
-        """List all shared steps in a project.
-
-        Args:
-            project_id: Project ID
-
-        Returns:
-            List of shared steps
-
-        Note:
-            Implementation in Story 2.1
-        """
-        raise NotImplementedError("To be implemented in Story 2.1")
-
-    async def update_shared_step(self, step_id: int, data: object) -> object:
-        """Update a shared step.
-
-        Args:
-            step_id: Shared step ID
-            data: Updated shared step data
-
-        Returns:
-            Updated shared step
-
-        Note:
-            Implementation in Story 2.2
-        """
-        raise NotImplementedError("To be implemented in Story 2.2")
-
-    async def delete_shared_step(self, step_id: int) -> None:
-        """Delete a shared step.
-
-        Args:
-            step_id: Shared step ID
-
-        Note:
-            Implementation in Story 2.2
-        """
-        raise NotImplementedError("To be implemented in Story 2.2")
-
-    # ==========================================
-    # Search operations (Story 3.1, 3.2, 3.3)
-    # ==========================================
-
-    async def list_test_cases(self, project_id: int, **filters: object) -> list[object]:
-        """List test cases in a project with optional filters.
-
-        Args:
-            project_id: Project ID
-            **filters: Optional filter parameters
-
-        Returns:
-            List of test case summaries
-
-        Note:
-            Implementation in Story 3.1
-        """
-        raise NotImplementedError("To be implemented in Story 3.1")
-
-    async def search_test_cases(self, project_id: int, query: str) -> list[object]:
-        """Search test cases by name or tag.
-
-        Args:
-            project_id: Project ID
-            query: Search query string
-
-        Returns:
-            List of matching test cases
-
-        Note:
-            Implementation in Story 3.3
-        """
-        raise NotImplementedError("To be implemented in Story 3.3")

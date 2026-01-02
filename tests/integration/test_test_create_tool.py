@@ -50,8 +50,8 @@ async def test_create_test_case_tool_success(mock_service: Mock, mock_client: Mo
     assert arg_dto.name == name
     assert arg_dto.description == description
     assert len(arg_dto.scenario.steps) == 2
-    assert arg_dto.scenario.steps[0].body == "A"
+    assert arg_dto.scenario.steps[0].actual_instance.body == "A"
     # assert arg_dto.scenario.steps[0].type == "BodyStep" # if we want to check type
-    assert arg_dto.scenario.steps[1].body == "B"
+    assert arg_dto.scenario.steps[1].actual_instance.body == "B"
     # assert arg_dto.scenario.steps[1].type == "ExpectedBodyStep"
     assert arg_dto.tags[0].name == "t1"

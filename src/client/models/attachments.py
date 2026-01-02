@@ -1,11 +1,6 @@
-"""Attachment related models and DTOs."""
+"""Attachments facade."""
 
-from ._generated import (
-    AttachmentRow,
-    AttachmentStepDto,
-)
+from ..generated.models.attachment_row import AttachmentRow
+from ..generated.models.attachment_step_dto import AttachmentStepDto
 
-__all__ = [
-    "AttachmentRow",
-    "AttachmentStepDto",
-]
+__all__ = ["AttachmentRow", "AttachmentStepDto"]

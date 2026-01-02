@@ -32,7 +32,7 @@ def test_category_create_dto_valid() -> None:
     assert category.name == data["name"]
     assert category.color == data["color"]
     assert category.description == data["description"]
-    assert category.projectId == data["projectId"]
+    assert category.project_id == data["projectId"]
 
 
 def test_category_create_dto_missing_required_field() -> None:
@@ -92,7 +92,7 @@ def test_custom_field_create_dto_valid() -> None:
 
     assert cf.name == data["name"]
     assert cf.required == data["required"]
-    assert cf.singleSelect == data["singleSelect"]
+    assert cf.single_select == data["singleSelect"]
 
 
 def test_custom_field_create_dto_name_too_long() -> None:
@@ -126,7 +126,7 @@ def test_comment_create_dto_valid() -> None:
     comment = CommentCreateDto(**data)
 
     assert comment.body == data["body"]
-    assert comment.testCaseId == data["testCaseId"]
+    assert comment.test_case_id == data["testCaseId"]
 
 
 def test_comment_create_dto_body_too_short() -> None:
@@ -164,10 +164,10 @@ def test_custom_field_dto_structure() -> None:
     assert cf.id == data["id"]
     assert cf.name == data["name"]
     assert cf.required == data["required"]
-    assert cf.singleSelect == data["singleSelect"]
+    assert cf.single_select == data["singleSelect"]
     assert cf.archived == data["archived"]
-    assert cf.createdBy is None
-    assert cf.createdDate is None
+    assert cf.created_by is None
+    assert cf.created_date is None
 
 
 def test_models_use_union_operator() -> None:
@@ -187,7 +187,7 @@ def test_model_strict_validation() -> None:
     data = {
         "name": "Test",
         "color": "#FF0000",
-        "projectId": "123",  # String instead of int
+        "project_id": "123",  # String instead of int
     }
 
     # Current generation does NOT use strict=True by default for all models
@@ -195,7 +195,7 @@ def test_model_strict_validation() -> None:
     # or that it fails if we want to enforce strictness in the future.
     try:
         category = CategoryCreateDto(**data)
-        assert isinstance(category.projectId, int)
+        assert isinstance(category.project_id, int)
         # If we reach here, strict mode is NOT enabled (coercion occurred)
     except ValidationError:
         # If we reach here, strict mode IS enabled
