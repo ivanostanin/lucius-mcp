@@ -7,6 +7,7 @@ pytest_plugins = [
     "tests.support.fixtures.base",
     "tests.support.fixtures.logger_fixture",
     "tests.support.fixtures.client_fixture",
+    "tests.support.fixtures.allure_client_fixture",
 ]
 
 

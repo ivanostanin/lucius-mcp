@@ -1,8 +1,8 @@
 """Service for Test Case business logic."""
 
 from src.client import AllureClient
-from src.client.models.attachments import AttachmentStepDto
-from src.client.models.test_cases import (
+from src.client.generated.models import (
+    AttachmentStepDto,
     SharedStepScenarioDtoStepsInner,
     TestCaseCreateV2Dto,
     TestCaseOverviewDto,

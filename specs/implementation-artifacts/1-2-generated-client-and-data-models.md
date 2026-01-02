@@ -1,6 +1,6 @@
 # Story 1.2: Generated Client & Data Models
 
-Status: review
+Status: done
 
 ## Story
 
@@ -272,6 +272,9 @@ Antigravity (Claude-based)
 - ✅ Protected manual initialization files from being overwritten using `.openapi-generator-ignore`.
 - ✅ Verified with 13 unit tests (`tests/unit/test_client.py`) passing successfully.
 - ✅ Cleaned up legacy `datamodel-code-generator` approach and full client folder.
+- ✅ **[Review Fix]** Restored missing E2E connectivity tests.
+- ✅ **[Review Fix]** Eliminated legacy directories (`generated_full`, `models`) for cleaner codebase.
+- ✅ **[Review Fix]** Synchronized story documentation with actual implementation.
 
 ### File List
 
@@ -281,6 +284,7 @@ Antigravity (Claude-based)
 - scripts/openapi-generator-config.yaml
 - scripts/generate_testops_api_client.sh
 - src/client/generated/
+- src/client/exceptions.py
 
 **Modified Files:**
 - src/client/__init__.py (Restored and protected)

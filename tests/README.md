@@ -26,10 +26,21 @@ uv run pytest tests/unit/test_main.py
 
 ## Key Fixtures
 
-- `client`: Returns a `TestClient` initialized with a fresh FastMCP session for each test.
+- `client`: Returns a `Starlette TestClient` initialized with a fresh FastMCP session for each test.
+- `allure_client`: Provides an initialized `AllureClient` with mocked OAuth session and `respx` network mocking.
 - `capture_structured_logs`: Captures and parses JSON logs in memory (avoids stderr conflicts).
 - `faker`: Shared Faker instance for data generation.
 - `mocker`: Provided by `pytest-mock` for object patching.
+
+## Data Factories
+
+Standardized factories for Allure DTOs are located in `tests/support/factories/model_factories.py`. Use them to generate valid test data with easy overrides:
+
+```python
+from tests.support.factories.model_factories import create_test_case_create_v2_dto
+
+dto = create_test_case_create_v2_dto(name="Custom Name")
+```
 
 ## Implementation Details
 

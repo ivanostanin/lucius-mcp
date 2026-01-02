@@ -7,7 +7,7 @@ import httpx
 
 from src.client import AllureClient
 from src.client.exceptions import AllureValidationError
-from src.client.models.attachments import AttachmentRow
+from src.client.generated.models import AttachmentRow
 
 # Default limits
 MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024  # 10MB

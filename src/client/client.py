@@ -12,6 +12,8 @@ import typing
 import httpx
 from pydantic import SecretStr
 
+from src.utils.config import settings
+
 from .exceptions import (
     AllureAPIError,
     AllureAuthError,
@@ -93,6 +95,9 @@ class AllureClient:
             token: API token (will be exchanged for JWT Bearer token)
             timeout: Request timeout in seconds (default: 30.0)
         """
+        if not base_url.startswith(("http://", "https://")):
+            raise ValueError(f"Invalid base_url scheme: {base_url}. Must start with http:// or https://")
+
         self._base_url = base_url.rstrip("/")
         self._token = token
         self._timeout = timeout
@@ -104,6 +109,30 @@ class AllureClient:
         self._test_case_api: TestCaseControllerApi | None = None
         self._attachment_api: TestCaseAttachmentControllerApi | None = None
         self._is_entered = False
+
+    @classmethod
+    def from_env(cls, timeout: float = 30.0) -> AllureClient:
+        """Initialize AllureClient from environment variables.
+
+        Expects:
+            ALLURE_ENDPOINT: The base URL of the Allure TestOps instance.
+            ALLURE_TOKEN: The API token for authentication.
+
+        Returns:
+            An initialized AllureClient instance.
+
+        Raises:
+            KeyError: If required environment variables are missing.
+            ValueError: If settings validation fails.
+        """
+        if not settings.ALLURE_API_TOKEN:
+            raise KeyError("ALLURE_API_TOKEN is not set in environment or config")
+
+        return cls(
+            base_url=settings.ALLURE_ENDPOINT,
+            token=settings.ALLURE_API_TOKEN,
+            timeout=timeout,
+        )
 
     async def _get_jwt_token(self) -> str:
         """Exchange API token for a JWT Bearer token.
@@ -291,20 +320,25 @@ class AllureClient:
             # This should not happen if _is_entered is True
             raise AllureAPIError("Internal error: attachment_api not initialized")
 
-        # Using raw rest client for maximum compatibility with existing 'files' structure
+        # Using raw rest client for maximum compatibility with standard multipart/form-data.
+        # Note: The generated client's high-level methods for file uploads are often
+        # less flexible than direct pool manager requests.
         try:
             if self._api_client.rest_client.pool_manager is None:
                 self._api_client.rest_client.pool_manager = self._api_client.rest_client._create_pool_manager()
 
             if self._api_client.rest_client.pool_manager is None:
-                raise AllureAPIError("Failed to initialize pool manager for attachment upload")
+                raise AllureAPIError("Failed to initialize pool manager")
+
             host = self._api_client.configuration.host
+            token = self._jwt_token or (await self._get_jwt_token())
+
             response = await self._api_client.rest_client.pool_manager.request(
                 "POST",
                 f"{host}/api/attachment",
                 params={"projectId": str(project_id)},
                 files=files,
-                headers={"Authorization": f"Bearer {self._jwt_token}"},
+                headers={"Authorization": f"Bearer {token}"},
             )
 
             # Response might be bytes, parse if needed

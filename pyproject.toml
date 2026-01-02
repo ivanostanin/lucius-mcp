@@ -64,6 +64,7 @@ exclude = "src/client/generated/"
 [[tool.mypy.overrides]]
 module = "src.client.generated.*"
 ignore_errors = true
+implicit_reexport = true
 
 [[tool.mypy.overrides]]
 module = "src.client.generated"

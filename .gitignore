@@ -40,5 +40,6 @@ MANIFEST
 # Allure Report
 /allure-results/
 
-# OpenAPI
-src/client/generated_full
+.coverage
+
+.openapi-generator/

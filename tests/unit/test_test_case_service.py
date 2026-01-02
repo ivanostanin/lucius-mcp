@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 
 from src.client import AllureClient
-from src.client.models.test_cases import TestCaseCreateV2Dto, TestCaseScenarioV2Dto
+from src.client.generated.models import TestCaseCreateV2Dto, TestCaseScenarioV2Dto
 from src.services.attachment_service import AttachmentService
 from src.services.test_case_service import TestCaseService
 

@@ -3,13 +3,20 @@
 import pytest
 from pydantic import ValidationError
 
-from src.client.models.common import (
+from src.client.generated.models import (
     AllowedRoleDto,
+    BodyStepDto,
     CategoryCreateDto,
     CategoryDto,
     CommentCreateDto,
     CustomFieldCreateDto,
     CustomFieldDto,
+    TestCaseCreateV2Dto,
+    TestCaseScenarioV2Dto,
+)
+from tests.support.factories.model_factories import (
+    create_test_case_create_v2_dto,
+    create_test_case_scenario_v2_dto,
 )
 
 
@@ -181,22 +188,38 @@ def test_models_use_union_operator() -> None:
     assert "| None" in source or CategoryDto.__annotations__
 
 
-def test_model_strict_validation() -> None:
-    """Test that Pydantic v2 strict validation is working (if configured)."""
-    # This would fail if 'strict=True' was added to the model's ConfigDict
-    data = {
-        "name": "Test",
-        "color": "#FF0000",
-        "project_id": "123",  # String instead of int
-    }
+def test_test_case_create_v2_dto_factory() -> None:
+    """Test TestCaseCreateV2Dto factory and validation."""
+    dto = create_test_case_create_v2_dto(name="Custom Name")
+    assert dto.name == "Custom Name"
+    assert dto.project_id == 1
+    assert dto.automated is False
 
-    # Current generation does NOT use strict=True by default for all models
-    # but we can verify that Pydantic still parses it if coercion is allowed,
-    # or that it fails if we want to enforce strictness in the future.
-    try:
-        category = CategoryCreateDto(**data)
-        assert isinstance(category.project_id, int)
-        # If we reach here, strict mode is NOT enabled (coercion occurred)
-    except ValidationError:
-        # If we reach here, strict mode IS enabled
-        pass
+
+def test_test_case_create_v2_dto_missing_name() -> None:
+    """Test TestCaseCreateV2Dto rejects missing name."""
+    with pytest.raises(ValidationError):
+        TestCaseCreateV2Dto.model_validate({"projectId": 1})
+
+
+def test_test_case_scenario_v2_dto_factory() -> None:
+    """Test TestCaseScenarioV2Dto factory and structure."""
+    scenario = create_test_case_scenario_v2_dto()
+    assert scenario.steps is not None
+    assert len(scenario.steps) == 3
+    for step in scenario.steps:
+        actual = step.actual_instance
+        assert isinstance(actual, BodyStepDto)
+        assert isinstance(actual.body, str)
+
+
+def test_test_case_scenario_v2_dto_invalid_steps() -> None:
+    """Test TestCaseScenarioV2Dto rejects invalid steps."""
+    with pytest.raises(ValidationError):
+        TestCaseScenarioV2Dto(steps="not-a-list")
+
+
+def test_test_case_scenario_v2_dto_empty_steps() -> None:
+    """Test TestCaseScenarioV2Dto handles empty steps (if allowed by schema)."""
+    scenario = TestCaseScenarioV2Dto(steps=[])
+    assert scenario.steps == []

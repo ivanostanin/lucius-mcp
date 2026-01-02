@@ -1,7 +1,7 @@
 """Tool for creating Test Cases in Allure TestOps."""
 
 from src.client import AllureClient
-from src.client.models.test_cases import (
+from src.client.generated.models import (
     BodyStepDto,
     ExpectedBodyStepDto,
     SharedStepScenarioDtoStepsInner,
