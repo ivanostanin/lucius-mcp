@@ -1,25 +1,19 @@
 """Tool for creating Test Cases in Allure TestOps."""
 
+from typing import Any
+
 from src.client import AllureClient
-from src.client.generated.models import (
-    BodyStepDto,
-    ExpectedBodyStepDto,
-    SharedStepScenarioDtoStepsInner,
-    TestCaseCreateV2Dto,
-    TestCaseScenarioV2Dto,
-    TestTagDto,
-)
 from src.services.test_case_service import TestCaseService
-from src.utils.config import settings
 
 
 async def create_test_case(
     project_id: int,
     name: str,
     description: str | None = None,
-    steps: list[dict[str, str]] | None = None,
+    steps: list[dict[str, Any]] | None = None,
     tags: list[str] | None = None,
     attachments: list[dict[str, str]] | None = None,
+    custom_fields: dict[str, str] | None = None,
 ) -> str:
     """Create a new test case in Allure TestOps.
 
@@ -34,62 +28,31 @@ async def create_test_case(
                      Example Base64: [{'name': 's.png', 'content': '<base64>', 'content_type': 'image/png'}]
                      Example URL: [{'name': 'report.pdf', 'url': 'http://example.com/report.pdf',
                                     'content_type': 'application/pdf'}]
+        custom_fields: Dictionary of custom field names and their values.
+                       Example: {'Layer': 'UI', 'Component': 'Auth'}
 
     Returns:
         A message confirming creation with the ID and Name.
     """
 
-    # Construct Steps DTOs
-    step_dtos: list[SharedStepScenarioDtoStepsInner] = []
-    if steps:
-        for s in steps:
-            # Simple step mapping. For more complex structures, more logic needed.
-            action = s.get("action", "")
-            expected = s.get("expected", "")
-            if action:
-                step_dtos.append(
-                    SharedStepScenarioDtoStepsInner(
-                        actual_instance=BodyStepDto(
-                            body=action,
-                            type="BodyStep",
-                        )
-                    )
-                )
-            if expected:
-                step_dtos.append(
-                    SharedStepScenarioDtoStepsInner(
-                        actual_instance=ExpectedBodyStepDto(
-                            body=expected,
-                            type="ExpectedBodyStep",
-                        )
-                    )
-                )
+    # 1. Initialize Client from environment
+    try:
+        client = AllureClient.from_env()
+    except ValueError as e:
+        return f"Error: {e}"
 
-    # Construct Tags DTOs
-    tag_dtos = []
-    if tags:
-        for t in tags:
-            tag_dtos.append(TestTagDto(name=t))
-
-    # Construct Main DTO
-    scenario = TestCaseScenarioV2Dto(steps=step_dtos)
-
-    data = TestCaseCreateV2Dto(
-        name=name,
-        description=description,
-        scenario=scenario,
-        tags=tag_dtos,
-        project_id=project_id,
-        automation="manual",  # Assuming manual creation via tool implies manual kind
-    )
-
-    # Allure API Token must be set
-    token = settings.ALLURE_API_TOKEN
-    if token is None:
-        return "Error: ALLURE_API_TOKEN is not configured."
-
-    async with AllureClient(base_url=settings.ALLURE_ENDPOINT, token=token) as client:
+    async with client:
         service = TestCaseService(client)
-        result = await service.create_test_case(project_id, data, attachments=attachments)
-
-        return f"Created Test Case ID: {result.id} Name: {result.name}"
+        try:
+            result = await service.create_test_case(
+                project_id=project_id,
+                name=name,
+                description=description,
+                steps=steps,
+                tags=tags,
+                attachments=attachments,
+                custom_fields=custom_fields,
+            )
+            return f"Created Test Case ID: {result.id} Name: {result.name}"
+        except Exception as e:
+            return f"Error creating test case: {e}"

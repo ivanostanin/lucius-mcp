@@ -13,6 +13,9 @@ import httpx
 from pydantic import SecretStr
 
 from src.utils.config import settings
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 from .exceptions import (
     AllureAPIError,
@@ -103,6 +106,7 @@ class AllureClient:
         self._timeout = timeout
         self._jwt_token: str | None = None
         self._token_expires_at: float | None = None
+        self._csrf_token: str | None = None
 
         # Generated client components
         self._api_client: ApiClient | None = None
@@ -168,6 +172,10 @@ class AllureClient:
                 self._jwt_token = access_token
                 # Refresh 60 seconds before expiry
                 self._token_expires_at = time.time() + expires_in - 60
+
+                # Capture CSRF token if present (standard Spring Security/Angular convention)
+                self._csrf_token = response.cookies.get("XSRF-TOKEN")
+
                 return access_token
             except httpx.HTTPStatusError as e:
                 raise AllureAuthError(
@@ -196,6 +204,17 @@ class AllureClient:
                 # The generated client typically uses default timeout or per-request
             else:
                 self._api_client.configuration.access_token = new_token
+
+            if self._api_client:
+                # Ensure Authorization header is set as generated client might not pick it up automatically
+                self._api_client.default_headers["Authorization"] = f"Bearer {new_token}"
+
+            # Inject CSRF token if available
+            if self._csrf_token and self._api_client:
+                # Cookie for standard session checks
+                self._api_client.cookie = f"XSRF-TOKEN={self._csrf_token}"
+                # Header for CSRF protection
+                self._api_client.default_headers["X-XSRF-TOKEN"] = self._csrf_token
 
             # Re-initialize controllers
             self._test_case_api = TestCaseControllerApi(self._api_client)
@@ -238,6 +257,9 @@ class AllureClient:
         """
         status = e.status
         body = e.body if hasattr(e, "body") else str(e)
+
+        # Log the exception with traceback for debugging
+        logger.exception("API request failed with status %s", status)
 
         if status == 404:
             raise AllureNotFoundError(f"Resource not found: {body}", status_code=status, response_body=body) from e

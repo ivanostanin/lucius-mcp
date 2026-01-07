@@ -29,13 +29,16 @@ async def test_create_test_case_tool_success(mock_service: Mock, mock_client: Mo
     description = "Desc"
     steps = [{"action": "A", "expected": "B"}]
     tags = ["t1"]
+    custom_fields = {"Layer": "UI", "Priority": "High"}
 
     # Setup service mock
     service_instance = mock_service.return_value
     service_instance.create_test_case = AsyncMock()
     service_instance.create_test_case.return_value = Mock(id=777, name=name)
 
-    result = await create_test_case(project_id=project_id, name=name, description=description, steps=steps, tags=tags)
+    result = await create_test_case(
+        project_id=project_id, name=name, description=description, steps=steps, tags=tags, custom_fields=custom_fields
+    )
 
     assert "777" in result
     assert name in result
@@ -43,15 +46,14 @@ async def test_create_test_case_tool_success(mock_service: Mock, mock_client: Mo
     # Verify service call
     service_instance.create_test_case.assert_called_once()
     call_args = service_instance.create_test_case.call_args
-    arg_project = call_args[0][0]
-    arg_dto = call_args[0][1]
+    # Verify kwargs were passed correctly
+    # We check that the arguments passed match what we expect
+    # Since call_args can be (args, kwargs), we might need to inspect closely.
+    # The tool calls: await service.create_test_case(project_id=..., ...)
+    # So all are kwargs.
 
-    assert arg_project == project_id
-    assert arg_dto.name == name
-    assert arg_dto.description == description
-    assert len(arg_dto.scenario.steps) == 2
-    assert arg_dto.scenario.steps[0].actual_instance.body == "A"
-    # assert arg_dto.scenario.steps[0].type == "BodyStep" # if we want to check type
-    assert arg_dto.scenario.steps[1].actual_instance.body == "B"
-    # assert arg_dto.scenario.steps[1].type == "ExpectedBodyStep"
-    assert arg_dto.tags[0].name == "t1"
+    actual_kwargs = call_args.kwargs
+    assert actual_kwargs["project_id"] == project_id
+    assert actual_kwargs["name"] == name
+    assert actual_kwargs["custom_fields"] == custom_fields
+    assert actual_kwargs["steps"] == steps

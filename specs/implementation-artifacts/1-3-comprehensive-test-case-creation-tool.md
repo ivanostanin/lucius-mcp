@@ -66,7 +66,7 @@ so that I can document complex test scenarios in a single operation.
 
 **"Thin Tool / Fat Service" Pattern - MANDATORY:**
 ```python
-# src/tools/cases.py - CORRECT (Thin)
+# src/tools/create_test_case.py - CORRECT (Thin)
 @mcp.tool
 async def create_test_case(
     project_id: int,

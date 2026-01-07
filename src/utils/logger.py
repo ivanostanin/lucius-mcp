@@ -37,7 +37,7 @@ class CustomJsonFormatter(json.JsonFormatter):
         # but if we want to manipulate structure, we do it here.
 
 
-def configure_logging(log_level: str = "INFO") -> None:
+def configure_logging(log_level: str = "INFO", log_format: str = "json", force_stderr: bool = False) -> None:
     root_logger = logging.getLogger()
     root_logger.setLevel(log_level)
 
@@ -45,14 +45,22 @@ def configure_logging(log_level: str = "INFO") -> None:
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
 
-    handler = logging.StreamHandler(sys.stderr)  # Log to stderr by default
+    if log_format.lower() == "console":
+        from rich.console import Console
+        from rich.logging import RichHandler
 
-    # Define the fields we want to capture explicitly
-    formatter = CustomJsonFormatter(
-        "%(timestamp)s %(level)s %(logger)s %(message)s %(context)s %(request_id)s", json_encoder=CustomJsonEncoder
-    )
+        # Force output to stderr to avoid breaking stdio MCP
+        console = Console(stderr=True) if force_stderr else None
+        # Enable rich traceback printing
+        handler = RichHandler(rich_tracebacks=True, markup=True, console=console)
+    else:
+        handler = logging.StreamHandler(sys.stderr)  # Log to stderr by default
+        # Define the fields we want to capture explicitly
+        formatter = CustomJsonFormatter(
+            "%(timestamp)s %(level)s %(logger)s %(message)s %(context)s %(request_id)s", json_encoder=CustomJsonEncoder
+        )
+        handler.setFormatter(formatter)
 
-    handler.setFormatter(formatter)
     root_logger.addHandler(handler)
 
 
