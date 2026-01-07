@@ -15,8 +15,6 @@ from pydantic import SecretStr
 from src.utils.config import settings
 from src.utils.logger import get_logger
 
-logger = get_logger(__name__)
-
 from .exceptions import (
     AllureAPIError,
     AllureAuthError,
@@ -26,17 +24,29 @@ from .exceptions import (
 )
 from .generated.api.test_case_attachment_controller_api import TestCaseAttachmentControllerApi
 from .generated.api.test_case_controller_api import TestCaseControllerApi
+from .generated.api.test_case_scenario_controller_api import TestCaseScenarioControllerApi
 from .generated.api_client import ApiClient
 from .generated.configuration import Configuration
 from .generated.exceptions import (
     ApiException,
 )
 from .generated.models.attachment_row import AttachmentRow
+from .generated.models.scenario_step_create_dto import ScenarioStepCreateDto
+from .generated.models.scenario_step_created_response_dto import ScenarioStepCreatedResponseDto
 from .generated.models.test_case_create_v2_dto import TestCaseCreateV2Dto
 from .generated.models.test_case_overview_dto import TestCaseOverviewDto
 
+logger = get_logger(__name__)
+
 # Export models for convenience
-__all__ = ["AllureClient", "AttachmentRow", "TestCaseCreateV2Dto", "TestCaseOverviewDto"]
+__all__ = [
+    "AllureClient",
+    "AttachmentRow",
+    "ScenarioStepCreateDto",
+    "ScenarioStepCreatedResponseDto",
+    "TestCaseCreateV2Dto",
+    "TestCaseOverviewDto",
+]
 
 type RequestFiles = (
     typing.Mapping[
@@ -112,6 +122,7 @@ class AllureClient:
         self._api_client: ApiClient | None = None
         self._test_case_api: TestCaseControllerApi | None = None
         self._attachment_api: TestCaseAttachmentControllerApi | None = None
+        self._scenario_api: TestCaseScenarioControllerApi | None = None
         self._is_entered = False
 
     @classmethod
@@ -219,6 +230,7 @@ class AllureClient:
             # Re-initialize controllers
             self._test_case_api = TestCaseControllerApi(self._api_client)
             self._attachment_api = TestCaseAttachmentControllerApi(self._api_client)
+            self._scenario_api = TestCaseScenarioControllerApi(self._api_client)
 
     async def __aenter__(self) -> AllureClient:
         """Initialize the client session within an async context.
@@ -377,6 +389,60 @@ class AllureClient:
         except ApiException as e:
             self._handle_api_exception(e)
             raise
+
+    async def create_scenario_step(
+        self,
+        test_case_id: int,
+        step: ScenarioStepCreateDto,
+        after_id: int | None = None,
+        with_expected_result: bool = False,
+    ) -> ScenarioStepCreatedResponseDto:
+        """Create a scenario step for an existing test case.
+
+        Args:
+            test_case_id: The ID of the test case to add the step to.
+            step: The step data to create. Must have test_case_id set.
+            after_id: Optional ID of the step after which to insert the new step.
+            with_expected_result: If True, creates an expected result step below.
+
+        Returns:
+            The response containing the created step ID and updated scenario.
+
+        Raises:
+            AllureNotFoundError: If test case doesn't exist.
+            AllureValidationError: If input data fails validation.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
+        """
+        if not self._is_entered:
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+
+        await self._ensure_valid_token()
+        if self._scenario_api is None:
+            raise AllureAPIError("Internal error: scenario_api not initialized")
+
+        # Ensure test_case_id is set
+        if step.test_case_id is None:
+            step = ScenarioStepCreateDto(
+                test_case_id=test_case_id,
+                body=step.body,
+                body_json=step.body_json,
+                attachment_id=step.attachment_id,
+                shared_step_id=step.shared_step_id,
+                parent_id=step.parent_id,
+            )
+
+        try:
+            response = await self._scenario_api.create15(
+                scenario_step_create_dto=step,
+                after_id=after_id,
+                with_expected_result=with_expected_result,
+                _request_timeout=self._timeout,
+            )
+            return response
+        except ApiException as e:
+            self._handle_api_exception(e)
+            raise  # Should not be reached
 
     async def get_test_case(self, test_case_id: int) -> object:
         """Retrieve a specific test case by its ID.

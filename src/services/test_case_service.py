@@ -3,15 +3,11 @@ from typing import Any
 from src.client import AllureClient
 from src.client.exceptions import AllureValidationError
 from src.client.generated.models import (
-    AttachmentStepDto,
-    BodyStepDto,
     CustomFieldDto,
     CustomFieldValueWithCfDto,
-    ExpectedBodyStepDto,
-    SharedStepScenarioDtoStepsInner,
+    ScenarioStepCreateDto,
     TestCaseCreateV2Dto,
     TestCaseOverviewDto,
-    TestCaseScenarioV2Dto,
     TestTagDto,
 )
 from src.services.attachment_service import AttachmentService
@@ -60,19 +56,6 @@ class TestCaseService:
         if len(name) > 255:
             raise AllureValidationError("Test Case name must be 255 characters or less")
 
-        # 2. Build Steps
-        step_dtos = await self._build_steps(project_id, steps)
-
-        # Global Attachments (Appended to end of steps)
-        if attachments:
-            for attachment in attachments:
-                attachment_row = await self._attachment_service.upload_attachment(project_id, attachment)
-                step_dtos.append(
-                    SharedStepScenarioDtoStepsInner(
-                        actual_instance=AttachmentStepDto(attachmentId=attachment_row.id, type="AttachmentStep")
-                    )
-                )
-
         # Tags DTOs
         tag_dtos = []
         if tags:
@@ -85,64 +68,130 @@ class TestCaseService:
             for key, value in custom_fields.items():
                 cf_dtos.append(CustomFieldValueWithCfDto(custom_field=CustomFieldDto(name=key), name=value))
 
-        # Construct Main DTO
-        scenario = TestCaseScenarioV2Dto(steps=step_dtos)
-
+        # Create test case WITHOUT steps in scenario (steps will be added separately)
         data = TestCaseCreateV2Dto(
             name=name,
             description=description,
-            scenario=scenario,
+            scenario=None,  # No scenario initially
             tags=tag_dtos,
             custom_fields=cf_dtos,
             project_id=project_id,
             automated=False,
         )
 
-        return await self._client.create_test_case(project_id, data)
+        created_test_case = await self._client.create_test_case(project_id, data)
+        test_case_id = created_test_case.id
 
-    async def _build_steps(
-        self, project_id: int, steps: list[dict[str, Any]] | None
-    ) -> list[SharedStepScenarioDtoStepsInner]:
-        """Build step DTOs from input list."""
-        step_dtos: list[SharedStepScenarioDtoStepsInner] = []
+        if test_case_id is None:
+            raise AllureValidationError("Failed to get test case ID from created test case")
+
+        # 2. Add steps one by one via separate API calls
+        last_step_id: int | None = None
+        last_step_id = await self._add_steps(project_id, test_case_id, steps, last_step_id)
+
+        # 3. Add global attachments (appended at end of steps)
+        await self._add_global_attachments(project_id, test_case_id, attachments, last_step_id)
+
+        return created_test_case
+
+    async def _add_steps(
+        self,
+        project_id: int,
+        test_case_id: int,
+        steps: list[dict[str, Any]] | None,
+        last_step_id: int | None,
+    ) -> int | None:
+        """Add steps to a test case using separate API calls.
+
+        Args:
+            project_id: Project ID for attachment uploads.
+            test_case_id: Test case ID to add steps to.
+            steps: List of step definitions.
+            last_step_id: ID of the last created step (for ordering).
+
+        Returns:
+            The ID of the last created step, or None if no steps were created.
+        """
         if not steps:
-            return step_dtos
+            return last_step_id
 
         for s in steps:
             action = str(s.get("action", ""))
             expected = str(s.get("expected", ""))
-            step_attachments: list[dict[str, str]] = s.get("attachments", [])  # List[dict]
+            step_attachments: list[dict[str, str]] = s.get("attachments", [])
 
-            # Action Step
+            # Action Step (body step)
             if action:
-                step_dtos.append(
-                    SharedStepScenarioDtoStepsInner(
-                        actual_instance=BodyStepDto(
-                            body=action,
-                            type="BodyStep",
-                        )
-                    )
+                step_dto = ScenarioStepCreateDto(
+                    test_case_id=test_case_id,
+                    body=action,
                 )
+                response = await self._client.create_scenario_step(
+                    test_case_id=test_case_id,
+                    step=step_dto,
+                    after_id=last_step_id,
+                )
+                last_step_id = response.created_step_id
 
-            # Step Attachments (Interleaved)
+                # If there's an expected result, create it as a child step under the action
+                if expected:
+                    expected_step_dto = ScenarioStepCreateDto(
+                        test_case_id=test_case_id,
+                        body=expected,
+                        parent_id=last_step_id,  # Set parent to make it a child (expected result)
+                    )
+                    await self._client.create_scenario_step(
+                        test_case_id=test_case_id,
+                        step=expected_step_dto,
+                        after_id=None,  # Will be added under parent
+                    )
+                    # Don't update last_step_id since expected results are children
+
+            # Step Attachments (added after the action step)
             if step_attachments and isinstance(step_attachments, list):
                 for sa in step_attachments:
                     if isinstance(sa, dict):
-                        sa_row = await self._attachment_service.upload_attachment(project_id, sa)
-                        step_dtos.append(
-                            SharedStepScenarioDtoStepsInner(
-                                actual_instance=AttachmentStepDto(attachmentId=sa_row.id, type="AttachmentStep")
-                            )
+                        attachment_row = await self._attachment_service.upload_attachment(project_id, sa)
+                        attachment_step_dto = ScenarioStepCreateDto(
+                            test_case_id=test_case_id,
+                            attachment_id=attachment_row.id,
                         )
+                        attachment_response = await self._client.create_scenario_step(
+                            test_case_id=test_case_id,
+                            step=attachment_step_dto,
+                            after_id=last_step_id,
+                        )
+                        last_step_id = attachment_response.created_step_id
 
-            # Expected Result Step
-            if expected:
-                step_dtos.append(
-                    SharedStepScenarioDtoStepsInner(
-                        actual_instance=ExpectedBodyStepDto(
-                            body=expected,
-                            type="ExpectedBodyStep",
-                        )
-                    )
-                )
-        return step_dtos
+        return last_step_id
+
+    async def _add_global_attachments(
+        self,
+        project_id: int,
+        test_case_id: int,
+        attachments: list[dict[str, str]] | None,
+        last_step_id: int | None,
+    ) -> None:
+        """Add global attachments to a test case as attachment steps.
+
+        Args:
+            project_id: Project ID for attachment uploads.
+            test_case_id: Test case ID to add attachments to.
+            attachments: List of attachment definitions.
+            last_step_id: ID of the last created step (for ordering).
+        """
+        if not attachments:
+            return
+
+        for attachment in attachments:
+            attachment_row = await self._attachment_service.upload_attachment(project_id, attachment)
+            attachment_step_dto = ScenarioStepCreateDto(
+                test_case_id=test_case_id,
+                attachment_id=attachment_row.id,
+            )
+            response = await self._client.create_scenario_step(
+                test_case_id=test_case_id,
+                step=attachment_step_dto,
+                after_id=last_step_id,
+            )
+            last_step_id = response.created_step_id
