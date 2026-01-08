@@ -5,9 +5,7 @@ client, adding features like token management, automatic refresh, and
 standardized error handling.
 """
 
-import json
 import time
-import typing
 
 import httpx
 from pydantic import SecretStr
@@ -30,9 +28,9 @@ from .generated.configuration import Configuration
 from .generated.exceptions import (
     ApiException,
 )
-from .generated.models.attachment_row import AttachmentRow
 from .generated.models.scenario_step_create_dto import ScenarioStepCreateDto
 from .generated.models.scenario_step_created_response_dto import ScenarioStepCreatedResponseDto
+from .generated.models.test_case_attachment_row_dto import TestCaseAttachmentRowDto
 from .generated.models.test_case_create_v2_dto import TestCaseCreateV2Dto
 from .generated.models.test_case_overview_dto import TestCaseOverviewDto
 
@@ -41,37 +39,12 @@ logger = get_logger(__name__)
 # Export models for convenience
 __all__ = [
     "AllureClient",
-    "AttachmentRow",
     "ScenarioStepCreateDto",
     "ScenarioStepCreatedResponseDto",
+    "TestCaseAttachmentRowDto",
     "TestCaseCreateV2Dto",
     "TestCaseOverviewDto",
 ]
-
-type RequestFiles = (
-    typing.Mapping[
-        str,
-        typing.IO[bytes]
-        | bytes
-        | str
-        | tuple[str | None, typing.IO[bytes] | bytes | str]
-        | tuple[str | None, typing.IO[bytes] | bytes | str]
-        | tuple[str | None, typing.IO[bytes] | bytes | str, str | None]
-        | tuple[str | None, typing.IO[bytes] | bytes | str, str | None, typing.Mapping[str, str]],
-    ]
-    | typing.Sequence[
-        tuple[
-            str,
-            typing.IO[bytes]
-            | bytes
-            | str
-            | tuple[str | None, typing.IO[bytes] | bytes | str]
-            | tuple[str | None, typing.IO[bytes] | bytes | str, str | None]
-            | tuple[str | None, typing.IO[bytes] | bytes | str, str | None, typing.Mapping[str, str]],
-        ]
-    ]
-)
-"""Complex type for files in httpx-style multipart requests."""
 
 
 class AllureClient:
@@ -322,21 +295,20 @@ class AllureClient:
             # Switch view from TestCaseDto to TestCaseOverviewDto
             # Since fields are compatible (mostly optional), we can use model_dump/validate
             return TestCaseOverviewDto.model_validate(response.model_dump())
-
         except ApiException as e:
             self._handle_api_exception(e)
             raise  # Should not be reached
 
     async def upload_attachment(
         self,
-        project_id: int,
-        files: RequestFiles,
-    ) -> list[AttachmentRow]:
-        """Upload one or more attachments to a project.
+        test_case_id: int,
+        file_data: list[bytes | str | tuple[str, bytes]],
+    ) -> list[TestCaseAttachmentRowDto]:
+        """Upload one or more attachments to a test case.
 
         Args:
-            project_id: Target project ID.
-            files: Dictionary or list of tuples containing file data for multipart upload.
+            test_case_id: Target test case ID.
+            file_data: List of tuples containing (filename, content_bytes).
 
         Returns:
             List of successfully created attachment records.
@@ -350,42 +322,15 @@ class AllureClient:
             raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
 
         await self._ensure_valid_token()
-        if self._attachment_api is None or self._api_client is None:
-            # This should not happen if _is_entered is True
+        if self._attachment_api is None:
             raise AllureAPIError("Internal error: attachment_api not initialized")
 
-        # Using raw rest client for maximum compatibility with standard multipart/form-data.
-        # Note: The generated client's high-level methods for file uploads are often
-        # less flexible than direct pool manager requests.
         try:
-            if self._api_client.rest_client.pool_manager is None:
-                self._api_client.rest_client.pool_manager = self._api_client.rest_client._create_pool_manager()
-
-            if self._api_client.rest_client.pool_manager is None:
-                raise AllureAPIError("Failed to initialize pool manager")
-
-            host = self._api_client.configuration.host
-            token = self._jwt_token or (await self._get_jwt_token())
-
-            response = await self._api_client.rest_client.pool_manager.request(
-                "POST",
-                f"{host}/api/attachment",
-                params={"projectId": str(project_id)},
-                files=files,
-                headers={"Authorization": f"Bearer {token}"},
+            return await self._attachment_api.create16(
+                test_case_id=test_case_id,
+                file=file_data,
+                _request_timeout=self._timeout,
             )
-
-            # Response might be bytes, parse if needed
-            try:
-                data = response.json()
-            except json.JSONDecodeError:
-                data = response.content
-
-            if isinstance(data, bytes):
-                data = json.loads(data)
-
-            return [AttachmentRow.model_validate(item) for item in data]
-
         except ApiException as e:
             self._handle_api_exception(e)
             raise
@@ -433,13 +378,31 @@ class AllureClient:
             )
 
         try:
-            response = await self._scenario_api.create15(
+            # We use without_preload_content to skip the problematic generated
+            # deserialization of NormalizedScenarioDto, which fails due to
+            # ambiguous oneOf schema matching for attachments.
+            response = await self._scenario_api.create15_without_preload_content(
                 scenario_step_create_dto=step,
                 after_id=after_id,
                 with_expected_result=with_expected_result,
                 _request_timeout=self._timeout,
             )
-            return response
+            
+            # response is an httpx.Response object. Check for success status.
+            if not 200 <= response.status_code <= 299:
+                # Manually raise ApiException as the without_preload variant doesn't do it.
+                raise ApiException(
+                    status=response.status_code,
+                    reason=response.reason_phrase,
+                    body=response.text
+                )
+            
+            data = response.json()
+            # Use model_construct to bypass validation of the scenario field while
+            # providing the created_step_id needed by TestCaseService.
+            return ScenarioStepCreatedResponseDto.model_construct(
+                created_step_id=data.get("createdStepId"),
+            )
         except ApiException as e:
             self._handle_api_exception(e)
             raise  # Should not be reached

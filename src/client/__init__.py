@@ -2,9 +2,9 @@
 
 from .client import (
     AllureClient,
-    AttachmentRow,
     ScenarioStepCreatedResponseDto,
     ScenarioStepCreateDto,
+    TestCaseAttachmentRowDto,
     TestCaseCreateV2Dto,
     TestCaseOverviewDto,
 )
@@ -23,9 +23,9 @@ __all__ = [
     "AllureNotFoundError",
     "AllureRateLimitError",
     "AllureValidationError",
-    "AttachmentRow",
     "ScenarioStepCreateDto",
     "ScenarioStepCreatedResponseDto",
+    "TestCaseAttachmentRowDto",
     "TestCaseCreateV2Dto",
     "TestCaseOverviewDto",
 ]

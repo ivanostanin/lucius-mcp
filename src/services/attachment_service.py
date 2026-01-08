@@ -7,7 +7,7 @@ import httpx
 
 from src.client import AllureClient
 from src.client.exceptions import AllureValidationError
-from src.client.generated.models import AttachmentRow
+from src.client.generated.models import TestCaseAttachmentRowDto
 
 # Default limits
 MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024  # 10MB
@@ -30,11 +30,11 @@ class AttachmentService:
     def __init__(self, client: AllureClient) -> None:
         self._client = client
 
-    async def upload_attachment(self, project_id: int, data: dict[str, str]) -> AttachmentRow:
+    async def upload_attachment(self, test_case_id: int, data: dict[str, str]) -> TestCaseAttachmentRowDto:
         """Upload an attachment from base64 content or URL.
 
         Args:
-            project_id: Project ID.
+            test_case_id: Test case ID to attach the file to.
             data: Dictionary with:
                   - 'name': Filename (required)
                   - 'content_type': MIME type (required)
@@ -65,11 +65,10 @@ class AttachmentService:
                 f"Attachment size {len(content)} bytes exceeds limit of {MAX_ATTACHMENT_SIZE} bytes"
             )
 
-        # Prepare file tuple for httpx: (filename, content, content_type)
-        # key 'file' is expected by Allure
-        files = {"file": (name, content, content_type)}
+        # Prepare file data for the generated API: list of file entries
+        file_data: list[bytes | str | tuple[str, bytes]] = [(name, content)]
 
-        results = await self._client.upload_attachment(project_id, files)
+        results = await self._client.upload_attachment(test_case_id, file_data)
 
         if not results:
             raise AllureValidationError("Upload returned no results")

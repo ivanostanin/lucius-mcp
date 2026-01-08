@@ -111,8 +111,9 @@ async def test_create_test_case_with_attachments(
 
     await service.create_test_case(project_id, name, attachments=attachments)
 
-    # Verify attachment upload called
-    mock_attachment_service.upload_attachment.assert_called_once_with(project_id, attachments[0])
+    # Verify attachment upload called with test_case_id (not project_id)
+    test_case_id = 102
+    mock_attachment_service.upload_attachment.assert_called_once_with(test_case_id, attachments[0])
 
     # Verify create_test_case called (scenario is None)
     call_args = mock_client.create_test_case.call_args
@@ -185,13 +186,188 @@ async def test_create_test_case_with_step_attachments(
 
     await service.create_test_case(project_id, name, steps=steps)
 
-    mock_attachment_service.upload_attachment.assert_called_once_with(project_id, step_att)
+    # Verify attachment upload called with test_case_id (not project_id)
+    test_case_id = 104
+    mock_attachment_service.upload_attachment.assert_called_once_with(test_case_id, step_att)
 
     # Expect: Action -> Expected -> Attachment (3 separate create_scenario_step calls)
     assert mock_client.create_scenario_step.call_count == 3
 
-    # Verify the order: action, expected (child), attachment
+    # Verify the order and nesting: action, expected (child), attachment (child)
     calls = mock_client.create_scenario_step.call_args_list
+    
+    # 1. Action
     assert calls[0].kwargs["step"].body == "Act"
+    assert calls[0].kwargs["step"].parent_id is None
+    
+    # 2. Expected (child of Action)
     assert calls[1].kwargs["step"].body == "Exp"
+    assert calls[1].kwargs["step"].parent_id == 1000
+    assert calls[1].kwargs["after_id"] is None
+    
+    # 3. Attachment (child of Action, after Expected)
     assert calls[2].kwargs["step"].attachment_id == 888
+    assert calls[2].kwargs["step"].parent_id == 1000
+    assert calls[2].kwargs["after_id"] == 1000
+
+
+# ==========================================
+# Input Validation Tests
+# ==========================================
+
+
+class TestProjectIdValidation:
+    """Tests for project_id validation."""
+
+    @pytest.mark.asyncio
+    async def test_project_id_zero_raises_error(self, service: TestCaseService) -> None:
+        """Zero project_id should raise validation error."""
+        with pytest.raises(AllureValidationError, match="Project ID is required"):
+            await service.create_test_case(0, "Test")
+
+    @pytest.mark.asyncio
+    async def test_project_id_negative_raises_error(self, service: TestCaseService) -> None:
+        """Negative project_id should raise validation error."""
+        with pytest.raises(AllureValidationError, match="Project ID is required"):
+            await service.create_test_case(-1, "Test")
+
+
+class TestNameValidation:
+    """Tests for test case name validation."""
+
+    @pytest.mark.asyncio
+    async def test_empty_name_raises_error(self, service: TestCaseService) -> None:
+        """Empty name should raise validation error."""
+        with pytest.raises(AllureValidationError, match="name is required"):
+            await service.create_test_case(1, "")
+
+    @pytest.mark.asyncio
+    async def test_whitespace_only_name_raises_error(self, service: TestCaseService) -> None:
+        """Whitespace-only name should raise validation error."""
+        with pytest.raises(AllureValidationError, match="name is required"):
+            await service.create_test_case(1, "   ")
+
+    @pytest.mark.asyncio
+    async def test_name_too_long_raises_error(self, service: TestCaseService) -> None:
+        """Name exceeding 255 characters should raise validation error."""
+        with pytest.raises(AllureValidationError, match="must be 255 characters or less"):
+            await service.create_test_case(1, "a" * 256)
+
+
+class TestStepsValidation:
+    """Tests for steps validation."""
+
+    @pytest.mark.asyncio
+    async def test_steps_not_list_raises_error(self, service: TestCaseService) -> None:
+        """Non-list steps should raise validation error."""
+        with pytest.raises(AllureValidationError, match="Steps must be a list"):
+            await service.create_test_case(1, "Test", steps="not a list")  # type: ignore[arg-type]
+
+    @pytest.mark.asyncio
+    async def test_step_not_dict_raises_error(self, service: TestCaseService) -> None:
+        """Non-dict step should raise validation error."""
+        with pytest.raises(AllureValidationError, match="Step at index 0 must be a dictionary"):
+            await service.create_test_case(1, "Test", steps=["not a dict"])  # type: ignore[list-item]
+
+    @pytest.mark.asyncio
+    async def test_step_action_not_string_raises_error(self, service: TestCaseService) -> None:
+        """Non-string action should raise validation error."""
+        with pytest.raises(AllureValidationError, match="'action' must be a string"):
+            await service.create_test_case(1, "Test", steps=[{"action": 123}])
+
+    @pytest.mark.asyncio
+    async def test_step_expected_not_string_raises_error(self, service: TestCaseService) -> None:
+        """Non-string expected should raise validation error."""
+        with pytest.raises(AllureValidationError, match="'expected' must be a string"):
+            await service.create_test_case(1, "Test", steps=[{"action": "A", "expected": 123}])
+
+    @pytest.mark.asyncio
+    async def test_step_attachments_not_list_raises_error(self, service: TestCaseService) -> None:
+        """Non-list step attachments should raise validation error."""
+        with pytest.raises(AllureValidationError, match="'attachments' must be a list"):
+            await service.create_test_case(1, "Test", steps=[{"action": "A", "attachments": "not a list"}])
+
+    @pytest.mark.asyncio
+    async def test_step_action_too_long_raises_error(self, service: TestCaseService) -> None:
+        """Action exceeding 10000 characters should raise validation error."""
+        with pytest.raises(AllureValidationError, match="'action' must be 10000 characters or less"):
+            await service.create_test_case(1, "Test", steps=[{"action": "x" * 10001}])
+
+
+class TestTagsValidation:
+    """Tests for tags validation."""
+
+    @pytest.mark.asyncio
+    async def test_tags_not_list_raises_error(self, service: TestCaseService) -> None:
+        """Non-list tags should raise validation error."""
+        with pytest.raises(AllureValidationError, match="Tags must be a list"):
+            await service.create_test_case(1, "Test", tags="not a list")  # type: ignore[arg-type]
+
+    @pytest.mark.asyncio
+    async def test_tag_not_string_raises_error(self, service: TestCaseService) -> None:
+        """Non-string tag should raise validation error."""
+        with pytest.raises(AllureValidationError, match="Tag at index 0 must be a string"):
+            await service.create_test_case(1, "Test", tags=[123])  # type: ignore[list-item]
+
+    @pytest.mark.asyncio
+    async def test_tag_empty_raises_error(self, service: TestCaseService) -> None:
+        """Empty tag should raise validation error."""
+        with pytest.raises(AllureValidationError, match="Tag at index 0 cannot be empty"):
+            await service.create_test_case(1, "Test", tags=[""])
+
+    @pytest.mark.asyncio
+    async def test_tag_too_long_raises_error(self, service: TestCaseService) -> None:
+        """Tag exceeding 255 characters should raise validation error."""
+        with pytest.raises(AllureValidationError, match="Tag at index 0 must be 255 characters or less"):
+            await service.create_test_case(1, "Test", tags=["t" * 256])
+
+
+class TestAttachmentsValidation:
+    """Tests for attachments validation."""
+
+    @pytest.mark.asyncio
+    async def test_attachments_not_list_raises_error(self, service: TestCaseService) -> None:
+        """Non-list attachments should raise validation error."""
+        with pytest.raises(AllureValidationError, match="Attachments must be a list"):
+            await service.create_test_case(1, "Test", attachments="not a list")  # type: ignore[arg-type]
+
+    @pytest.mark.asyncio
+    async def test_attachment_not_dict_raises_error(self, service: TestCaseService) -> None:
+        """Non-dict attachment should raise validation error."""
+        with pytest.raises(AllureValidationError, match="Attachment at index 0 must be a dictionary"):
+            await service.create_test_case(1, "Test", attachments=["not a dict"])  # type: ignore[list-item]
+
+    @pytest.mark.asyncio
+    async def test_attachment_missing_content_and_url_raises_error(self, service: TestCaseService) -> None:
+        """Attachment without content or url should raise validation error."""
+        with pytest.raises(AllureValidationError, match="must have either 'content' or 'url' key"):
+            await service.create_test_case(1, "Test", attachments=[{"name": "file.txt"}])
+
+    @pytest.mark.asyncio
+    async def test_attachment_content_without_name_raises_error(self, service: TestCaseService) -> None:
+        """Attachment with content but no name should raise validation error."""
+        with pytest.raises(AllureValidationError, match="must also have 'name'"):
+            await service.create_test_case(1, "Test", attachments=[{"content": "base64data"}])
+
+
+class TestCustomFieldsValidation:
+    """Tests for custom fields validation."""
+
+    @pytest.mark.asyncio
+    async def test_custom_fields_not_dict_raises_error(self, service: TestCaseService) -> None:
+        """Non-dict custom_fields should raise validation error."""
+        with pytest.raises(AllureValidationError, match="Custom fields must be a dictionary"):
+            await service.create_test_case(1, "Test", custom_fields=["not a dict"])  # type: ignore[arg-type]
+
+    @pytest.mark.asyncio
+    async def test_custom_field_value_not_string_raises_error(self, service: TestCaseService) -> None:
+        """Non-string custom field value should raise validation error."""
+        with pytest.raises(AllureValidationError, match="must be a string"):
+            await service.create_test_case(1, "Test", custom_fields={"key": 123})  # type: ignore[dict-item]
+
+    @pytest.mark.asyncio
+    async def test_custom_field_empty_key_raises_error(self, service: TestCaseService) -> None:
+        """Empty custom field key should raise validation error."""
+        with pytest.raises(AllureValidationError, match="Custom field key cannot be empty"):
+            await service.create_test_case(1, "Test", custom_fields={"": "value"})
+
