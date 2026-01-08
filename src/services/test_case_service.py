@@ -110,11 +110,12 @@ class TestCaseService:
             # Rollback: delete the partially created test case
             try:
                 await self._client.delete_test_case(test_case_id)
-            except Exception as rollback_err:
+            except Exception:  # noqa: S110
                 # Log but don't raise the rollback error to keep the original error primary
                 # We could use a logger here if available in this context
+
                 pass
-            
+
             if isinstance(e, (AllureValidationError, AllureAPIError)):
                 # Refine message to indicate rollback
                 raise type(e)(f"Test case creation failed and was rolled back: {e}") from e

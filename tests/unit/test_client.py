@@ -205,8 +205,18 @@ async def test_placeholder_methods_not_implemented(base_url: str, token: SecretS
         with pytest.raises(NotImplementedError):
             await client.update_test_case(1, {})
 
-        with pytest.raises(NotImplementedError):
-            await client.delete_test_case(1)
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_delete_test_case_success(base_url: str, token: SecretStr, oauth_route: respx.Route) -> None:
+    """Test successful delete_test_case."""
+    route = respx.delete(f"{base_url}/api/testcase/1").mock(return_value=Response(204))
+
+    async with AllureClient(base_url, token) as client:
+        await client.delete_test_case(1)
+
+    assert route.called
+    assert oauth_route.called
 
 
 @pytest.mark.asyncio

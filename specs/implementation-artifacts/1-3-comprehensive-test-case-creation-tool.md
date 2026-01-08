@@ -1,6 +1,6 @@
 # Story 1.3: Comprehensive Test Case Creation Tool
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 

@@ -1,5 +1,7 @@
+import json
 import pytest
 import respx
+from httpx import Response
 
 from src.tools.create_test_case import create_test_case
 from src.utils.config import settings
@@ -34,21 +36,7 @@ async def test_full_house_creation() -> None:
             json={"access_token": "mock-token", "expires_in": 3600},
         )
 
-        # 1. Attachment Upload Mock
-        upload_route = mock.post("/api/attachment").respond(
-            status_code=201,
-            json=[
-                {
-                    "id": 500,
-                    "name": "evidence.png",
-                    "entity": "ATTACHMENT",
-                    "contentLength": 100,
-                    "contentType": "image/png",
-                }
-            ],
-        )
-
-        # 2. Test Case Creation Mock
+        # 1. Test Case Creation Mock
         create_route = mock.post("/api/testcase").respond(
             status_code=200,
             json={
@@ -62,6 +50,30 @@ async def test_full_house_creation() -> None:
             },
         )
 
+        # 2. Step Creation Mock (Dynamic responses for multiple calls)
+        # We need to return different IDs for Action (301), Expected (302), and Attachment (303)
+        step_ids = [301, 302, 303]
+
+        def step_side_effect(request):
+            step_id = step_ids.pop(0)
+            return Response(200, json={"createdStepId": step_id})
+
+        step_route = mock.post("/api/testcase/step").mock(side_effect=step_side_effect)
+
+        # 3. Global Attachment Upload Mock
+        upload_route = mock.post("/api/testcase/attachment", params={"testCaseId": "200"}).respond(
+            status_code=200,
+            json=[
+                {
+                    "id": 500,
+                    "name": "evidence.png",
+                    "entity": "ATTACHMENT",
+                    "contentLength": 100,
+                    "contentType": "image/png",
+                }
+            ],
+        )
+
         # Call Tool
         result_msg = await create_test_case(
             project_id=project_id, name=name, description=description, steps=steps, tags=tags, attachments=attachments
@@ -71,43 +83,41 @@ async def test_full_house_creation() -> None:
         assert "Created Test Case ID: 200" in result_msg
         assert name in result_msg
 
-        # Verify Upload Request
-        assert upload_route.called
-        # Check payload/files? respx/httpx handling of multipart is complex to inspect via 'files'.
-        # But we verify it was called.
-
-        # Verify Creation Request
         assert create_route.called
-        request = create_route.calls.last.request
+        assert upload_route.called
+        assert step_route.call_count == 3
 
-        # Parse JSON from content
-        import json
+        # Verify initial creation payload doesn't have scenario
+        create_request = create_route.calls.last.request
+        create_payload = json.loads(create_request.content)
+        assert "scenario" not in create_payload
+        assert create_payload["name"] == name
+        assert create_payload["description"] == description
 
-        payload = json.loads(request.content)
+        # Verify Action Step payload (First step call)
+        action_call = step_route.calls[0]
+        action_payload = json.loads(action_call.request.content)
+        assert action_payload["body"] == "Login"
+        assert action_payload["testCaseId"] == 200
+        assert action_payload.get("parentId") is None
+        # Check that it was called WITHOUT afterId (it's the first step)
+        assert "afterId" not in action_call.request.url.params
 
-        assert payload["name"] == name
-        assert payload["description"] == description
-        assert payload["tags"][0]["name"] in tags
+        # Verify Expected Step payload (Second step call, child of action)
+        expected_call = step_route.calls[1]
+        expected_payload = json.loads(expected_call.request.content)
+        assert expected_payload["body"] == "Dashboard"
+        assert expected_payload.get("parentId") == 301
+        assert (
+            "afterId" not in expected_call.request.url.params
+        )  # Children are added without afterId (to the beginning)
 
-        # Verify Steps structure
-        s = payload["scenario"]["steps"]
-        # Expected: BodyStep(Login) -> ExpectedBodyStep(Dashboard) -> AttachmentStep(500)
-        # Sequence depends on dictionary iteration? Or implementation?
-        # Implementation: loops input steps (Action, Expected), THEN loops attachments.
-        assert len(s) == 3
-        # Check types via discriminatory field if it exists, or content
-        # Note: We provided 'type' in implementation ("BodyStep", etc.)
-        # Pydantic likely serialized it if we used 'model_dump'.
-        print(s)
-
-        assert s[0]["body"] == "Login"
-        assert s[0]["type"] == "BodyStep"
-
-        assert s[1]["body"] == "Dashboard"
-        assert s[1]["type"] == "ExpectedBodyStep"
-
-        assert s[2]["attachmentId"] == 500
-        assert s[2]["type"] == "AttachmentStep"
+        # Verify Attachment Step payload (Third step call, after action)
+        attachment_step_call = step_route.calls[2]
+        attachment_payload = json.loads(attachment_step_call.request.content)
+        assert attachment_payload["attachmentId"] == 500
+        assert attachment_payload.get("parentId") is None
+        assert attachment_step_call.request.url.params.get("afterId") == "301"
 
 
 @pytest.mark.asyncio
@@ -141,21 +151,7 @@ async def test_url_attachment_flow() -> None:
             json={"access_token": "mock-token", "expires_in": 3600},
         )
 
-        # 2. Allure Upload Mock
-        upload_route = mock.post(f"{settings.ALLURE_ENDPOINT}/api/attachment").respond(
-            status_code=201,
-            json=[
-                {
-                    "id": 600,
-                    "name": "report.pdf",
-                    "entity": "ATTACHMENT",
-                    "contentLength": 100,
-                    "contentType": "application/pdf",
-                }
-            ],
-        )
-
-        # 3. Test Case Creation Mock
+        # 2. Test Case Creation Mock
         mock.post(f"{settings.ALLURE_ENDPOINT}/api/testcase").respond(
             status_code=200,
             json={
@@ -168,6 +164,23 @@ async def test_url_attachment_flow() -> None:
                 "projectId": project_id,
             },
         )
+
+        # 3. Allure Upload Mock
+        upload_route = mock.post(f"{settings.ALLURE_ENDPOINT}/api/testcase/attachment").respond(
+            status_code=200,
+            json=[
+                {
+                    "id": 600,
+                    "name": "report.pdf",
+                    "entity": "ATTACHMENT",
+                    "contentLength": 100,
+                    "contentType": "image/png",
+                }
+            ],
+        )
+
+        # 4. Attachment Step Mock
+        mock.post(f"{settings.ALLURE_ENDPOINT}/api/testcase/step").respond(status_code=200, json={"createdStepId": 401})
 
         # Call Tool
         result_msg = await create_test_case(project_id=project_id, name=name, attachments=attachments)

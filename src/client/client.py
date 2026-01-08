@@ -452,6 +452,13 @@ class AllureClient:
         Raises:
             AllureAPIError: If the API request fails.
         """
+        if not self._is_entered:
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+
+        await self._ensure_valid_token()
+        if self._test_case_api is None:
+            raise AllureAPIError("Internal error: test_case_api not initialized")
+
         try:
             await self._test_case_api.delete13(id=test_case_id)
         except ApiException as e:
