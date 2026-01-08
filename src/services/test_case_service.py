@@ -3,7 +3,7 @@ from typing import Any
 from pydantic import ValidationError as PydanticValidationError
 
 from src.client import AllureClient
-from src.client.exceptions import AllureValidationError
+from src.client.exceptions import AllureAPIError, AllureValidationError
 from src.client.generated.models import (
     CustomFieldDto,
     CustomFieldValueWithCfDto,
@@ -98,12 +98,27 @@ class TestCaseService:
         if test_case_id is None:
             raise AllureValidationError("Failed to get test case ID from created test case")
 
-        # 5. Add steps one by one via separate API calls
-        last_step_id: int | None = None
-        last_step_id = await self._add_steps(test_case_id, steps, last_step_id)
+        # 5. Add steps and attachments with rollback on failure
+        try:
+            # Add steps one by one via separate API calls
+            last_step_id: int | None = None
+            last_step_id = await self._add_steps(test_case_id, steps, last_step_id)
 
-        # 6. Add global attachments (appended at end of steps)
-        await self._add_global_attachments(test_case_id, attachments, last_step_id)
+            # Add global attachments (appended at end of steps)
+            await self._add_global_attachments(test_case_id, attachments, last_step_id)
+        except Exception as e:
+            # Rollback: delete the partially created test case
+            try:
+                await self._client.delete_test_case(test_case_id)
+            except Exception as rollback_err:
+                # Log but don't raise the rollback error to keep the original error primary
+                # We could use a logger here if available in this context
+                pass
+            
+            if isinstance(e, (AllureValidationError, AllureAPIError)):
+                # Refine message to indicate rollback
+                raise type(e)(f"Test case creation failed and was rolled back: {e}") from e
+            raise AllureAPIError(f"Test case creation failed and was rolled back: {e}") from e
 
         return created_test_case
 

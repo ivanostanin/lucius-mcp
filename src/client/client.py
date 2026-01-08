@@ -444,12 +444,16 @@ class AllureClient:
         raise NotImplementedError("To be implemented in Story 1.4")
 
     async def delete_test_case(self, test_case_id: int) -> None:
-        """Permenantly delete a test case from the system.
+        """Permanently delete a test case from the system.
 
         Args:
             test_case_id: The ID of the test case to remove.
 
         Raises:
-            NotImplementedError: Currently a placeholder for future story.
+            AllureAPIError: If the API request fails.
         """
-        raise NotImplementedError("To be implemented in Story 1.5")
+        try:
+            await self._test_case_api.delete13(id=test_case_id)
+        except ApiException as e:
+            self._handle_api_exception(e)
+            raise  # Should not be reached

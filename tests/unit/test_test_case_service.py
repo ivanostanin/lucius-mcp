@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from src.client import AllureClient
-from src.client.exceptions import AllureValidationError
+from src.client.exceptions import AllureAPIError, AllureValidationError
 from src.client.generated.models import (
     CustomFieldDto,
     CustomFieldProjectDto,
@@ -414,3 +414,27 @@ class TestCustomFieldsValidation:
         """Empty custom field key should raise validation error."""
         with pytest.raises(AllureValidationError, match="Custom field key cannot be empty"):
             await service.create_test_case(1, "Test", custom_fields={"": "value"})
+
+
+@pytest.mark.asyncio
+async def test_create_test_case_rollback_on_failure(service: TestCaseService, mock_client: AsyncMock) -> None:
+    """Test that test case is deleted (rolled back) if step creation fails."""
+    project_id = 1
+    name = "Rollback Test"
+    steps = [{"action": "Fail", "expected": "Soon"}]
+
+    # 1. Successful test case creation
+    result_mock = Mock(id=500)
+    result_mock.name = name
+    mock_client.create_test_case.return_value = result_mock
+
+    # 2. Failed step creation
+    mock_client.create_scenario_step.side_effect = Exception("API Error during step creation")
+
+    # 3. Call and expect rollback error
+    with pytest.raises(AllureAPIError, match="Test case creation failed and was rolled back"):
+        await service.create_test_case(project_id, name, steps=steps)
+
+    # 4. Verify original creation AND rollback deletion were called
+    mock_client.create_test_case.assert_called_once()
+    mock_client.delete_test_case.assert_called_once_with(500)
