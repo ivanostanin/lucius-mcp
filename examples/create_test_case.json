@@ -1,0 +1,33 @@
+{
+  "description": "This is an example test case to demonstrate MCP tool integration.",
+  "name": "Example Test Case",
+  "project_id": 166,
+  "steps": [
+    {
+      "action": "Open login page",
+      "expected": "Login page is displayed"
+    },
+    {
+      "action": "Enter credentials",
+      "expected": "User is logged in",
+      "attachments": [
+        {
+          "name": "step_attachment.csv",
+          "content_type": "text/plain",
+          "content": "SWQsTmFtZSxTaGFwZSBMaWJyYXJ5LFBhZ2UgSUQsQ29udGFpbmVkIEJ5LEdyb3VwLExpbmUgU291cmNlLExpbmUgRGVzdGluYXRpb24sU291cmNlIEFycm93LERlc3RpbmF0aW9uIEFycm93LFN0YXR1cyxUZXh0IEFyZWEgMSxDb21tZW50cwoxLERvY3VtZW50LCwsLCwsLCwsQ29tcGxldGUsQ29tbWl0IHRvIFRlc3RzIGZlYXR1cmUsCjI4LFJlY3RhbmdsZSxHZW9tZXRyaWMgU2hhcGVzLDIsLCwsLCwsLGNyZWF0ZS91cGRhdGUgZmVhdHVyZSBicmFuaGMgaW4gc3Vic3V5c3RlbSBieSBjdXJyZW50IHNlcnZpY2UgZG9ja2VyIHZlcnNpb24s"
+        }
+      ]
+    }
+  ],
+  "tags": [
+    "example",
+    "generated"
+  ],
+  "attachments": [
+    {
+      "name": "case_attachment.csv",
+      "content_type": "text/plain",
+      "content": "SWQsTmFtZSxTaGFwZSBMaWJyYXJ5LFBhZ2UgSUQsQ29udGFpbmVkIEJ5LEdyb3VwLExpbmUgU291cmNlLExpbmUgRGVzdGluYXRpb24sU291cmNlIEFycm93LERlc3RpbmF0aW9uIEFycm93LFN0YXR1cyxUZXh0IEFyZWEgMSxDb21tZW50cwoxLERvY3VtZW50LCwsLCwsLCwsQ29tcGxldGUsQ29tbWl0IHRvIFRlc3RzIGZlYXR1cmUsCjI4LFJlY3RhbmdsZSxHZW9tZXRyaWMgU2hhcGVzLDIsLCwsLCwsLGNyZWF0ZS91cGRhdGUgZmVhdHVyZSBicmFuaGMgaW4gc3Vic3V5c3RlbSBieSBjdXJyZW50IHNlcnZpY2UgZG9ja2VyIHZlcnNpb24s"
+    }
+  ]
+}
