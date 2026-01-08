@@ -2,6 +2,11 @@
   "description": "This is an example test case to demonstrate MCP tool integration.",
   "name": "Example Test Case",
   "project_id": 166,
+  "custom_fields": {
+    "Feature": "MCP",
+    "Story": "Tool Integration",
+    "Component": "MCP Client"
+  },
   "steps": [
     {
       "action": "Open login page",

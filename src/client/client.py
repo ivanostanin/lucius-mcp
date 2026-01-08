@@ -205,6 +205,17 @@ class AllureClient:
             self._attachment_api = TestCaseAttachmentControllerApi(self._api_client)
             self._scenario_api = TestCaseScenarioControllerApi(self._api_client)
 
+    @property
+    def api_client(self) -> ApiClient:
+        """Get the underlying ApiClient instance.
+
+        Raises:
+            RuntimeError: If the client has not been initialized (entered with).
+        """
+        if self._api_client is None:
+            raise RuntimeError("AllureClient must be used as an async context manager")
+        return self._api_client
+
     async def __aenter__(self) -> AllureClient:
         """Initialize the client session within an async context.
 
@@ -387,16 +398,12 @@ class AllureClient:
                 with_expected_result=with_expected_result,
                 _request_timeout=self._timeout,
             )
-            
+
             # response is an httpx.Response object. Check for success status.
             if not 200 <= response.status_code <= 299:
                 # Manually raise ApiException as the without_preload variant doesn't do it.
-                raise ApiException(
-                    status=response.status_code,
-                    reason=response.reason_phrase,
-                    body=response.text
-                )
-            
+                raise ApiException(status=response.status_code, reason=response.reason_phrase, body=response.text)
+
             data = response.json()
             # Use model_construct to bypass validation of the scenario field while
             # providing the created_step_id needed by TestCaseService.

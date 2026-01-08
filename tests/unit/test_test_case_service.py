@@ -1,17 +1,24 @@
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
 from src.client import AllureClient
 from src.client.exceptions import AllureValidationError
-from src.client.generated.models import ScenarioStepCreatedResponseDto
+from src.client.generated.models import (
+    CustomFieldDto,
+    CustomFieldProjectDto,
+    CustomFieldProjectWithValuesDto,
+    ScenarioStepCreatedResponseDto,
+)
 from src.services.attachment_service import AttachmentService
 from src.services.test_case_service import TestCaseService
 
 
 @pytest.fixture
 def mock_client() -> AsyncMock:
-    return AsyncMock(spec=AllureClient)
+    client = AsyncMock(spec=AllureClient)
+    client.api_client = Mock()
+    return client
 
 
 @pytest.fixture
@@ -143,26 +150,63 @@ async def test_create_test_case_validation_error(service: TestCaseService) -> No
 
 @pytest.mark.asyncio
 async def test_create_test_case_with_custom_fields(service: TestCaseService, mock_client: AsyncMock) -> None:
-    """Test custom fields mapping."""
+    """Test custom fields mapping with resolution."""
     project_id = 1
     name = "CF Test"
     custom_fields = {"Layer": "UI", "Priority": "High"}
 
-    result_mock = Mock(id=103)
-    result_mock.name = name
-    mock_client.create_test_case.return_value = result_mock
+    # Mock custom field resolution
+    mock_cf_api = AsyncMock()
+    mock_cf_api.get_custom_fields_with_values2.return_value = [
+        CustomFieldProjectWithValuesDto(
+            custom_field=CustomFieldProjectDto(custom_field=CustomFieldDto(id=10, name="Layer"))
+        ),
+        CustomFieldProjectWithValuesDto(
+            custom_field=CustomFieldProjectDto(custom_field=CustomFieldDto(id=20, name="Priority"))
+        ),
+    ]
 
-    await service.create_test_case(project_id, name, custom_fields=custom_fields)
+    with patch(
+        "src.client.generated.api.test_case_custom_field_controller_api.TestCaseCustomFieldControllerApi",
+        return_value=mock_cf_api,
+    ):
+        result_mock = Mock(id=103)
+        result_mock.name = name
+        mock_client.create_test_case.return_value = result_mock
 
-    call_args = mock_client.create_test_case.call_args
-    passed_dto = call_args[0][1]
+        await service.create_test_case(project_id, name, custom_fields=custom_fields)
 
-    assert passed_dto.custom_fields is not None
-    assert len(passed_dto.custom_fields) == 2
+        # Verify resolution call
+        mock_cf_api.get_custom_fields_with_values2.assert_called_once()
 
-    cf_map = {cf.custom_field.name: cf.name for cf in passed_dto.custom_fields}
-    assert cf_map["Layer"] == "UI"
-    assert cf_map["Priority"] == "High"
+        # Verify test case creation DTO
+        call_args = mock_client.create_test_case.call_args
+        passed_dto = call_args[0][1]
+
+        assert passed_dto.custom_fields is not None
+        assert len(passed_dto.custom_fields) == 2
+
+        cf_map = {cf.custom_field.name: (cf.custom_field.id, cf.name) for cf in passed_dto.custom_fields}
+        assert cf_map["Layer"] == (10, "UI")
+        assert cf_map["Priority"] == (20, "High")
+
+
+@pytest.mark.asyncio
+async def test_create_test_case_custom_field_not_found(service: TestCaseService, mock_client: AsyncMock) -> None:
+    """Test error when custom field is not found in project."""
+    project_id = 1
+    name = "CF Fail"
+    custom_fields = {"Unknown": "Value"}
+
+    mock_cf_api = AsyncMock()
+    mock_cf_api.get_custom_fields_with_values2.return_value = []
+
+    with patch(
+        "src.client.generated.api.test_case_custom_field_controller_api.TestCaseCustomFieldControllerApi",
+        return_value=mock_cf_api,
+    ):
+        with pytest.raises(AllureValidationError, match="Custom field 'Unknown' not found"):
+            await service.create_test_case(project_id, name, custom_fields=custom_fields)
 
 
 @pytest.mark.asyncio
@@ -195,16 +239,16 @@ async def test_create_test_case_with_step_attachments(
 
     # Verify the order and nesting: action, expected (child), attachment (child)
     calls = mock_client.create_scenario_step.call_args_list
-    
+
     # 1. Action
     assert calls[0].kwargs["step"].body == "Act"
     assert calls[0].kwargs["step"].parent_id is None
-    
+
     # 2. Expected (child of Action)
     assert calls[1].kwargs["step"].body == "Exp"
     assert calls[1].kwargs["step"].parent_id == 1000
     assert calls[1].kwargs["after_id"] is None
-    
+
     # 3. Attachment (child of Action, after Expected)
     assert calls[2].kwargs["step"].attachment_id == 888
     assert calls[2].kwargs["step"].parent_id == 1000
@@ -370,4 +414,3 @@ class TestCustomFieldsValidation:
         """Empty custom field key should raise validation error."""
         with pytest.raises(AllureValidationError, match="Custom field key cannot be empty"):
             await service.create_test_case(1, "Test", custom_fields={"": "value"})
-

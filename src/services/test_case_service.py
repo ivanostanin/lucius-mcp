@@ -10,6 +10,7 @@ from src.client.generated.models import (
     ScenarioStepCreateDto,
     TestCaseCreateV2Dto,
     TestCaseOverviewDto,
+    TestCaseTreeSelectionDto,
     TestTagDto,
 )
 from src.services.attachment_service import AttachmentService
@@ -26,6 +27,7 @@ class TestCaseService:
     def __init__(self, client: AllureClient, attachment_service: AttachmentService | None = None) -> None:
         self._client = client
         self._attachment_service = attachment_service or AttachmentService(client)
+        self._cf_cache: dict[int, dict[str, int]] = {}  # {project_id: {name: id}}
 
     async def create_test_case(
         self,
@@ -63,20 +65,28 @@ class TestCaseService:
         self._validate_attachments(attachments)
         self._validate_custom_fields(custom_fields)
 
-        # 2. Build DTOs with Pydantic validation
-        tag_dtos = self._build_tag_dtos(tags)
-        cf_dtos = self._build_custom_field_dtos(custom_fields)
+        # 2. Resolve custom fields if provided
+        resolved_custom_fields = []
+        if custom_fields:
+            project_cfs = await self._get_resolved_custom_fields(project_id)
+            for key, value in custom_fields.items():
+                cf_id = project_cfs.get(key)
+                if cf_id is None:
+                    raise AllureValidationError(f"Custom field '{key}' not found in project {project_id}.")
+
+                resolved_custom_fields.append(
+                    CustomFieldValueWithCfDto(custom_field=CustomFieldDto(id=cf_id, name=key), name=value)
+                )
 
         # 3. Create TestCaseCreateV2Dto with validation
+        tag_dtos = self._build_tag_dtos(tags)
         try:
             data = TestCaseCreateV2Dto(
+                project_id=project_id,
                 name=name,
                 description=description,
-                scenario=None,  # Steps added separately
                 tags=tag_dtos,
-                custom_fields=cf_dtos,
-                project_id=project_id,
-                automated=False,
+                custom_fields=resolved_custom_fields,
             )
         except PydanticValidationError as e:
             raise AllureValidationError(f"Invalid test case data: {e}") from e
@@ -113,11 +123,11 @@ class TestCaseService:
         if not isinstance(name, str):
             raise AllureValidationError(f"Test Case name must be a string, got {type(name).__name__}")
         if not name or not name.strip():
-            raise AllureValidationError("Test Case name is required")
+            raise AllureValidationError("Test case name is required.")
         if len(name) > MAX_NAME_LENGTH:
-            raise AllureValidationError(f"Test Case name must be {MAX_NAME_LENGTH} characters or less")
+            raise AllureValidationError(f"Test case name must be {MAX_NAME_LENGTH} characters or less.")
 
-    def _validate_steps(self, steps: list[dict[str, Any]] | None) -> None:
+    def _validate_steps(self, steps: list[dict[str, Any]] | None) -> None:  # noqa: C901
         """Validate steps list structure and content."""
         if steps is None:
             return
@@ -134,22 +144,14 @@ class TestCaseService:
             step_attachments = step.get("attachments")
 
             if action is not None and not isinstance(action, str):
-                raise AllureValidationError(
-                    f"Step {i}: 'action' must be a string, got {type(action).__name__}"
-                )
+                raise AllureValidationError(f"Step {i}: 'action' must be a string, got {type(action).__name__}")
             if action and len(action) > MAX_BODY_LENGTH:
-                raise AllureValidationError(
-                    f"Step {i}: 'action' must be {MAX_BODY_LENGTH} characters or less"
-                )
+                raise AllureValidationError(f"Step {i}: 'action' must be {MAX_BODY_LENGTH} characters or less")
 
             if expected is not None and not isinstance(expected, str):
-                raise AllureValidationError(
-                    f"Step {i}: 'expected' must be a string, got {type(expected).__name__}"
-                )
+                raise AllureValidationError(f"Step {i}: 'expected' must be a string, got {type(expected).__name__}")
             if expected and len(expected) > MAX_BODY_LENGTH:
-                raise AllureValidationError(
-                    f"Step {i}: 'expected' must be {MAX_BODY_LENGTH} characters or less"
-                )
+                raise AllureValidationError(f"Step {i}: 'expected' must be {MAX_BODY_LENGTH} characters or less")
 
             if step_attachments is not None:
                 if not isinstance(step_attachments, list):
@@ -188,19 +190,13 @@ class TestCaseService:
 
         for i, att in enumerate(attachments):
             if not isinstance(att, dict):
-                raise AllureValidationError(
-                    f"Attachment at index {i} must be a dictionary, got {type(att).__name__}"
-                )
+                raise AllureValidationError(f"Attachment at index {i} must be a dictionary, got {type(att).__name__}")
             # Must have either 'content' (base64) or 'url'
             if "content" not in att and "url" not in att:
-                raise AllureValidationError(
-                    f"Attachment at index {i} must have either 'content' or 'url' key"
-                )
+                raise AllureValidationError(f"Attachment at index {i} must have either 'content' or 'url' key")
             # Must have 'name' for base64 content
             if "content" in att and "name" not in att:
-                raise AllureValidationError(
-                    f"Attachment at index {i} with 'content' must also have 'name'"
-                )
+                raise AllureValidationError(f"Attachment at index {i} with 'content' must also have 'name'")
 
     def _validate_custom_fields(self, custom_fields: dict[str, str] | None) -> None:
         """Validate custom fields dictionary."""
@@ -237,17 +233,44 @@ class TestCaseService:
                 raise AllureValidationError(f"Invalid tag '{t}': {e}") from e
         return tag_dtos
 
+    async def _get_resolved_custom_fields(self, project_id: int) -> dict[str, int]:
+        """Get or fetch custom field name-to-id mapping for a project."""
+        if project_id in self._cf_cache:
+            return self._cf_cache[project_id]
+
+        try:
+            from src.client.generated.api.test_case_custom_field_controller_api import TestCaseCustomFieldControllerApi
+
+            api = TestCaseCustomFieldControllerApi(self._client.api_client)
+            selection = TestCaseTreeSelectionDto(project_id=project_id)
+            cfs = await api.get_custom_fields_with_values2(test_case_tree_selection_dto=selection)
+
+            mapping = {}
+            for cf_with_values in cfs:
+                if cf_with_values.custom_field and cf_with_values.custom_field.custom_field:
+                    inner_cf = cf_with_values.custom_field.custom_field
+                    if inner_cf.name and inner_cf.id:
+                        mapping[inner_cf.name] = inner_cf.id
+
+            self._cf_cache[project_id] = mapping
+            return mapping
+        except Exception as e:
+            # If we fail to fetch CFs, we might want to warn or raise.
+            # For now, let's raise as it's critical for resolving names to IDs.
+            raise AllureValidationError(f"Failed to fetch custom fields for project {project_id}: {e}") from e
+
     def _build_custom_field_dtos(self, custom_fields: dict[str, str] | None) -> list[CustomFieldValueWithCfDto]:
-        """Build validated CustomFieldValueWithCfDto list."""
+        """DEPRECATED: Use inline resolution in create_test_case."""
         if not custom_fields:
             return []
 
         cf_dtos = []
         for key, value in custom_fields.items():
-            try:
-                cf_dtos.append(CustomFieldValueWithCfDto(custom_field=CustomFieldDto(name=key), name=value))
-            except PydanticValidationError as e:
-                raise AllureValidationError(f"Invalid custom field '{key}': {e}") from e
+            if not key:
+                raise AllureValidationError("Custom field key cannot be empty.")
+            if not isinstance(value, str):
+                raise AllureValidationError(f"Custom field '{key}' value must be a string.")
+            cf_dtos.append(CustomFieldValueWithCfDto(custom_field=CustomFieldDto(name=key), name=value))
         return cf_dtos
 
     def _build_scenario_step_dto(
@@ -295,7 +318,7 @@ class TestCaseService:
             action = str(s.get("action", ""))
             expected = str(s.get("expected", ""))
             step_attachments: list[dict[str, str]] = s.get("attachments", [])
-            
+
             current_parent_id: int | None = None
             last_child_id: int | None = None
 

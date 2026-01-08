@@ -263,12 +263,12 @@ async def test_create_scenario_step_success(base_url: str, token: SecretStr, oau
                     "entity": "TestCaseAttachmentRowDto",
                     "name": "test.txt",
                     "contentType": "text/plain",
-                    "contentLength": 10
+                    "contentLength": 10,
                 }
-            }
-        }
+            },
+        },
     }
-    
+
     route = respx.post(f"{base_url}/api/testcase/step").mock(return_value=Response(200, json=mock_response))
 
     async with AllureClient(base_url, token) as client:
