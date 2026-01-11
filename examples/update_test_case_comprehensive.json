@@ -1,0 +1,58 @@
+{
+    "test_case_id": 1234,
+    "name": "Comprehensive Update Example",
+    "description": "This test case has been updated with every available field.",
+    "precondition": "System is in a clean state, User is logged in as Admin.",
+    "automated": true,
+    "expected_result": "All operations completed successfully without errors.",
+    "status_id": 1,
+    "test_layer_id": 2,
+    "workflow_id": 1,
+    "tags": [
+        "comprehensive",
+        "metadata",
+        "all-fields",
+        "updated-v2"
+    ],
+    "custom_fields": {
+        "Priority": "Critical",
+        "Component": "Security",
+        "Environment": "Production"
+    },
+    "links": [
+        {
+            "name": "Jira Issue",
+            "url": "https://jira.example.com/browse/PROJ-123",
+            "type": "issue"
+        },
+        {
+            "name": "Documentation",
+            "url": "https://wiki.example.com/test-spec",
+            "type": "doc"
+        }
+    ],
+    "steps": [
+        {
+            "action": "Select security settings",
+            "expected": "Settings panel opens"
+        },
+        {
+            "action": "Update password policy",
+            "expected": "Policy is applied and confirmed",
+            "attachments": [
+                {
+                    "name": "policy_config.json",
+                    "content_type": "application/json",
+                    "content": "eyJwYXNzd29yZExlbmd0aCI6IDEyLCAicmVxdWlyZVNwZWNpYWwiOiB0cnVlfQ=="
+                }
+            ]
+        }
+    ],
+    "attachments": [
+        {
+            "name": "update_audit_log.txt",
+            "content_type": "text/plain",
+            "content": "VXBkYXRlIHBlcmZvcm1lZCBieSBNQ1AgdG9vbCBvbiAyMDI2LTAxLTEy"
+        }
+    ]
+}

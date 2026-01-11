@@ -187,7 +187,7 @@ def get_auth_context(
 All tools should follow this pattern:
 
 ```python
-# src/tools/cases.py (example)
+# src/tools/update_test_case.py (example)
 
 @mcp.tool
 async def create_test_case(

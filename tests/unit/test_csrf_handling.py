@@ -3,7 +3,7 @@ import pytest
 import respx
 from pydantic import SecretStr
 
-from src.client import AllureClient
+from src.client import AllureClient, AllureValidationError
 from src.client.generated.models.test_case_create_v2_dto import TestCaseCreateV2Dto
 
 
@@ -15,7 +15,7 @@ async def test_csrf_token_capture_and_injection() -> None:
     token = SecretStr("api-token")
 
     # Mock auth endpoint
-    auth_route = respx.post(f"{base_url}/api/uaa/oauth/token").mock(
+    respx.post(f"{base_url}/api/uaa/oauth/token").mock(
         return_value=httpx.Response(
             200,
             json={"access_token": "mock-jwt", "expires_in": 3600},
@@ -60,7 +60,7 @@ async def test_logging_on_failure(caplog: pytest.LogCaptureFixture) -> None:
 
     async with AllureClient(base_url, token) as client:
         data = TestCaseCreateV2Dto(name="Test Case", project_id=1)
-        with pytest.raises(Exception):  # AllureValidationError
+        with pytest.raises(AllureValidationError):
             await client.create_test_case(project_id=1, data=data)
 
     # Check logs

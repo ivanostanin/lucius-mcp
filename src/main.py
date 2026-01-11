@@ -9,6 +9,7 @@ from starlette.applications import Starlette
 from starlette.routing import Mount
 
 from src.tools.create_test_case import create_test_case
+from src.tools.update_test_case import update_test_case
 from src.utils.config import settings
 from src.utils.error import agent_hint_handler
 from src.utils.logger import configure_logging, get_logger
@@ -26,6 +27,7 @@ mcp = FastMCP(
 
 # Register tools
 mcp.tool()(create_test_case)
+mcp.tool()(update_test_case)
 
 
 @mcp.tool()

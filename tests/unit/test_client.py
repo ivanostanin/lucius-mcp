@@ -17,6 +17,8 @@ from src.client import (
     ScenarioStepCreateDto,
     TestCaseCreateV2Dto,
     TestCaseOverviewDto,
+    TestCasePatchV2Dto,
+    TestCaseScenarioDto,
 )
 
 
@@ -196,14 +198,33 @@ async def test_create_test_case_500_raises_generic_api_error(
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_placeholder_methods_not_implemented(base_url: str, token: SecretStr, oauth_route: respx.Route) -> None:
-    """Test that placeholder methods raise NotImplementedError."""
-    async with AllureClient(base_url, token) as client:
-        with pytest.raises(NotImplementedError):
-            await client.get_test_case(1)
+async def test_get_test_case_success(base_url: str, token: SecretStr, oauth_route: respx.Route) -> None:
+    """Test successful get_test_case."""
+    mock_response = {"id": 1, "name": "Test Case"}
+    route = respx.get(f"{base_url}/api/testcase/1").mock(return_value=Response(200, json=mock_response))
 
-        with pytest.raises(NotImplementedError):
-            await client.update_test_case(1, {})
+    async with AllureClient(base_url, token) as client:
+        result = await client.get_test_case(1)
+
+    assert result.id == 1
+    assert result.name == "Test Case"
+    assert route.called
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_update_test_case_success(base_url: str, token: SecretStr, oauth_route: respx.Route) -> None:
+    """Test successful update_test_case."""
+    mock_response = {"id": 1, "name": "Updated Case"}
+    route = respx.patch(f"{base_url}/api/testcase/1").mock(return_value=Response(200, json=mock_response))
+
+    async with AllureClient(base_url, token) as client:
+        patch_dto = TestCasePatchV2Dto(name="Updated Case")
+        result = await client.update_test_case(1, patch_dto)
+
+    assert result.id == 1
+    assert result.name == "Updated Case"
+    assert route.called
 
 
 @pytest.mark.asyncio

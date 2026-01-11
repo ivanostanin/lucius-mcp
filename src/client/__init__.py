@@ -6,7 +6,10 @@ from .client import (
     ScenarioStepCreateDto,
     TestCaseAttachmentRowDto,
     TestCaseCreateV2Dto,
+    TestCaseDto,
     TestCaseOverviewDto,
+    TestCasePatchV2Dto,
+    TestCaseScenarioDto,
 )
 from .exceptions import (
     AllureAPIError,
@@ -27,5 +30,8 @@ __all__ = [
     "ScenarioStepCreatedResponseDto",
     "TestCaseAttachmentRowDto",
     "TestCaseCreateV2Dto",
+    "TestCaseDto",
     "TestCaseOverviewDto",
+    "TestCasePatchV2Dto",
+    "TestCaseScenarioDto",
 ]

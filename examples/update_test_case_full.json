@@ -1,0 +1,27 @@
+{
+    "test_case_id": 1234,
+    "name": "Full Update Example",
+    "description": "Updating all possible fields.",
+    "precondition": "All prerequisites met",
+    "steps": [
+        {
+            "action": "Perform action",
+            "expected": "Outcome"
+        }
+    ],
+    "tags": [
+        "updated",
+        "mcp"
+    ],
+    "custom_fields": {
+        "Browser": "Chrome",
+        "Priority": "High"
+    },
+    "attachments": [
+        {
+            "name": "global_att.txt",
+            "content_type": "text/plain",
+            "content": "R2xvYmFsIGF0dGFjaG1lbnQgY29udGVudA=="
+        }
+    ]
+}

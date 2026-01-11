@@ -24,8 +24,8 @@ def app() -> Starlette:
     # This creates a new StreamableHTTPSessionManager
     new_asgi = src.main.mcp.http_app()
 
-    # 2. Update the global variable so lifespan() uses the new one
-    src.main.mcp_asgi = new_asgi
+    # 2. Update the internal variable so get_mcp_asgi() and subsequent calls use the new one
+    src.main._mcp_asgi = new_asgi
 
     # 3. Update the Starlette app's routes to point to the new ASGI app
     # We find the Mount for "/" and replace it

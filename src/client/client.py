@@ -32,7 +32,10 @@ from .generated.models.scenario_step_create_dto import ScenarioStepCreateDto
 from .generated.models.scenario_step_created_response_dto import ScenarioStepCreatedResponseDto
 from .generated.models.test_case_attachment_row_dto import TestCaseAttachmentRowDto
 from .generated.models.test_case_create_v2_dto import TestCaseCreateV2Dto
+from .generated.models.test_case_dto import TestCaseDto
 from .generated.models.test_case_overview_dto import TestCaseOverviewDto
+from .generated.models.test_case_patch_v2_dto import TestCasePatchV2Dto
+from .generated.models.test_case_scenario_dto import TestCaseScenarioDto
 
 logger = get_logger(__name__)
 
@@ -43,7 +46,11 @@ __all__ = [
     "ScenarioStepCreatedResponseDto",
     "TestCaseAttachmentRowDto",
     "TestCaseCreateV2Dto",
+    "TestCaseCreateV2Dto",
+    "TestCaseDto",
     "TestCaseOverviewDto",
+    "TestCasePatchV2Dto",
+    "TestCaseScenarioDto",
 ]
 
 
@@ -96,6 +103,7 @@ class AllureClient:
         self._test_case_api: TestCaseControllerApi | None = None
         self._attachment_api: TestCaseAttachmentControllerApi | None = None
         self._scenario_api: TestCaseScenarioControllerApi | None = None
+        self._test_case_scenario_api: TestCaseScenarioControllerApi | None = None
         self._is_entered = False
 
     @classmethod
@@ -204,6 +212,7 @@ class AllureClient:
             self._test_case_api = TestCaseControllerApi(self._api_client)
             self._attachment_api = TestCaseAttachmentControllerApi(self._api_client)
             self._scenario_api = TestCaseScenarioControllerApi(self._api_client)
+            self._test_case_scenario_api = TestCaseScenarioControllerApi(self._api_client)
 
     @property
     def api_client(self) -> ApiClient:
@@ -414,7 +423,7 @@ class AllureClient:
             self._handle_api_exception(e)
             raise  # Should not be reached
 
-    async def get_test_case(self, test_case_id: int) -> object:
+    async def get_test_case(self, test_case_id: int) -> TestCaseDto:
         """Retrieve a specific test case by its ID.
 
         Args:
@@ -424,11 +433,24 @@ class AllureClient:
             The test case data.
 
         Raises:
-            NotImplementedError: Currently a placeholder for future story.
+            AllureNotFoundError: If test case doesn't exist.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
         """
-        raise NotImplementedError("To be implemented in Story 3.2")
+        if not self._is_entered:
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
 
-    async def update_test_case(self, test_case_id: int, data: object) -> object:
+        await self._ensure_valid_token()
+        if self._test_case_api is None:
+            raise AllureAPIError("Internal error: test_case_api not initialized")
+
+        try:
+            return await self._test_case_api.find_one11(id=test_case_id, _request_timeout=self._timeout)
+        except ApiException as e:
+            self._handle_api_exception(e)
+            raise
+
+    async def update_test_case(self, test_case_id: int, data: TestCasePatchV2Dto) -> TestCaseDto:
         """Update an existing test case with new data.
 
         Args:
@@ -436,12 +458,59 @@ class AllureClient:
             data: The new data to apply.
 
         Returns:
-            The updated test case overview.
+            The updated test case.
 
         Raises:
-            NotImplementedError: Currently a placeholder for future story.
+            AllureNotFoundError: If test case doesn't exist.
+            AllureValidationError: If input data fails validation.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
         """
-        raise NotImplementedError("To be implemented in Story 1.4")
+        if not self._is_entered:
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+
+        await self._ensure_valid_token()
+        if self._test_case_api is None:
+            raise AllureAPIError("Internal error: test_case_api not initialized")
+
+        try:
+            return await self._test_case_api.patch13(
+                id=test_case_id,
+                test_case_patch_v2_dto=data,
+                _request_timeout=self._timeout,
+            )
+        except ApiException as e:
+            self._handle_api_exception(e)
+            raise
+
+    async def get_test_case_scenario(self, test_case_id: int) -> TestCaseScenarioDto:
+        """Retrieve the scenario (steps and attachments) for a test case.
+
+        Args:
+            test_case_id: The ID of the test case.
+
+        Returns:
+            The test case scenario including steps and attachments.
+
+        Raises:
+            AllureNotFoundError: If test case doesn't exist.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
+        """
+        if not self._is_entered:
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+
+        await self._ensure_valid_token()
+        if self._test_case_scenario_api is None:
+            raise AllureAPIError("Internal error: test_case_scenario_api not initialized")
+
+        try:
+            # Note: get_scenario is deprecated but get_normalized_scenario returns a different structure.
+            # Using get_scenario to get tree structure compatible with update logic.
+            return await self._test_case_scenario_api.get_scenario(id=test_case_id, _request_timeout=self._timeout)
+        except ApiException as e:
+            self._handle_api_exception(e)
+            raise
 
     async def delete_test_case(self, test_case_id: int) -> None:
         """Permanently delete a test case from the system.

@@ -1,0 +1,20 @@
+{
+    "test_case_id": 1234,
+    "steps": [
+        {
+            "action": "New Step 1",
+            "expected": "Success"
+        },
+        {
+            "action": "New Step 2 with Attachment",
+            "expected": "Attachment uploaded",
+            "attachments": [
+                {
+                    "name": "step_att.txt",
+                    "content_type": "text/plain",
+                    "content": "U3RlcCBsZXZlbCBhdHRhY2htZW50IGNvbnRlbnQ="
+                }
+            ]
+        }
+    ]
+}

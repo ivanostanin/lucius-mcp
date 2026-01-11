@@ -5,13 +5,20 @@ import pytest
 from src.client import AllureClient
 from src.client.exceptions import AllureAPIError, AllureValidationError
 from src.client.generated.models import (
+    AttachmentStepDto,
+    BodyStepDto,
     CustomFieldDto,
     CustomFieldProjectDto,
     CustomFieldProjectWithValuesDto,
     ScenarioStepCreatedResponseDto,
+    TestCaseAttachmentRowDto,
+    TestCaseDto,
+    TestCasePatchV2Dto,
+    TestCaseScenarioDto,
+    TestCaseScenarioStepDto,
 )
 from src.services.attachment_service import AttachmentService
-from src.services.test_case_service import TestCaseService
+from src.services.test_case_service import TestCaseService, TestCaseUpdate
 
 
 @pytest.fixture
@@ -438,3 +445,128 @@ async def test_create_test_case_rollback_on_failure(service: TestCaseService, mo
     # 4. Verify original creation AND rollback deletion were called
     mock_client.create_test_case.assert_called_once()
     mock_client.delete_test_case.assert_called_once_with(500)
+
+
+@pytest.fixture
+def mock_scenario_response() -> TestCaseScenarioDto:
+    """Mock response for get_test_case_scenario."""
+    step = TestCaseScenarioStepDto(name="Existing Step")
+    att = TestCaseAttachmentRowDto(id=1, name="Existing Att", entity="TestCaseAttachmentRowDto")
+    return TestCaseScenarioDto(steps=[step], attachments=[att])
+
+
+class TestUpdateTestCase:
+    """Tests for updating test cases."""
+
+    @pytest.mark.asyncio
+    async def test_update_simple_fields(self, service: TestCaseService, mock_client: AsyncMock) -> None:
+        """Test updating simple fields (name, description)."""
+        test_case_id = 999
+        current_case = TestCaseDto(id=test_case_id, name="Old Name", description="Old Desc")
+        mock_client.get_test_case.return_value = current_case
+        mock_client.update_test_case.return_value = TestCaseDto(
+            id=test_case_id, name="New Name", description="New Desc"
+        )
+
+        data = TestCaseUpdate(name="New Name", description="New Desc")
+        result = await service.update_test_case(test_case_id, data)
+
+        assert result.name == "New Name"
+
+        # Verify call
+        mock_client.update_test_case.assert_called_once()
+        patch_dto: TestCasePatchV2Dto = mock_client.update_test_case.call_args[0][1]
+        assert patch_dto.name == "New Name"
+        assert patch_dto.description == "New Desc"
+        assert patch_dto.scenario is None  # Scenario untouched
+
+    @pytest.mark.asyncio
+    async def test_update_idempotency_no_changes(self, service: TestCaseService, mock_client: AsyncMock) -> None:
+        """Test that update is skipped if no changes are detected."""
+        test_case_id = 999
+        current_case = TestCaseDto(id=test_case_id, name="Same Name")
+        mock_client.get_test_case.return_value = current_case
+
+        data = TestCaseUpdate(name="Same Name")
+        result = await service.update_test_case(test_case_id, data)
+
+        assert result is current_case
+        mock_client.update_test_case.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_update_steps_preserves_attachments(
+        self, service: TestCaseService, mock_client: AsyncMock, mock_scenario_response: TestCaseScenarioDto
+    ) -> None:
+        """Test updating steps only preserve existing global attachments."""
+        test_case_id = 999
+        mock_client.get_test_case.return_value = TestCaseDto(id=test_case_id)
+        mock_client.get_test_case_scenario.return_value = mock_scenario_response
+        mock_client.update_test_case.return_value = TestCaseDto(id=test_case_id)
+
+        # New Steps
+        steps = [{"action": "New Action"}]
+        data = TestCaseUpdate(steps=steps)
+
+        await service.update_test_case(test_case_id, data)
+
+        mock_client.get_test_case_scenario.assert_called_once()
+
+        # Verify patch contains new steps AND preserved global attachments
+        mock_client.update_test_case.assert_called_once()
+        patch_dto: TestCasePatchV2Dto = mock_client.update_test_case.call_args[0][1]
+        assert patch_dto.scenario is not None
+
+        # Expect 1 new step + 1 preserved attachment step = 2 steps total
+        assert patch_dto.scenario.steps is not None
+        assert len(patch_dto.scenario.steps) == 2
+
+        # First step: New Actions
+        first_step = patch_dto.scenario.steps[0].actual_instance
+        assert isinstance(first_step, BodyStepDto)
+        assert first_step.body == "New Action"
+
+        # Second step: Preserved Attachment
+        second_step = patch_dto.scenario.steps[1].actual_instance
+        assert isinstance(second_step, AttachmentStepDto)
+        assert second_step.attachment_id == 1
+        assert second_step.name == "Existing Att"
+
+    @pytest.mark.asyncio
+    async def test_update_attachments_preserves_steps(
+        self,
+        service: TestCaseService,
+        mock_client: AsyncMock,
+        mock_scenario_response: TestCaseScenarioDto,
+        mock_attachment_service: AsyncMock,
+    ) -> None:
+        """Test updating attachments only preserves existing steps."""
+        test_case_id = 999
+        mock_client.get_test_case.return_value = TestCaseDto(id=test_case_id)
+        mock_client.get_test_case_scenario.return_value = mock_scenario_response
+        mock_client.update_test_case.return_value = TestCaseDto(id=test_case_id)
+
+        mock_attachment_service.upload_attachment.return_value = Mock(id=200, name="New Att")
+
+        # New Attachments
+        attachments = [{"name": "new.png", "content": "base64"}]
+        data = TestCaseUpdate(attachments=attachments)
+
+        await service.update_test_case(test_case_id, data)
+
+        # Verify patch contains preserved steps AND new global attachments
+        mock_client.update_test_case.assert_called_once()
+        patch_dto: TestCasePatchV2Dto = mock_client.update_test_case.call_args[0][1]
+        assert patch_dto.scenario is not None
+        assert patch_dto.scenario.steps is not None
+        assert len(patch_dto.scenario.steps) == 2
+
+        # First: Preserved Step
+        first_step = patch_dto.scenario.steps[0].actual_instance
+        assert isinstance(first_step, BodyStepDto)
+        assert first_step.body == "Existing Step"
+
+        # Second: New Attachment
+        second_step = patch_dto.scenario.steps[1].actual_instance
+        assert isinstance(second_step, AttachmentStepDto)
+        assert second_step.attachment_id == 200
+        assert second_step.name == "New Att"
