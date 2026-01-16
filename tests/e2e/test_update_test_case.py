@@ -73,7 +73,6 @@ async def test_update_test_case_e2e() -> None:
                 print(f"DEBUG Normalized Scenario Error: {e}")
 
             print(f"DEBUG Scenario: {scenario}")
-            print(f"DEBUG Scenario Attachments: {scenario.attachments}")
             print(f"DEBUG Scenario Steps: {scenario.steps}")
             # Should have the initial step + the new attachment
             # Note: The exact structure depends on how API stored it.
@@ -87,32 +86,32 @@ async def test_update_test_case_e2e() -> None:
 
             # Check if attachment is present
             has_attachment = False
-            if scenario.attachments:
-                has_attachment = True
-            elif scenario.steps:
-                for s in scenario.steps:
-                    if s.attachments:
-                        has_attachment = True
-                        break
-                    # Fallback for V2 scenario where attachment might only be present by name/body
-                    if s.name == "test.png":
-                        has_attachment = True
-                        break
+            if scenario.steps:
+                for step in scenario.steps:
+                    if step.actual_instance:
+                        # Check if it's an AttachmentStepDto
+                        if (
+                            isinstance(step.actual_instance.type, str)
+                            and step.actual_instance.type == "AttachmentStepDto"
+                        ):
+                            has_attachment = True
+                            break
+                        # OR verify nested steps if any (though global attachments are usually root)
 
             # If our update logic worked, the attachment should be there.
-            assert has_attachment, f"Attachment not found in scenario. Scenario: {scenario}"
+            assert has_attachment, f"Attachment not found in scenario. Scenario steps: {scenario.steps}"
 
             # 5. verify steps preserved
             # Searching for "Initial Step"
             step_found = False
             if scenario.steps:
-                for s in scenario.steps:
-                    if s.name == "Initial Step" or (
-                        s.steps and any(sub.name == "Initial Step" for sub in s.steps)
-                    ):  # name vs body confusion?
-                        step_found = True
+                for step in scenario.steps:
+                    if step.actual_instance:
+                        # Check BodyStepDto
+                        if hasattr(step.actual_instance, "body") and step.actual_instance.body == "Initial Step":
+                            step_found = True
+                            break
 
-            # If name/body mapping is non-standard, this check might fail.
             assert step_found, "Initial step not found in scenario after update"
 
         finally:

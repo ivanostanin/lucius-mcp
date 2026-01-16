@@ -18,8 +18,6 @@ from src.client.generated.models import (
     TestCaseDto,
     TestCaseOverviewDto,
     TestCasePatchV2Dto,
-    TestCaseScenarioDto,
-    TestCaseScenarioStepDto,
     TestCaseScenarioV2Dto,
     TestCaseTreeSelectionDto,
     TestTagDto,
@@ -181,9 +179,10 @@ class TestCaseService:
         patch_kwargs, has_changes = await self._prepare_field_updates(current_case, data)
 
         # 3. Handle Scenario (Steps and Attachments)
-        scenario_dto = await self._prepare_scenario_update(test_case_id, data)
-        if scenario_dto:
-            patch_kwargs["scenario"] = scenario_dto
+        scenario_dto_v2 = await self._prepare_scenario_update(test_case_id, data)
+        # We do NOT add scenario to patch_kwargs because patch13 endpoint has issues with BodyStepDto serialization.
+        # Instead, we will recreate the scenario step-by-step if needed.
+        if scenario_dto_v2:
             has_changes = True
 
         # 4. Idempotency Check
@@ -191,11 +190,21 @@ class TestCaseService:
             return current_case
 
         # 5. Apply Update
-        try:
-            patch_data = TestCasePatchV2Dto(**patch_kwargs)
-            return await self._client.update_test_case(test_case_id, patch_data)
-        except PydanticValidationError as e:
-            raise AllureValidationError(f"Invalid update data: {e}") from e
+        updated_case = current_case
+        if patch_kwargs:
+            try:
+                patch_data = TestCasePatchV2Dto(**patch_kwargs)
+                updated_case = await self._client.update_test_case(test_case_id, patch_data)
+            except PydanticValidationError as e:
+                raise AllureValidationError(f"Invalid update data: {e}") from e
+
+        # 6. Apply Scenario Re-creation
+        if scenario_dto_v2 and scenario_dto_v2.steps is not None:
+            await self._recreate_scenario(test_case_id, scenario_dto_v2.steps)
+            # Refetch to get consistent state
+            updated_case = await self.get_test_case(test_case_id)
+
+        return updated_case
 
     async def _prepare_field_updates(  # noqa: C901
         self, current_case: TestCaseDto, data: TestCaseUpdate
@@ -278,107 +287,71 @@ class TestCaseService:
         if data.steps is None and data.attachments is None:
             return None
 
-        # We need to build the full scenario list (steps + global attachments)
-        # If one is missing, we must preserve the other from existing state.
+        existing_steps = await self._get_existing_steps_to_preserve(test_case_id, data)
+        final_steps_list = await self._build_final_steps_list(test_case_id, data, existing_steps)
+
+        return TestCaseScenarioV2Dto(steps=final_steps_list)
+
+    async def _get_existing_steps_to_preserve(
+        self, test_case_id: int, data: TestCaseUpdate
+    ) -> list[SharedStepScenarioDtoStepsInner]:
+        """Fetch existing steps that should be preserved based on what's being updated."""
+        if data.steps is not None and data.attachments is not None:
+            return []  # Both provided, nothing to preserve
 
         existing_steps: list[SharedStepScenarioDtoStepsInner] = []
-        existing_attachments_as_steps: list[SharedStepScenarioDtoStepsInner] = []
+        try:
+            current_scenario = await self._client.get_test_case_scenario(test_case_id)
+            if not current_scenario or not current_scenario.steps:
+                return existing_steps
 
-        if data.steps is None or data.attachments is None:
-            # Fetch existing scenario to preserve parts
-            try:
-                current_scenario: TestCaseScenarioDto | None = await self._client.get_test_case_scenario(test_case_id)
-                if current_scenario:
-                    if current_scenario.steps:
-                        existing_steps = [self._convert_read_to_write_step(s) for s in current_scenario.steps]
+            for step in current_scenario.steps:
+                if not step.actual_instance:
+                    continue
+                is_attachment = isinstance(step.actual_instance, AttachmentStepDto)
+                # Preserve attachments if data.attachments is None
+                # Preserve body steps if data.steps is None
+                if is_attachment and data.attachments is None:
+                    existing_steps.append(step)
+                elif not is_attachment and data.steps is None:
+                    existing_steps.append(step)
+        except Exception:  # noqa: S110
+            pass
 
-                    if current_scenario.attachments:
-                        # Global attachments in read model are in 'attachments' list
-                        existing_attachments_as_steps = [
-                            SharedStepScenarioDtoStepsInner(
-                                actual_instance=AttachmentStepDto(
-                                    type="AttachmentStepDto", attachment_id=a.id, name=a.name
-                                )
-                            )
-                            for a in current_scenario.attachments
-                            if a.id and a.name
-                        ]
-            except Exception:  # noqa: S110
-                # If cannot fetch scenario (e.g. 404 or empty), treat as empty
-                # We log this implicitely by continuing with empty preservation
-                pass
+        return existing_steps
 
-        # Validate steps changes
-        # ... (Validation logic similar to create could go here if needed)
+    async def _build_final_steps_list(
+        self,
+        test_case_id: int,
+        data: TestCaseUpdate,
+        existing_steps: list[SharedStepScenarioDtoStepsInner],
+    ) -> list[SharedStepScenarioDtoStepsInner]:
+        """Build the final list of steps combining new and preserved steps."""
+        final_steps: list[SharedStepScenarioDtoStepsInner] = []
 
-        # Prepare Final Steps
-        final_steps_list: list[SharedStepScenarioDtoStepsInner] = []
-
-        # 1. Steps (Actions)
+        # Add new or existing body steps
         if data.steps is not None:
-            # Build new steps
-            final_steps_list.extend(await self._build_steps_dtos_from_list(test_case_id, data.steps))
+            final_steps.extend(await self._build_steps_dtos_from_list(test_case_id, data.steps))
         else:
-            # Preserve existing
-            final_steps_list.extend(existing_steps)
+            for step in existing_steps:
+                if step.actual_instance and not isinstance(step.actual_instance, AttachmentStepDto):
+                    final_steps.append(step)
 
-        # 2. Global Attachments
+        # Add new or existing attachments
         if data.attachments is not None:
-            # Upload and create attachment steps
-            # Use _attachment_service
             for att in data.attachments:
                 row = await self._attachment_service.upload_attachment(test_case_id, att)
-                final_steps_list.append(
+                final_steps.append(
                     SharedStepScenarioDtoStepsInner(
                         actual_instance=AttachmentStepDto(type="AttachmentStepDto", attachment_id=row.id, name=row.name)
                     )
                 )
         else:
-            # Preserve existing
-            final_steps_list.extend(existing_attachments_as_steps)
+            for step in existing_steps:
+                if step.actual_instance and isinstance(step.actual_instance, AttachmentStepDto):
+                    final_steps.append(step)
 
-        # Check if identical to existing (Idempotency deep check could go here)
-        # For now, we return the object if any input was provided (handled by caller logic)
-        # But wait, if data.steps is provided but identical?
-        # That logic is hard without deep comparison.
-        # We'll assume if keys are in `data`, user intends update.
-        # But we could optionally check equality.
-
-        return TestCaseScenarioV2Dto(steps=final_steps_list)
-
-    def _convert_read_to_write_step(self, read_step: TestCaseScenarioStepDto) -> SharedStepScenarioDtoStepsInner:
-        """Convert a read-model step to a write-model step."""
-        children: list[SharedStepScenarioDtoStepsInner] = []
-
-        # Expected result as a child step
-        if read_step.expected_result:
-            children.append(
-                SharedStepScenarioDtoStepsInner(
-                    actual_instance=ExpectedBodyStepDto(type="ExpectedBodyStepDto", body=read_step.expected_result)
-                )
-            )
-
-        # Sub-steps
-        if read_step.steps:
-            for child in read_step.steps:
-                children.append(self._convert_read_to_write_step(child))
-
-        # Attachments
-        if read_step.attachments:
-            for att in read_step.attachments:
-                if att.id and att.name:
-                    children.append(
-                        SharedStepScenarioDtoStepsInner(
-                            actual_instance=AttachmentStepDto(
-                                type="AttachmentStepDto", attachment_id=att.id, name=att.name
-                            )
-                        )
-                    )
-
-        body_text = read_step.name or ""  # Use name as body
-        return SharedStepScenarioDtoStepsInner(
-            actual_instance=BodyStepDto(type="BodyStepDto", body=body_text, steps=children)
-        )
+        return final_steps
 
     async def _build_steps_dtos_from_list(
         self, test_case_id: int, steps: list[dict[str, Any]]
@@ -676,6 +649,60 @@ class TestCaseService:
                             last_child_id = attachment_response.created_step_id
 
         return last_step_id
+
+    async def _recreate_scenario(self, test_case_id: int, steps: list[SharedStepScenarioDtoStepsInner]) -> None:
+        """Recreate the entire scenario step by step."""
+        # 1. Clear existing scenario
+        await self._client.update_test_case(test_case_id, TestCasePatchV2Dto(scenario=TestCaseScenarioV2Dto(steps=[])))
+
+        # 2. Recursively add steps
+        last_step_id: int | None = None
+        for step in steps:
+            last_step_id = await self._recursive_add_step(test_case_id, step, after_id=last_step_id)
+
+    async def _recursive_add_step(
+        self,
+        test_case_id: int,
+        step: SharedStepScenarioDtoStepsInner,
+        parent_id: int | None = None,
+        after_id: int | None = None,
+    ) -> int | None:
+        """Recursively add a step and its children."""
+        if not step.actual_instance:
+            return after_id
+
+        instance = step.actual_instance
+        created_id = None
+
+        # Determine step type and create
+        if isinstance(instance, BodyStepDto):
+            step_dto = self._build_scenario_step_dto(test_case_id=test_case_id, body=instance.body, parent_id=parent_id)
+            resp = await self._client.create_scenario_step(test_case_id=test_case_id, step=step_dto, after_id=after_id)
+            created_id = resp.created_step_id
+
+            # Add children (steps may not be a defined field in generated DTO,
+            # but we set it via model_construct)
+            child_steps = getattr(instance, "steps", None)
+            if child_steps:
+                last_child_id = None
+                for child in child_steps:
+                    last_child_id = await self._recursive_add_step(
+                        test_case_id, child, parent_id=created_id, after_id=last_child_id
+                    )
+
+        elif isinstance(instance, ExpectedBodyStepDto):
+            step_dto = self._build_scenario_step_dto(test_case_id=test_case_id, body=instance.body, parent_id=parent_id)
+            resp = await self._client.create_scenario_step(test_case_id=test_case_id, step=step_dto, after_id=after_id)
+            created_id = resp.created_step_id
+
+        elif isinstance(instance, AttachmentStepDto):
+            step_dto = self._build_scenario_step_dto(
+                test_case_id=test_case_id, attachment_id=instance.attachment_id, parent_id=parent_id
+            )
+            resp = await self._client.create_scenario_step(test_case_id=test_case_id, step=step_dto, after_id=after_id)
+            created_id = resp.created_step_id
+
+        return created_id if created_id else after_id
 
     async def _add_global_attachments(
         self,

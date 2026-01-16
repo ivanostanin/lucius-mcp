@@ -6,6 +6,7 @@ standardized error handling.
 """
 
 import time
+from typing import Any
 
 import httpx
 from pydantic import SecretStr
@@ -28,14 +29,18 @@ from .generated.configuration import Configuration
 from .generated.exceptions import (
     ApiException,
 )
+from .generated.models.attachment_step_dto import AttachmentStepDto
+from .generated.models.body_step_dto import BodyStepDto
 from .generated.models.scenario_step_create_dto import ScenarioStepCreateDto
 from .generated.models.scenario_step_created_response_dto import ScenarioStepCreatedResponseDto
+from .generated.models.shared_step_scenario_dto_steps_inner import SharedStepScenarioDtoStepsInner
 from .generated.models.test_case_attachment_row_dto import TestCaseAttachmentRowDto
 from .generated.models.test_case_create_v2_dto import TestCaseCreateV2Dto
 from .generated.models.test_case_dto import TestCaseDto
 from .generated.models.test_case_overview_dto import TestCaseOverviewDto
 from .generated.models.test_case_patch_v2_dto import TestCasePatchV2Dto
 from .generated.models.test_case_scenario_dto import TestCaseScenarioDto
+from .generated.models.test_case_scenario_v2_dto import TestCaseScenarioV2Dto
 
 logger = get_logger(__name__)
 
@@ -44,13 +49,16 @@ __all__ = [
     "AllureClient",
     "ScenarioStepCreateDto",
     "ScenarioStepCreatedResponseDto",
+    "SharedStepScenarioDtoStepsInner",
     "TestCaseAttachmentRowDto",
     "TestCaseCreateV2Dto",
     "TestCaseCreateV2Dto",
     "TestCaseDto",
     "TestCaseOverviewDto",
     "TestCasePatchV2Dto",
+    "TestCasePatchV2Dto",
     "TestCaseScenarioDto",
+    "TestCaseScenarioV2Dto",
 ]
 
 
@@ -474,6 +482,7 @@ class AllureClient:
             raise AllureAPIError("Internal error: test_case_api not initialized")
 
         try:
+            print(f"DEBUG Payload: {data.to_json()}")
             return await self._test_case_api.patch13(
                 id=test_case_id,
                 test_case_patch_v2_dto=data,
@@ -483,7 +492,7 @@ class AllureClient:
             self._handle_api_exception(e)
             raise
 
-    async def get_test_case_scenario(self, test_case_id: int) -> TestCaseScenarioDto:
+    async def get_test_case_scenario(self, test_case_id: int) -> TestCaseScenarioV2Dto:
         """Retrieve the scenario (steps and attachments) for a test case.
 
         Args:
@@ -505,12 +514,82 @@ class AllureClient:
             raise AllureAPIError("Internal error: test_case_scenario_api not initialized")
 
         try:
-            # Note: get_scenario is deprecated but get_normalized_scenario returns a different structure.
-            # Using get_scenario to get tree structure compatible with update logic.
-            return await self._test_case_scenario_api.get_scenario(id=test_case_id, _request_timeout=self._timeout)
+            # Use _without_preload_content to bypass broken oneOf deserialization
+            response = await self._test_case_scenario_api.get_normalized_scenario_without_preload_content(
+                id=test_case_id, _request_timeout=self._timeout
+            )
+
+            if not 200 <= response.status_code <= 299:
+                raise ApiException(status=response.status_code, reason=response.reason_phrase, body=response.text)
+
+            raw_data = response.json()
+            print(f"DEBUG Initial Raw Normalized Scenario: {raw_data}")
+            return self._denormalize_to_v2_from_dict(raw_data)
         except ApiException as e:
             self._handle_api_exception(e)
             raise
+
+    def _denormalize_to_v2_from_dict(self, raw: dict[str, Any]) -> TestCaseScenarioV2Dto:
+        """Convert a raw NormalizedScenarioDto dict into a TestCaseScenarioV2Dto tree.
+
+        This bypasses the generated from_dict which has broken oneOf deserialization.
+        """
+        root = raw.get("root")
+        if not root:
+            return TestCaseScenarioV2Dto(steps=[])
+
+        root_children = root.get("children")
+        if not root_children:
+            return TestCaseScenarioV2Dto(steps=[])
+
+        scenario_steps = raw.get("scenarioSteps", {})
+
+        # Recursive helper to build steps
+        def build_steps(step_ids: list[int]) -> list[SharedStepScenarioDtoStepsInner]:
+            steps_list: list[SharedStepScenarioDtoStepsInner] = []
+            if not step_ids:
+                return steps_list
+
+            for sid in step_ids:
+                # Look up the step definition
+                step_def = scenario_steps.get(str(sid))
+
+                if not step_def:
+                    continue
+
+                # Is it an attachment?
+                attachment_id = step_def.get("attachmentId")
+                if attachment_id:
+                    # Build AttachmentStepDto using model_construct to bypass validation
+                    steps_list.append(
+                        SharedStepScenarioDtoStepsInner(
+                            actual_instance=AttachmentStepDto.model_construct(
+                                type="AttachmentStepDto", attachment_id=attachment_id
+                            )
+                        )
+                    )
+                else:
+                    # It's a Body Step
+                    child_ids = step_def.get("children") or []
+                    child_steps = build_steps(child_ids) if child_ids else None
+
+                    body = step_def.get("body") or ""
+
+                    # Build BodyStepDto using model_construct to bypass validation
+                    steps_list.append(
+                        SharedStepScenarioDtoStepsInner(
+                            actual_instance=BodyStepDto.model_construct(
+                                type="BodyStepDto",
+                                body=body,
+                                body_json=None,  # Skip complex rich-text
+                                steps=child_steps,
+                            )
+                        )
+                    )
+            return steps_list
+
+        final_steps = build_steps(root_children)
+        return TestCaseScenarioV2Dto(steps=final_steps)
 
     async def delete_test_case(self, test_case_id: int) -> None:
         """Permanently delete a test case from the system.
