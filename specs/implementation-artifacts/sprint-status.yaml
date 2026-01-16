@@ -46,7 +46,7 @@ development_status:
   1-2-generated-client-and-data-models: done
   1-3-comprehensive-test-case-creation-tool: ready-for-dev
   1-4-idempotent-update-and-maintenance: done
-  1-5-soft-delete-and-archive: review
+  1-5-soft-delete-and-archive: done
   1-6-comprehensive-end-to-end-tests: ready-for-dev
   epic-1-retrospective: optional
 

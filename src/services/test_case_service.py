@@ -156,10 +156,9 @@ class TestCaseService:
             # Rollback: delete the partially created test case
             try:
                 await self._client.delete_test_case(test_case_id)
-            except Exception:  # noqa: S110
+            except Exception as rollback_error:
                 # Log but don't raise the rollback error to keep the original error primary
-                # We could use a logger here if available in this context
-
+                logger.error(f"Rollback failed for test case {test_case_id}: {rollback_error}")
                 pass
 
             if isinstance(e, (AllureValidationError, AllureAPIError)):
@@ -229,6 +228,14 @@ class TestCaseService:
         # 1. Verify existence (idempotency check)
         try:
             test_case = await self.get_test_case(test_case_id)
+            # Idempotency: Check if already archived
+            # Note: exact status name depends on Allure configuration, checking common ones
+            if test_case.status and test_case.status.name and test_case.status.name.lower() in ("archived", "deleted"):
+                return DeleteResult(
+                    test_case_id=test_case_id,
+                    status="already_deleted",
+                    message=f"Test Case {test_case_id} was already archived (Status: {test_case.status.name}).",
+                )
         except AllureNotFoundError:
             return DeleteResult(
                 test_case_id=test_case_id,
@@ -238,6 +245,17 @@ class TestCaseService:
 
         # 2. Perform deletion
         await self._client.delete_test_case(test_case_id)
+
+        # 3. Log the action
+        logger.info(
+            "Test case archived",
+            extra={
+                "test_case_id": test_case_id,
+                "test_case_name": test_case.name,
+                "action": "delete",
+                "result": "archived",
+            },
+        )
 
         return DeleteResult(
             test_case_id=test_case_id,

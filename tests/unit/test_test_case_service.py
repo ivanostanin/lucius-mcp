@@ -692,6 +692,32 @@ async def test_delete_test_case_already_deleted(service: TestCaseService, mock_c
     mock_client.get_test_case.assert_called_once_with(test_case_id)
     mock_client.delete_test_case.assert_not_called()
 
+    mock_client.get_test_case.assert_called_once_with(test_case_id)
+    mock_client.delete_test_case.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_delete_test_case_already_archived_status(service: TestCaseService, mock_client: AsyncMock) -> None:
+    """Test idempotency when test case exists but has 'Archived' status."""
+    test_case_id = 124
+    # Mock existing but archived case
+    archived_case = Mock(spec=TestCaseDto)
+    archived_case.id = test_case_id
+    archived_case.name = "Archived Case"
+    archived_case.status = Mock()
+    archived_case.status.name = "Archived"
+
+    mock_client.get_test_case.return_value = archived_case
+
+    result = await service.delete_test_case(test_case_id)
+
+    assert result.status == "already_deleted"
+    assert "already archived" in result.message
+
+    mock_client.get_test_case.assert_called_once_with(test_case_id)
+    # importantly, delete should NOT be called
+    mock_client.delete_test_case.assert_not_called()
+
 
 @pytest.mark.asyncio
 async def test_delete_test_case_failure(service: TestCaseService, mock_client: AsyncMock) -> None:

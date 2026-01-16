@@ -1,6 +1,6 @@
 # Story 1.5: Soft Delete & Archive
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -66,6 +66,11 @@ Gemini 2.0 Flash
 - Registered tool in `src/main.py`.
 - Verified with unit tests covering success, idempotency (already deleted), and failure scenarios.
 - Added E2E test (skipped in local env due to missing credentials).
+- **Code Review Fixes (2025-12-27):**
+  - **Fixed Idempotency Logic:** Explicitly checks `test_case.status` for 'Archived'/'Deleted' to prevent redundant API calls and return correct status.
+  - **Added Audit Logging:** Added structured logging to `delete_test_case` for traceability.
+  - **Fixed Rollback Failure:** Added error logging to `create_test_case` rollback block to prevent silent failures.
+  - **Cleanup:** Removed untracked `debug_dto.py` file.
 
 ### File List
 
