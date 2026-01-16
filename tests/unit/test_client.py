@@ -18,7 +18,6 @@ from src.client import (
     TestCaseCreateV2Dto,
     TestCaseOverviewDto,
     TestCasePatchV2Dto,
-    TestCaseScenarioDto,
 )
 
 

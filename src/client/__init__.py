@@ -2,14 +2,18 @@
 
 from .client import (
     AllureClient,
+    AttachmentStepDtoWithName,
+    BodyStepDtoWithSteps,
     ScenarioStepCreatedResponseDto,
     ScenarioStepCreateDto,
     TestCaseAttachmentRowDto,
     TestCaseCreateV2Dto,
     TestCaseDto,
+    TestCaseDtoWithCF,
     TestCaseOverviewDto,
     TestCasePatchV2Dto,
     TestCaseScenarioDto,
+    TestCaseScenarioV2Dto,
 )
 from .exceptions import (
     AllureAPIError,
@@ -26,12 +30,16 @@ __all__ = [
     "AllureNotFoundError",
     "AllureRateLimitError",
     "AllureValidationError",
+    "AttachmentStepDtoWithName",
+    "BodyStepDtoWithSteps",
     "ScenarioStepCreateDto",
     "ScenarioStepCreatedResponseDto",
     "TestCaseAttachmentRowDto",
     "TestCaseCreateV2Dto",
     "TestCaseDto",
+    "TestCaseDtoWithCF",
     "TestCaseOverviewDto",
     "TestCasePatchV2Dto",
     "TestCaseScenarioDto",
+    "TestCaseScenarioV2Dto",
 ]

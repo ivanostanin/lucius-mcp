@@ -30,7 +30,7 @@ async def test_csrf_token_capture_and_injection() -> None:
 
     async with AllureClient(base_url, token) as client:
         # The __aenter__ calls _ensure_valid_token which calls _get_jwt_token
-        assert client._csrf_token == "test-csrf-token"
+        assert client._csrf_token == "test-csrf-token"  # noqa: S105
 
         # Now make an API call
         data = TestCaseCreateV2Dto(name="Test Case", project_id=1)

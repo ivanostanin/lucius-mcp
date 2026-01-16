@@ -3,25 +3,29 @@ from typing import Any
 
 from pydantic import ValidationError as PydanticValidationError
 
-from src.client import AllureClient
+from src.client import (
+    AllureClient,
+    AttachmentStepDtoWithName,
+    BodyStepDtoWithSteps,
+)
 from src.client.exceptions import AllureAPIError, AllureValidationError
 from src.client.generated.models import (
-    AttachmentStepDto,
-    BodyStepDto,
     CustomFieldDto,
     CustomFieldValueWithCfDto,
-    ExpectedBodyStepDto,
     ExternalLinkDto,
     ScenarioStepCreateDto,
     SharedStepScenarioDtoStepsInner,
     TestCaseCreateV2Dto,
     TestCaseDto,
     TestCaseOverviewDto,
-    TestCasePatchV2Dto,
-    TestCaseScenarioV2Dto,
     TestCaseTreeSelectionDto,
     TestTagDto,
 )
+from src.client.generated.models.attachment_step_dto import AttachmentStepDto
+from src.client.generated.models.body_step_dto import BodyStepDto
+from src.client.generated.models.expected_body_step_dto import ExpectedBodyStepDto
+from src.client.generated.models.test_case_patch_v2_dto import TestCasePatchV2Dto
+from src.client.generated.models.test_case_scenario_v2_dto import TestCaseScenarioV2Dto
 from src.services.attachment_service import AttachmentService
 
 # Maximum lengths based on API constraints
@@ -378,7 +382,7 @@ class TestCaseService:
                         att_row = await self._attachment_service.upload_attachment(test_case_id, sa)
                         children.append(
                             SharedStepScenarioDtoStepsInner(
-                                actual_instance=AttachmentStepDto(
+                                actual_instance=AttachmentStepDtoWithName(
                                     type="AttachmentStepDto", attachment_id=att_row.id, name=att_row.name
                                 )
                             )
@@ -386,7 +390,7 @@ class TestCaseService:
 
             dtos.append(
                 SharedStepScenarioDtoStepsInner(
-                    actual_instance=BodyStepDto(type="BodyStepDto", body=action, steps=children)
+                    actual_instance=BodyStepDtoWithSteps(type="BodyStepDto", body=action, steps=children)
                 )
             )
         return dtos

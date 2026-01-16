@@ -23,6 +23,7 @@ from .exceptions import (
 )
 from .generated.api.test_case_attachment_controller_api import TestCaseAttachmentControllerApi
 from .generated.api.test_case_controller_api import TestCaseControllerApi
+from .generated.api.test_case_overview_controller_api import TestCaseOverviewControllerApi
 from .generated.api.test_case_scenario_controller_api import TestCaseScenarioControllerApi
 from .generated.api_client import ApiClient
 from .generated.configuration import Configuration
@@ -31,6 +32,7 @@ from .generated.exceptions import (
 )
 from .generated.models.attachment_step_dto import AttachmentStepDto
 from .generated.models.body_step_dto import BodyStepDto
+from .generated.models.custom_field_value_with_cf_dto import CustomFieldValueWithCfDto
 from .generated.models.scenario_step_create_dto import ScenarioStepCreateDto
 from .generated.models.scenario_step_created_response_dto import ScenarioStepCreatedResponseDto
 from .generated.models.shared_step_scenario_dto_steps_inner import SharedStepScenarioDtoStepsInner
@@ -42,20 +44,41 @@ from .generated.models.test_case_patch_v2_dto import TestCasePatchV2Dto
 from .generated.models.test_case_scenario_dto import TestCaseScenarioDto
 from .generated.models.test_case_scenario_v2_dto import TestCaseScenarioV2Dto
 
+
+# Subclasses to add missing fields to generated models
+class TestCaseDtoWithCF(TestCaseDto):
+    """Subclass to support custom_fields access."""
+
+    custom_fields: list[CustomFieldValueWithCfDto] | None = None
+
+
+class BodyStepDtoWithSteps(BodyStepDto):
+    """Subclass to support nested steps."""
+
+    steps: list[SharedStepScenarioDtoStepsInner] | None = None
+
+
+class AttachmentStepDtoWithName(AttachmentStepDto):
+    """Subclass to support name attribute."""
+
+    name: str | None = None
+
+
 logger = get_logger(__name__)
 
 # Export models for convenience
 __all__ = [
     "AllureClient",
+    "AttachmentStepDtoWithName",
+    "BodyStepDtoWithSteps",
     "ScenarioStepCreateDto",
     "ScenarioStepCreatedResponseDto",
     "SharedStepScenarioDtoStepsInner",
     "TestCaseAttachmentRowDto",
     "TestCaseCreateV2Dto",
-    "TestCaseCreateV2Dto",
     "TestCaseDto",
+    "TestCaseDtoWithCF",
     "TestCaseOverviewDto",
-    "TestCasePatchV2Dto",
     "TestCasePatchV2Dto",
     "TestCaseScenarioDto",
     "TestCaseScenarioV2Dto",
@@ -112,6 +135,7 @@ class AllureClient:
         self._attachment_api: TestCaseAttachmentControllerApi | None = None
         self._scenario_api: TestCaseScenarioControllerApi | None = None
         self._test_case_scenario_api: TestCaseScenarioControllerApi | None = None
+        self._overview_api: TestCaseOverviewControllerApi
         self._is_entered = False
 
     @classmethod
@@ -221,6 +245,7 @@ class AllureClient:
             self._attachment_api = TestCaseAttachmentControllerApi(self._api_client)
             self._scenario_api = TestCaseScenarioControllerApi(self._api_client)
             self._test_case_scenario_api = TestCaseScenarioControllerApi(self._api_client)
+            self._overview_api = TestCaseOverviewControllerApi(self._api_client)
 
     @property
     def api_client(self) -> ApiClient:
@@ -453,7 +478,29 @@ class AllureClient:
             raise AllureAPIError("Internal error: test_case_api not initialized")
 
         try:
-            return await self._test_case_api.find_one11(id=test_case_id, _request_timeout=self._timeout)
+            # Use _without_preload_content to get raw JSON for missing fields (like customFields)
+            # Actually, for customFields we now use get_overview
+            response = await self._test_case_api.find_one11_without_preload_content(
+                id=test_case_id, _request_timeout=self._timeout
+            )
+            if not 200 <= response.status_code <= 299:
+                raise ApiException(status=response.status_code, reason=response.reason_phrase, body=response.text)
+
+            raw_data = response.json()
+            # Use our subclass to support extra fields
+            case = TestCaseDtoWithCF.model_validate(raw_data)
+
+            # Fetch custom fields from overview
+            try:
+                overview = await self._overview_api.get_overview(
+                    test_case_id=test_case_id, _request_timeout=self._timeout
+                )
+                if overview.custom_fields:
+                    case.custom_fields = overview.custom_fields
+            except Exception as e:
+                logger.warning(f"Failed to fetch overview for test case {test_case_id}: {e}")
+
+            return case
         except ApiException as e:
             self._handle_api_exception(e)
             raise
@@ -560,25 +607,24 @@ class AllureClient:
                 # Is it an attachment?
                 attachment_id = step_def.get("attachmentId")
                 if attachment_id:
-                    # Build AttachmentStepDto using model_construct to bypass validation
+                    # Build AttachmentStepDtoWithName using model_construct to bypass validation
                     steps_list.append(
                         SharedStepScenarioDtoStepsInner(
-                            actual_instance=AttachmentStepDto.model_construct(
-                                type="AttachmentStepDto", attachment_id=attachment_id
+                            actual_instance=AttachmentStepDtoWithName.model_construct(
+                                type="AttachmentStepDto", attachment_id=attachment_id, name=step_def.get("name")
                             )
                         )
                     )
                 else:
                     # It's a Body Step
+                    body = step_def.get("body")
                     child_ids = step_def.get("children") or []
                     child_steps = build_steps(child_ids) if child_ids else None
 
-                    body = step_def.get("body") or ""
-
-                    # Build BodyStepDto using model_construct to bypass validation
+                    # Build BodyStepDtoWithSteps using model_construct to bypass validation
                     steps_list.append(
                         SharedStepScenarioDtoStepsInner(
-                            actual_instance=BodyStepDto.model_construct(
+                            actual_instance=BodyStepDtoWithSteps.model_construct(
                                 type="BodyStepDto",
                                 body=body,
                                 body_json=None,  # Skip complex rich-text

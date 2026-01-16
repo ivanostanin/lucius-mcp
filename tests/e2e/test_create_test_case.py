@@ -1,8 +1,12 @@
 import json
+import os
+
 import pytest
 import respx
 from httpx import Response
 
+from src.client import AllureClient
+from src.services.test_case_service import TestCaseService
 from src.tools.create_test_case import create_test_case
 from src.utils.config import settings
 
@@ -193,3 +197,206 @@ async def test_url_attachment_flow() -> None:
 
         # Verify Upload
         assert upload_route.called
+
+
+# ==========================================
+# Real E2E Tests (using actual TestOps instance)
+# ==========================================
+
+
+@pytest.mark.skipif(
+    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
+)
+@pytest.mark.asyncio
+async def test_e2e_3_custom_fields_creation(project_id: int, allure_client: AllureClient) -> None:
+    """
+    E2E-3: Custom Fields Creation.
+    Create a test case with custom fields using real TestOps instance.
+    """
+    service = TestCaseService(allure_client)
+    test_case_id = None
+
+    try:
+        # Create test case with custom fields
+        # Note: Custom fields must exist in the project
+        case_name = "E2E-3 Custom Fields Test"
+        custom_fields = {"Feature": "Flow", "Component": "Authentication"}
+
+        created_case = await service.create_test_case(
+            project_id=project_id, name=case_name, description="Testing custom fields", custom_fields=custom_fields
+        )
+
+        test_case_id = created_case.id
+        assert test_case_id is not None
+        assert created_case.name == case_name
+
+        # Verify custom fields were set
+        fetched_case = await service.get_test_case(test_case_id)
+        assert fetched_case.custom_fields is not None
+
+        # Custom fields should be present
+        cf_values = {cf.custom_field.name: cf.name for cf in fetched_case.custom_fields if cf.custom_field}
+        assert "Priority" in cf_values or "Component" in cf_values  # At least one should be set
+
+    finally:
+        if test_case_id:
+            await allure_client.delete_test_case(test_case_id)
+
+
+@pytest.mark.skipif(
+    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
+)
+@pytest.mark.asyncio
+async def test_e2e_4_minimal_creation(project_id: int, allure_client: AllureClient) -> None:
+    """
+    E2E-4: Minimal Creation.
+    Create test case with only required fields (project_id, name).
+    """
+    service = TestCaseService(allure_client)
+    test_case_id = None
+
+    try:
+        case_name = "E2E-4 Minimal Test Case"
+
+        created_case = await service.create_test_case(project_id=project_id, name=case_name)
+
+        test_case_id = created_case.id
+        assert test_case_id is not None
+        assert created_case.name == case_name
+
+        # Verify it was created with defaults
+        fetched_case = await service.get_test_case(test_case_id)
+        assert fetched_case.id == test_case_id
+        assert fetched_case.name == case_name
+        assert fetched_case.description is None or fetched_case.description == ""
+
+    finally:
+        if test_case_id:
+            await allure_client.delete_test_case(test_case_id)
+
+
+@pytest.mark.skipif(
+    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
+)
+@pytest.mark.asyncio
+async def test_e2e_5_step_level_attachments(project_id: int, allure_client: AllureClient) -> None:
+    """
+    E2E-5: Step-level Attachments.
+    Create test case with attachments nested in steps.
+    """
+    service = TestCaseService(allure_client)
+    test_case_id = None
+
+    try:
+        case_name = "E2E-5 Step Attachments Test"
+        # Small 1x1 transparent PNG
+        pixel_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNiAAAABgANjd8qAAAAAElFTkSuQmCC"
+
+        steps = [
+            {
+                "action": "Navigate to login page",
+                "expected": "Login form displayed",
+                "attachments": [{"name": "login-screen.png", "content": pixel_b64, "content_type": "image/png"}],
+            }
+        ]
+
+        created_case = await service.create_test_case(project_id=project_id, name=case_name, steps=steps)
+
+        test_case_id = created_case.id
+        assert test_case_id is not None
+
+        # Verify scenario has the step with attachment
+        scenario = await allure_client.get_test_case_scenario(test_case_id)
+        assert scenario.steps is not None
+        assert len(scenario.steps) > 0
+
+        # Look for the attachment in the step's children
+        found_attachment = False
+        for step in scenario.steps:
+            if step.actual_instance and hasattr(step.actual_instance, "steps"):
+                child_steps = step.actual_instance.steps
+                if child_steps:
+                    for child in child_steps:
+                        if child.actual_instance and hasattr(child.actual_instance, "attachment_id"):
+                            found_attachment = True
+                            break
+
+        assert found_attachment, "Step-level attachment not found in scenario"
+
+    finally:
+        if test_case_id:
+            await allure_client.delete_test_case(test_case_id)
+
+
+@pytest.mark.skipif(
+    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
+)
+@pytest.mark.asyncio
+async def test_e2e_6_complex_step_hierarchy(project_id: int, allure_client: AllureClient) -> None:
+    """
+    E2E-6: Complex Step Hierarchy.
+    Create test case with multiple steps, expected results, and attachments.
+    """
+    service = TestCaseService(allure_client)
+    test_case_id = None
+
+    try:
+        case_name = "E2E-6 Complex Hierarchy Test"
+        pixel_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNiAAAABgANjd8qAAAAAElFTkSuQmCC"
+
+        steps = [
+            {"action": "Step 1: Login", "expected": "Dashboard visible"},
+            {
+                "action": "Step 2: Navigate to settings",
+                "expected": "Settings page loaded",
+                "attachments": [{"name": "settings.png", "content": pixel_b64, "content_type": "image/png"}],
+            },
+            {"action": "Step 3: Update profile", "expected": "Profile updated successfully"},
+        ]
+
+        created_case = await service.create_test_case(project_id=project_id, name=case_name, steps=steps)
+
+        test_case_id = created_case.id
+        assert test_case_id is not None
+
+        # Verify scenario has all steps
+        scenario = await allure_client.get_test_case_scenario(test_case_id)
+        assert scenario.steps is not None
+        assert len(scenario.steps) >= 3, f"Expected at least 3 steps, got {len(scenario.steps)}"
+
+    finally:
+        if test_case_id:
+            await allure_client.delete_test_case(test_case_id)
+
+
+@pytest.mark.skipif(
+    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
+)
+@pytest.mark.asyncio
+async def test_e2e_7_edge_cases(project_id: int, allure_client: AllureClient) -> None:
+    """
+    E2E-7: Edge Cases.
+    Test with empty description, no steps, no tags.
+    """
+    service = TestCaseService(allure_client)
+    test_case_id = None
+
+    try:
+        case_name = "E2E-7 Edge Cases Test"
+
+        # Create with empty optional fields
+        created_case = await service.create_test_case(
+            project_id=project_id, name=case_name, description="", steps=None, tags=None, attachments=None
+        )
+
+        test_case_id = created_case.id
+        assert test_case_id is not None
+        assert created_case.name == case_name
+
+        # Verify it was created
+        fetched_case = await service.get_test_case(test_case_id)
+        assert fetched_case.id == test_case_id
+
+    finally:
+        if test_case_id:
+            await allure_client.delete_test_case(test_case_id)
