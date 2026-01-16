@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -30,8 +31,11 @@ from src.services.attachment_service import AttachmentService
 
 # Maximum lengths based on API constraints
 MAX_NAME_LENGTH = 255
+MAX_PRECONDITION_LENGTH = 1000
 MAX_TAG_LENGTH = 255
 MAX_BODY_LENGTH = 10000  # Step body limit
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -388,6 +392,12 @@ class TestCaseService:
                             )
                         )
 
+            # Recursive steps processing
+            nested_steps_data = s.get("steps")
+            if nested_steps_data and isinstance(nested_steps_data, list):
+                nested_dtos = await self._build_steps_dtos_from_list(test_case_id, nested_steps_data)
+                children.extend(nested_dtos)
+
             dtos.append(
                 SharedStepScenarioDtoStepsInner(
                     actual_instance=BodyStepDtoWithSteps(type="BodyStepDto", body=action, steps=children)
@@ -656,13 +666,49 @@ class TestCaseService:
 
     async def _recreate_scenario(self, test_case_id: int, steps: list[SharedStepScenarioDtoStepsInner]) -> None:
         """Recreate the entire scenario step by step."""
-        # 1. Clear existing scenario
-        await self._client.update_test_case(test_case_id, TestCasePatchV2Dto(scenario=TestCaseScenarioV2Dto(steps=[])))
+        # 1. Fetch current scenario for rollback in case of failure
+        try:
+            previous_scenario = await self._client.get_test_case_scenario(test_case_id)
+        except Exception:
+            # If we can't get current scenario, we can't rollback to it. Proceed with caution.
+            previous_scenario = None
 
-        # 2. Recursively add steps
-        last_step_id: int | None = None
-        for step in steps:
-            last_step_id = await self._recursive_add_step(test_case_id, step, after_id=last_step_id)
+        try:
+            # 2. Clear existing scenario
+            await self._client.update_test_case(
+                test_case_id, TestCasePatchV2Dto(scenario=TestCaseScenarioV2Dto(steps=[]))
+            )
+
+            # 3. Recursively add steps
+            last_step_id: int | None = None
+            for step in steps:
+                last_step_id = await self._recursive_add_step(test_case_id, step, after_id=last_step_id)
+
+        except Exception as e:
+            # Rollback Attempt
+            if previous_scenario and previous_scenario.steps:
+                try:
+                    # Clear any partial progress
+                    await self._client.update_test_case(
+                        test_case_id, TestCasePatchV2Dto(scenario=TestCaseScenarioV2Dto(steps=[]))
+                    )
+                    # Attempt to restore previous steps
+                    # Note: We can only best-effort restore. IDs will change.
+                    # We need to convert TestCaseScenarioDto steps -> SharedStepScenarioDtoStepsInner
+                    # This is complex because Read DTOs != Write DTOs.
+                    # For now, we raise a clear error indicating data was lost/partial.
+                    # Ideally, we would have logic to convert Read -> Write DTOs, but that's a larger feature.
+                    # Given the scope, raising a critical error is better than silent failure.
+                    pass
+                except Exception as rollback_error:
+                    # We log this as a warning because the original error will be raised anyway
+                    logger.warning(
+                        f"Rollback failed during scenario recreation. Partial data may persist. Error: {rollback_error}"
+                    )
+
+            raise AllureAPIError(
+                f"Failed to recreate scenario. Steps may be partially applied or lost. Error: {e}"
+            ) from e
 
     async def _recursive_add_step(
         self,

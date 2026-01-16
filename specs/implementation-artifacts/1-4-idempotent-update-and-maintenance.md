@@ -1,6 +1,6 @@
 # Story 1.4: Idempotent Update & Maintenance
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -16,44 +16,44 @@ so that I can refine test documentation without creating duplicates or losing da
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Extend TestCaseService with Update Method** (AC: #1, #2)
-  - [ ] 1.1: Add `async def update_test_case(self, test_case_id: int, data: TestCaseUpdate) -> TestCase` to `TestCaseService`
-  - [ ] 1.2: Implement partial update logic - only send non-None fields
-  - [ ] 1.3: Fetch current state before update to support idempotency check
-  - [ ] 1.4: Compare incoming data with current state to detect no-op scenarios
-  - [ ] 1.5: Return existing state unchanged if update would have no effect (idempotency)
+- [x] **Task 1: Extend TestCaseService with Update Method** (AC: #1, #2)
+  - [x] 1.1: Add `async def update_test_case(self, test_case_id: int, data: TestCaseUpdate) -> TestCase` to `TestCaseService`
+  - [x] 1.2: Implement partial update logic - only send non-None fields
+  - [x] 1.3: Fetch current state before update to support idempotency check
+  - [x] 1.4: Compare incoming data with current state to detect no-op scenarios
+  - [x] 1.5: Return existing state unchanged if update would have no effect (idempotency)
 
-- [ ] **Task 2: Implement Get Test Case for Idempotency** (AC: #2)
-  - [ ] 2.1: Add `async def get_test_case(self, test_case_id: int) -> TestCase` to `TestCaseService`
-  - [ ] 2.2: Handle 404 responses with `AllureNotFoundError`
-  - [ ] 2.3: Cache fetched test case for duration of update operation
+- [x] **Task 2: Implement Get Test Case for Idempotency** (AC: #2)
+  - [x] 2.1: Add `async def get_test_case(self, test_case_id: int) -> TestCase` to `TestCaseService`
+  - [x] 2.2: Handle 404 responses with `AllureNotFoundError`
+  - [x] 2.3: Cache fetched test case for duration of update operation
 
-- [ ] **Task 3: Create Update Tool Definition** (AC: #1, #3)
-  - [ ] 3.1: Add `update_test_case` tool to `src/tools/cases.py`
-  - [ ] 3.2: Accept `test_case_id` as required parameter
-  - [ ] 3.3: All other parameters optional (partial update support)
-  - [ ] 3.4: Return human-readable confirmation: "Updated Test Case [ID]: [changes summary]"
-  - [ ] 3.5: Return "No changes needed" message for idempotent no-op calls
+- [x] **Task 3: Create Update Tool Definition** (AC: #1, #3)
+  - [x] 3.1: Add `update_test_case` tool to `src/tools/update_test_case.py`
+  - [x] 3.2: Accept `test_case_id` as required parameter
+  - [x] 3.3: All other parameters optional (partial update support)
+  - [x] 3.4: Return human-readable confirmation: "Updated Test Case [ID]: [changes summary]"
+  - [x] 3.5: Return "No changes needed" message for idempotent no-op calls
 
-- [ ] **Task 4: Implement Partial Update Logic** (AC: #1)
-  - [ ] 4.1: Create `TestCaseUpdate` Pydantic model (all fields optional)
-  - [ ] 4.2: Filter out None values before API call
-  - [ ] 4.3: Support updating: name, description, precondition, steps, tags, custom_fields
-  - [ ] 4.4: Support step modifications: add, remove, reorder
-  - [ ] 4.5: Support tag modifications: add, remove
+- [x] **Task 4: Implement Partial Update Logic** (AC: #1)
+  - [x] 4.1: Create `TestCaseUpdate` Pydantic model (all fields optional)
+  - [x] 4.2: Filter out None values before API call
+  - [x] 4.3: Support updating: name, description, precondition, steps, tags, custom_fields
+  - [x] 4.4: Support step modifications: add, remove, reorder
+  - [x] 4.5: Support tag modifications: add, remove
 
-- [ ] **Task 5: Quality Assurance** (AC: implicit)
-  - [ ] 5.1: Write unit tests for update scenarios in `test_case_service.py`
-  - [ ] 5.2: Write idempotency tests - same call twice yields same result
-  - [ ] 5.3: Write partial update tests - unspecified fields unchanged
-  - [ ] 5.4: Run `mypy --strict` and `ruff check`
-  - [ ] 5.5: Run tests with `--alluredir=allure-results` for allure-pytest reporting
+- [x] **Task 5: Quality Assurance** (AC: implicit)
+  - [x] 5.1: Write unit tests for update scenarios in `test_case_service.py`
+  - [x] 5.2: Write idempotency tests - same call twice yields same result
+  - [x] 5.3: Write partial update tests - unspecified fields unchanged
+  - [x] 5.4: Run `mypy --strict` and `ruff check`
+  - [x] 5.5: Run tests with `--alluredir=allure-results` for allure-pytest reporting
 
-- [ ] **Task 6: E2E Tests** (AC: implicit, NFR11)
-  - [ ] 6.1: Create `tests/e2e/test_update_test_case.py`
-  - [ ] 6.2: Write E2E test updating test case in sandbox
-  - [ ] 6.3: Verify idempotency in sandbox - update twice, same result
-  - [ ] 6.4: Verify partial update behavior with real API
+- [x] **Task 6: E2E Tests** (AC: implicit, NFR11)
+  - [x] 6.1: Create `tests/e2e/test_update_test_case.py`
+  - [x] 6.2: Write E2E test updating test case in sandbox
+  - [x] 6.3: Verify idempotency in sandbox - update twice, same result
+  - [x] 6.4: Verify partial update behavior with real API
 
 ## Dev Notes
 
@@ -236,12 +236,18 @@ Suggestions:
 
 ### Agent Model Used
 
-_To be filled by implementing agent_
+Antigravity (Google Deepmind)
 
 ### Completion Notes List
 
-_To be filled during implementation_
+- Implemented `update_test_case` as a standalone tool in `src/tools/update_test_case.py` instead of `cases.py` to keep files small and focused, following the "Thin Tool" pattern.
+- Implemented robust idempotency checks by comparing current state fields with update data.
+- Added support for partial updates, maintaining existing data where input fields are None.
+- Added comprehensive unit and E2E tests covering various update scenarios, including attachments and steps.
 
 ### File List
 
-_To be filled during implementation_
+- `src/services/test_case_service.py`
+- `src/tools/update_test_case.py`
+- `tests/unit/test_test_case_service.py`
+- `tests/e2e/test_update_test_case.py`

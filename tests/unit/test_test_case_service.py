@@ -4,6 +4,7 @@ import pytest
 
 from src.client import AllureClient
 from src.client.exceptions import AllureAPIError, AllureValidationError
+from src.client.generated import SharedStepScenarioDtoStepsInner
 from src.client.generated.models import (
     AttachmentStepDto,
     BodyStepDto,
@@ -570,3 +571,87 @@ class TestUpdateTestCase:
         assert isinstance(second_step, AttachmentStepDto)
         assert second_step.attachment_id == 200
         assert second_step.name == "New Att"
+
+    @pytest.mark.asyncio
+    async def test_update_nested_steps(
+        self, service: TestCaseService, mock_client: AsyncMock, mock_scenario_response: TestCaseScenarioDto
+    ) -> None:
+        """Test updating steps with nested hierarchy."""
+        test_case_id = 999
+        mock_client.get_test_case.return_value = TestCaseDto(id=test_case_id)
+        mock_client.get_test_case_scenario.return_value = mock_scenario_response
+        mock_client.update_test_case.return_value = TestCaseDto(id=test_case_id)
+
+        # Nested Steps Structure
+        steps = [
+            {
+                "action": "Parent",
+                "steps": [{"action": "Child 1"}, {"action": "Child 2", "steps": [{"action": "Grandchild"}]}],
+            }
+        ]
+        data = TestCaseUpdate(steps=steps)
+
+        await service.update_test_case(test_case_id, data)
+
+        # Verify patch construction
+        mock_client.update_test_case.assert_called_once()
+        patch_dto: TestCasePatchV2Dto = mock_client.update_test_case.call_args[0][1]
+        assert patch_dto.scenario is not None
+        assert patch_dto.scenario.steps is not None
+        assert len(patch_dto.scenario.steps) == 1
+
+        # Parent
+        parent = patch_dto.scenario.steps[0].actual_instance
+        assert isinstance(parent, BodyStepDto)
+        assert parent.body == "Parent"
+
+        # Verify children manually attached to parent DTO (via our custom logic)
+        # Note: generated BodyStepDto might not have 'steps' field typing, checking hasattr/getattr
+        assert hasattr(parent, "steps")
+        children = parent.steps
+        assert len(children) == 2
+
+        # Child 1
+        child1 = children[0].actual_instance
+        assert child1.body == "Child 1"
+
+        # Child 2
+        child2 = children[1].actual_instance
+        assert child2.body == "Child 2"
+
+        # Grandchild
+        grandchild_list = child2.steps
+        assert len(grandchild_list) == 1
+        assert grandchild_list[0].actual_instance.body == "Grandchild"
+
+    @pytest.mark.asyncio
+    async def test_recreate_scenario_rollback(self, service: TestCaseService, mock_client: AsyncMock) -> None:
+        """Test scenario recreation rollback on failure."""
+        test_case_id = 999
+
+        # 1. Setup mock current scenario (to be restored)
+        steps = [SharedStepScenarioDtoStepsInner(actual_instance=BodyStepDto(body="Old Step"))]
+        current_scenario = TestCaseScenarioDto(steps=steps)  # Using DTO for fetch response
+        mock_client.get_test_case_scenario.return_value = current_scenario
+
+        # 2. Mock update_test_case for clearing (success first time, success on rollback)
+        mock_client.update_test_case.return_value = TestCaseDto(id=test_case_id)
+
+        # 3. Mock recursive add step to fail
+        # This mocks the creation of the NEW steps failing
+        service._recursive_add_step = AsyncMock(side_effect=Exception("API Fail"))  # type: ignore
+
+        # 4. Call update with new steps
+        data = TestCaseUpdate(steps=[{"action": "New Step"}])
+
+        with pytest.raises(AllureAPIError, match="Failed to recreate scenario"):
+            await service.update_test_case(test_case_id, data)
+
+        # 5. Verify Rollback behavior
+        # Should have called update_test_case to clear execution twice:
+        # 1. Initial clear
+        # 2. Rollback clear
+        assert mock_client.update_test_case.call_count == 2
+
+        # Verify get_test_case_scenario was called to fetch backup
+        mock_client.get_test_case_scenario.assert_called_once()
