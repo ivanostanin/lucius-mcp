@@ -9,7 +9,7 @@ from src.client import (
     AttachmentStepDtoWithName,
     BodyStepDtoWithSteps,
 )
-from src.client.exceptions import AllureAPIError, AllureValidationError
+from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError
 from src.client.generated.models import (
     CustomFieldDto,
     CustomFieldValueWithCfDto,
@@ -55,6 +55,16 @@ class TestCaseUpdate:
     test_layer_id: int | None = None
     workflow_id: int | None = None
     links: list[dict[str, str]] | None = None
+
+
+@dataclass
+class DeleteResult:
+    """Result of a delete operation."""
+
+    test_case_id: int
+    status: str  # "archived", "deleted", "already_deleted", "not_found"
+    message: str
+    name: str | None = None
 
 
 class TestCaseService:
@@ -213,6 +223,28 @@ class TestCaseService:
             updated_case = await self.get_test_case(test_case_id)
 
         return updated_case
+
+    async def delete_test_case(self, test_case_id: int) -> DeleteResult:
+        """Archive/soft-delete a test case."""
+        # 1. Verify existence (idempotency check)
+        try:
+            test_case = await self.get_test_case(test_case_id)
+        except AllureNotFoundError:
+            return DeleteResult(
+                test_case_id=test_case_id,
+                status="already_deleted",
+                message=f"Test Case {test_case_id} was already archived or doesn't exist.",
+            )
+
+        # 2. Perform deletion
+        await self._client.delete_test_case(test_case_id)
+
+        return DeleteResult(
+            test_case_id=test_case_id,
+            status="archived",
+            name=test_case.name,
+            message=f"Test Case {test_case_id}: '{test_case.name}' has been archived.",
+        )
 
     async def _prepare_field_updates(  # noqa: C901
         self, current_case: TestCaseDto, data: TestCaseUpdate

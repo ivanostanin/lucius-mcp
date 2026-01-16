@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from src.client import AllureClient
-from src.client.exceptions import AllureAPIError, AllureValidationError
+from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError
 from src.client.generated import SharedStepScenarioDtoStepsInner
 from src.client.generated.models import (
     AttachmentStepDto,
@@ -655,3 +655,50 @@ class TestUpdateTestCase:
 
         # Verify get_test_case_scenario was called to fetch backup
         mock_client.get_test_case_scenario.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_delete_test_case_success(service: TestCaseService, mock_client: AsyncMock) -> None:
+    """Test successful deletion of a test case."""
+    test_case_id = 123
+    mock_client.get_test_case.return_value = TestCaseDto(id=test_case_id, name="To Delete")
+    mock_client.delete_test_case.return_value = None
+
+    result = await service.delete_test_case(test_case_id)
+
+    assert result.test_case_id == test_case_id
+    assert result.status == "archived"
+    assert result.name == "To Delete"
+    assert "archived" in result.message
+
+    mock_client.get_test_case.assert_called_once_with(test_case_id)
+    mock_client.delete_test_case.assert_called_once_with(test_case_id)
+
+
+@pytest.mark.asyncio
+async def test_delete_test_case_already_deleted(service: TestCaseService, mock_client: AsyncMock) -> None:
+    """Test idempotent deletion when test case is not found."""
+    test_case_id = 123
+
+    # Simulate API 404
+    mock_client.get_test_case.side_effect = AllureNotFoundError("Not found")
+
+    result = await service.delete_test_case(test_case_id)
+
+    assert result.test_case_id == test_case_id
+    assert result.status == "already_deleted"
+    assert "already archived" in result.message
+
+    mock_client.get_test_case.assert_called_once_with(test_case_id)
+    mock_client.delete_test_case.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_delete_test_case_failure(service: TestCaseService, mock_client: AsyncMock) -> None:
+    """Test failure during deletion."""
+    test_case_id = 123
+    mock_client.get_test_case.return_value = TestCaseDto(id=test_case_id, name="Fail Delete")
+    mock_client.delete_test_case.side_effect = Exception("API Error")
+
+    with pytest.raises(Exception, match="API Error"):
+        await service.delete_test_case(test_case_id)
