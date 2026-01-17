@@ -1,6 +1,6 @@
 # Story 1.6: Comprehensive End-to-End Tests
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -18,43 +18,43 @@ so that I can ensure the MCP server correctly integrates with Allure TestOps in 
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Configure E2E Test Infrastructure** (AC: #4)
-  - [ ] 1.1: Create `tests/e2e/` directory structure
-  - [ ] 1.2: Create `tests/e2e/conftest.py` with sandbox connection fixtures
-  - [ ] 1.3: Add environment variable configuration for `ALLURE_SANDBOX_URL` and `ALLURE_SANDBOX_TOKEN`
-  - [ ] 1.4: Create `.env.test.example` with placeholder values
-  - [ ] 1.5: Add `pytest-asyncio` configuration for async E2E tests
+- [x] **Task 1: Configure E2E Test Infrastructure** (AC: #4)
+  - [x] 1.1: Create `tests/e2e/` directory structure
+  - [x] 1.2: Create `tests/e2e/conftest.py` with sandbox connection fixtures
+  - [x] 1.3: Add environment variable configuration for `ALLURE_SANDBOX_URL` and `ALLURE_SANDBOX_TOKEN`
+  - [x] 1.4: Create `.env.test.example` with placeholder values
+  - [x] 1.5: Add `pytest-asyncio` configuration for async E2E tests
 
-- [ ] **Task 2: Implement Test Data Management** (AC: #5)
-  - [ ] 2.1: Create `tests/e2e/helpers/cleanup.py` for test isolation
-  - [ ] 2.2: Implement automatic cleanup of created test cases after each test
-  - [ ] 2.3: Add unique test run ID prefix to all created entities
-  - [ ] 2.4: Implement retry logic for flaky sandbox connections
+- [x] **Task 2: Implement Test Data Management** (AC: #5)
+  - [x] 2.1: Create `tests/e2e/helpers/cleanup.py` for test isolation
+  - [x] 2.2: Implement automatic cleanup of created test cases after each test
+  - [x] 2.3: Add unique test run ID prefix to all created entities
+  - [x] 2.4: Implement retry logic for flaky sandbox connections
 
-- [ ] **Task 3: Create Test Case CRUD E2E Tests** (AC: #1, #2)
-  - [ ] 3.1: Create `tests/e2e/test_case_crud.py`
-  - [ ] 3.2: Test `create_test_case` tool with full metadata
-  - [ ] 3.3: Test `get_test_case` retrieves correct data
-  - [ ] 3.4: Test `update_test_case` modifies fields correctly
-  - [ ] 3.5: Test `delete_test_case` archives the test case
-  - [ ] 3.6: Test idempotency of update operations
+- [x] **Task 3: Create Test Case CRUD E2E Tests** (AC: #1, #2)
+  - [x] 3.1: Create `tests/e2e/test_case_crud.py`
+  - [x] 3.2: Test `create_test_case` tool with full metadata
+  - [x] 3.3: Test `get_test_case` retrieves correct data
+  - [x] 3.4: Test `update_test_case` modifies fields correctly
+  - [x] 3.5: Test `delete_test_case` archives the test case
+  - [x] 3.6: Test idempotency of update operations
 
-- [ ] **Task 4: Validate Tool Output Formats** (AC: #3)
-  - [ ] 4.1: Verify success messages match Agent Hint format
-  - [ ] 4.2: Verify error messages are LLM-friendly (not raw JSON)
-  - [ ] 4.3: Test validation error responses
-  - [ ] 4.4: Test not-found error responses
+- [x] **Task 4: Validate Tool Output Formats** (AC: #3)
+  - [x] 4.1: Verify success messages match Agent Hint format
+  - [x] 4.2: Verify error messages are LLM-friendly (not raw JSON)
+  - [x] 4.3: Test validation error responses
+  - [x] 4.4: Test not-found error responses
 
-- [ ] **Task 5: CI/CD Integration** (AC: #4)
-  - [ ] 5.1: Add E2E test job to GitHub Actions workflow
-  - [ ] 5.2: Configure secrets for sandbox credentials
-  - [ ] 5.3: Add conditional E2E execution (skip if no sandbox configured)
-  - [ ] 5.4: Generate Allure report artifacts and upload to GitHub Actions
+- [x] **Task 5: CI/CD Integration** (AC: #4)
+  - [x] 5.1: Add E2E test job to GitHub Actions workflow
+  - [x] 5.2: Configure secrets for sandbox credentials
+  - [x] 5.3: Add conditional E2E execution (skip if no sandbox configured)
+  - [x] 5.4: Generate Allure report artifacts and upload to GitHub Actions
 
-- [ ] **Task 6: Documentation** (AC: implicit)
-  - [ ] 6.1: Document E2E test setup in README
-  - [ ] 6.2: Document sandbox requirements
-  - [ ] 6.3: Add troubleshooting guide for common E2E failures
+- [x] **Task 6: Documentation** (AC: implicit)
+  - [x] 6.1: Document E2E test setup in README
+  - [x] 6.2: Document sandbox requirements
+  - [x] 6.3: Add troubleshooting guide for common E2E failures
 
 ## Dev Notes
 
@@ -315,12 +315,24 @@ tests/
 
 ### Agent Model Used
 
-_To be filled by implementing agent_
+Gemini 2.0 Flash
 
 ### Completion Notes List
 
-_To be filled during implementation_
+- Implemented comprehensive E2E tests for Test Case CRUD operations (`tests/e2e/test_case_crud.py`).
+- Created `CleanupTracker` for robust test isolation and cleanup of created resources.
+- Implemented tool output format validation tests (`tests/e2e/test_tool_outputs.py`).
+- Configured GitHub Actions workflow `e2e-tests.yml` for automated E2E execution.
+- Verified that `AllureClient` configuration includes retry logic (retries=3) for network stability (Task 2.4).
+- Updated README with E2E setup and troubleshooting guide.
+- Implemented robust error handling in tests.
 
 ### File List
 
-_To be filled during implementation_
+- `.github/workflows/e2e-tests.yml` (NEW)
+- `tests/e2e/conftest.py` (MODIFIED)
+- `tests/e2e/helpers/cleanup.py` (NEW)
+- `tests/e2e/test_case_crud.py` (NEW)
+- `tests/e2e/test_tool_outputs.py` (NEW)
+- `.env.test.example` (NEW)
+- `README.md` (MODIFIED)

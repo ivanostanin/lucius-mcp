@@ -1,202 +1,140 @@
-import json
 import os
+from typing import Any
 
 import pytest
-import respx
-from httpx import Response
 
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService
 from src.tools.create_test_case import create_test_case
-from src.utils.config import settings
 
 
+@pytest.mark.skipif(
+    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
+)
 @pytest.mark.asyncio
-async def test_full_house_creation() -> None:
+async def test_full_house_creation(project_id: int, allure_client: AllureClient, cleanup_tracker: Any, pixel_b64: str) -> None:
     """
     E2E-1: The "Full House" Test Case.
-    Verifies creation with name, desc, steps, tags, attachments.
+    Verifies creation with name, desc, steps, tags, attachments using real API.
     """
-    project_id = 101
-
-    # Mock data
-    name = "E2E Full House"
+    # Test Data
+    name = "E2E Full House Real"
     description = "# Markdown Desc"
+
     steps = [{"action": "Login", "expected": "Dashboard"}]
     tags = ["e2e", "integration"]
     attachments = [
         {
             "name": "evidence.png",
-            "content": "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+            "content": pixel_b64,
             "content_type": "image/png",
         }
     ]
 
-    # Expected API calls
-    async with respx.mock(base_url=settings.ALLURE_ENDPOINT) as mock:
-        # 0. Auth Mock
-        mock.post("/api/uaa/oauth/token").respond(
-            status_code=200,
-            json={"access_token": "mock-token", "expires_in": 3600},
-        )
+    # Call Tool
+    result_msg = await create_test_case(
+        project_id=project_id, name=name, description=description, steps=steps, tags=tags, attachments=attachments
+    )
 
-        # 1. Test Case Creation Mock
-        create_route = mock.post("/api/testcase").respond(
-            status_code=200,
-            json={
-                "id": 200,
-                "name": name,
-                "description": description,
-                "automated": False,
-                "statusId": 1,
-                "workflowId": 1,
-                "projectId": project_id,
-            },
-        )
+    # Verifications
+    assert "Created Test Case ID:" in result_msg
+    assert name in result_msg
 
-        # 2. Step Creation Mock (Dynamic responses for multiple calls)
-        # We need to return different IDs for Action (301), Expected (302), and Attachment (303)
-        step_ids = [301, 302, 303]
+    # Extract ID from message "Created Test Case ID: <id> Name: <name>"
+    import re
 
-        def step_side_effect(request):
-            step_id = step_ids.pop(0)
-            return Response(200, json={"createdStepId": step_id})
+    match = re.search(r"ID: (\d+)", result_msg)
+    assert match, "Could not extract ID from result message"
+    test_case_id = int(match.group(1))
 
-        step_route = mock.post("/api/testcase/step").mock(side_effect=step_side_effect)
+    # Track for cleanup
+    cleanup_tracker.track_test_case(test_case_id)
 
-        # 3. Global Attachment Upload Mock
-        upload_route = mock.post("/api/testcase/attachment", params={"testCaseId": "200"}).respond(
-            status_code=200,
-            json=[
-                {
-                    "id": 500,
-                    "name": "evidence.png",
-                    "entity": "ATTACHMENT",
-                    "contentLength": 100,
-                    "contentType": "image/png",
-                }
-            ],
-        )
+    # Verify in Allure
+    service = TestCaseService(allure_client)
+    fetched_case = await service.get_test_case(test_case_id)
 
-        # Call Tool
-        result_msg = await create_test_case(
-            project_id=project_id, name=name, description=description, steps=steps, tags=tags, attachments=attachments
-        )
+    assert fetched_case.name == name
+    assert fetched_case.description == description
 
-        # Verifications
-        assert "Created Test Case ID: 200" in result_msg
-        assert name in result_msg
+    # Verify Tags
+    fetched_tags = [t.name for t in (fetched_case.tags or [])]
+    for tag in tags:
+        assert tag in fetched_tags
 
-        assert create_route.called
-        assert upload_route.called
-        assert step_route.call_count == 3
+    # Verify Scenario (Steps)
+    scenario = await allure_client.get_test_case_scenario(test_case_id)
+    assert scenario.steps is not None
+    assert len(scenario.steps) >= len(steps)
 
-        # Verify initial creation payload doesn't have scenario
-        create_request = create_route.calls.last.request
-        create_payload = json.loads(create_request.content)
-        assert "scenario" not in create_payload
-        assert create_payload["name"] == name
-        assert create_payload["description"] == description
+    # Check for step content
+    step_found = False
+    for step in scenario.steps:
+        if step.actual_instance and hasattr(step.actual_instance, "body"):
+            if step.actual_instance.body == "Login":
+                step_found = True
+                break
+    assert step_found, "Step 'Login' not found in scenario"
 
-        # Verify Action Step payload (First step call)
-        action_call = step_route.calls[0]
-        action_payload = json.loads(action_call.request.content)
-        assert action_payload["body"] == "Login"
-        assert action_payload["testCaseId"] == 200
-        assert action_payload.get("parentId") is None
-        # Check that it was called WITHOUT afterId (it's the first step)
-        assert "afterId" not in action_call.request.url.params
-
-        # Verify Expected Step payload (Second step call, child of action)
-        expected_call = step_route.calls[1]
-        expected_payload = json.loads(expected_call.request.content)
-        assert expected_payload["body"] == "Dashboard"
-        assert expected_payload.get("parentId") == 301
-        assert (
-            "afterId" not in expected_call.request.url.params
-        )  # Children are added without afterId (to the beginning)
-
-        # Verify Attachment Step payload (Third step call, after action)
-        attachment_step_call = step_route.calls[2]
-        attachment_payload = json.loads(attachment_step_call.request.content)
-        assert attachment_payload["attachmentId"] == 500
-        assert attachment_payload.get("parentId") is None
-        assert attachment_step_call.request.url.params.get("afterId") == "301"
+    # Verify Global Attachment
+    # Attachments are added as steps in the scenario in our implementation
+    attachment_found = False
+    for step in scenario.steps:
+        if step.actual_instance and hasattr(step.actual_instance, "attachment_id"):
+            if step.actual_instance.name == "evidence.png":
+                attachment_found = True
+                break
+    assert attachment_found, "Global attachment 'evidence.png' not found in scenario"
 
 
+@pytest.mark.skipif(
+    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
+)
 @pytest.mark.asyncio
-async def test_url_attachment_flow() -> None:
+async def test_url_attachment_flow(project_id: int, allure_client: AllureClient, cleanup_tracker: Any) -> None:
     """
     E2E-2: Test Case with URL Attachment.
     Verifies that the tool downloads content from URL and uploads it to Allure.
     """
-    project_id = 101
-    name = "URL Attachment Test"
-    url = "http://external.com/report.pdf"
+    name = "URL Attachment Test Real"
+    # Use a stable, high-availability public test URL (small text file)
+    url = "https://www.google.com/robots.txt"
+    filename = "robots.txt"
 
     attachments = [
         {
-            "name": "report.pdf",
+            "name": filename,
             "url": url,
-            "content_type": "application/pdf",
+            "content_type": "text/plain",
         }
     ]
 
-    # Use a broader mock to capture both Allure API and external URL
-    async with respx.mock() as mock:
-        # 1. External Download Mock
-        download_route = mock.get(url).respond(
-            status_code=200,
-            content=b"%PDF-1.4-mock-content",
-        )
+    # Call Tool
+    result_msg = await create_test_case(project_id=project_id, name=name, attachments=attachments)
 
-        mock.post(f"{settings.ALLURE_ENDPOINT}/api/uaa/oauth/token").respond(
-            status_code=200,
-            json={"access_token": "mock-token", "expires_in": 3600},
-        )
+    # Verifications
+    assert "Created Test Case ID:" in result_msg
 
-        # 2. Test Case Creation Mock
-        mock.post(f"{settings.ALLURE_ENDPOINT}/api/testcase").respond(
-            status_code=200,
-            json={
-                "id": 201,
-                "name": name,
-                "description": None,
-                "automated": False,
-                "statusId": 1,
-                "workflowId": 1,
-                "projectId": project_id,
-            },
-        )
+    # Extract ID
+    import re
 
-        # 3. Allure Upload Mock
-        upload_route = mock.post(f"{settings.ALLURE_ENDPOINT}/api/testcase/attachment").respond(
-            status_code=200,
-            json=[
-                {
-                    "id": 600,
-                    "name": "report.pdf",
-                    "entity": "ATTACHMENT",
-                    "contentLength": 100,
-                    "contentType": "image/png",
-                }
-            ],
-        )
+    match = re.search(r"ID: (\d+)", result_msg)
+    assert match
+    test_case_id = int(match.group(1))
 
-        # 4. Attachment Step Mock
-        mock.post(f"{settings.ALLURE_ENDPOINT}/api/testcase/step").respond(status_code=200, json={"createdStepId": 401})
+    # Track for cleanup
+    cleanup_tracker.track_test_case(test_case_id)
 
-        # Call Tool
-        result_msg = await create_test_case(project_id=project_id, name=name, attachments=attachments)
+    # Verify Attachment in Allure
+    scenario = await allure_client.get_test_case_scenario(test_case_id)
 
-        # Verifications
-        assert "Created Test Case ID: 201" in result_msg
-
-        # Verify Download
-        assert download_route.called
-
-        # Verify Upload
-        assert upload_route.called
+    attachment_found = False
+    for step in scenario.steps:
+        if step.actual_instance and hasattr(step.actual_instance, "attachment_id"):
+            if step.actual_instance.name == filename:
+                attachment_found = True
+                break
+    assert attachment_found, f"Attachment '{filename}' not found in scenario"
 
 
 # ==========================================
@@ -279,7 +217,7 @@ async def test_e2e_4_minimal_creation(project_id: int, allure_client: AllureClie
     not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
 )
 @pytest.mark.asyncio
-async def test_e2e_5_step_level_attachments(project_id: int, allure_client: AllureClient) -> None:
+async def test_e2e_5_step_level_attachments(project_id: int, allure_client: AllureClient, pixel_b64: str) -> None:
     """
     E2E-5: Step-level Attachments.
     Create test case with attachments nested in steps.
@@ -290,7 +228,6 @@ async def test_e2e_5_step_level_attachments(project_id: int, allure_client: Allu
     try:
         case_name = "E2E-5 Step Attachments Test"
         # Small 1x1 transparent PNG
-        pixel_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNiAAAABgANjd8qAAAAAElFTkSuQmCC"
 
         steps = [
             {
@@ -332,7 +269,7 @@ async def test_e2e_5_step_level_attachments(project_id: int, allure_client: Allu
     not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
 )
 @pytest.mark.asyncio
-async def test_e2e_6_complex_step_hierarchy(project_id: int, allure_client: AllureClient) -> None:
+async def test_e2e_6_complex_step_hierarchy(project_id: int, allure_client: AllureClient, pixel_b64: str) -> None:
     """
     E2E-6: Complex Step Hierarchy.
     Create test case with multiple steps, expected results, and attachments.
@@ -342,7 +279,6 @@ async def test_e2e_6_complex_step_hierarchy(project_id: int, allure_client: Allu
 
     try:
         case_name = "E2E-6 Complex Hierarchy Test"
-        pixel_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNiAAAABgANjd8qAAAAAElFTkSuQmCC"
 
         steps = [
             {"action": "Step 1: Login", "expected": "Dashboard visible"},

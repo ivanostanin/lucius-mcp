@@ -78,6 +78,32 @@ Run the test suite using `pytest`:
 uv run pytest
 ```
 
+### End-to-End (E2E) Tests
+
+E2E tests verify the integration with a real Allure TestOps instance. They are isolated in `tests/e2e/` and strictly separated from unit/integration tests.
+
+**Prerequisites:**
+
+1.  **Sandbox Environment**: Access to a non-production Allure TestOps instance.
+2.  **Configuration**: Create `.env.test` from `.env.test.example`:
+    ```bash
+    cp .env.test.example .env.test
+    ```
+
+**Running E2E Tests:**
+
+```bash
+# Load environment variables from .env.test
+uv run --env-file .env.test pytest tests/e2e/
+```
+
+**Troubleshooting E2E Failures:**
+
+*   **401 Unauthorized**: Check `ALLURE_API_TOKEN`. It might be expired.
+*   **403 Forbidden**: Ensure `ALLURE_PROJECT_ID` exists and the user has Write access.
+*   **Connection Errors**: Verify `ALLURE_ENDPOINT` is reachable and uses HTTPS.
+*   **Flaky Tests**: Tests use unique IDs to avoid collisions, but network issues can occur. Rerunning usually fixes transient issues.
+
 ## 🛠️ Development
 
 ### Regenerating API Client

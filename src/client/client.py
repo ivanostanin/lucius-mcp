@@ -590,6 +590,7 @@ class AllureClient:
             return TestCaseScenarioV2Dto(steps=[])
 
         scenario_steps = raw.get("scenarioSteps", {})
+        attachments_map = raw.get("attachments", {})
 
         # Recursive helper to build steps
         def build_steps(step_ids: list[int]) -> list[SharedStepScenarioDtoStepsInner]:
@@ -607,11 +608,16 @@ class AllureClient:
                 # Is it an attachment?
                 attachment_id = step_def.get("attachmentId")
                 if attachment_id:
+                    # Look up name in attachments map
+                    # attachments map key is the attachment ID as string
+                    att_info = attachments_map.get(str(attachment_id), {})
+                    att_name = att_info.get("name") or step_def.get("name")
+
                     # Build AttachmentStepDtoWithName using model_construct to bypass validation
                     steps_list.append(
                         SharedStepScenarioDtoStepsInner(
                             actual_instance=AttachmentStepDtoWithName.model_construct(
-                                type="AttachmentStepDto", attachment_id=attachment_id, name=step_def.get("name")
+                                type="AttachmentStepDto", attachment_id=attachment_id, name=att_name
                             )
                         )
                     )

@@ -47,7 +47,7 @@ development_status:
   1-3-comprehensive-test-case-creation-tool: ready-for-dev
   1-4-idempotent-update-and-maintenance: done
   1-5-soft-delete-and-archive: done
-  1-6-comprehensive-end-to-end-tests: ready-for-dev
+  1-6-comprehensive-end-to-end-tests: review
   epic-1-retrospective: optional
 
   # Epic 2: Shared Step Reusability (MVP)
