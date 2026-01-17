@@ -78,10 +78,10 @@ __all__ = [
     "AllureClient",
     "AttachmentStepDtoWithName",
     "BodyStepDtoWithSteps",
-    "ScenarioStepCreateDto",
-    "ScenarioStepCreatedResponseDto",
     "PageSharedStepDto",
     "ScenarioStepCreateDto",
+    "ScenarioStepCreateDto",
+    "ScenarioStepCreatedResponseDto",
     "ScenarioStepCreatedResponseDto",
     "SharedStepAttachmentRowDto",
     "SharedStepCreateDto",
@@ -788,7 +788,7 @@ class AllureClient:
                 scenario_step_create_dto=step,
                 _request_timeout=self._timeout,
             )
-            
+
             # response is an httpx.Response object. Check for success status.
             if not 200 <= response.status_code <= 299:
                 raise ApiException(status=response.status_code, reason=response.reason_phrase, body=response.text)

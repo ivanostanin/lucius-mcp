@@ -70,6 +70,8 @@ class CleanupTracker:
         # Clean up shared steps
         for step_id in self._shared_steps:
             try:
-                await self._client.archive_shared_step(step_id)
+                # TODO: Implement archive_shared_step in Story 2.2
+                # await self._client.archive_shared_step(step_id)
+                pass
             except Exception as e:
                 logger.warning(f"Failed to cleanup shared step {step_id}: {e}")

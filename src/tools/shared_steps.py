@@ -1,6 +1,6 @@
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
 
 from src.client import AllureClient
 from src.services.shared_step_service import SharedStepService
@@ -26,12 +26,8 @@ async def create_shared_step(
     """
     async with AllureClient.from_env() as client:
         service = SharedStepService(client)
-        shared_step = await service.create_shared_step(
-            project_id=project_id,
-            name=name,
-            steps=steps
-        )
-        
+        shared_step = await service.create_shared_step(project_id=project_id, name=name, steps=steps)
+
         return (
             f"Successfully created Shared Step:\n"
             f"ID: {shared_step.id}\n"
@@ -60,22 +56,18 @@ async def list_shared_steps(
     async with AllureClient.from_env() as client:
         service = SharedStepService(client)
         steps = await service.list_shared_steps(
-            project_id=project_id,
-            page=page,
-            size=size,
-            search=search,
-            archived=archived
+            project_id=project_id, page=page, size=size, search=search, archived=archived
         )
-        
+
         if not steps:
             return f"No shared steps found for project {project_id}."
-        
+
         output = [f"Found {len(steps)} shared steps for project {project_id}:"]
         for s in steps:
             # Format: [ID: 123] Step Name (X steps)
             count_info = f" ({s.steps_count} steps)" if s.steps_count is not None else ""
             output.append(f"- [ID: {s.id}] {s.name}{count_info}")
-        
+
         return "\n".join(output)
 
 
