@@ -32,3 +32,9 @@ def test_case_cleanup() -> list[int]:
     clean up in their finally blocks for immediate cleanup.
     """
     return []
+
+
+@pytest.fixture
+def pixel_b64() -> str:
+    """Base64 encoded 1x1 pixel image."""
+    return "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNiAAAABgANjd8qAAAAAElFTkSuQmCC"
