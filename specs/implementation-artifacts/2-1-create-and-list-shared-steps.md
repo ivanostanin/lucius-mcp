@@ -47,6 +47,7 @@ so that I can build a library of common test logic for discovery and reuse.
   - [ ] 5.2: Run `mypy --strict` and `ruff check`
   - [ ] 5.3: Verify test coverage > 85%
   - [ ] 5.4: Run tests with `--alluredir=allure-results` for allure-pytest reporting
+  - [ ] 5.5: Verify error hints for invalid inputs (Actionable Error Handling)
 
 - [ ] **Task 6: E2E Tests** (AC: implicit, NFR11)
   - [ ] 6.1: Create `tests/e2e/test_shared_steps.py`

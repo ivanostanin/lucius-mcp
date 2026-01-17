@@ -44,6 +44,7 @@ so that I can maintain consistency and reduce manual duplication of test logic.
   - [ ] 5.3: Test unlinking and step list update
   - [ ] 5.4: Run `mypy --strict` and `ruff check`
   - [ ] 5.5: Run tests with `--alluredir=allure-results` for allure-pytest reporting
+  - [ ] 5.6: Verify error hints for invalid inputs (Actionable Error Handling)
 
 - [ ] **Task 6: E2E Tests** (AC: implicit, NFR11)
   - [ ] 6.1: Create `tests/e2e/test_link_shared_step.py`

@@ -44,6 +44,7 @@ so that the reusable library can evolve alongside the product requirements.
   - [ ] 5.3: Test cascade warning for delete with linked cases
   - [ ] 5.4: Run `mypy --strict` and `ruff check`
   - [ ] 5.5: Run tests with `--alluredir=allure-results` for allure-pytest reporting
+  - [ ] 5.6: Verify error hints for invalid inputs (Actionable Error Handling)
 
 - [ ] **Task 6: E2E Tests** (AC: implicit, NFR11)
   - [ ] 6.1: Extend `tests/e2e/test_shared_steps.py`
