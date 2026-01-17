@@ -488,7 +488,10 @@ class TestCaseService:
 
         for i, step in enumerate(steps):
             if not isinstance(step, dict):
-                raise AllureValidationError(f"Step at index {i} must be a dictionary, got {type(step).__name__}")
+                hint = generate_schema_hint(ScenarioStepCreateDto)
+                raise AllureValidationError(
+                    f"Step at index {i} must be a dictionary, got {type(step).__name__}", suggestions=[hint]
+                )
 
             action = step.get("action")
             expected = step.get("expected")
@@ -506,13 +509,17 @@ class TestCaseService:
 
             if step_attachments is not None:
                 if not isinstance(step_attachments, list):
+                    hint = generate_schema_hint(AttachmentStepDto)
                     raise AllureValidationError(
-                        f"Step {i}: 'attachments' must be a list, got {type(step_attachments).__name__}"
+                        f"Step {i}: 'attachments' must be a list, got {type(step_attachments).__name__}",
+                        suggestions=[hint],
                     )
                 for j, att in enumerate(step_attachments):
                     if not isinstance(att, dict):
+                        hint = generate_schema_hint(AttachmentStepDto)
                         raise AllureValidationError(
-                            f"Step {i}, attachment {j}: must be a dictionary, got {type(att).__name__}"
+                            f"Step {i}, attachment {j}: must be a dictionary, got {type(att).__name__}",
+                            suggestions=[hint],
                         )
 
     def _validate_tags(self, tags: list[str] | None) -> None:
@@ -521,11 +528,15 @@ class TestCaseService:
             return
 
         if not isinstance(tags, list):
-            raise AllureValidationError(f"Tags must be a list, got {type(tags).__name__}")
+            hint = generate_schema_hint(TestTagDto)
+            raise AllureValidationError(f"Tags must be a list, got {type(tags).__name__}", suggestions=[hint])
 
         for i, tag in enumerate(tags):
             if not isinstance(tag, str):
-                raise AllureValidationError(f"Tag at index {i} must be a string, got {type(tag).__name__}")
+                hint = generate_schema_hint(TestTagDto)
+                raise AllureValidationError(
+                    f"Tag at index {i} must be a string, got {type(tag).__name__}", suggestions=[hint]
+                )
             if not tag.strip():
                 raise AllureValidationError(f"Tag at index {i} cannot be empty")
             if len(tag) > MAX_TAG_LENGTH:
@@ -537,11 +548,17 @@ class TestCaseService:
             return
 
         if not isinstance(attachments, list):
-            raise AllureValidationError(f"Attachments must be a list, got {type(attachments).__name__}")
+            hint = generate_schema_hint(AttachmentStepDto)
+            raise AllureValidationError(
+                f"Attachments must be a list, got {type(attachments).__name__}", suggestions=[hint]
+            )
 
         for i, att in enumerate(attachments):
             if not isinstance(att, dict):
-                raise AllureValidationError(f"Attachment at index {i} must be a dictionary, got {type(att).__name__}")
+                hint = generate_schema_hint(AttachmentStepDto)
+                raise AllureValidationError(
+                    f"Attachment at index {i} must be a dictionary, got {type(att).__name__}", suggestions=[hint]
+                )
             # Must have either 'content' (base64) or 'url'
             if "content" not in att and "url" not in att:
                 raise AllureValidationError(f"Attachment at index {i} must have either 'content' or 'url' key")
@@ -555,7 +572,10 @@ class TestCaseService:
             return
 
         if not isinstance(custom_fields, dict):
-            raise AllureValidationError(f"Custom fields must be a dictionary, got {type(custom_fields).__name__}")
+            hint = generate_schema_hint(CustomFieldValueWithCfDto)
+            raise AllureValidationError(
+                f"Custom fields must be a dictionary, got {type(custom_fields).__name__}", suggestions=[hint]
+            )
 
         for key, value in custom_fields.items():
             if not isinstance(key, str):
