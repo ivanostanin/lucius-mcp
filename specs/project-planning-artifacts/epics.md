@@ -204,6 +204,21 @@ So that I can ensure the MCP server correctly integrates with Allure TestOps in 
 **And** tests run in CI/CD pipeline with configurable sandbox credentials
 **And** test execution is isolated (cleanup after each test run).
 
+### Story 1.7: Tool Error Hints & Validation Feedback
+
+As an AI Agent,
+I want to receive clear, actionable error hints when my tool inputs are invalid or incomplete,
+So that I can autonomously correct my requests and successfully execute the tool.
+
+**Acceptance Criteria:**
+
+**Given** a tool call (e.g., `create_test_case`, `update_test_case`) with missing mandatory fields or invalid data types
+**When** the validation fails
+**Then** the tool returns a structured error message indicating EXACTLY which fields failed and why
+**And** the error message includes a "Hint" section with the correct schema or expected format
+**And** comprehensive integration tests verify this behavior by simulating erroneous and incomplete LLM inputs
+**And** these tests validate that the correction hints are present and accurate in the error response.
+
 ## Epic 2: Shared Step Reusability
 
 Enable Agents to maintain a high-quality, reusable test library by managing Shared Steps and linking them to Test Cases. This prevents duplication and allows for scalable test maintenance.

@@ -48,6 +48,7 @@ development_status:
   1-4-idempotent-update-and-maintenance: done
   1-5-soft-delete-and-archive: done
   1-6-comprehensive-end-to-end-tests: review
+  1-7-tool-error-hints-and-validation-feedback: ready-for-dev
   epic-1-retrospective: optional
 
   # Epic 2: Shared Step Reusability (MVP)
