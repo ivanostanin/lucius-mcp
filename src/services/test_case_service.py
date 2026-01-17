@@ -28,6 +28,7 @@ from src.client.generated.models.expected_body_step_dto import ExpectedBodyStepD
 from src.client.generated.models.test_case_patch_v2_dto import TestCasePatchV2Dto
 from src.client.generated.models.test_case_scenario_v2_dto import TestCaseScenarioV2Dto
 from src.services.attachment_service import AttachmentService
+from src.utils.schema_hint import generate_schema_hint
 
 # Maximum lengths based on API constraints
 MAX_NAME_LENGTH = 255
@@ -135,7 +136,8 @@ class TestCaseService:
                 custom_fields=resolved_custom_fields,
             )
         except PydanticValidationError as e:
-            raise AllureValidationError(f"Invalid test case data: {e}") from e
+            hint = generate_schema_hint(TestCaseCreateV2Dto)
+            raise AllureValidationError(f"Invalid test case data: {e}", suggestions=[hint]) from e
 
         # 4. Create the test case
         created_test_case = await self._client.create_test_case(project_id, data)
@@ -213,7 +215,8 @@ class TestCaseService:
                 patch_data = TestCasePatchV2Dto(**patch_kwargs)
                 updated_case = await self._client.update_test_case(test_case_id, patch_data)
             except PydanticValidationError as e:
-                raise AllureValidationError(f"Invalid update data: {e}") from e
+                hint = generate_schema_hint(TestCasePatchV2Dto)
+                raise AllureValidationError(f"Invalid update data: {e}", suggestions=[hint]) from e
 
         # 6. Apply Scenario Re-creation
         if scenario_dto_v2 and scenario_dto_v2.steps is not None:
@@ -578,7 +581,8 @@ class TestCaseService:
             try:
                 tag_dtos.append(TestTagDto(name=t))
             except PydanticValidationError as e:
-                raise AllureValidationError(f"Invalid tag '{t}': {e}") from e
+                hint = generate_schema_hint(TestTagDto)
+                raise AllureValidationError(f"Invalid tag '{t}': {e}", suggestions=[hint]) from e
         return tag_dtos
 
     async def _get_resolved_custom_fields(self, project_id: int) -> dict[str, int]:
@@ -637,7 +641,8 @@ class TestCaseService:
                 parent_id=parent_id,
             )
         except PydanticValidationError as e:
-            raise AllureValidationError(f"Invalid scenario step data: {e}") from e
+            hint = generate_schema_hint(ScenarioStepCreateDto)
+            raise AllureValidationError(f"Invalid scenario step data: {e}", suggestions=[hint]) from e
 
     # ==========================================
     # Step Creation Methods

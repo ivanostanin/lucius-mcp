@@ -1,6 +1,6 @@
 # Story 1.7: Tool Error Hints & Validation Feedback
 
-Status: in-progress
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -25,21 +25,21 @@ So that I can autonomously correct my requests and successfully execute the tool
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Enhance `ValidationError` handling in `src/utils/error.py`
-  - [ ] Implement a handler that catches Pydantic's `ValidationError`.
-  - [ ] Parse `e.errors()` to extract location (field name) and message.
-  - [ ] Format a clear bulleted list of errors: "- field_name: error message".
-- [ ] Task 2: Implement "Schema Hint" generation
-  - [ ] Create a utility to generate a simplified schema usage string from a Pydantic model.
-  - [ ] Integrate this into the exception handler to append usage hints for common errors.
-- [ ] Task 3: Create Integration Test Suite for Error Scenarios
-  - [ ] Create `tests/integration/test_error_handling.py`.
-  - [ ] Test Case 1: `create_test_case` with empty body / missing name.
-  - [ ] Test Case 2: `create_test_case` with invalid enum (e.g. `layer`).
-  - [ ] Test Case 3: `update_test_case` with invalid ID type.
-  - [ ] Test Case 4: `update_test_case` with invalid nested field (e.g. `steps[0].name` missing).
-  - [ ] Test Case 5: `create_test_case` with hallucinated extra fields (should fail if Extra.forbid, or warn).
-  - [ ] Verify that response body contains "❌ Error", "Suggestions", and specific field names.
+- [x] Task 1: Enhance `ValidationError` handling in `src/utils/error.py`
+  - [x] Implement a handler that catches Pydantic's `ValidationError`.
+  - [x] Parse `e.errors()` to extract location (field name) and message.
+  - [x] Format a clear bulleted list of errors: "- field_name: error message".
+- [x] Task 2: Implement "Schema Hint" generation
+  - [x] Create a utility to generate a simplified schema usage string from a Pydantic model.
+  - [x] Integrate this into the exception handler to append usage hints for common errors.
+- [x] Task 3: Create Integration Test Suite for Error Scenarios
+  - [x] Create `tests/integration/test_error_handling.py`.
+  - [x] Test Case 1: `create_test_case` with empty body / missing name.
+  - [x] Test Case 2: `create_test_case` with invalid enum (e.g. `layer`).
+  - [x] Test Case 3: `update_test_case` with invalid ID type.
+  - [x] Test Case 4: `update_test_case` with invalid nested field (e.g. `steps[0].name` missing).
+  - [x] Test Case 5: `create_test_case` with hallucinated extra fields (should fail if Extra.forbid, or warn).
+  - [x] Verify that response body contains "❌ Error", "Suggestions", and specific field names.
 
 ## Dev Notes
 
@@ -65,4 +65,12 @@ Antigravity (simulated)
 
 ### Completion Notes List
 
+- Implemented comprehensive error handling middleware in `src/utils/error.py`
+- Added schema hint generation in `src/utils/schema_hint.py`
+- Added integration tests covering validation scenarios
+
 ### File List
+
+- src/utils/error.py
+- src/utils/schema_hint.py
+- tests/integration/test_error_handling.py

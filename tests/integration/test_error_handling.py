@@ -139,3 +139,87 @@ def test_real_model_validation(client):
     assert resp.status_code == 400
     text = resp.text
     assert "Field 'projectId': Input should be a valid integer" in text
+
+
+def test_update_nested_validation_error(client):
+    """Test Case 4: update_test_case with invalid nested field."""
+    # We simulate this using a model that has nested fields, like TestCaseCreateV2Dto or a custom one
+    # since TestCasePatchV2Dto typically has optional fields, validation errors come from wrong types.
+
+    class Step(BaseModel):
+        name: str
+        action: str
+
+    class NestedModel(BaseModel):
+        id: int
+        steps: list[Step]
+
+    async def nested_endpoint(request: Request):
+        try:
+            data = await request.json()
+            NestedModel(**data)
+        except ValidationError as e:
+            raise e
+        return JSONResponse({"status": "ok"})
+
+    app = Starlette(
+        routes=[Route("/nested", nested_endpoint, methods=["POST"])],
+        exception_handlers={Exception: agent_hint_handler},
+    )
+    c = TestClient(app, raise_server_exceptions=False)
+
+    # Missing field in nested object
+    response = c.post("/nested", json={"id": 1, "steps": [{"action": "do it"}]})  # 'name' missing
+    assert response.status_code == 400
+    text = response.text
+    # Pydantic v2 loc: steps -> 0 -> name
+    assert "Field 'steps -> 0 -> name'" in text
+    assert "Field required" in text
+
+
+def test_hallucinated_extra_fields(client):
+    """Test Case 5: create_test_case with hallucinated extra fields (using Extra.forbid)."""
+    from pydantic import ConfigDict
+
+    from src.utils.error import ValidationError as MyValidationError
+    from src.utils.schema_hint import generate_schema_hint
+
+    # Use AllureValidationError from client.exceptions if available, or simulate the behavior
+    # simpler to just raise the base AllureAPIError-like exception structure that handler uses.
+    # The handler uses src.utils.error.AllureAPIError subclasses.
+
+    class StrictModel(BaseModel):
+        name: str
+        model_config = ConfigDict(extra="forbid")
+
+    async def strict_endpoint(request: Request):
+        try:
+            data = await request.json()
+            StrictModel(**data)
+        except ValidationError as e:
+            # Simulate TestCaseService behavior: catch, hint, wrap
+            hint = generate_schema_hint(StrictModel)
+            # Use MyValidationError (which inherits AllureAPIError) as wrapper
+            raise MyValidationError(f"Invalid data: {e}", suggestions=[hint]) from e
+        return JSONResponse({"status": "ok"})
+
+    app = Starlette(
+        routes=[Route("/strict", strict_endpoint, methods=["POST"])],
+        exception_handlers={Exception: agent_hint_handler},
+    )
+    c = TestClient(app, raise_server_exceptions=False)
+
+    # Send extra field
+    response = c.post("/strict", json={"name": "test", "hallucinated_field": "oops"})
+    assert response.status_code == 400
+    text = response.text
+    # The wrapper message format (Pydantic stringifies the error)
+    assert "Invalid data" in text
+    assert "hallucinated_field" in text
+    assert "Extra inputs are not permitted" in text
+    # The hint in suggestions
+    assert "Suggestions:" in text
+    assert "Schema Hint" in text
+    assert "- name: str (required)" in text
+    assert "Schema Hint" in text
+    assert "- name: str (required)" in text
