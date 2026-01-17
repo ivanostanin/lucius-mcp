@@ -658,8 +658,9 @@ class TestUpdateTestCase:
 
 
 @pytest.mark.asyncio
+@pytest.mark.test_id("1.5-UNIT-001")
 async def test_delete_test_case_success(service: TestCaseService, mock_client: AsyncMock) -> None:
-    """Test successful deletion of a test case."""
+    """Test ID: 1.5-UNIT-001 - Successful deletion of a test case (P1)"""
     test_case_id = 123
     mock_client.get_test_case.return_value = TestCaseDto(id=test_case_id, name="To Delete")
     mock_client.delete_test_case.return_value = None
@@ -676,8 +677,9 @@ async def test_delete_test_case_success(service: TestCaseService, mock_client: A
 
 
 @pytest.mark.asyncio
+@pytest.mark.test_id("1.5-UNIT-002")
 async def test_delete_test_case_already_deleted(service: TestCaseService, mock_client: AsyncMock) -> None:
-    """Test idempotent deletion when test case is not found."""
+    """Test ID: 1.5-UNIT-002 - Idempotency of Delete (already deleted via 404) (P1)"""
     test_case_id = 123
 
     # Simulate API 404
@@ -697,8 +699,9 @@ async def test_delete_test_case_already_deleted(service: TestCaseService, mock_c
 
 
 @pytest.mark.asyncio
+@pytest.mark.test_id("1.5-UNIT-003")
 async def test_delete_test_case_already_archived_status(service: TestCaseService, mock_client: AsyncMock) -> None:
-    """Test idempotency when test case exists but has 'Archived' status."""
+    """Test ID: 1.5-UNIT-003 - Idempotency when test case has 'Archived' status (P1)"""
     test_case_id = 124
     # Mock existing but archived case
     archived_case = Mock(spec=TestCaseDto)
@@ -720,8 +723,9 @@ async def test_delete_test_case_already_archived_status(service: TestCaseService
 
 
 @pytest.mark.asyncio
+@pytest.mark.test_id("1.5-UNIT-004")
 async def test_delete_test_case_failure(service: TestCaseService, mock_client: AsyncMock) -> None:
-    """Test failure during deletion."""
+    """Test ID: 1.5-UNIT-004 - Failure during deletion (error handling) (P1)"""
     test_case_id = 123
     mock_client.get_test_case.return_value = TestCaseDto(id=test_case_id, name="Fail Delete")
     mock_client.delete_test_case.side_effect = Exception("API Error")
