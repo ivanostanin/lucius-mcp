@@ -122,7 +122,7 @@ async def test_create_with_full_metadata(
     """Test creating a test case with all optional fields."""
     tags = ["e2e", "automated", f"run-{run_name}"]
 
-    # Use basic create first because create_test_case helper doesn't support all DTO fields directly
+    # Create test case with full metadata
     case = await service.create_test_case(
         project_id=project_id,
         name=run_name,

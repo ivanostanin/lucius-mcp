@@ -56,12 +56,16 @@ class CleanupTracker:
         Performs best-effort cleanup - silently ignores errors if entities
         are already deleted or inaccessible.
         """
+        import logging
+
+        logger = logging.getLogger(__name__)
+
         # Clean up test cases
         for tc_id in self._test_cases:
             try:
                 await self._client.delete_test_case(tc_id)
-            except Exception:  # noqa: S110
-                pass
+            except Exception as e:
+                logger.warning(f"Failed to cleanup test case {tc_id}: {e}")
 
         # Clean up shared steps
         for _ in self._shared_steps:
@@ -69,5 +73,5 @@ class CleanupTracker:
                 # Note: Shared step deletion not yet implemented in MVP
                 # This is a placeholder for future functionality
                 pass
-            except Exception:  # noqa: S110
-                pass
+            except Exception as e:
+                logger.warning(f"Failed to cleanup shared step: {e}")

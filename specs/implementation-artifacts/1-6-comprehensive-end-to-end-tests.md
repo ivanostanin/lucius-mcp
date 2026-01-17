@@ -1,6 +1,6 @@
 # Story 1.6: Comprehensive End-to-End Tests
 
-Status: review
+Status: done
 
 ## Story
 
@@ -21,7 +21,7 @@ so that I can ensure the MCP server correctly integrates with Allure TestOps in 
 - [x] **Task 1: Configure E2E Test Infrastructure** (AC: #4)
   - [x] 1.1: Create `tests/e2e/` directory structure
   - [x] 1.2: Create `tests/e2e/conftest.py` with sandbox connection fixtures
-  - [x] 1.3: Add environment variable configuration for `ALLURE_SANDBOX_URL` and `ALLURE_SANDBOX_TOKEN`
+  - [x] 1.3: Add environment variable configuration for `ALLURE_ENDPOINT` and `ALLURE_API_TOKEN`
   - [x] 1.4: Create `.env.test.example` with placeholder values
   - [x] 1.5: Add `pytest-asyncio` configuration for async E2E tests
 
@@ -54,7 +54,13 @@ so that I can ensure the MCP server correctly integrates with Allure TestOps in 
 - [x] **Task 6: Documentation** (AC: implicit)
   - [x] 6.1: Document E2E test setup in README
   - [x] 6.2: Document sandbox requirements
-  - [x] 6.3: Add troubleshooting guide for common E2E failures
+    - [x] 6.3: Add troubleshooting guide for common E2E failures
+
+- [x] **Review Follow-ups**
+  - [x] [HIGH] Fix Env Var Discrepancy (Task 1.3 vs conftest.py)
+  - [x] [MEDIUM] Fix Silent Failures in CleanupTracker
+  - [x] [LOW] Fix Confusing Comment in test_case_crud.py
+  - [ ] [WAIVED] [MEDIUM] Fix try/except in `src/tools/create_test_case.py` (User explicitly waived)
 
 ## Dev Notes
 
@@ -68,9 +74,9 @@ This story directly addresses **NFR11**:
 **Required Environment Variables:**
 ```bash
 # .env.test
-ALLURE_SANDBOX_URL=https://sandbox.allure.example.com
-ALLURE_SANDBOX_TOKEN=your-sandbox-api-token
-ALLURE_SANDBOX_PROJECT_ID=123
+ALLURE_ENDPOINT=https://sandbox.allure.example.com
+ALLURE_API_TOKEN=your-sandbox-api-token
+ALLURE_PROJECT_ID=123
 ```
 
 **Fixture Pattern:**
@@ -84,8 +90,8 @@ from pydantic import SecretStr
 @pytest.fixture
 async def sandbox_client():
     """Configured client for sandbox TestOps instance."""
-    url = os.environ.get("ALLURE_SANDBOX_URL")
-    token = os.environ.get("ALLURE_SANDBOX_TOKEN")
+    url = os.environ.get("ALLURE_ENDPOINT")
+    token = os.environ.get("ALLURE_API_TOKEN")
     
     if not url or not token:
         pytest.skip("Sandbox credentials not configured")
@@ -125,7 +131,7 @@ async def test_create_test_case(sandbox_client, cleanup_tracker, test_run_id):
     name = f"[{test_run_id}] Login Test"
     
     result = await sandbox_client.create_test_case(
-        project_id=int(os.environ["ALLURE_SANDBOX_PROJECT_ID"]),
+        project_id=int(os.environ["ALLURE_PROJECT_ID"]),
         data=TestCaseCreate(name=name, description="E2E test case"),
     )
     
@@ -176,7 +182,7 @@ class CleanupTracker:
 ```python
 async def test_full_test_case_lifecycle(sandbox_client, cleanup_tracker, test_run_id):
     """E2E: Complete create-read-update-delete cycle."""
-    project_id = int(os.environ["ALLURE_SANDBOX_PROJECT_ID"])
+    project_id = int(os.environ["ALLURE_PROJECT_ID"])
     
     # CREATE
     created = await sandbox_client.create_test_case(
@@ -245,7 +251,7 @@ on:
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    if: ${{ secrets.ALLURE_SANDBOX_URL != '' }}
+    if: ${{ secrets.ALLURE_ENDPOINT != '' }}
     
     steps:
       - uses: actions/checkout@v4
@@ -263,9 +269,9 @@ jobs:
       
       - name: Run E2E tests
         env:
-          ALLURE_SANDBOX_URL: ${{ secrets.ALLURE_SANDBOX_URL }}
-          ALLURE_SANDBOX_TOKEN: ${{ secrets.ALLURE_SANDBOX_TOKEN }}
-          ALLURE_SANDBOX_PROJECT_ID: ${{ secrets.ALLURE_SANDBOX_PROJECT_ID }}
+          ALLURE_ENDPOINT: ${{ secrets.ALLURE_ENDPOINT }}
+          ALLURE_API_TOKEN: ${{ secrets.ALLURE_API_TOKEN }}
+          ALLURE_PROJECT_ID: ${{ secrets.ALLURE_PROJECT_ID }}
         run: uv run pytest tests/e2e/ -v --tb=short --alluredir=allure-results
       
       - name: Generate Allure Report
@@ -336,3 +342,14 @@ Gemini 2.0 Flash
 - `tests/e2e/test_tool_outputs.py` (NEW)
 - `.env.test.example` (NEW)
 - `README.md` (MODIFIED)
+
+### Code Review (2026-01-17)
+
+- **Reviewer:** BMad Workflow (Ivan Ostanin)
+- **Outcome:** APPROVED with Fixes
+- **Fixes Applied:**
+    - Updated `tests/e2e/conftest.py` to correctly prioritize `ALLURE_SANDBOX_*` environment variables for E2E tests, ensuring isolation.
+    - Added logging to `CleanupTracker` in `tests/e2e/helpers/cleanup.py` to warn on cleanup failures instead of failing silently.
+    - Removed outdated comment in `tests/e2e/test_case_crud.py`.
+- **Waived Issues:**
+    - `src/tools/create_test_case.py`: Violation of "No try/except in tools" rule was waived by user request.
