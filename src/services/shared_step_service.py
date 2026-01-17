@@ -114,6 +114,93 @@ class SharedStepService:
 
         return page_dto.content or []
 
+    async def get_shared_step(self, step_id: int) -> SharedStepDto:
+        """Retrieve a specific shared step by its ID.
+
+        Args:
+            step_id: The unique ID of the shared step.
+
+        Returns:
+            The shared step data.
+
+        Raises:
+            AllureNotFoundError: If shared step doesn't exist.
+            AllureAPIError: If the server returns an error.
+        """
+        return await self._client.get_shared_step(step_id)
+
+    async def update_shared_step(
+        self,
+        step_id: int,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> tuple[SharedStepDto, bool]:
+        """Update an existing shared step with idempotency support.
+
+        Only provided fields are updated. Repeated calls with same data are idempotent.
+
+        Args:
+            step_id: The shared step ID to update.
+            name: New name for the shared step (optional).
+            description: New description (optional).
+
+        Returns:
+            Tuple of (updated_shared_step, changed) where changed is True if update was applied.
+
+        Raises:
+            AllureNotFoundError: If shared step doesn't exist.
+            AllureValidationError: If validation fails.
+            AllureAPIError: If the server returns an error.
+        """
+        # Validation
+        if name is not None:
+            self._validate_name(name)
+
+        # Get current state
+        current = await self._client.get_shared_step(step_id)
+
+        # Check idempotency (from Story 1.4 pattern)
+        needs_update = False
+        if name is not None and name != current.name:
+            needs_update = True
+        if description is not None and description != getattr(current, "description", None):
+            needs_update = True
+
+        # No changes needed
+        if not needs_update:
+            return current, False
+
+        # Build patch DTO and update
+        from src.client import SharedStepPatchDto
+
+        patch_data = SharedStepPatchDto(name=name if name is not None else None)
+
+        updated = await self._client.update_shared_step(step_id, patch_data)
+        return updated, True
+
+    async def delete_shared_step(self, step_id: int) -> None:
+        """Delete (archive) a shared step with idempotent behavior.
+
+        Args:
+            step_id: The shared step ID to delete.
+
+        Raises:
+            AllureAPIError: If the API request fails (other than 404).
+
+        Note:
+            This operation is idempotent following Story 1.5 pattern.
+            If already deleted (404), returns gracefully.
+       """
+        from src.client.exceptions import AllureNotFoundError
+
+        try:
+            await self._client.delete_shared_step(step_id)
+        except AllureNotFoundError:
+            # Idempotent: if already deleted, this is fine
+            logger.debug(f"Shared step {step_id} already deleted or not found")
+            pass
+
+
     # ==========================================
     # Helper Methods
     # ==========================================

@@ -71,7 +71,92 @@ async def list_shared_steps(
         return "\n".join(output)
 
 
+async def update_shared_step(
+    step_id: int,
+    name: str | None = None,
+    description: str | None = None,
+) -> str:
+    """Update an existing shared step.
+
+    ⚠️ IMPORTANT: Changes propagate to ALL test cases using this shared step.
+
+    Only provided fields will be updated. Omitted fields remain unchanged.
+    Repeated calls with the same data are idempotent.
+
+    Args:
+        step_id: The shared step ID to update (required).
+            Found via list_shared_steps or in the Allure URL.
+        name: New name for the shared step (optional).
+        description: New description (optional).
+
+    Returns:
+        Confirmation message with summary of changes.
+
+    Example:
+        update_shared_step(
+            step_id=789,
+            name="Login as Admin (Updated)"
+        )
+    """
+    async with AllureClient.from_env() as client:
+        service = SharedStepService(client)
+        updated, changed = await service.update_shared_step(step_id=step_id, name=name, description=description)
+
+        if not changed:
+            return (
+                f"No changes needed for Shared Step {step_id}\n\n"
+                "The shared step already matches the requested state."
+            )
+
+        msg_parts = [f"✅ Updated Shared Step {step_id}: '{updated.name}'", "\nChanges applied:"]
+        if name:
+            msg_parts.append(f"- name: '{name}'")
+        if description:
+            msg_parts.append(f"- description: '{description}'")
+
+        return "\n".join(msg_parts)
+
+
+async def delete_shared_step(
+    step_id: int,
+    confirm: bool = False,
+) -> str:
+    """Delete a shared step from the library.
+
+    ⚠️ CAUTION: If this shared step is used by test cases, deleting it
+    will break those references.
+
+    Args:
+        step_id: The shared step ID to delete (required).
+        confirm: Must be True to proceed (safety measure).
+
+    Returns:
+        Confirmation message.
+
+    Example (safe delete):
+        delete_shared_step(step_id=789, confirm=True)
+        → "🗑️  Archived Shared Step 789"
+
+    Note:
+        This performs a soft delete by archiving the shared step.
+    """
+    if not confirm:
+        return (
+            "⚠️ Delete confirmation required\n\n"
+            "To delete this shared step, set confirm=True.\n\n"
+            "WARNING: Deleting a shared step used by test cases will break those references."
+        )
+
+    async with AllureClient.from_env() as client:
+        service = SharedStepService(client)
+        await service.delete_shared_step(step_id=step_id)
+
+        return f"🗑️  Archived Shared Step {step_id}\n\nThe shared step has been successfully archived."
+
+
 def register(mcp: FastMCP) -> None:
     """Register Shared Step tools with the MCP server."""
     mcp.tool()(create_shared_step)
     mcp.tool()(list_shared_steps)
+    mcp.tool()(update_shared_step)
+    mcp.tool()(delete_shared_step)

@@ -42,6 +42,7 @@ from .generated.models.scenario_step_created_response_dto import ScenarioStepCre
 from .generated.models.shared_step_attachment_row_dto import SharedStepAttachmentRowDto
 from .generated.models.shared_step_create_dto import SharedStepCreateDto
 from .generated.models.shared_step_dto import SharedStepDto
+from .generated.models.shared_step_patch_dto import SharedStepPatchDto
 from .generated.models.shared_step_scenario_dto_steps_inner import SharedStepScenarioDtoStepsInner
 from .generated.models.test_case_attachment_row_dto import TestCaseAttachmentRowDto
 from .generated.models.test_case_create_v2_dto import TestCaseCreateV2Dto
@@ -86,6 +87,7 @@ __all__ = [
     "SharedStepAttachmentRowDto",
     "SharedStepCreateDto",
     "SharedStepDto",
+    "SharedStepPatchDto",
     "SharedStepScenarioDtoStepsInner",
     "TestCaseAttachmentRowDto",
     "TestCaseCreateV2Dto",
@@ -852,3 +854,90 @@ class AllureClient:
         except ApiException as e:
             self._handle_api_exception(e)
             raise
+
+    async def get_shared_step(self, shared_step_id: int) -> SharedStepDto:
+        """Retrieve a specific shared step by its ID.
+
+        Args:
+            shared_step_id: The unique ID of the shared step.
+
+        Returns:
+            The shared step data.
+
+        Raises:
+            AllureNotFoundError: If shared step doesn't exist.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
+        """
+        if not self._is_entered:
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+
+        await self._ensure_valid_token()
+        if self._shared_step_api is None:
+            raise AllureAPIError("Internal error: shared_step_api not initialized")
+
+        try:
+            return await self._shared_step_api.find_one15(id=shared_step_id, _request_timeout=self._timeout)
+        except ApiException as e:
+            self._handle_api_exception(e)
+            raise
+
+    async def update_shared_step(self, shared_step_id: int, data: SharedStepPatchDto) -> SharedStepDto:
+        """Update an existing shared step with new data.
+
+        Args:
+            shared_step_id: The ID of the shared step to update.
+            data: The new data to apply (partial update supported).
+
+        Returns:
+            The updated shared step.
+
+        Raises:
+            AllureNotFoundError: If shared step doesn't exist.
+            AllureValidationError: If input data fails validation.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
+        """
+        if not self._is_entered:
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+
+        await self._ensure_valid_token()
+        if self._shared_step_api is None:
+            raise AllureAPIError("Internal error: shared_step_api not initialized")
+
+        try:
+            return await self._shared_step_api.patch18(
+                id=shared_step_id,
+                shared_step_patch_dto=data,
+                _request_timeout=self._timeout,
+            )
+        except ApiException as e:
+            self._handle_api_exception(e)
+            raise
+
+    async def delete_shared_step(self, shared_step_id: int) -> None:
+        """Delete a shared step from the system.
+
+        This performs a soft delete by archiving the shared step.
+
+        Args:
+            shared_step_id: The ID of the shared step to delete.
+
+        Raises:
+            AllureNotFoundError: If shared step doesn't exist.
+            AllureAPIError: If the API request fails.
+        """
+        if not self._is_entered:
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+
+        await self._ensure_valid_token()
+        if self._shared_step_api is None:
+            raise AllureAPIError("Internal error: shared_step_api not initialized")
+
+        try:
+            # Soft delete via archive
+            await self._shared_step_api.archive(id=shared_step_id, _request_timeout=self._timeout)
+        except ApiException as e:
+            self._handle_api_exception(e)
+            raise
+

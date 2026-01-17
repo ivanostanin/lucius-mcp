@@ -106,3 +106,104 @@ async def test_create_shared_step_fail_validation(service):
 
     with pytest.raises(AllureValidationError):
         await service.create_shared_step(project_id=1, name="")
+
+
+# ==========================================
+# Update Shared Step Tests (Story 2.2)
+# ==========================================
+
+
+@pytest.mark.asyncio
+async def test_get_shared_step_success(service, mock_client):
+    """Test getting a shared step."""
+    expected_step = SharedStepDto(id=100, name="Test Step", project_id=1, steps_count=3)
+    mock_client.get_shared_step = AsyncMock(return_value=expected_step)
+
+    result = await service.get_shared_step(step_id=100)
+
+    assert result.id == 100
+    assert result.name == "Test Step"
+    mock_client.get_shared_step.assert_called_once_with(100)
+
+
+@pytest.mark.asyncio
+async def test_update_shared_step_success(service, mock_client):
+    """Test updating a shared step with name changes."""
+    current_step = SharedStepDto(id=100, name="Old Name", project_id=1)
+    updated_step = SharedStepDto(id=100, name="New Name", project_id=1)
+
+    mock_client.get_shared_step = AsyncMock(return_value=current_step)
+    mock_client.update_shared_step = AsyncMock(return_value=updated_step)
+
+    result, changed = await service.update_shared_step(step_id=100, name="New Name")
+
+    assert result.name == "New Name"
+    assert changed is True
+    mock_client.get_shared_step.assert_called_once_with(100)
+    mock_client.update_shared_step.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_update_shared_step_idempotent(service, mock_client):
+    """Test idempotency - no update if data matches current state."""
+    current_step = SharedStepDto(id=100, name="Same Name", project_id=1)
+
+    mock_client.get_shared_step = AsyncMock(return_value=current_step)
+    mock_client.update_shared_step = AsyncMock()
+
+    result, changed = await service.update_shared_step(step_id=100, name="Same Name")
+
+    assert result.name == "Same Name"
+    assert changed is False
+    mock_client.get_shared_step.assert_called_once_with(100)
+    # Should NOT call update_shared_step
+    mock_client.update_shared_step.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_update_shared_step_partial_update(service, mock_client):
+    """Test partial update with only some fields provided."""
+    current_step = SharedStepDto(id=100, name="Current Name", project_id=1, description="Old Desc")
+    updated_step = SharedStepDto(id=100, name="Current Name", project_id=1, description="New Desc")
+
+    mock_client.get_shared_step = AsyncMock(return_value=current_step)
+    mock_client.update_shared_step = AsyncMock(return_value=updated_step)
+
+    # Only update description, leave name unchanged
+    result, changed = await service.update_shared_step(step_id=100, description="New Desc")
+
+    assert changed is True
+    mock_client.update_shared_step.assert_called_once()
+
+
+# ==========================================
+# Delete Shared Step Tests (Story 2.2)
+# ==========================================
+
+
+@pytest.mark.asyncio
+async def test_delete_shared_step_success(service, mock_client):
+    """Test deleting a shared step successfully."""
+    mock_client.delete_shared_step = AsyncMock()
+
+    await service.delete_shared_step(step_id=100)
+
+    mock_client.delete_shared_step.assert_called_once_with(100)
+
+
+@pytest.mark.asyncio
+async def test_delete_shared_step_idempotent(service, mock_client):
+    """Test delete is idempotent (soft delete pattern from Story 1.5)."""
+    from src.client.exceptions import AllureNotFoundError
+
+    # First call succeeds
+    mock_client.delete_shared_step = AsyncMock()
+
+    await service.delete_shared_step(step_id=100)
+    mock_client.delete_shared_step.assert_called_once()
+
+    # Second call with already-deleted step - should handle gracefully
+    mock_client.delete_shared_step = AsyncMock(side_effect=AllureNotFoundError("Not found", 404, "{}"))
+
+    # Should not raise, just return gracefully
+    await service.delete_shared_step(step_id=100)
