@@ -154,6 +154,7 @@ uv add "mcp[cli,fastapi]" pydantic starlette uvicorn
 **Error Handling:**
 *   `try/except` blocks in tools are **FORBIDDEN**.
 *   Let the global exception handler catch `AllureError` and format the "Agent Hint".
+*   **Actionable Error Handling:** The exception handler MUST supports "Schema Hints" by introspecting tool signatures to provide simplified usage examples when validation fails.
 
 ### Enforcement Guidelines
 

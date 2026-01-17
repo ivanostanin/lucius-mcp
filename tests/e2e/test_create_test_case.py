@@ -12,7 +12,9 @@ from src.tools.create_test_case import create_test_case
     not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
 )
 @pytest.mark.asyncio
-async def test_full_house_creation(project_id: int, allure_client: AllureClient, cleanup_tracker: Any, pixel_b64: str) -> None:
+async def test_full_house_creation(
+    project_id: int, allure_client: AllureClient, cleanup_tracker: Any, pixel_b64: str
+) -> None:
     """
     E2E-1: The "Full House" Test Case.
     Verifies creation with name, desc, steps, tags, attachments using real API.
