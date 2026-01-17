@@ -68,10 +68,8 @@ class CleanupTracker:
                 logger.warning(f"Failed to cleanup test case {tc_id}: {e}")
 
         # Clean up shared steps
-        for _ in self._shared_steps:
+        for step_id in self._shared_steps:
             try:
-                # Note: Shared step deletion not yet implemented in MVP
-                # This is a placeholder for future functionality
-                pass
+                await self._client.archive_shared_step(step_id)
             except Exception as e:
-                logger.warning(f"Failed to cleanup shared step: {e}")
+                logger.warning(f"Failed to cleanup shared step {step_id}: {e}")

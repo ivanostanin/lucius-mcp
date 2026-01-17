@@ -14,6 +14,10 @@ from .client import (
     TestCasePatchV2Dto,
     TestCaseScenarioDto,
     TestCaseScenarioV2Dto,
+    PageSharedStepDto,
+    SharedStepDto,
+    SharedStepCreateDto,
+    SharedStepAttachmentRowDto,
 )
 from .exceptions import (
     AllureAPIError,
@@ -42,4 +46,8 @@ __all__ = [
     "TestCasePatchV2Dto",
     "TestCaseScenarioDto",
     "TestCaseScenarioV2Dto",
+    "PageSharedStepDto",
+    "SharedStepDto",
+    "SharedStepCreateDto",
+    "SharedStepAttachmentRowDto",
 ]

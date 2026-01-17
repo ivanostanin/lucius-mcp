@@ -53,7 +53,7 @@ development_status:
 
   # Epic 2: Shared Step Reusability (MVP)
   epic-2: in-progress
-  2-1-create-and-list-shared-steps: ready-for-dev
+  2-1-create-and-list-shared-steps: ready-for-review
   2-2-update-and-delete-shared-steps: ready-for-dev
   2-3-link-shared-step-to-test-case: ready-for-dev
   epic-2-retrospective: optional

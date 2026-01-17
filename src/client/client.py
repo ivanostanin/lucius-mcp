@@ -21,6 +21,9 @@ from .exceptions import (
     AllureRateLimitError,
     AllureValidationError,
 )
+from .generated.api.shared_step_attachment_controller_api import SharedStepAttachmentControllerApi
+from .generated.api.shared_step_controller_api import SharedStepControllerApi
+from .generated.api.shared_step_scenario_controller_api import SharedStepScenarioControllerApi
 from .generated.api.test_case_attachment_controller_api import TestCaseAttachmentControllerApi
 from .generated.api.test_case_controller_api import TestCaseControllerApi
 from .generated.api.test_case_overview_controller_api import TestCaseOverviewControllerApi
@@ -33,8 +36,12 @@ from .generated.exceptions import (
 from .generated.models.attachment_step_dto import AttachmentStepDto
 from .generated.models.body_step_dto import BodyStepDto
 from .generated.models.custom_field_value_with_cf_dto import CustomFieldValueWithCfDto
+from .generated.models.page_shared_step_dto import PageSharedStepDto
 from .generated.models.scenario_step_create_dto import ScenarioStepCreateDto
 from .generated.models.scenario_step_created_response_dto import ScenarioStepCreatedResponseDto
+from .generated.models.shared_step_attachment_row_dto import SharedStepAttachmentRowDto
+from .generated.models.shared_step_create_dto import SharedStepCreateDto
+from .generated.models.shared_step_dto import SharedStepDto
 from .generated.models.shared_step_scenario_dto_steps_inner import SharedStepScenarioDtoStepsInner
 from .generated.models.test_case_attachment_row_dto import TestCaseAttachmentRowDto
 from .generated.models.test_case_create_v2_dto import TestCaseCreateV2Dto
@@ -73,6 +80,12 @@ __all__ = [
     "BodyStepDtoWithSteps",
     "ScenarioStepCreateDto",
     "ScenarioStepCreatedResponseDto",
+    "PageSharedStepDto",
+    "ScenarioStepCreateDto",
+    "ScenarioStepCreatedResponseDto",
+    "SharedStepAttachmentRowDto",
+    "SharedStepCreateDto",
+    "SharedStepDto",
     "SharedStepScenarioDtoStepsInner",
     "TestCaseAttachmentRowDto",
     "TestCaseCreateV2Dto",
@@ -132,9 +145,12 @@ class AllureClient:
         # Generated client components
         self._api_client: ApiClient | None = None
         self._test_case_api: TestCaseControllerApi | None = None
+        self._shared_step_api: SharedStepControllerApi | None = None
+        self._shared_step_attachment_api: SharedStepAttachmentControllerApi | None = None
         self._attachment_api: TestCaseAttachmentControllerApi | None = None
         self._scenario_api: TestCaseScenarioControllerApi | None = None
         self._test_case_scenario_api: TestCaseScenarioControllerApi | None = None
+        self._shared_step_scenario_api: SharedStepScenarioControllerApi | None = None
         self._overview_api: TestCaseOverviewControllerApi
         self._is_entered = False
 
@@ -242,9 +258,12 @@ class AllureClient:
 
             # Re-initialize controllers
             self._test_case_api = TestCaseControllerApi(self._api_client)
+            self._shared_step_api = SharedStepControllerApi(self._api_client)
+            self._shared_step_attachment_api = SharedStepAttachmentControllerApi(self._api_client)
             self._attachment_api = TestCaseAttachmentControllerApi(self._api_client)
             self._scenario_api = TestCaseScenarioControllerApi(self._api_client)
             self._test_case_scenario_api = TestCaseScenarioControllerApi(self._api_client)
+            self._shared_step_scenario_api = SharedStepScenarioControllerApi(self._api_client)
             self._overview_api = TestCaseOverviewControllerApi(self._api_client)
 
     @property
@@ -664,3 +683,172 @@ class AllureClient:
         except ApiException as e:
             self._handle_api_exception(e)
             raise  # Should not be reached
+
+    # ==========================================
+    # Shared Step operations
+    # ==========================================
+
+    async def create_shared_step(self, project_id: int, name: str) -> SharedStepDto:
+        """Create a new shared step.
+
+        Args:
+            project_id: Target project ID.
+            name: Name of the shared step.
+
+        Returns:
+            The created SharedStepDto.
+
+        Raises:
+            AllureNotFoundError: If project doesn't exist.
+            AllureValidationError: If input data fails validation.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
+        """
+        if not self._is_entered:
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+
+        await self._ensure_valid_token()
+        if self._shared_step_api is None:
+            raise AllureAPIError("Internal error: shared_step_api not initialized")
+
+        try:
+            dto = SharedStepCreateDto(name=name, project_id=project_id)
+            return await self._shared_step_api.create19(shared_step_create_dto=dto, _request_timeout=self._timeout)
+        except ApiException as e:
+            self._handle_api_exception(e)
+            raise
+
+    async def list_shared_steps(
+        self,
+        project_id: int,
+        page: int = 0,
+        size: int = 100,
+        search: str | None = None,
+        archived: bool | None = None,
+    ) -> PageSharedStepDto:
+        """List shared steps in a project.
+
+        Args:
+            project_id: Target project ID.
+            page: Zero-based page index.
+            size: Page size.
+            search: Optional search query (by name).
+            archived: Optional filter by archived status.
+
+        Returns:
+            Paginated list of shared steps.
+        """
+        if not self._is_entered:
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+
+        await self._ensure_valid_token()
+        if self._shared_step_api is None:
+            raise AllureAPIError("Internal error: shared_step_api not initialized")
+
+        try:
+            return await self._shared_step_api.find_all16(
+                project_id=project_id,
+                page=page,
+                size=size,
+                search=search,
+                archived=archived,
+                _request_timeout=self._timeout,
+            )
+        except ApiException as e:
+            self._handle_api_exception(e)
+            raise
+
+    async def create_shared_step_scenario_step(
+        self,
+        step: ScenarioStepCreateDto,
+    ) -> ScenarioStepCreatedResponseDto:
+        """Create a step within a shared step scenario.
+
+        Args:
+            step: Step data (must include shared_step_id).
+
+        Returns:
+            Response containing created step ID.
+        """
+        if not self._is_entered:
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+
+        await self._ensure_valid_token()
+        if self._shared_step_scenario_api is None:
+            raise AllureAPIError("Internal error: shared_step_scenario_api not initialized")
+
+        if not step.shared_step_id:
+            raise AllureValidationError("shared_step_id is required for shared step scenario steps")
+
+        try:
+            # We use without_preload_content to skip the problematic generated
+            # deserialization of NormalizedScenarioDto, which fails due to
+            # ambiguous oneOf schema matching for attachments.
+            response = await self._shared_step_scenario_api.create20_without_preload_content(
+                scenario_step_create_dto=step,
+                _request_timeout=self._timeout,
+            )
+            
+            # response is an httpx.Response object. Check for success status.
+            if not 200 <= response.status_code <= 299:
+                raise ApiException(status=response.status_code, reason=response.reason_phrase, body=response.text)
+
+            data = response.json()
+            # Use model_construct to bypass validation of the scenario field while
+            # providing the created_step_id needed by SharedStepService.
+            return ScenarioStepCreatedResponseDto.model_construct(
+                created_step_id=data.get("createdStepId"),
+            )
+        except ApiException as e:
+            self._handle_api_exception(e)
+            raise
+
+    async def upload_shared_step_attachment(
+        self,
+        shared_step_id: int,
+        file_data: list[bytes | str | tuple[str, bytes]],
+    ) -> list[SharedStepAttachmentRowDto]:
+        """Upload attachment(s) to a shared step.
+
+        Args:
+            shared_step_id: Target shared step ID.
+            file_data: List of files to upload.
+
+        Returns:
+            List of created attachment records.
+        """
+        if not self._is_entered:
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+
+        await self._ensure_valid_token()
+        if self._shared_step_attachment_api is None:
+            raise AllureAPIError("Internal error: shared_step_attachment_api not initialized")
+
+        try:
+            return await self._shared_step_attachment_api.create21(
+                shared_step_id=shared_step_id,
+                file=file_data,
+                _request_timeout=self._timeout,
+            )
+        except ApiException as e:
+            self._handle_api_exception(e)
+            raise
+
+    async def archive_shared_step(self, shared_step_id: int) -> None:
+        """Archive a shared step.
+
+        Args:
+            shared_step_id: ID of the shared step to archive.
+        """
+        if not self._is_entered:
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+
+        await self._ensure_valid_token()
+        if self._shared_step_api is None:
+            raise AllureAPIError("Internal error: shared_step_api not initialized")
+
+        try:
+            await self._shared_step_api.archive(id=shared_step_id, _request_timeout=self._timeout)
+        except ApiException as e:
+            self._handle_api_exception(e)
+            raise

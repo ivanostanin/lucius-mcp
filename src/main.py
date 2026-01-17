@@ -10,6 +10,7 @@ from starlette.routing import Mount
 
 from src.tools.create_test_case import create_test_case
 from src.tools.delete_test_case import delete_test_case
+from src.tools.shared_steps import register as register_shared_steps
 from src.tools.update_test_case import update_test_case
 from src.utils.config import settings
 from src.utils.error import agent_hint_handler
@@ -30,6 +31,7 @@ mcp = FastMCP(
 mcp.tool()(create_test_case)
 mcp.tool()(update_test_case)
 mcp.tool()(delete_test_case)
+register_shared_steps(mcp)
 
 
 @mcp.tool()
