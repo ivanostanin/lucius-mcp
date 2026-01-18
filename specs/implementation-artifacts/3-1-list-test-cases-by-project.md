@@ -1,6 +1,6 @@
 # Story 3.1: List Test Cases by Project
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -18,38 +18,38 @@ so that I can get an overview of the existing test documentation.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Define List Test Cases Tool** (AC: #1, #4)
-  - [ ] 1.1: Create `list_test_cases` tool in `src/tools/search.py`
-  - [ ] 1.2: Define Pydantic input model with `project_id` (required) and optional filters
-  - [ ] 1.3: Add comprehensive Google-style docstring for LLM discovery
-  - [ ] 1.4: Implement thin wrapper calling service layer
+- [x] **Task 1: Define List Test Cases Tool** (AC: #1, #4)
+  - [x] 1.1: Create `list_test_cases` tool in `src/tools/search.py`
+  - [x] 1.2: Define Pydantic input model with `project_id` (required) and optional filters
+  - [x] 1.3: Add comprehensive Google-style docstring for LLM discovery
+  - [x] 1.4: Implement thin wrapper calling service layer
 
-- [ ] **Task 2: Implement Search Service** (AC: #1, #2, #3)
-  - [ ] 2.1: Create `src/services/search_service.py`
-  - [ ] 2.2: Implement `list_test_cases()` method with pagination support
-  - [ ] 2.3: Add optional filter parameters (name, tags, status)
-  - [ ] 2.4: Return structured data (list of TestCaseSummary models)
+- [x] **Task 2: Implement Search Service** (AC: #1, #2, #3)
+  - [x] 2.1: Create `src/services/search_service.py`
+  - [x] 2.2: Implement `list_test_cases()` method with pagination support
+  - [x] 2.3: Add optional filter parameters (name, tags, status)
+  - [x] 2.4: Return structured data (list of TestCaseSummary models)
 
-- [ ] **Task 3: Extend AllureClient** (AC: #1, #2)
-  - [ ] 3.1: Add `list_test_cases()` method to `src/client/client.py`
-  - [ ] 3.2: Implement pagination handling (page, size parameters)
-  - [ ] 3.3: Map API response to Pydantic models
+- [x] **Task 3: Extend AllureClient** (AC: #1, #2)
+  - [x] 3.1: Add `list_test_cases()` method to `src/client/client.py`
+  - [x] 3.2: Implement pagination handling (page, size parameters)
+  - [x] 3.3: Map API response to Pydantic models
 
-- [ ] **Task 4: Add Pydantic Models** (AC: #1)
-  - [ ] 4.1: Verify `TestCaseSummary` model exists in generated models or create it
-  - [ ] 4.2: Create `TestCaseListResponse` for paginated responses
-  - [ ] 4.3: Add `ListTestCasesRequest` input model with filters
+- [x] **Task 4: Add Pydantic Models** (AC: #1)
+  - [x] 4.1: Verify `TestCaseSummary` model exists in generated models or create it
+  - [x] 4.2: Create `TestCaseListResponse` for paginated responses
+  - [x] 4.3: Add `ListTestCasesRequest` input model with filters
 
-- [ ] **Task 5: Error Handling** (AC: #5)
-  - [ ] 5.1: Handle Allure API 404 errors for invalid project
-  - [ ] 5.2: Ensure global exception handler produces Agent Hints
-  - [ ] 5.3: Add validation for `project_id` format
+- [x] **Task 5: Error Handling** (AC: #5)
+  - [x] 5.1: Handle Allure API 404 errors for invalid project
+  - [x] 5.2: Ensure global exception handler produces Agent Hints
+  - [x] 5.3: Add validation for `project_id` format
 
-- [ ] **Task 6: Unit Tests** (AC: #1, #2, #3)
-  - [ ] 6.1: Add unit tests for `SearchService.list_test_cases()`
-  - [ ] 6.2: Test pagination edge cases (empty results, single page, multiple pages)
-  - [ ] 6.3: Test filter combinations
-  - [ ] 6.4: Mock `AllureClient` responses with `respx`
+- [x] **Task 6: Unit Tests** (AC: #1, #2, #3)
+  - [x] 6.1: Add unit tests for `SearchService.list_test_cases()`
+  - [x] 6.2: Test pagination edge cases (empty results, single page, multiple pages)
+  - [x] 6.3: Test filter combinations
+  - [x] 6.4: Mock `AllureClient` responses with `respx`
 
 ## Dev Notes
 
@@ -243,12 +243,19 @@ async def test_list_test_cases_returns_paginated_results():
 
 ### Agent Model Used
 
-_To be filled by implementing agent_
+gpt-5.2-codex
 
 ### Completion Notes List
 
-_To be filled during implementation_
+- Implemented list_test_cases tool with LLM-friendly formatting and optional filters.
+- Added SearchService to validate inputs and return paginated results.
+- Extended AllureClient to list test cases via AQL search with tag/status filters.
+- Added unit tests covering pagination, filters, and validation.
 
 ### File List
 
-_To be filled during implementation_
+- src/client/__init__.py
+- src/client/client.py
+- src/services/search_service.py
+- src/tools/search.py
+- tests/unit/test_search_service.py

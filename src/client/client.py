@@ -28,6 +28,7 @@ from .generated.api.test_case_attachment_controller_api import TestCaseAttachmen
 from .generated.api.test_case_controller_api import TestCaseControllerApi
 from .generated.api.test_case_overview_controller_api import TestCaseOverviewControllerApi
 from .generated.api.test_case_scenario_controller_api import TestCaseScenarioControllerApi
+from .generated.api.test_case_search_controller_api import TestCaseSearchControllerApi
 from .generated.api_client import ApiClient
 from .generated.configuration import Configuration
 from .generated.exceptions import (
@@ -37,6 +38,7 @@ from .generated.models.attachment_step_dto import AttachmentStepDto
 from .generated.models.body_step_dto import BodyStepDto
 from .generated.models.custom_field_value_with_cf_dto import CustomFieldValueWithCfDto
 from .generated.models.page_shared_step_dto import PageSharedStepDto
+from .generated.models.page_test_case_dto import PageTestCaseDto
 from .generated.models.scenario_step_create_dto import ScenarioStepCreateDto
 from .generated.models.scenario_step_created_response_dto import ScenarioStepCreatedResponseDto
 from .generated.models.shared_step_attachment_row_dto import SharedStepAttachmentRowDto
@@ -50,6 +52,7 @@ from .generated.models.test_case_create_v2_dto import TestCaseCreateV2Dto
 from .generated.models.test_case_dto import TestCaseDto
 from .generated.models.test_case_overview_dto import TestCaseOverviewDto
 from .generated.models.test_case_patch_v2_dto import TestCasePatchV2Dto
+from .generated.models.test_case_row_dto import TestCaseRowDto
 from .generated.models.test_case_scenario_dto import TestCaseScenarioDto
 from .generated.models.test_case_scenario_v2_dto import TestCaseScenarioV2Dto
 
@@ -89,6 +92,7 @@ __all__ = [
     "AttachmentStepDtoWithName",
     "BodyStepDtoWithSteps",
     "PageSharedStepDto",
+    "PageTestCaseDto",
     "ScenarioStepCreateDto",
     "ScenarioStepCreateDto",
     "ScenarioStepCreatedResponseDto",
@@ -105,6 +109,7 @@ __all__ = [
     "TestCaseDtoWithCF",
     "TestCaseOverviewDto",
     "TestCasePatchV2Dto",
+    "TestCaseRowDto",
     "TestCaseScenarioDto",
     "TestCaseScenarioV2Dto",
 ]
@@ -164,6 +169,7 @@ class AllureClient:
         self._test_case_scenario_api: TestCaseScenarioControllerApi | None = None
         self._shared_step_scenario_api: SharedStepScenarioControllerApi | None = None
         self._overview_api: TestCaseOverviewControllerApi
+        self._search_api: TestCaseSearchControllerApi | None = None
         self._is_entered = False
 
     @classmethod
@@ -277,6 +283,7 @@ class AllureClient:
             self._test_case_scenario_api = TestCaseScenarioControllerApi(self._api_client)
             self._shared_step_scenario_api = SharedStepScenarioControllerApi(self._api_client)
             self._overview_api = TestCaseOverviewControllerApi(self._api_client)
+            self._search_api = TestCaseSearchControllerApi(self._api_client)
 
     @property
     def api_client(self) -> ApiClient:
@@ -382,6 +389,74 @@ class AllureClient:
         except ApiException as e:
             self._handle_api_exception(e)
             raise  # Should not be reached
+
+    async def list_test_cases(
+        self,
+        project_id: int,
+        page: int = 0,
+        size: int = 20,
+        search: str | None = None,
+        tags: list[str] | None = None,
+        status: str | None = None,
+    ) -> PageTestCaseDto:
+        """List test cases for a project.
+
+        Args:
+            project_id: Target project ID.
+            page: Zero-based page index.
+            size: Page size.
+            search: Optional name/description search.
+            tags: Optional list of tags to filter (AQL syntax).
+            status: Optional status filter for AQL query.
+
+        Returns:
+            Paginated test cases for the project.
+
+        Raises:
+            AllureNotFoundError: If project doesn't exist.
+            AllureValidationError: If input data fails validation.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
+        """
+        if not self._is_entered:
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+
+        await self._ensure_valid_token()
+        if self._search_api is None:
+            raise AllureAPIError("Internal error: test_case search APIs not initialized")
+
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+
+        if not isinstance(page, int) or page < 0:
+            raise AllureValidationError("Page must be a non-negative integer")
+        if not isinstance(size, int) or size <= 0 or size > 100:
+            raise AllureValidationError("Size must be between 1 and 100")
+
+        def _escape_rql_value(value: str) -> str:
+            return value.replace("'", "\\'")
+
+        rql_parts: list[str] = ["projectId:" + str(project_id)]
+        if search:
+            rql_parts.append(f"name~'{_escape_rql_value(search)}'")
+        if status:
+            rql_parts.append(f"status:'{_escape_rql_value(status)}'")
+        if tags:
+            for tag in tags:
+                rql_parts.append(f"tag:'{_escape_rql_value(tag)}'")
+        rql = " AND ".join(rql_parts)
+
+        try:
+            return await self._search_api.search1(
+                project_id=project_id,
+                rql=rql,
+                page=page,
+                size=size,
+                _request_timeout=self._timeout,
+            )
+        except ApiException as e:
+            self._handle_api_exception(e)
+            raise
 
     async def upload_attachment(
         self,

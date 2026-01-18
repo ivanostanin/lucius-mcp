@@ -44,7 +44,7 @@ development_status:
   epic-1: done
   1-1-project-initialization-and-core-architecture: done
   1-2-generated-client-and-data-models: done
-  1-3-comprehensive-test-case-creation-tool: ready-for-dev
+  1-3-comprehensive-test-case-creation-tool: done
   1-4-idempotent-update-and-maintenance: done
   1-5-soft-delete-and-archive: done
   1-6-comprehensive-end-to-end-tests: done
@@ -60,7 +60,7 @@ development_status:
 
   # Epic 3: Search & Contextual Access (MVP)
   epic-3: in-progress
-  3-1-list-test-cases-by-project: ready-for-dev
+  3-1-list-test-cases-by-project: review
   3-2-retrieve-full-test-case-details: ready-for-dev
   3-3-search-test-cases-by-name-or-tag: ready-for-dev
   3-4-runtime-authentication-override: ready-for-dev
