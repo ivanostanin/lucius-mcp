@@ -1,9 +1,10 @@
 .env
-.claude/
+.env.test
+#.claude/
 .codex/
-.gemini/
+#.gemini/
 .venv/
-_bmad/
+#_bmad/
 .idea/
 .agent/
 
@@ -43,3 +44,4 @@ MANIFEST
 .coverage
 
 .openapi-generator/
+!/.claude/settings.local.json
