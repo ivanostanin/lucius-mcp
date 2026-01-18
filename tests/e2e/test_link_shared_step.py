@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 
@@ -14,6 +15,7 @@ from tests.e2e.helpers.cleanup import CleanupTracker
 @pytest.mark.skipif(
     not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
 )
+@pytest.mark.test_id("story-2.3-e2e-link-unlink-shared-step")
 @pytest.mark.asyncio
 async def test_link_shared_step_flow(
     project_id: int, allure_client: AllureClient, cleanup_tracker: CleanupTracker
@@ -102,10 +104,8 @@ async def test_link_shared_step_flow(
 
     finally:
         # Cleanup Shared Step manually since tracker might not cover it yet
+        logger = logging.getLogger(__name__)
         try:
             await allure_client.delete_shared_step(shared_step_id)
         except Exception as e:
-            # Best effort cleanup - log warning but don't fail
-            import logging
-
-            logging.warning(f"Failed to clean up shared step {shared_step_id}: {e}")
+            logger.warning(f"Failed to cleanup shared step {shared_step_id}: {e}")

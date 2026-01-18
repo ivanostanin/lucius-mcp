@@ -76,7 +76,19 @@ ignore_errors = true
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
+python_classes = [
+    "TestUpdateTestCase", 
+    "TestAddSharedStepToCase", 
+    "TestRemoveSharedStepFromCase",
+    "TestProjectIdValidation",
+    "TestNameValidation",
+    "TestStepsValidation",
+    "TestTagsValidation",
+    "TestAttachmentsValidation",
+    "TestCustomFieldsValidation",
+]
 
 markers = [
-    "test_id: Test ID for traceability to requirements and test design documents"
+    "test_id: Test ID for traceability to requirements and test design documents",
+    "priority: Test execution priority"
 ]
