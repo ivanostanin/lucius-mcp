@@ -57,7 +57,8 @@ def _format_test_case_list(result: TestCaseListResult) -> str:
 
     for tc in result.items:
         tags = ", ".join([t.name for t in (tc.tags or []) if t.name]) if tc.tags else "none"
-        lines.append(f"- [TC-{tc.id}] {tc.name} (tags: {tags})")
+        status = tc.status.name if tc.status and tc.status.name else "unknown"
+        lines.append(f"- [TC-{tc.id}] {tc.name} (status: {status}; tags: {tags})")
 
     if result.page < result.total_pages - 1:
         lines.append(f"\nUse page={result.page + 1} to see more results.")

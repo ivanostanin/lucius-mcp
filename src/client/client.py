@@ -390,6 +390,22 @@ class AllureClient:
             self._handle_api_exception(e)
             raise  # Should not be reached
 
+    @staticmethod
+    def _escape_rql_value(value: str) -> str:
+        return value.replace("\\", "\\\\").replace('"', '\\"')
+
+    @classmethod
+    def _build_rql_filters(cls, search: str | None, status: str | None, tags: list[str] | None) -> str:
+        parts: list[str] = []
+        if search:
+            parts.append(f'name~="{cls._escape_rql_value(search)}"')
+        if status:
+            parts.append(f'status="{cls._escape_rql_value(status)}"')
+        if tags:
+            for tag in tags:
+                parts.append(f'tag="{cls._escape_rql_value(tag)}"')
+        return " and ".join(parts)
+
     async def list_test_cases(
         self,
         project_id: int,
@@ -433,18 +449,7 @@ class AllureClient:
         if not isinstance(size, int) or size <= 0 or size > 100:
             raise AllureValidationError("Size must be between 1 and 100")
 
-        def _escape_rql_value(value: str) -> str:
-            return value.replace("'", "\\'")
-
-        rql_parts: list[str] = ["projectId:" + str(project_id)]
-        if search:
-            rql_parts.append(f"name~'{_escape_rql_value(search)}'")
-        if status:
-            rql_parts.append(f"status:'{_escape_rql_value(status)}'")
-        if tags:
-            for tag in tags:
-                rql_parts.append(f"tag:'{_escape_rql_value(tag)}'")
-        rql = " AND ".join(rql_parts)
+        rql = self._build_rql_filters(search=search, status=status, tags=tags)
 
         try:
             return await self._search_api.search1(

@@ -53,11 +53,11 @@ so that I can get an overview of the existing test documentation.
   - [x] 6.3: Test filter combinations
   - [x] 6.4: Mock `AllureClient` responses with `respx`
 
-- [ ] **Task 7: E2E Tests for Listing** (AC: #6)
-  - [ ] 7.1: Add `tests/e2e/test_list_test_cases.py`
-  - [ ] 7.2: Verify pagination across multiple pages
-  - [ ] 7.3: Validate LLM-friendly output format (no raw JSON)
-  - [ ] 7.4: Skip gracefully when sandbox credentials are absent
+- [x] **Task 7: E2E Tests for Listing** (AC: #6)
+  - [x] 7.1: Add `tests/e2e/test_list_test_cases.py`
+  - [x] 7.2: Verify pagination across multiple pages
+  - [x] 7.3: Validate LLM-friendly output format (no raw JSON)
+  - [x] 7.4: Skip gracefully when sandbox credentials are absent
 
 ## Dev Notes
 
@@ -270,3 +270,4 @@ gpt-5.2-codex
 - src/services/search_service.py
 - src/tools/search.py
 - tests/unit/test_search_service.py
+- tests/e2e/test_list_test_cases.py
