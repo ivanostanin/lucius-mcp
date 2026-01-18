@@ -1,0 +1,8 @@
+{
+  "project_id": 166,
+  "name": "Login as Admin",
+  "steps": [
+    {"action": "Open login", "expected": "Login page visible"},
+    {"action": "Enter admin credentials", "expected": "Dashboard visible"}
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "test_case_id": 12345,
+  "name": "Login happy path (updated)",
+  "description": "Covers username/password login flow.",
+  "tags": ["auth", "smoke"],
+  "custom_fields": {
+    "Component": "Auth",
+    "Layer": "UI"
+  }
+}

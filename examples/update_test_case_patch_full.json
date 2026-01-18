@@ -1,0 +1,22 @@
+{
+  "test_case_id": 12345,
+  "name": "Checkout with coupon",
+  "description": "Validates checkout flow applying a 10% coupon",
+  "precondition": "User account exists with items in cart",
+  "steps": [
+    {"action": "Open cart", "expected": "Cart shows items"},
+    {"action": "Apply coupon SUMMER10", "expected": "Total reduced by 10%"},
+    {"action": "Place order", "expected": "Order created with discounted total"}
+  ],
+  "tags": ["checkout", "regression"],
+  "attachments": [
+    {"name": "cart.png", "content": "<base64>", "content_type": "image/png"}
+  ],
+  "custom_fields": {"Component": "Checkout", "Layer": "UI"},
+  "automated": true,
+  "expected_result": "Order completes with discount applied",
+  "status_id": 2,
+  "test_layer_id": 1,
+  "workflow_id": 7,
+  "links": [{"name": "Spec", "url": "https://example.com/spec", "type": "Document"}]
+}
