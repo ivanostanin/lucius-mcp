@@ -172,6 +172,7 @@ async def test_update_shared_step_partial_update(service, mock_client):
     # Only update description, leave name unchanged
     result, changed = await service.update_shared_step(step_id=100, description="New Desc")
 
+    assert result is not None
     assert changed is True
     mock_client.update_shared_step.assert_called_once()
 

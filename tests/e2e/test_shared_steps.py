@@ -36,7 +36,6 @@ async def test_shared_step_lifecycle_e2e(project_id, cleanup_tracker):
 
     # Extract ID from output for cleanup
     # Output format: "ID: 123"
-    import re
 
     match = re.search(r"ID: (\d+)", output)
     assert match, "Could not extract ID from output"

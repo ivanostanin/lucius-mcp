@@ -550,7 +550,7 @@ class AllureClient:
             raise AllureAPIError("Internal error: test_case_api not initialized")
 
         try:
-            print(f"DEBUG Payload: {data.to_json()}")
+            # print(f"DEBUG Payload: {data.to_json()}")
             return await self._test_case_api.patch13(
                 id=test_case_id,
                 test_case_patch_v2_dto=data,
@@ -591,7 +591,7 @@ class AllureClient:
                 raise ApiException(status=response.status_code, reason=response.reason_phrase, body=response.text)
 
             raw_data = response.json()
-            print(f"DEBUG Initial Raw Normalized Scenario: {raw_data}")
+            # print(f"DEBUG Initial Raw Normalized Scenario: {raw_data}")
             return self._denormalize_to_v2_from_dict(raw_data)
         except ApiException as e:
             self._handle_api_exception(e)
@@ -940,4 +940,3 @@ class AllureClient:
         except ApiException as e:
             self._handle_api_exception(e)
             raise
-

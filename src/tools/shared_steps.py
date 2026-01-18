@@ -104,8 +104,7 @@ async def update_shared_step(
 
         if not changed:
             return (
-                f"No changes needed for Shared Step {step_id}\n\n"
-                "The shared step already matches the requested state."
+                f"No changes needed for Shared Step {step_id}\n\nThe shared step already matches the requested state."
             )
 
         msg_parts = [f"✅ Updated Shared Step {step_id}: '{updated.name}'", "\nChanges applied:"]

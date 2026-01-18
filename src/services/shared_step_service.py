@@ -1,3 +1,4 @@
+import base64
 import logging
 from typing import Any
 
@@ -75,13 +76,13 @@ class SharedStepService:
                 # Shared steps don't have atomic rollbacks easily without delete.
                 # We attempt to delete the shared step if step creation fails to avoid partial state.
                 try:
-                    # We don't have delete_shared_step in Client yet!
-                    # I missed adding delete_shared_step to AllureClient.
-                    # I'll log a warning for now or attempt if I add it.
-                    # Ideally I should add delete/archive to AllureClient.
-                    logger.warning(f"Shared step creation failed during step addition: {e}. Rollback not implemented.")
+                    logger.warning(f"Shared step creation failed during step addition: {e}. Attempting rollback...")
+                    await self.delete_shared_step(shared_step.id)
+                    logger.info(f"Rollback successful: Deleted incomplete shared step {shared_step.id}")
                 except Exception as rollback_error:
-                    logger.debug(f"Rollback cleanup failed (expected if not implemented): {rollback_error}")
+                    logger.error(
+                        f"Rollback failed: {rollback_error}. Shared step {shared_step.id} may be explicitly incomplete."
+                    )
                 raise AllureAPIError(f"Failed to add steps to shared step: {e}") from e
 
         return shared_step
@@ -190,7 +191,7 @@ class SharedStepService:
         Note:
             This operation is idempotent following Story 1.5 pattern.
             If already deleted (404), returns gracefully.
-       """
+        """
         from src.client.exceptions import AllureNotFoundError
 
         try:
@@ -199,7 +200,6 @@ class SharedStepService:
             # Idempotent: if already deleted, this is fine
             logger.debug(f"Shared step {step_id} already deleted or not found")
             pass
-
 
     # ==========================================
     # Helper Methods
@@ -278,8 +278,6 @@ class SharedStepService:
 
         if not content:
             raise AllureValidationError("Attachment must have 'content'")
-
-        import base64
 
         try:
             decoded = base64.b64decode(content)

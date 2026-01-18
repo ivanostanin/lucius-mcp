@@ -1,6 +1,6 @@
 # Story 2.2: Update & Delete Shared Steps
 
-Status: review
+Status: done
 
 ## Story
 
