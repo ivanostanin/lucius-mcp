@@ -67,10 +67,11 @@ development_status:
   epic-3-retrospective: optional
 
   # Epic 4: Production Operations (Phase 2 Priority)
-  epic-4: backlog
+  epic-4: in-progress
   4-1-docker-containerization: backlog
   4-2-helm-chart-for-kubernetes-deployment: backlog
   4-3-github-actions-ci-cd: backlog
+  4-4-mcpb-package-build-claude-desktop: ready-for-dev
   epic-4-retrospective: optional
 
   # Epic 5: Execution Management (Phase 2)
