@@ -17,6 +17,13 @@ so that I can quickly find relevant test documentation.
 5. Supports combined search (name AND tag).
 6. Returns paginated results for large result sets.
 7. Returns clear message when no matches found.
+8. **NFR11 / AC11 (E2E):** End-to-end tests run against a sandbox TestOps instance and validate:
+   - name-only search results,
+   - tag-only search results (single and multiple tags),
+   - combined name+tag queries,
+   - case-insensitive behavior,
+   - output formatting is LLM-friendly (no raw JSON),
+   - tests skip when sandbox credentials are not configured.
 
 ## Tasks / Subtasks
 
@@ -52,17 +59,22 @@ so that I can quickly find relevant test documentation.
   - [ ] 5.5: Test empty results handling
   - [ ] 5.6: Test query parser independently
 
+- [ ] **Task 6: E2E Tests for Search** (AC: #8)
+  - [ ] 6.1: Add `tests/e2e/test_search_test_cases.py`
+  - [ ] 6.2: Verify name-only and tag-only queries in sandbox
+  - [ ] 6.3: Verify combined queries and case-insensitivity
+  - [ ] 6.4: Validate LLM-friendly output (no raw JSON)
+  - [ ] 6.5: Skip gracefully when sandbox credentials are absent
+
 ## Dev Notes
 
 ### FR12 Coverage
+This story addresses **FR12** (search by name or tag).
 
-This story directly addresses **FR12**:
-> Agents can search for Test Cases by Name or Tag (basic filtering).
+### NFR11 / AC11 Coverage
+This story must extend the E2E suite to include `search_test_cases` behavior using the sandbox instance (Story 1.6 harness).
 
 ### Search Query Syntax
-
-The tool supports a simple query syntax:
-
 | Query Type | Example | Description |
 |------------|---------|-------------|
 | Name search | `login flow` | Searches test case names |
@@ -71,6 +83,7 @@ The tool supports a simple query syntax:
 | Combined | `login tag:auth` | Name contains "login" AND has "auth" tag |
 
 ### API Endpoint Reference
+GET /api/rs/testcase (query: projectId, search, tag)
 
 **Allure TestOps API:**
 ```
@@ -278,28 +291,27 @@ class TestSearchQueryParser:
         result = SearchQueryParser.parse("tag:SMOKE tag:Auth")
         assert result.tags == ["smoke", "auth"]
 ```
-
-### Dependencies
-
-- Requires Story 3.1 (SearchService, list infrastructure)
-- Requires Story 1.2 (AllureClient, Pydantic models)
+```
+src/tools/search.py
+src/services/search_service.py
+tests/unit/test_query_parser.py
+tests/e2e/test_search_test_cases.py   # new
+```
 
 ### References
-
 - [Source: specs/project-planning-artifacts/epics.md#Story 3.3]
+- [Source: specs/prd.md#NFR11 - End-to-End Tests]
 - [Source: specs/architecture.md#Communication Patterns]
 - [Source: specs/project-context.md#Naming Patterns]
+- [Source: specs/implementation-artifacts/1-6-comprehensive-end-to-end-tests.md#NFR11 Coverage]
 
 ## Dev Agent Record
 
 ### Agent Model Used
-
-_To be filled by implementing agent_
+gpt-5.2-codex
 
 ### Completion Notes List
-
-_To be filled during implementation_
+- Regenerated story to explicitly require NFR11/AC11 E2E coverage for search_test_cases.
 
 ### File List
-
-_To be filled during implementation_
+- specs/implementation-artifacts/3-3-search-test-cases-by-name-or-tag.md

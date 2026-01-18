@@ -10,12 +10,18 @@ so that I can operate across different projects or with different credentials wi
 
 ## Acceptance Criteria
 
-1. **Given** a tool call that requires authentication, **when** I provide `api_token` and `project_id` arguments directly, **then** these arguments override any environment variables or default configurations.
+1. **Given** a tool call that requires authentication, **when** I provide `api_token` and/or `project_id` arguments directly, **then** these arguments override any environment variables or default configurations.
 2. The operation is executed successfully with the provided runtime context.
 3. Runtime overrides do NOT persist between tool calls (stateless).
 4. Environment variable defaults are still used when runtime arguments are not provided.
-5. Clear error message when neither runtime nor environment authentication is available.
+5. Clear error hint when neither runtime nor environment authentication is available.
 6. API tokens passed at runtime must be masked in all logs.
+7. **NFR11 / AC11 (E2E):** End-to-end tests run against a sandbox TestOps instance and validate:
+   - runtime overrides are honored for a tool call,
+   - environment defaults are used when overrides are absent,
+   - overrides do not persist across calls,
+   - errors are clear when no auth is available,
+   - tests skip when sandbox credentials are not configured.
 
 ## Tasks / Subtasks
 
@@ -53,9 +59,17 @@ so that I can operate across different projects or with different credentials wi
   - [ ] 6.4: Test stateless behavior (overrides don't persist)
   - [ ] 6.5: Test token masking in logs
 
+- [ ] **Task 7: E2E Tests for Runtime Auth** (AC: #7)
+  - [ ] 7.1: Add `tests/e2e/test_runtime_auth_override.py`
+  - [ ] 7.2: Validate runtime override precedence in a tool call
+  - [ ] 7.3: Validate stateless behavior across calls
+  - [ ] 7.4: Validate clear error when no auth configured
+  - [ ] 7.5: Skip gracefully when sandbox credentials are absent
+
 ## Dev Notes
 
 ### FR14 Coverage
+This story addresses **FR14** (runtime auth override).
 
 This story directly addresses **FR14**:
 > Agents can override authentication context (Token, Project ID) via tool arguments at runtime.
@@ -183,6 +197,9 @@ def get_auth_context(
 ```
 
 ### Tool Integration Pattern
+- Tools are thin wrappers (no business logic, no try/except).
+- Services accept AuthContext and pass it to the client.
+- Use `get_auth_context` for runtime overrides.
 
 All tools should follow this pattern:
 
@@ -370,22 +387,20 @@ class TestGetAuthContext:
 - Used by all services
 
 ### References
-
 - [Source: specs/project-planning-artifacts/epics.md#Story 3.4]
+- [Source: specs/prd.md#NFR5 - API Token Masking]
+- [Source: specs/prd.md#NFR11 - End-to-End Tests]
 - [Source: specs/architecture.md#Authentication & Security]
 - [Source: specs/project-context.md#Pydantic & Data - Secrets]
-- [Source: specs/prd.md#NFR5 - API Token Masking]
+- [Source: specs/implementation-artifacts/1-6-comprehensive-end-to-end-tests.md#NFR11 Coverage]
 
 ## Dev Agent Record
 
 ### Agent Model Used
-
-_To be filled by implementing agent_
+gpt-5.2-codex
 
 ### Completion Notes List
-
-_To be filled during implementation_
+- Regenerated story to explicitly require NFR11/AC11 E2E coverage for runtime auth override.
 
 ### File List
-
-_To be filled during implementation_
+- specs/implementation-artifacts/3-4-runtime-authentication-override.md

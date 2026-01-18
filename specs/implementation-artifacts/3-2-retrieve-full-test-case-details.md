@@ -11,10 +11,15 @@ so that I can understand its full context, steps, and metadata.
 ## Acceptance Criteria
 
 1. **Given** a valid Test Case ID, **when** I call `get_test_case_details`, **then** the tool returns the full Test Case object including all steps, tags, and custom fields.
-2. Returns all metadata: name, description, preconditions, steps, tags, custom fields, attachments.
-3. Handles cases where the Test Case ID is not found with a clear error.
+2. Returns all metadata: name, description, preconditions, steps, tags, custom fields, attachments, status, and automation status.
+3. Handles cases where the Test Case ID is not found with a clear error hint from the global exception handler.
 4. Tool returns LLM-friendly formatted output, not raw JSON.
 5. Supports runtime authentication override via optional `api_token` argument.
+6. **NFR11 / AC11 (E2E):** End-to-end tests run against a sandbox TestOps instance and validate:
+   - `get_test_case_details` returns full metadata for a known test case,
+   - missing test case IDs return a clear Agent Hint,
+   - output formatting is LLM-friendly (no raw JSON),
+   - tests skip when sandbox credentials are not configured.
 
 ## Tasks / Subtasks
 
@@ -27,12 +32,10 @@ so that I can understand its full context, steps, and metadata.
 - [ ] **Task 2: Extend Search Service** (AC: #1, #2)
   - [ ] 2.1: Add `get_test_case_details()` method to `SearchService`
   - [ ] 2.2: Return full `TestCase` Pydantic model with all fields populated
-  - [ ] 2.3: Include steps, tags, custom fields, and attachments
 
 - [ ] **Task 3: Extend AllureClient** (AC: #1, #2)
   - [ ] 3.1: Add `get_test_case()` method if not already implemented
-  - [ ] 3.2: Ensure full response deserialization (steps, tags, custom fields)
-  - [ ] 3.3: Handle attachment metadata retrieval
+  - [ ] 3.2: Ensure full response deserialization (steps, tags, custom fields, attachments)
 
 - [ ] **Task 4: Error Handling** (AC: #3)
   - [ ] 4.1: Add `TestCaseNotFoundError` exception if not exists
@@ -45,12 +48,19 @@ so that I can understand its full context, steps, and metadata.
   - [ ] 5.3: Test output formatting
   - [ ] 5.4: Mock API responses
 
+- [ ] **Task 6: E2E Tests for Get Details** (AC: #6)
+  - [ ] 6.1: Add `tests/e2e/test_get_test_case_details.py`
+  - [ ] 6.2: Verify full metadata is returned for a known test case
+  - [ ] 6.3: Validate LLM-friendly output (no raw JSON)
+  - [ ] 6.4: Skip gracefully when sandbox credentials are absent
+
 ## Dev Notes
 
 ### FR11 Coverage
+This story addresses **FR11** (retrieve full Test Case details by ID).
 
-This story directly addresses **FR11**:
-> Agents can retrieve the full details of a specific Test Case by its Allure ID.
+### NFR11 / AC11 Coverage
+This story must extend the E2E suite to include `get_test_case_details` behavior using the sandbox instance (Story 1.6 harness).
 
 ### API Endpoint Reference
 
@@ -223,21 +233,19 @@ async def test_get_test_case_not_found_raises_error():
 ```
 
 ### References
-
 - [Source: specs/project-planning-artifacts/epics.md#Story 3.2]
+- [Source: specs/prd.md#NFR11 - End-to-End Tests]
 - [Source: specs/architecture.md#Error Handling Strategy]
 - [Source: specs/project-context.md#Tool Outputs]
+- [Source: specs/implementation-artifacts/1-6-comprehensive-end-to-end-tests.md#NFR11 Coverage]
 
 ## Dev Agent Record
 
 ### Agent Model Used
-
-_To be filled by implementing agent_
+gpt-5.2-codex
 
 ### Completion Notes List
-
-_To be filled during implementation_
+- Regenerated story to explicitly require NFR11/AC11 E2E coverage for get_test_case_details.
 
 ### File List
-
-_To be filled during implementation_
+- specs/implementation-artifacts/3-2-retrieve-full-test-case-details.md
