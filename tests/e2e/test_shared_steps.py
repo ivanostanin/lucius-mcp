@@ -83,9 +83,13 @@ async def test_create_shared_step_with_attachment_e2e(project_id, cleanup_tracke
 # ==========================================
 
 
+@pytest.mark.priority("P0")
 @pytest.mark.asyncio
 async def test_update_shared_step_success_e2e(project_id, cleanup_tracker):
-    """Test updating a shared step name."""
+    """
+    Test updating a shared step name.
+    ID: 2.2-E2E-001
+    """
     # 1. Create a shared step
     original_name = get_unique_name("Original Name")
     output = await create_shared_step(name=original_name, project_id=project_id)
@@ -109,9 +113,13 @@ async def test_update_shared_step_success_e2e(project_id, cleanup_tracker):
     assert new_name in list_output
 
 
+@pytest.mark.priority("P2")
 @pytest.mark.asyncio
 async def test_update_shared_step_idempotent_e2e(project_id, cleanup_tracker):
-    """Test idempotency - updating with same name should be no-op."""
+    """
+    Test idempotency - updating with same name should be no-op.
+    ID: 2.2-E2E-004
+    """
     # 1. Create
     name = get_unique_name("Idempotent Test")
     output = await create_shared_step(name=name, project_id=project_id)
@@ -128,9 +136,13 @@ async def test_update_shared_step_idempotent_e2e(project_id, cleanup_tracker):
     assert "already matches" in update_output
 
 
+@pytest.mark.priority("P0")
 @pytest.mark.asyncio
-async def test_delete_shared_step_success_e2e(project_id):
-    """Test deleting a shared step."""
+async def test_delete_shared_step_success_e2e(project_id, cleanup_tracker):
+    """
+    Test deleting a shared step.
+    ID: 2.2-E2E-002
+    """
     # 1. Create
     name = get_unique_name("To Be Deleted")
     output = await create_shared_step(name=name, project_id=project_id)
@@ -139,7 +151,8 @@ async def test_delete_shared_step_success_e2e(project_id):
     assert match
     shared_step_id = int(match.group(1))
 
-    # No cleanup tracker - we'll delete it ourselves
+    # Track for cleanup (safe largely because delete is idempotent/soft)
+    cleanup_tracker.track_shared_step(shared_step_id)
 
     # 2. Delete with confirmation
     delete_output = await delete_shared_step(step_id=shared_step_id, confirm=True)
@@ -148,9 +161,13 @@ async def test_delete_shared_step_success_e2e(project_id):
     assert str(shared_step_id) in delete_output
 
 
+@pytest.mark.priority("P1")
 @pytest.mark.asyncio
 async def test_delete_shared_step_without_confirmation_e2e(project_id, cleanup_tracker):
-    """Test delete fails without confirmation."""
+    """
+    Test delete fails without confirmation.
+    ID: 2.2-E2E-003
+    """
     # 1. Create
     name = get_unique_name("No Delete")
     output = await create_shared_step(name=name, project_id=project_id)

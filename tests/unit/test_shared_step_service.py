@@ -126,9 +126,13 @@ async def test_get_shared_step_success(service, mock_client):
     mock_client.get_shared_step.assert_called_once_with(100)
 
 
+@pytest.mark.priority("P0")
 @pytest.mark.asyncio
 async def test_update_shared_step_success(service, mock_client):
-    """Test updating a shared step with name changes."""
+    """
+    Test updating a shared step with name changes.
+    ID: 2.2-UNIT-001
+    """
     current_step = SharedStepDto(id=100, name="Old Name", project_id=1)
     updated_step = SharedStepDto(id=100, name="New Name", project_id=1)
 
@@ -143,9 +147,13 @@ async def test_update_shared_step_success(service, mock_client):
     mock_client.update_shared_step.assert_called_once()
 
 
+@pytest.mark.priority("P2")
 @pytest.mark.asyncio
 async def test_update_shared_step_idempotent(service, mock_client):
-    """Test idempotency - no update if data matches current state."""
+    """
+    Test idempotency - no update if data matches current state.
+    ID: 2.2-UNIT-002
+    """
     current_step = SharedStepDto(id=100, name="Same Name", project_id=1)
 
     mock_client.get_shared_step = AsyncMock(return_value=current_step)
@@ -160,9 +168,13 @@ async def test_update_shared_step_idempotent(service, mock_client):
     mock_client.update_shared_step.assert_not_called()
 
 
+@pytest.mark.priority("P2")
 @pytest.mark.asyncio
 async def test_update_shared_step_partial_update(service, mock_client):
-    """Test partial update with only some fields provided."""
+    """
+    Test partial update with only some fields provided.
+    ID: 2.2-UNIT-003
+    """
     current_step = SharedStepDto(id=100, name="Current Name", project_id=1, description="Old Desc")
     updated_step = SharedStepDto(id=100, name="Current Name", project_id=1, description="New Desc")
 
@@ -182,9 +194,13 @@ async def test_update_shared_step_partial_update(service, mock_client):
 # ==========================================
 
 
+@pytest.mark.priority("P0")
 @pytest.mark.asyncio
 async def test_delete_shared_step_success(service, mock_client):
-    """Test deleting a shared step successfully."""
+    """
+    Test deleting a shared step successfully.
+    ID: 2.2-UNIT-004
+    """
     mock_client.delete_shared_step = AsyncMock()
 
     await service.delete_shared_step(step_id=100)
@@ -192,9 +208,13 @@ async def test_delete_shared_step_success(service, mock_client):
     mock_client.delete_shared_step.assert_called_once_with(100)
 
 
+@pytest.mark.priority("P2")
 @pytest.mark.asyncio
 async def test_delete_shared_step_idempotent(service, mock_client):
-    """Test delete is idempotent (soft delete pattern from Story 1.5)."""
+    """
+    Test delete is idempotent (soft delete pattern from Story 1.5).
+    ID: 2.2-UNIT-005
+    """
     from src.client.exceptions import AllureNotFoundError
 
     # First call succeeds

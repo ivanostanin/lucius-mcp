@@ -18,10 +18,9 @@ def _format_steps(scenario: Any) -> str:
         if step.actual_instance and isinstance(step.actual_instance, SharedStepStepDto):
             # Ideally we would have the name, but DTO might only have ID if not enriched.
             # SharedStepStepDto has 'sharedStepId'.
-            # Does it have 'name'? The scenarios steps in 'get_test_case_scenario' might not have name enriched
-            # unless we fetched it or denormalized it with name.
-            # The _denormalize_to_v2_from_dict doesn't currently inject name for SharedStepStepDto (it wasn't in the list of handled types in client.py! wait...)
-            # Let's check client.py _denormalize again later.
+            # Does it have 'name'? The scenarios steps in 'get_test_case_scenario'
+            # might not have name enriched unless we fetched it or denormalized it.
+            # The _denormalize_to_v2_from_dict doesn't currently inject name.
             # For now, just show ID.
             output.append(f"{i + 1}. [Shared Step] ID: {step.actual_instance.shared_step_id}")
         else:
@@ -72,7 +71,7 @@ async def link_shared_step(
     async with client:
         service = TestCaseService(client)
         try:
-            updated_case = await service.add_shared_step_to_case(
+            await service.add_shared_step_to_case(
                 test_case_id=test_case_id,
                 shared_step_id=shared_step_id,
                 position=position,

@@ -5,7 +5,6 @@ from typing import Any
 import pytest
 
 from src.client import AllureClient
-from src.services.test_case_service import TestCaseService
 from src.tools.create_test_case import create_test_case
 from src.tools.link_shared_step import link_shared_step
 from src.tools.shared_steps import create_shared_step
@@ -45,8 +44,6 @@ async def test_link_unlink_shared_step_flow(project_id: int, allure_client: Allu
     assert match, "Could not extract Test Case ID"
     test_case_id = int(match.group(1))
     cleanup_tracker.track_test_case(test_case_id)
-
-    service = TestCaseService(allure_client)
 
     # 3. Link Shared Step
     link_output = await link_shared_step(test_case_id=test_case_id, shared_step_id=shared_step_id)

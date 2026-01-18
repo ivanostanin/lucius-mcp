@@ -54,7 +54,7 @@ async def unlink_shared_step(
     async with client:
         service = TestCaseService(client)
         try:
-            updated_case = await service.remove_shared_step_from_case(
+            await service.remove_shared_step_from_case(
                 test_case_id=test_case_id,
                 shared_step_id=shared_step_id,
             )
