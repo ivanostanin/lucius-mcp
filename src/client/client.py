@@ -44,6 +44,7 @@ from .generated.models.shared_step_create_dto import SharedStepCreateDto
 from .generated.models.shared_step_dto import SharedStepDto
 from .generated.models.shared_step_patch_dto import SharedStepPatchDto
 from .generated.models.shared_step_scenario_dto_steps_inner import SharedStepScenarioDtoStepsInner
+from .generated.models.shared_step_step_dto import SharedStepStepDto
 from .generated.models.test_case_attachment_row_dto import TestCaseAttachmentRowDto
 from .generated.models.test_case_create_v2_dto import TestCaseCreateV2Dto
 from .generated.models.test_case_dto import TestCaseDto
@@ -61,15 +62,23 @@ class TestCaseDtoWithCF(TestCaseDto):
 
 
 class BodyStepDtoWithSteps(BodyStepDto):
-    """Subclass to support nested steps."""
+    """Subclass to support nested steps and id."""
 
     steps: list[SharedStepScenarioDtoStepsInner] | None = None
+    id: int | None = None
 
 
 class AttachmentStepDtoWithName(AttachmentStepDto):
-    """Subclass to support name attribute."""
+    """Subclass to support name attribute and id."""
 
     name: str | None = None
+    id: int | None = None
+
+
+class SharedStepStepDtoWithId(SharedStepStepDto):
+    """Subclass to support id attribute."""
+
+    id: int | None = None
 
 
 logger = get_logger(__name__)
@@ -89,6 +98,7 @@ __all__ = [
     "SharedStepDto",
     "SharedStepPatchDto",
     "SharedStepScenarioDtoStepsInner",
+    "SharedStepStepDtoWithId",
     "TestCaseAttachmentRowDto",
     "TestCaseCreateV2Dto",
     "TestCaseDto",
@@ -477,6 +487,31 @@ class AllureClient:
             self._handle_api_exception(e)
             raise  # Should not be reached
 
+    async def delete_scenario_step(self, step_id: int) -> None:
+        """Delete a scenario step.
+
+        Args:
+            step_id: ID of the step to delete.
+
+        Raises:
+            AllureAPIError: If the API request fails.
+        """
+        if not self._is_entered:
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+
+        await self._ensure_valid_token()
+        if self._scenario_api is None:
+            raise AllureAPIError("Internal error: scenario_api not initialized")
+
+        try:
+            await self._scenario_api.delete_by_id1(
+                id=step_id,
+                _request_timeout=self._timeout,
+            )
+        except ApiException as e:
+            self._handle_api_exception(e)
+            raise  # Should not be reached
+
     async def get_test_case(self, test_case_id: int) -> TestCaseDto:
         """Retrieve a specific test case by its ID.
 
@@ -628,17 +663,33 @@ class AllureClient:
 
                 # Is it an attachment?
                 attachment_id = step_def.get("attachmentId")
+                shared_step_id = step_def.get("sharedStepId")
+
                 if attachment_id:
                     # Look up name in attachments map
                     # attachments map key is the attachment ID as string
                     att_info = attachments_map.get(str(attachment_id), {})
                     att_name = att_info.get("name") or step_def.get("name")
 
-                    # Build AttachmentStepDtoWithName using model_construct to bypass validation
+                    # Build AttachmentStepDtoWithName
                     steps_list.append(
                         SharedStepScenarioDtoStepsInner(
                             actual_instance=AttachmentStepDtoWithName.model_construct(
-                                type="AttachmentStepDto", attachment_id=attachment_id, name=att_name
+                                type="AttachmentStepDto",
+                                attachment_id=attachment_id,
+                                name=att_name,
+                                id=sid,
+                            )
+                        )
+                    )
+                elif shared_step_id:
+                    # It's a Shared Step Reference
+                    steps_list.append(
+                        SharedStepScenarioDtoStepsInner(
+                            actual_instance=SharedStepStepDtoWithId.model_construct(
+                                type="SharedStepStepDto",
+                                shared_step_id=shared_step_id,
+                                id=sid,
                             )
                         )
                     )
@@ -648,7 +699,7 @@ class AllureClient:
                     child_ids = step_def.get("children") or []
                     child_steps = build_steps(child_ids) if child_ids else None
 
-                    # Build BodyStepDtoWithSteps using model_construct to bypass validation
+                    # Build BodyStepDtoWithSteps
                     steps_list.append(
                         SharedStepScenarioDtoStepsInner(
                             actual_instance=BodyStepDtoWithSteps.model_construct(
@@ -656,6 +707,7 @@ class AllureClient:
                                 body=body,
                                 body_json=None,  # Skip complex rich-text
                                 steps=child_steps,
+                                id=sid,
                             )
                         )
                     )

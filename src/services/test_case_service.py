@@ -25,6 +25,7 @@ from src.client.generated.models import (
 from src.client.generated.models.attachment_step_dto import AttachmentStepDto
 from src.client.generated.models.body_step_dto import BodyStepDto
 from src.client.generated.models.expected_body_step_dto import ExpectedBodyStepDto
+from src.client.generated.models.shared_step_step_dto import SharedStepStepDto
 from src.client.generated.models.test_case_patch_v2_dto import TestCasePatchV2Dto
 from src.client.generated.models.test_case_scenario_v2_dto import TestCaseScenarioV2Dto
 from src.services.attachment_service import AttachmentService
@@ -266,6 +267,92 @@ class TestCaseService:
             name=test_case.name,
             message=f"Test Case {test_case_id}: '{test_case.name}' has been archived.",
         )
+
+    async def add_shared_step_to_case(
+        self,
+        test_case_id: int,
+        shared_step_id: int,
+        position: int | None = None,
+    ) -> TestCaseDto:
+        """Add a shared step reference to a test case.
+
+        Args:
+            test_case_id: Target test case ID.
+            shared_step_id: ID of the shared step to link.
+            position: Optional 0-indexed position. None = append.
+
+        Returns:
+            Updated test case DTO.
+        """
+        # 1. Determine position (after_id)
+        scen = await self._client.get_test_case_scenario(test_case_id)
+        current_steps = scen.steps if scen and scen.steps else []
+
+        after_id: int | None = None
+        if position is None:
+            # Append: find the last step ID
+            if current_steps:
+                last_step = current_steps[-1]
+                if last_step.actual_instance:
+                    after_id = getattr(last_step.actual_instance, "id", None)
+        elif position == 0:
+            # Insert at start
+            after_id = None
+        else:
+            # Insert at position
+            if position < 0 or position > len(current_steps):
+                raise AllureValidationError(f"Position {position} is out of bounds (0-{len(current_steps)})")
+            # We insert AFTER the step at (position - 1)
+            prev_step = current_steps[position - 1]
+            if prev_step.actual_instance:
+                after_id = getattr(prev_step.actual_instance, "id", None)
+
+        # 2. Create the step reference
+        step_dto = self._build_scenario_step_dto(
+            test_case_id=test_case_id,
+            shared_step_id=shared_step_id,
+        )
+
+        await self._client.create_scenario_step(
+            test_case_id=test_case_id,
+            step=step_dto,
+            after_id=after_id,
+        )
+
+        return await self.get_test_case(test_case_id)
+
+    async def remove_shared_step_from_case(
+        self,
+        test_case_id: int,
+        shared_step_id: int,
+    ) -> TestCaseDto:
+        """Remove all references to a shared step from a test case.
+
+        Args:
+            test_case_id: Target test case ID.
+            shared_step_id: ID of the shared step to unlink.
+
+        Returns:
+            Updated test case DTO.
+        """
+        scen = await self._client.get_test_case_scenario(test_case_id)
+        if not scen or not scen.steps:
+            return await self.get_test_case(test_case_id)
+
+        steps_to_delete = []
+        for step in scen.steps:
+            if step.actual_instance and isinstance(step.actual_instance, SharedStepStepDto):
+                if step.actual_instance.shared_step_id == shared_step_id:
+                    steps_to_delete.append(getattr(step.actual_instance, "id", None))
+
+        if not steps_to_delete:
+            raise AllureValidationError(f"Shared Step {shared_step_id} not found in Test Case {test_case_id}")
+
+        for step_id in steps_to_delete:
+            if step_id:
+                await self._client.delete_scenario_step(step_id)
+
+        return await self.get_test_case(test_case_id)
 
     async def _prepare_field_updates(  # noqa: C901
         self, current_case: TestCaseDto, data: TestCaseUpdate
@@ -650,6 +737,7 @@ class TestCaseService:
         test_case_id: int,
         body: str | None = None,
         attachment_id: int | None = None,
+        shared_step_id: int | None = None,
         parent_id: int | None = None,
     ) -> ScenarioStepCreateDto:
         """Build and validate a ScenarioStepCreateDto."""
@@ -658,6 +746,7 @@ class TestCaseService:
                 test_case_id=test_case_id,
                 body=body,
                 attachment_id=attachment_id,
+                shared_step_id=shared_step_id,
                 parent_id=parent_id,
             )
         except PydanticValidationError as e:

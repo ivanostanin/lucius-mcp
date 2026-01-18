@@ -15,25 +15,37 @@ so that I can maintain consistency and reduce manual duplication of test logic.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Understand Allure Linking Mechanism** (AC: #1)
+- [x] **Task 1: Understand Allure Linking Mechanism** (AC: #1)
   - [ ] 1.1: Research how Allure API represents shared step references in test cases
   - [ ] 1.2: Document the step structure (inline vs reference)
   - [ ] 1.3: Verify if steps can mix inline and shared references
   - [ ] 1.4: Check if position/order matters for shared step insertion
 
-- [ ] **Task 2: Extend TestCaseService** (AC: #1, #2)
+- [ ] **Task 1.1: Research how Allure API represents shared step references in test cases** (AC: #1)
+  - [x] 1.1: Research how Allure API represents shared step references in test cases
+  - [x] 1.2: Document the step structure (inline vs reference)
+  - [x] 1.3: Verify if steps can mix inline and shared references
+  - [x] 1.4: Check if position/order matters for shared step insertion
+
+- [x] **Task 2: Extend TestCaseService** (AC: #1, #2)
   - [ ] 2.1: Add `async def add_shared_step_to_case(self, test_case_id: int, shared_step_id: int, position: int | None) -> TestCase`
   - [ ] 2.2: Add `async def remove_shared_step_from_case(self, test_case_id: int, shared_step_id: int) -> TestCase`
   - [ ] 2.3: Implement step list manipulation logic
   - [ ] 2.4: Validate shared step exists before linking
 
-- [ ] **Task 3: Create MCP Tool Definitions** (AC: #1, #2)
+- [x] **Task 3: Create MCP Tool Definitions** (AC: #1, #2)
   - [ ] 3.1: Add `link_shared_step` tool to `src/tools/cases.py` (or new file)
   - [ ] 3.2: Add `unlink_shared_step` tool
   - [ ] 3.3: Add comprehensive LLM-optimized docstrings
   - [ ] 3.4: Return clear confirmation with updated step list
 
-- [ ] **Task 4: Handle Step Ordering** (AC: #2)
+- [x] **Task 3: Create MCP Tool Definitions** (AC: #1, #2)
+  - [x] 3.1: Add `link_shared_step` tool to `src/tools/cases.py` (or new file)
+  - [x] 3.2: Add `unlink_shared_step` tool
+  - [x] 3.3: Add comprehensive LLM-optimized docstrings
+  - [x] 3.4: Return clear confirmation with updated step list
+
+- [/] **Task 4: Handle Step Ordering** (AC: #2)
   - [ ] 4.1: Support inserting shared step at specific position
   - [ ] 4.2: Support appending to end of step list (default)
   - [ ] 4.3: Handle edge cases (empty step list, invalid position)
@@ -331,7 +343,7 @@ After this story, Epic 2 should provide:
 
 ### Agent Model Used
 
-_To be filled by implementing agent_
+gemini-2.0-flash-exp
 
 ### Completion Notes List
 
