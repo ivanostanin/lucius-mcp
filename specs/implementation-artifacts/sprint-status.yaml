@@ -41,7 +41,7 @@ story_location: specs/implementation-artifacts
 
 development_status:
   # Epic 1: Foundation & Test Case Management (MVP)
-  epic-1: in-progress
+  epic-1: done
   1-1-project-initialization-and-core-architecture: done
   1-2-generated-client-and-data-models: done
   1-3-comprehensive-test-case-creation-tool: ready-for-dev
@@ -52,7 +52,7 @@ development_status:
   epic-1-retrospective: optional
 
   # Epic 2: Shared Step Reusability (MVP)
-  epic-2: in-progress
+  epic-2: done
   2-1-create-and-list-shared-steps: done
   2-2-update-and-delete-shared-steps: done
   2-3-link-shared-step-to-test-case: done
