@@ -77,7 +77,7 @@ async def test_update_tool_not_found_error(project_id: int):
 
     # Use string conversion of exception to check message
     error_msg = str(excinfo.value)
-    assert "Not Found" in error_msg or "404" in error_msg
+    assert "not found" in error_msg or "404" in error_msg
 
 
 @pytest.mark.asyncio

@@ -1,6 +1,6 @@
 # Story 3.2: Retrieve Full Test Case Details
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -23,38 +23,57 @@ so that I can understand its full context, steps, and metadata.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Define Get Test Case Details Tool** (AC: #1, #4, #5)
-  - [ ] 1.1: Create `get_test_case_details` tool in `src/tools/search.py`
-  - [ ] 1.2: Define input parameters (`test_case_id`, optional `api_token`)
-  - [ ] 1.3: Add comprehensive Google-style docstring
-  - [ ] 1.4: Format response as readable markdown-style text
+- [x] **Task 1: Define Get Test Case Details Tool** (AC: #1, #4, #5)
+  - [x] 1.1: Create `get_test_case_details` tool in `src/tools/search.py`
+  - [x] 1.2: Define input parameters (`test_case_id`, optional `api_token`)
+  - [x] 1.3: Add comprehensive Google-style docstring
+  - [x] 1.4: Format response as readable markdown-style text
 
-- [ ] **Task 2: Extend Search Service** (AC: #1, #2)
-  - [ ] 2.1: Add `get_test_case_details()` method to `SearchService`
-  - [ ] 2.2: Return full `TestCase` Pydantic model with all fields populated
+- [x] **Task 2: Extend Search Service** (AC: #1, #2)
+  - [x] 2.1: Add `get_test_case_details()` method to `SearchService`
+  - [x] 2.2: Return full `TestCase` Pydantic model with all fields populated
 
-- [ ] **Task 3: Extend AllureClient** (AC: #1, #2)
-  - [ ] 3.1: Add `get_test_case()` method if not already implemented
-  - [ ] 3.2: Ensure full response deserialization (steps, tags, custom fields, attachments)
+- [x] **Task 3: Extend AllureClient** (AC: #1, #2)
+  - [x] 3.1: Add `get_test_case()` method if not already implemented
+  - [x] 3.2: Ensure full response deserialization (steps, tags, custom fields, attachments)
 
-- [ ] **Task 4: Error Handling** (AC: #3)
-  - [ ] 4.1: Add `TestCaseNotFoundError` exception if not exists
-  - [ ] 4.2: Ensure global handler returns "Test Case ID X not found" Agent Hint
-  - [ ] 4.3: Validate test_case_id is positive integer
+- [x] **Task 4: Error Handling** (AC: #3)
+  - [x] 4.1: Add `TestCaseNotFoundError` exception if not exists
+  - [x] 4.2: Ensure global handler returns "Test Case ID X not found" Agent Hint
+  - [x] 4.3: Validate test_case_id is positive integer
 
-- [ ] **Task 5: Unit Tests** (AC: #1, #2, #3)
-  - [ ] 5.1: Test successful retrieval with full metadata
-  - [ ] 5.2: Test not-found error handling
-  - [ ] 5.3: Test output formatting
-  - [ ] 5.4: Mock API responses
+- [x] **Task 5: Unit Tests** (AC: #1, #2, #3)
+  - [x] 5.1: Test successful retrieval with full metadata
+  - [x] 5.2: Test not-found error handling
+  - [x] 5.3: Test output formatting
+  - [x] 5.4: Mock API responses
 
-- [ ] **Task 6: E2E Tests for Get Details** (AC: #6)
-  - [ ] 6.1: Add `tests/e2e/test_get_test_case_details.py`
-  - [ ] 6.2: Verify full metadata is returned for a known test case
-  - [ ] 6.3: Validate LLM-friendly output (no raw JSON)
-  - [ ] 6.4: Skip gracefully when sandbox credentials are absent
+- [x] **Task 6: E2E Tests for Get Details** (AC: #6)
+  - [x] 6.1: Add `tests/e2e/test_get_test_case_details.py`
+  - [x] 6.2: Verify full metadata is returned for a known test case
+  - [x] 6.3: Validate LLM-friendly output (no raw JSON)
+  - [x] 6.4: Skip gracefully when sandbox credentials are absent
 
 ## Dev Notes
+
+### Dev Agent Record
+- Added get_test_case_details tool with optional api_token override and LLM-friendly formatting.
+- Added TestCaseNotFoundError mapping end-to-end; AllureClient and SearchService propagate precise not-found hints.
+- Added unit coverage for formatting, not-found mapping, id validation; added e2e coverage (with sandbox skip when creds absent).
+
+### File List
+- src/tools/search.py
+- src/services/search_service.py
+- src/client/client.py
+- src/client/exceptions.py
+- src/client/__init__.py
+- tests/unit/test_search_service.py
+- tests/e2e/test_get_test_case_details.py
+
+### Change Log
+- Implemented get_test_case_details tool and formatting.
+- Added domain not-found error for test cases and mapped client/service layers.
+- Added unit and e2e tests covering success, not-found, formatting, and sandbox skip.
 
 ### FR11 Coverage
 This story addresses **FR11** (retrieve full Test Case details by ID).

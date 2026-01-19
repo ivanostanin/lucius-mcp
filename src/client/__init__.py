@@ -27,6 +27,7 @@ from .exceptions import (
     AllureNotFoundError,
     AllureRateLimitError,
     AllureValidationError,
+    TestCaseNotFoundError,
 )
 
 __all__ = [
@@ -50,6 +51,7 @@ __all__ = [
     "TestCaseCreateV2Dto",
     "TestCaseDto",
     "TestCaseDtoWithCF",
+    "TestCaseNotFoundError",
     "TestCaseOverviewDto",
     "TestCasePatchV2Dto",
     "TestCaseScenarioDto",

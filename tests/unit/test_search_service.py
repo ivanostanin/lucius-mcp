@@ -2,21 +2,90 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.client import AllureClient, PageTestCaseDto, TestCaseDto
-from src.client.exceptions import AllureValidationError
-from src.services.search_service import SearchService
+from src.client import AllureClient, PageTestCaseDto, TestCaseDto, TestCaseScenarioV2Dto
+from src.client.exceptions import AllureNotFoundError, AllureValidationError, TestCaseNotFoundError
+from src.services.search_service import SearchService, TestCaseDetails
+from src.tools.search import _format_test_case_details
 
 
 @pytest.fixture
 def mock_client() -> AllureClient:
     client = MagicMock(spec=AllureClient)
     client.list_test_cases = AsyncMock()
+    client.get_test_case = AsyncMock()
+    client.get_test_case_scenario = AsyncMock()
     return client
 
 
 @pytest.fixture
 def service(mock_client: AllureClient) -> SearchService:
     return SearchService(mock_client)
+
+
+@pytest.mark.asyncio
+async def test_get_test_case_details_returns_case_and_scenario(
+    service: SearchService, mock_client: AllureClient
+) -> None:
+    test_case = TestCaseDto(id=123, name="Login", description="d")
+    scenario = TestCaseScenarioV2Dto(steps=[])
+    mock_client.get_test_case = AsyncMock(return_value=test_case)
+    mock_client.get_test_case_scenario = AsyncMock(return_value=scenario)
+
+    details = await service.get_test_case_details(123)
+
+    assert isinstance(details, TestCaseDetails)
+    assert details.test_case.id == 123
+    assert details.scenario is scenario
+    mock_client.get_test_case.assert_awaited_once_with(123)
+    mock_client.get_test_case_scenario.assert_awaited_once_with(123)
+
+
+@pytest.mark.asyncio
+async def test_get_test_case_details_maps_not_found(service: SearchService, mock_client: AllureClient) -> None:
+    mock_client.get_test_case = AsyncMock(side_effect=AllureNotFoundError("nf"))
+    mock_client.get_test_case_scenario = AsyncMock()
+
+    with pytest.raises(TestCaseNotFoundError):
+        await service.get_test_case_details(999)
+
+    mock_client.get_test_case.assert_awaited_once_with(999)
+    mock_client.get_test_case_scenario.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_get_test_case_details_validates_id(service: SearchService) -> None:
+    with pytest.raises(AllureValidationError, match="Test case ID must be a positive integer"):
+        await service.get_test_case_details(0)
+
+
+def test_format_test_case_details_handles_fields_and_steps() -> None:
+    tc = TestCaseDto(
+        id=1,
+        name="Login",
+        description="Desc",
+        precondition="Pre",
+        tags=[],
+    )
+    # Simulate nested steps using simple objects to bypass generated validation
+    from types import SimpleNamespace
+
+    class SimpleStep(SimpleNamespace):
+        def __init__(self, body: str, expected: str | None = None, steps: list | None = None) -> None:
+            super().__init__(body=body, expected=expected, steps=steps or [])
+
+    child = SimpleStep("Sub-step", "Outcome")
+    parent = SimpleStep("Do X", "See Y", steps=[child])
+
+    scenario = SimpleNamespace(steps=[parent])
+    details = TestCaseDetails(test_case=tc, scenario=scenario)
+
+    text = _format_test_case_details(details)
+
+    assert "Test Case TC-1: Login" in text
+    assert "Description" in text
+    assert "Preconditions" in text
+    assert "1. Do X → See Y" in text
+    assert "1.1. Sub-step → Outcome" in text
 
 
 @pytest.mark.asyncio

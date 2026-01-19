@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from src.client import AllureClient, PageTestCaseDto, TestCaseDto
-from src.client.exceptions import AllureValidationError
+from src.client import AllureClient, PageTestCaseDto, TestCaseDto, TestCaseScenarioV2Dto
+from src.client.exceptions import AllureNotFoundError, AllureValidationError, TestCaseNotFoundError
 
 
 @dataclass
@@ -15,11 +15,38 @@ class TestCaseListResult:
     total_pages: int
 
 
+@dataclass
+class TestCaseDetails:
+    """Full test case details including scenario."""
+
+    test_case: TestCaseDto
+    scenario: TestCaseScenarioV2Dto | None
+
+
 class SearchService:
     """Service for search and discovery operations."""
 
     def __init__(self, client: AllureClient) -> None:
         self._client = client
+
+    async def get_test_case_details(self, test_case_id: int) -> TestCaseDetails:
+        """Retrieve a single test case with full details."""
+
+        if not isinstance(test_case_id, int) or test_case_id <= 0:
+            raise AllureValidationError("Test case ID must be a positive integer")
+
+        try:
+            test_case = await self._client.get_test_case(test_case_id)
+            scenario = await self._client.get_test_case_scenario(test_case_id)
+            return TestCaseDetails(test_case=test_case, scenario=scenario)
+        except TestCaseNotFoundError:
+            raise
+        except AllureNotFoundError as e:
+            raise TestCaseNotFoundError(
+                test_case_id=test_case_id,
+                status_code=e.status_code,
+                response_body=e.response_body,
+            ) from e
 
     async def list_test_cases(
         self,

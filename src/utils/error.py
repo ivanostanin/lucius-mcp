@@ -42,6 +42,24 @@ class ResourceNotFoundError(AllureAPIError):
         super().__init__(message, status_code, response_body, suggestions)
 
 
+class TestCaseNotFoundError(ResourceNotFoundError):
+    """Raised when a test case cannot be found."""
+
+    def __init__(
+        self,
+        test_case_id: int,
+        status_code: int | None = None,
+        response_body: str | None = None,
+    ):
+        message = f"Test Case ID {test_case_id} not found"
+        suggestions = [
+            "Verify the test case ID",
+            "Use list_test_cases to find valid IDs",
+            "Check access to the project containing this test case",
+        ]
+        super().__init__(message, status_code, response_body, suggestions)
+
+
 class ValidationError(AllureAPIError):
     """Raised when input validation fails."""
 

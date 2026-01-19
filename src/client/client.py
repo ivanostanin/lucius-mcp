@@ -11,6 +11,7 @@ from typing import Any
 import httpx
 from pydantic import SecretStr
 
+from src.client.exceptions import TestCaseNotFoundError
 from src.utils.config import settings
 from src.utils.logger import get_logger
 
@@ -637,8 +638,21 @@ class AllureClient:
                 logger.warning(f"Failed to fetch overview for test case {test_case_id}: {e}")
 
             return case
+        except AllureNotFoundError as e:
+            raise TestCaseNotFoundError(
+                test_case_id=test_case_id,
+                status_code=getattr(e, "status_code", None),
+                response_body=getattr(e, "response_body", None),
+            ) from e
         except ApiException as e:
-            self._handle_api_exception(e)
+            try:
+                self._handle_api_exception(e)
+            except AllureNotFoundError as nf:
+                raise TestCaseNotFoundError(
+                    test_case_id=test_case_id,
+                    status_code=getattr(nf, "status_code", None),
+                    response_body=getattr(nf, "response_body", None),
+                ) from nf
             raise
 
     async def update_test_case(self, test_case_id: int, data: TestCasePatchV2Dto) -> TestCaseDto:
