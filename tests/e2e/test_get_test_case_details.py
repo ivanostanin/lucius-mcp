@@ -28,6 +28,12 @@ async def test_get_test_case_details_smoke(allure_client: AllureClient, project_
 
     assert str(test_case_id) in text
     assert details.test_case.name in text
+    # Spot-check formatting and metadata presence
+    assert "Status:" in text
+    assert "Steps:" in text or "Preconditions:" in text or "Description:" in text
+
+    # Stronger metadata assertions (best-effort; scenario/test data dependent)
+    assert "Tags:" in text or "Custom Fields:" in text or "Attachments:" in text
 
 
 @pytest.mark.asyncio

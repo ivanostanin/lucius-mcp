@@ -2,7 +2,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.client import AllureClient, PageTestCaseDto, TestCaseDto, TestCaseScenarioV2Dto
+from src.client import AllureClient, PageTestCaseDto, TestCaseDto, TestCaseDtoWithCF, TestCaseScenarioV2Dto
+from src.client.generated.models.custom_field_dto import CustomFieldDto
+from src.client.generated.models.custom_field_value_with_cf_dto import CustomFieldValueWithCfDto
 from src.client.exceptions import AllureNotFoundError, AllureValidationError, TestCaseNotFoundError
 from src.services.search_service import SearchService, TestCaseDetails
 from src.tools.search import _format_test_case_details
@@ -59,7 +61,7 @@ async def test_get_test_case_details_validates_id(service: SearchService) -> Non
 
 
 def test_format_test_case_details_handles_fields_and_steps() -> None:
-    tc = TestCaseDto(
+    tc = TestCaseDtoWithCF(
         id=1,
         name="Login",
         description="Desc",
@@ -76,7 +78,10 @@ def test_format_test_case_details_handles_fields_and_steps() -> None:
     child = SimpleStep("Sub-step", "Outcome")
     parent = SimpleStep("Do X", "See Y", steps=[child])
 
-    scenario = SimpleNamespace(steps=[parent])
+    scenario = SimpleNamespace(steps=[parent], attachments=[SimpleNamespace(id=10, name="log.txt")])
+    tc.custom_fields = [
+        CustomFieldValueWithCfDto(custom_field=CustomFieldDto(name="Layer"), name="UI")
+    ]
     details = TestCaseDetails(test_case=tc, scenario=scenario)
 
     text = _format_test_case_details(details)
@@ -86,6 +91,11 @@ def test_format_test_case_details_handles_fields_and_steps() -> None:
     assert "Preconditions" in text
     assert "1. Do X → See Y" in text
     assert "1.1. Sub-step → Outcome" in text
+    assert "Custom Fields" in text
+    assert "Layer=UI" in text
+    assert "Attachments" in text
+    assert "log.txt" in text
+    assert "id: 10" in text
 
 
 @pytest.mark.asyncio

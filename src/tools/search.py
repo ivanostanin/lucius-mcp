@@ -198,8 +198,10 @@ def _append_custom_fields(lines: list[str], tc: object) -> None:
         return
     formatted = []
     for cf in custom_fields:
-        key = getattr(cf.custom_field, "name", None) if getattr(cf, "custom_field", None) else None
-        value = getattr(cf, "name", None)
+        key = _get_text(getattr(cf, "custom_field", None), ["name"]) or _get_text(
+            cf, ["custom_field_name", "field_name", "name"]
+        )
+        value = _get_text(cf, ["value", "value_text", "valueName", "value_name", "name"])
         if key and value:
             formatted.append(f"{key}={value}")
     if formatted:
@@ -208,5 +210,17 @@ def _append_custom_fields(lines: list[str], tc: object) -> None:
 
 def _append_attachments(lines: list[str], scenario: object | None) -> None:
     attachments = getattr(scenario, "attachments", None) if scenario else None
-    if attachments:
-        lines.append(f"**Attachments:** {len(attachments)} attached")
+    if not attachments:
+        return
+
+    parts: list[str] = []
+    for att in attachments:
+        name = _get_text(att, ["name", "file_name", "filename", "title"]) or "attachment"
+        att_id = _get_text(att, ["id", "attachment_id", "attachmentId"])
+        if att_id:
+            parts.append(f"{name} (id: {att_id})")
+        else:
+            parts.append(name)
+
+    if parts:
+        lines.append("**Attachments:** " + ", ".join(parts))
