@@ -3,7 +3,7 @@ from typing import Annotated
 from pydantic import Field, SecretStr
 
 from src.client import AllureClient, AllureValidationError
-from src.services.search_service import SearchService, TestCaseDetails, TestCaseListResult
+from src.services.search_service import SearchQueryParser, SearchService, TestCaseDetails, TestCaseListResult
 from src.utils.config import settings
 
 
@@ -51,6 +51,74 @@ async def list_test_cases(
         )
 
     return _format_test_case_list(result)
+
+
+async def search_test_cases(
+    project_id: Annotated[int, Field(description="Allure TestOps project ID to search test cases in.")],
+    query: Annotated[
+        str,
+        Field(
+            description=(
+                "Search query. Examples: 'login flow', 'tag:smoke', "
+                "'tag:smoke tag:regression', 'authentication tag:security'."
+            )
+        ),
+    ],
+    page: Annotated[int, Field(description="Zero-based page index.")] = 0,
+    size: Annotated[int, Field(description="Number of results per page (max 100).", le=100)] = 20,
+    api_token: Annotated[str | None, Field(description="Optional API token override.")] = None,
+) -> str:
+    """Search for test cases by name or tag.
+
+    Find test cases matching your search criteria. Supports name search,
+    tag filtering, or both combined.
+
+    Query Syntax:
+    - Plain text: Searches in test case names (case-insensitive)
+    - tag:value: Filters by exact tag match
+    - Combined: "login tag:smoke" finds test cases with "login" in name AND "smoke" tag
+
+    Args:
+        project_id: The Allure TestOps project ID to search in.
+        query: Search query. Examples:
+            - "login flow" (name search)
+            - "tag:smoke" (tag filter)
+            - "tag:smoke tag:regression" (multiple tags - AND logic)
+            - "authentication tag:security" (combined)
+        page: Page number (0-indexed). Default: 0.
+        size: Results per page (max 100). Default: 20.
+        api_token: Optional override for the default API token.
+
+    Returns:
+        List of matching test cases or "No test cases found matching query."
+
+    Examples:
+        search_test_cases(123, "login")
+        → "Found 5 test cases matching 'login':
+           - [TC-1] User Login Flow (tags: smoke, auth)
+           - [TC-2] Admin Login Test (tags: admin)"
+
+        search_test_cases(123, "tag:smoke tag:regression")
+        → "Found 12 test cases matching 'tag:smoke tag:regression':
+           - [TC-5] Critical Path Test ..."
+    """
+    if not isinstance(query, str) or not query.strip():
+        raise AllureValidationError("Search query must be a non-empty string")
+
+    parsed = SearchQueryParser.parse(query)
+    if not parsed.name_query and not parsed.tags:
+        raise AllureValidationError("Search query must include a name or tag filter")
+
+    async with _build_client(api_token) as client:
+        service = SearchService(client)
+        result = await service.search_test_cases(
+            project_id=project_id,
+            query=query,
+            page=page,
+            size=size,
+        )
+
+    return _format_search_results(result, query)
 
 
 async def get_test_case_details(
@@ -122,6 +190,22 @@ def _format_test_case_details(details: TestCaseDetails) -> str:
     _append_tags(lines, tc)
     _append_custom_fields(lines, tc)
     _append_attachments(lines, scenario)
+
+    return "\n".join(lines)
+
+
+def _format_search_results(result: TestCaseListResult, query: str) -> str:
+    if not result.items:
+        return f"No test cases found matching '{query}'."
+
+    lines = [f"Found {result.total} test cases matching '{query}':"]
+
+    for tc in result.items:
+        tags = ", ".join([t.name for t in (tc.tags or []) if t.name]) if tc.tags else "none"
+        lines.append(f"- [TC-{tc.id}] {tc.name} (tags: {tags})")
+
+    if result.total_pages > 1:
+        lines.append(f"\nShowing page {result.page + 1} of {result.total_pages}")
 
     return "\n".join(lines)
 

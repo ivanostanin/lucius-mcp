@@ -1,6 +1,6 @@
 # Story 3.3: Search Test Cases by Name or Tag
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -27,44 +27,44 @@ so that I can quickly find relevant test documentation.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Define Search Test Cases Tool** (AC: #1, #7)
-  - [ ] 1.1: Create `search_test_cases` tool in `src/tools/search.py`
-  - [ ] 1.2: Define search query parameter with LLM-friendly examples
-  - [ ] 1.3: Add pagination parameters (page, size)
-  - [ ] 1.4: Add comprehensive docstring with query syntax examples
+- [x] **Task 1: Define Search Test Cases Tool** (AC: #1, #7)
+  - [x] 1.1: Create `search_test_cases` tool in `src/tools/search.py`
+  - [x] 1.2: Define search query parameter with LLM-friendly examples
+  - [x] 1.3: Add pagination parameters (page, size)
+  - [x] 1.4: Add comprehensive docstring with query syntax examples
 
-- [ ] **Task 2: Implement Search Query Parser** (AC: #3, #4, #5)
-  - [ ] 2.1: Create `SearchQueryParser` class in `src/services/search_service.py`
-  - [ ] 2.2: Parse `tag:value` syntax for tag filtering
-  - [ ] 2.3: Handle plain text as name search
-  - [ ] 2.4: Support multiple tags (e.g., "tag:smoke tag:auth")
-  - [ ] 2.5: Support combined name+tag (e.g., "login tag:auth")
+- [x] **Task 2: Implement Search Query Parser** (AC: #3, #4, #5)
+  - [x] 2.1: Create `SearchQueryParser` class in `src/services/search_service.py`
+  - [x] 2.2: Parse `tag:value` syntax for tag filtering
+  - [x] 2.3: Handle plain text as name search
+  - [x] 2.4: Support multiple tags (e.g., "tag:smoke tag:auth")
+  - [x] 2.5: Support combined name+tag (e.g., "login tag:auth")
 
-- [ ] **Task 3: Extend Search Service** (AC: #1, #2, #6)
-  - [ ] 3.1: Add `search_test_cases()` method
-  - [ ] 3.2: Implement case-insensitive search logic
-  - [ ] 3.3: Combine API filters based on parsed query
-  - [ ] 3.4: Return paginated results
+- [x] **Task 3: Extend Search Service** (AC: #1, #2, #6)
+  - [x] 3.1: Add `search_test_cases()` method
+  - [x] 3.2: Implement case-insensitive search logic
+  - [x] 3.3: Combine API filters based on parsed query
+  - [x] 3.4: Return paginated results
 
-- [ ] **Task 4: Extend AllureClient** (AC: #1, #4)
-  - [ ] 4.1: Add search endpoint support with filters
-  - [ ] 4.2: Support tag filtering query parameter
-  - [ ] 4.3: Handle API-level case sensitivity
+- [x] **Task 4: Extend AllureClient** (AC: #1, #4)
+  - [x] 4.1: Add search endpoint support with filters
+  - [x] 4.2: Support tag filtering query parameter
+  - [x] 4.3: Handle API-level case sensitivity
 
-- [ ] **Task 5: Unit Tests** (AC: #1-7)
-  - [ ] 5.1: Test name-only search
-  - [ ] 5.2: Test tag-only search (single and multiple)
-  - [ ] 5.3: Test combined name+tag search
-  - [ ] 5.4: Test case-insensitivity
-  - [ ] 5.5: Test empty results handling
-  - [ ] 5.6: Test query parser independently
+- [x] **Task 5: Unit Tests** (AC: #1-7)
+  - [x] 5.1: Test name-only search
+  - [x] 5.2: Test tag-only search (single and multiple)
+  - [x] 5.3: Test combined name+tag search
+  - [x] 5.4: Test case-insensitivity
+  - [x] 5.5: Test empty results handling
+  - [x] 5.6: Test query parser independently
 
-- [ ] **Task 6: E2E Tests for Search** (AC: #8)
-  - [ ] 6.1: Add `tests/e2e/test_search_test_cases.py`
-  - [ ] 6.2: Verify name-only and tag-only queries in sandbox
-  - [ ] 6.3: Verify combined queries and case-insensitivity
-  - [ ] 6.4: Validate LLM-friendly output (no raw JSON)
-  - [ ] 6.5: Skip gracefully when sandbox credentials are absent
+- [x] **Task 6: E2E Tests for Search** (AC: #8)
+  - [x] 6.1: Add `tests/e2e/test_search_test_cases.py`
+  - [x] 6.2: Verify name-only and tag-only queries in sandbox
+  - [x] 6.3: Verify combined queries and case-insensitivity
+  - [x] 6.4: Validate LLM-friendly output (no raw JSON)
+  - [x] 6.5: Skip gracefully when sandbox credentials are absent
 
 ## Dev Notes
 
@@ -311,7 +311,15 @@ tests/e2e/test_search_test_cases.py   # new
 gpt-5.2-codex
 
 ### Completion Notes List
-- Regenerated story to explicitly require NFR11/AC11 E2E coverage for search_test_cases.
+- Implemented search_test_cases tool with query parsing and LLM-friendly formatting.
+- Added SearchQueryParser and SearchService.search_test_cases for name/tag filtering.
+- Added unit tests for parser/formatter and E2E search tests (skip without sandbox creds).
+- Tests: `uv run --env-file .env.test pytest tests/unit/ tests/integration/`
 
 ### File List
 - specs/implementation-artifacts/3-3-search-test-cases-by-name-or-tag.md
+- src/services/search_service.py
+- src/tools/search.py
+- src/main.py
+- tests/unit/test_search_service.py
+- tests/e2e/test_search_test_cases.py

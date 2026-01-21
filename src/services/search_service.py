@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 
 from src.client import AllureClient, PageTestCaseDto, TestCaseDto, TestCaseScenarioV2Dto
@@ -21,6 +22,48 @@ class TestCaseDetails:
 
     test_case: TestCaseDto
     scenario: TestCaseScenarioV2Dto | None
+
+
+@dataclass
+class ParsedQuery:
+    """Parsed search query components."""
+
+    name_query: str | None
+    tags: list[str]
+
+
+class SearchQueryParser:
+    """Parses search queries into structured components."""
+
+    TAG_PATTERN = re.compile(r"tag:(\S+)", re.IGNORECASE)
+
+    @classmethod
+    def parse(cls, query: str) -> ParsedQuery:
+        """Parse a search query into name and tag components.
+
+        Args:
+            query: Raw search query string.
+
+        Returns:
+            ParsedQuery with separated name and tag filters.
+
+        Examples:
+            >>> SearchQueryParser.parse("login flow")
+            ParsedQuery(name_query="login flow", tags=[])
+
+            >>> SearchQueryParser.parse("tag:smoke tag:auth")
+            ParsedQuery(name_query=None, tags=["smoke", "auth"])
+
+            >>> SearchQueryParser.parse("login tag:auth")
+            ParsedQuery(name_query="login", tags=["auth"])
+        """
+        tags = cls.TAG_PATTERN.findall(query)
+        name_query = cls.TAG_PATTERN.sub("", query).strip()
+
+        return ParsedQuery(
+            name_query=name_query if name_query else None,
+            tags=[t.lower() for t in tags],
+        )
 
 
 class SearchService:
@@ -80,6 +123,45 @@ class SearchService:
             search=name_filter,
             tags=tags,
             status=status,
+        )
+
+        return self._build_result(response)
+
+    async def search_test_cases(
+        self,
+        project_id: int,
+        query: str,
+        page: int = 0,
+        size: int = 20,
+    ) -> TestCaseListResult:
+        """Search test cases by name and/or tag query.
+
+        Args:
+            project_id: Project ID.
+            query: Search query with optional tag: filters.
+            page: Zero-based page index.
+            size: Page size.
+
+        Returns:
+            TestCaseListResult with items and pagination metadata.
+        """
+        self._validate_project_id(project_id)
+        self._validate_pagination(page, size)
+
+        if not isinstance(query, str) or not query.strip():
+            raise AllureValidationError("Search query must be a non-empty string")
+
+        parsed = SearchQueryParser.parse(query)
+        if not parsed.name_query and not parsed.tags:
+            raise AllureValidationError("Search query must include a name or tag filter")
+
+        response = await self._client.list_test_cases(
+            project_id=project_id,
+            page=page,
+            size=size,
+            search=parsed.name_query,
+            tags=parsed.tags or None,
+            status=None,
         )
 
         return self._build_result(response)

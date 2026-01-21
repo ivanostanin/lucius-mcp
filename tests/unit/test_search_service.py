@@ -3,11 +3,12 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from src.client import AllureClient, PageTestCaseDto, TestCaseDto, TestCaseDtoWithCF, TestCaseScenarioV2Dto
+from src.client.exceptions import AllureNotFoundError, AllureValidationError, TestCaseNotFoundError
 from src.client.generated.models.custom_field_dto import CustomFieldDto
 from src.client.generated.models.custom_field_value_with_cf_dto import CustomFieldValueWithCfDto
-from src.client.exceptions import AllureNotFoundError, AllureValidationError, TestCaseNotFoundError
-from src.services.search_service import SearchService, TestCaseDetails
-from src.tools.search import _format_test_case_details
+from src.client.generated.models.test_tag_dto import TestTagDto
+from src.services.search_service import SearchQueryParser, SearchService, TestCaseDetails
+from src.tools.search import _format_search_results, _format_test_case_details
 
 
 @pytest.fixture
@@ -79,9 +80,7 @@ def test_format_test_case_details_handles_fields_and_steps() -> None:
     parent = SimpleStep("Do X", "See Y", steps=[child])
 
     scenario = SimpleNamespace(steps=[parent], attachments=[SimpleNamespace(id=10, name="log.txt")])
-    tc.custom_fields = [
-        CustomFieldValueWithCfDto(custom_field=CustomFieldDto(name="Layer"), name="UI")
-    ]
+    tc.custom_fields = [CustomFieldValueWithCfDto(custom_field=CustomFieldDto(name="Layer"), name="UI")]
     details = TestCaseDetails(test_case=tc, scenario=scenario)
 
     text = _format_test_case_details(details)
@@ -151,6 +150,29 @@ async def test_list_test_cases_passes_filters(service: SearchService, mock_clien
 
 
 @pytest.mark.asyncio
+async def test_search_test_cases_parses_query(service: SearchService, mock_client: AllureClient) -> None:
+    page = PageTestCaseDto(content=[], total_elements=0, number=0, size=20, total_pages=0)
+    mock_client.list_test_cases.return_value = page
+
+    await service.search_test_cases(
+        project_id=123,
+        query="login tag:smoke tag:auth",
+        page=2,
+        size=10,
+    )
+
+    mock_client.list_test_cases.assert_called_once_with(
+        project_id=123,
+        page=2,
+        size=10,
+        search="login",
+        tags=["smoke", "auth"],
+        status=None,
+    )
+    assert SearchService.search_test_cases.__doc__
+
+
+@pytest.mark.asyncio
 async def test_list_test_cases_validates_project_id(service: SearchService) -> None:
     with pytest.raises(AllureValidationError, match="Project ID is required and must be positive"):
         await service.list_test_cases(project_id=0)
@@ -166,3 +188,65 @@ async def test_list_test_cases_validates_pagination(service: SearchService) -> N
 
     with pytest.raises(AllureValidationError, match="Size must be 100 or less"):
         await service.list_test_cases(project_id=1, size=101)
+
+
+def test_format_search_results_handles_empty() -> None:
+    empty_page = PageTestCaseDto(content=[], total_elements=0, number=0, size=20, total_pages=0)
+    empty_result = SearchService(MagicMock())._build_result(empty_page)
+
+    text = _format_search_results(empty_result, "login tag:auth")
+
+    assert text == "No test cases found matching 'login tag:auth'."
+
+
+def test_search_query_parser_parses_name_only() -> None:
+    parsed = SearchQueryParser.parse("login flow")
+
+    assert parsed.name_query == "login flow"
+    assert parsed.tags == []
+
+
+def test_search_query_parser_parses_single_tag() -> None:
+    parsed = SearchQueryParser.parse("tag:smoke")
+
+    assert parsed.name_query is None
+    assert parsed.tags == ["smoke"]
+
+
+def test_search_query_parser_parses_multiple_tags() -> None:
+    parsed = SearchQueryParser.parse("tag:smoke tag:auth")
+
+    assert parsed.name_query is None
+    assert parsed.tags == ["smoke", "auth"]
+
+
+def test_search_query_parser_parses_combined() -> None:
+    parsed = SearchQueryParser.parse("login tag:auth")
+
+    assert parsed.name_query == "login"
+    assert parsed.tags == ["auth"]
+
+
+def test_search_query_parser_normalizes_case() -> None:
+    parsed = SearchQueryParser.parse("tag:SMOKE tag:Auth")
+
+    assert parsed.tags == ["smoke", "auth"]
+
+
+def test_format_search_results_includes_tags_and_pagination() -> None:
+    tag = TestTagDto.model_construct(name="smoke")
+    items = [
+        TestCaseDto(id=1, name="Login Flow", tags=[tag]),
+        TestCaseDto(id=2, name="Logout", tags=[]),
+    ]
+    page = PageTestCaseDto(content=items, total_elements=2, number=0, size=1, total_pages=2)
+    result = SearchService(MagicMock())._build_result(page)
+
+    text = _format_search_results(result, "login")
+
+    assert "Found 2 test cases matching 'login':" in text
+    assert "[TC-1] Login Flow" in text
+    assert "tags: smoke" in text
+    assert "[TC-2] Logout" in text
+    assert "tags: none" in text
+    assert "Showing page 1 of 2" in text
