@@ -1,6 +1,6 @@
 # Story 3.3: Search Test Cases by Name or Tag
 
-Status: review
+Status: in-progress
 
 ## Story
 
@@ -305,6 +305,23 @@ tests/e2e/test_search_test_cases.py   # new
 - [Source: specs/project-context.md#Naming Patterns]
 - [Source: specs/implementation-artifacts/1-6-comprehensive-end-to-end-tests.md#NFR11 Coverage]
 
+## Senior Developer Review (AI)
+
+### Findings Summary
+- ✅ Addressed E2E multi-tag coverage for AC8.
+- ✅ Restored thin-tool boundary by moving validation fully into the service.
+- ✅ Removed duplicate validation logic.
+
+### Review Notes
+- Updated `tests/e2e/test_search_test_cases.py` to include multi-tag scenario.
+- Removed tool-level query validation in `src/tools/search.py`; validation remains in service.
+- Story status set to `in-progress` pending re-review after fixes.
+
+### Change Log
+- Added multi-tag E2E coverage for `search_test_cases`.
+- Removed tool-level query validation to comply with thin-tool pattern.
+- Updated story file list to reflect actual modified files.
+
 ## Dev Agent Record
 
 ### Agent Model Used
@@ -314,12 +331,12 @@ gpt-5.2-codex
 - Implemented search_test_cases tool with query parsing and LLM-friendly formatting.
 - Added SearchQueryParser and SearchService.search_test_cases for name/tag filtering.
 - Added unit tests for parser/formatter and E2E search tests (skip without sandbox creds).
+- [AI Review] Moved search query validation fully into SearchService to keep tools thin.
+- [AI Review] Added E2E multi-tag coverage for search queries.
 - Tests: `uv run --env-file .env.test pytest tests/unit/ tests/integration/`
 
 ### File List
 - specs/implementation-artifacts/3-3-search-test-cases-by-name-or-tag.md
 - src/services/search_service.py
 - src/tools/search.py
-- src/main.py
-- tests/unit/test_search_service.py
 - tests/e2e/test_search_test_cases.py
