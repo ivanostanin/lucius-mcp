@@ -4,6 +4,8 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService, TestCaseUpdate
+from src.utils.auth import get_auth_context
+from src.utils.config import settings
 
 
 async def update_test_case(  # noqa: C901
@@ -37,6 +39,7 @@ async def update_test_case(  # noqa: C901
         list[dict[str, str]] | None,
         Field(description="New list of external links. Each dict has 'name', 'url', and optional 'type'."),
     ] = None,
+    api_token: Annotated[str | None, Field(description="Optional API token override.")] = None,
 ) -> str:
     """Update an existing test case in Allure TestOps.
 
@@ -44,9 +47,19 @@ async def update_test_case(  # noqa: C901
     If 'steps' are provided, they replace all existing steps.
     If 'attachments' are provided, they replace all existing global attachments.
     To preserve existing steps or attachments while updating the other, omit the field you want to preserve.
+
+    Args:
+        api_token: Optional override for the default API token.
     """
-    async with AllureClient.from_env() as client:
-        service = TestCaseService(client)
+    auth_context = get_auth_context(api_token=api_token)
+
+    client = AllureClient(
+        base_url=settings.ALLURE_ENDPOINT,
+        token=auth_context.api_token,
+    )
+
+    async with client:
+        service = TestCaseService(auth_context, client=client)
         update_data = TestCaseUpdate(
             name=name,
             description=description,

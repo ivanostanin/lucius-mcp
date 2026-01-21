@@ -29,6 +29,8 @@ from src.client.generated.models.shared_step_step_dto import SharedStepStepDto
 from src.client.generated.models.test_case_patch_v2_dto import TestCasePatchV2Dto
 from src.client.generated.models.test_case_scenario_v2_dto import TestCaseScenarioV2Dto
 from src.services.attachment_service import AttachmentService
+from src.utils.auth import AuthContext
+from src.utils.config import settings
 from src.utils.schema_hint import generate_schema_hint
 
 # Maximum lengths based on API constraints
@@ -72,9 +74,19 @@ class DeleteResult:
 class TestCaseService:
     """Service for managing Test Cases in Allure TestOps."""
 
-    def __init__(self, client: AllureClient, attachment_service: AttachmentService | None = None) -> None:
-        self._client = client
-        self._attachment_service = attachment_service or AttachmentService(client)
+    def __init__(
+        self,
+        auth_context: AuthContext,
+        client: AllureClient | None = None,
+        attachment_service: AttachmentService | None = None,
+        base_url: str | None = None,
+    ) -> None:
+        self._auth = auth_context
+        self._client = client or AllureClient(
+            base_url=base_url or settings.ALLURE_ENDPOINT,
+            token=auth_context.api_token,
+        )
+        self._attachment_service = attachment_service or AttachmentService(self._client)
         self._cf_cache: dict[int, dict[str, int]] = {}  # {project_id: {name: id}}
 
     async def create_test_case(

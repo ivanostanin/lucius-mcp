@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from pydantic import SecretStr
 
 from src.client import AllureClient, PageTestCaseDto, TestCaseDto, TestCaseDtoWithCF, TestCaseScenarioV2Dto
 from src.client.exceptions import AllureNotFoundError, AllureValidationError, TestCaseNotFoundError
@@ -9,6 +10,7 @@ from src.client.generated.models.custom_field_value_with_cf_dto import CustomFie
 from src.client.generated.models.test_tag_dto import TestTagDto
 from src.services.search_service import SearchQueryParser, SearchService, TestCaseDetails
 from src.tools.search import _format_search_results, _format_test_case_details
+from src.utils.auth import AuthContext
 
 
 @pytest.fixture
@@ -22,7 +24,7 @@ def mock_client() -> AllureClient:
 
 @pytest.fixture
 def service(mock_client: AllureClient) -> SearchService:
-    return SearchService(mock_client)
+    return SearchService(AuthContext(api_token=SecretStr("token")), client=mock_client)
 
 
 @pytest.mark.asyncio
@@ -192,7 +194,9 @@ async def test_list_test_cases_validates_pagination(service: SearchService) -> N
 
 def test_format_search_results_handles_empty() -> None:
     empty_page = PageTestCaseDto(content=[], total_elements=0, number=0, size=20, total_pages=0)
-    empty_result = SearchService(MagicMock())._build_result(empty_page)
+    empty_result = SearchService(AuthContext(api_token=SecretStr("token")), client=MagicMock())._build_result(
+        empty_page
+    )
 
     text = _format_search_results(empty_result, "login tag:auth")
 
@@ -240,7 +244,7 @@ def test_format_search_results_includes_tags_and_pagination() -> None:
         TestCaseDto(id=2, name="Logout", tags=[]),
     ]
     page = PageTestCaseDto(content=items, total_elements=2, number=0, size=1, total_pages=2)
-    result = SearchService(MagicMock())._build_result(page)
+    result = SearchService(AuthContext(api_token=SecretStr("token")), client=MagicMock())._build_result(page)
 
     text = _format_search_results(result, "login")
 

@@ -6,6 +6,7 @@ import pytest
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService
 from src.tools.create_test_case import create_test_case
+from src.utils.auth import get_auth_context
 
 
 @pytest.mark.skipif(
@@ -13,7 +14,11 @@ from src.tools.create_test_case import create_test_case
 )
 @pytest.mark.asyncio
 async def test_full_house_creation(
-    project_id: int, allure_client: AllureClient, cleanup_tracker: Any, pixel_b64: str
+    project_id: int,
+    allure_client: AllureClient,
+    cleanup_tracker: Any,
+    pixel_b64: str,
+    api_token: str,
 ) -> None:
     """
     E2E-1: The "Full House" Test Case.
@@ -35,7 +40,13 @@ async def test_full_house_creation(
 
     # Call Tool
     result_msg = await create_test_case(
-        project_id=project_id, name=name, description=description, steps=steps, tags=tags, attachments=attachments
+        project_id=project_id,
+        name=name,
+        description=description,
+        steps=steps,
+        tags=tags,
+        attachments=attachments,
+        api_token=api_token,
     )
 
     # Verifications
@@ -53,7 +64,10 @@ async def test_full_house_creation(
     cleanup_tracker.track_test_case(test_case_id)
 
     # Verify in Allure
-    service = TestCaseService(allure_client)
+    service = TestCaseService(
+        get_auth_context(api_token=api_token),
+        client=allure_client,
+    )
     fetched_case = await service.get_test_case(test_case_id)
 
     assert fetched_case.name == name
@@ -93,7 +107,12 @@ async def test_full_house_creation(
     not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
 )
 @pytest.mark.asyncio
-async def test_url_attachment_flow(project_id: int, allure_client: AllureClient, cleanup_tracker: Any) -> None:
+async def test_url_attachment_flow(
+    project_id: int,
+    allure_client: AllureClient,
+    cleanup_tracker: Any,
+    api_token: str,
+) -> None:
     """
     E2E-2: Test Case with URL Attachment.
     Verifies that the tool downloads content from URL and uploads it to Allure.
@@ -112,7 +131,12 @@ async def test_url_attachment_flow(project_id: int, allure_client: AllureClient,
     ]
 
     # Call Tool
-    result_msg = await create_test_case(project_id=project_id, name=name, attachments=attachments)
+    result_msg = await create_test_case(
+        project_id=project_id,
+        name=name,
+        attachments=attachments,
+        api_token=api_token,
+    )
 
     # Verifications
     assert "Created Test Case ID:" in result_msg
@@ -148,12 +172,19 @@ async def test_url_attachment_flow(project_id: int, allure_client: AllureClient,
     not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
 )
 @pytest.mark.asyncio
-async def test_e2e_3_custom_fields_creation(project_id: int, allure_client: AllureClient) -> None:
+async def test_e2e_3_custom_fields_creation(
+    project_id: int,
+    allure_client: AllureClient,
+    api_token: str,
+) -> None:
     """
     E2E-3: Custom Fields Creation.
     Create a test case with custom fields using real TestOps instance.
     """
-    service = TestCaseService(allure_client)
+    service = TestCaseService(
+        get_auth_context(api_token=api_token),
+        client=allure_client,
+    )
     test_case_id = None
 
     try:
@@ -187,12 +218,19 @@ async def test_e2e_3_custom_fields_creation(project_id: int, allure_client: Allu
     not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
 )
 @pytest.mark.asyncio
-async def test_e2e_4_minimal_creation(project_id: int, allure_client: AllureClient) -> None:
+async def test_e2e_4_minimal_creation(
+    project_id: int,
+    allure_client: AllureClient,
+    api_token: str,
+) -> None:
     """
     E2E-4: Minimal Creation.
     Create test case with only required fields (project_id, name).
     """
-    service = TestCaseService(allure_client)
+    service = TestCaseService(
+        get_auth_context(api_token=api_token),
+        client=allure_client,
+    )
     test_case_id = None
 
     try:
@@ -219,12 +257,20 @@ async def test_e2e_4_minimal_creation(project_id: int, allure_client: AllureClie
     not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
 )
 @pytest.mark.asyncio
-async def test_e2e_5_step_level_attachments(project_id: int, allure_client: AllureClient, pixel_b64: str) -> None:
+async def test_e2e_5_step_level_attachments(
+    project_id: int,
+    allure_client: AllureClient,
+    pixel_b64: str,
+    api_token: str,
+) -> None:
     """
     E2E-5: Step-level Attachments.
     Create test case with attachments nested in steps.
     """
-    service = TestCaseService(allure_client)
+    service = TestCaseService(
+        get_auth_context(api_token=api_token),
+        client=allure_client,
+    )
     test_case_id = None
 
     try:
@@ -271,12 +317,20 @@ async def test_e2e_5_step_level_attachments(project_id: int, allure_client: Allu
     not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
 )
 @pytest.mark.asyncio
-async def test_e2e_6_complex_step_hierarchy(project_id: int, allure_client: AllureClient, pixel_b64: str) -> None:
+async def test_e2e_6_complex_step_hierarchy(
+    project_id: int,
+    allure_client: AllureClient,
+    pixel_b64: str,
+    api_token: str,
+) -> None:
     """
     E2E-6: Complex Step Hierarchy.
     Create test case with multiple steps, expected results, and attachments.
     """
-    service = TestCaseService(allure_client)
+    service = TestCaseService(
+        get_auth_context(api_token=api_token),
+        client=allure_client,
+    )
     test_case_id = None
 
     try:
@@ -311,12 +365,19 @@ async def test_e2e_6_complex_step_hierarchy(project_id: int, allure_client: Allu
     not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
 )
 @pytest.mark.asyncio
-async def test_e2e_7_edge_cases(project_id: int, allure_client: AllureClient) -> None:
+async def test_e2e_7_edge_cases(
+    project_id: int,
+    allure_client: AllureClient,
+    api_token: str,
+) -> None:
     """
     E2E-7: Edge Cases.
     Test with empty description, no steps, no tags.
     """
-    service = TestCaseService(allure_client)
+    service = TestCaseService(
+        get_auth_context(api_token=api_token),
+        client=allure_client,
+    )
     test_case_id = None
 
     try:

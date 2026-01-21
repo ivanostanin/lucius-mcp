@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from pydantic import SecretStr
 
 from src.client import AllureClient
 from src.client.exceptions import AllureAPIError
@@ -10,6 +11,7 @@ from src.client.generated.models import (
     TestCaseScenarioDto,
 )
 from src.services.test_case_service import TestCaseService, TestCaseUpdate
+from src.utils.auth import AuthContext
 
 
 @pytest.fixture
@@ -29,7 +31,7 @@ def mock_scenario_response() -> TestCaseScenarioDto:
 @pytest.mark.asyncio
 async def test_update_nested_steps_fix(mock_client: AsyncMock, mock_scenario_response: TestCaseScenarioDto) -> None:
     """Test updating steps with nested hierarchy."""
-    service = TestCaseService(mock_client)
+    service = TestCaseService(AuthContext(api_token=SecretStr("token")), client=mock_client)
     test_case_id = 999
     mock_client.get_test_case.return_value = TestCaseDto(id=test_case_id)
     mock_client.get_test_case_scenario.return_value = mock_scenario_response
@@ -87,7 +89,7 @@ async def test_update_nested_steps_fix(mock_client: AsyncMock, mock_scenario_res
 @pytest.mark.asyncio
 async def test_recreate_scenario_rollback_fix(mock_client: AsyncMock) -> None:
     """Test scenario recreation rollback on failure."""
-    service = TestCaseService(mock_client)
+    service = TestCaseService(AuthContext(api_token=SecretStr("token")), client=mock_client)
     test_case_id = 999
 
     # 1. Setup mock current scenario (to be restored)

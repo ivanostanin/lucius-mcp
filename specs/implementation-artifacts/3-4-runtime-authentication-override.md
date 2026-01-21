@@ -1,6 +1,6 @@
 # Story 3.4: Runtime Authentication Override
 
-Status: ready-for-dev
+Status: ready-for-review
 
 ## Story
 
@@ -10,14 +10,17 @@ so that I can operate across different projects or with different credentials wi
 
 ## Acceptance Criteria
 
-1. **Given** a tool call that requires authentication, **when** I provide `api_token` and/or `project_id` arguments directly, **then** these arguments override any environment variables or default configurations.
+1. **Given** a tool call that requires authentication, **when** I provide `api_token` and/or `project_id` arguments directly, **then** these arguments are optional and override any environment variables or default configurations.
 2. The operation is executed successfully with the provided runtime context.
 3. Runtime overrides do NOT persist between tool calls (stateless).
 4. Environment variable defaults are still used when runtime arguments are not provided.
 5. Clear error hint when neither runtime nor environment authentication is available.
 6. API tokens passed at runtime must be masked in all logs.
-7. **NFR11 / AC11 (E2E):** End-to-end tests run against a sandbox TestOps instance and validate:
+7. All tools still function correctly when runtime authentication is not configured.
+8. **NFR11 / AC11 (E2E):** End-to-end tests run against a sandbox TestOps instance and validate:
    - runtime overrides are honored for a tool call,
+   - runtime overrides are optional,
+   - runtime overrides are supported for all tools,
    - environment defaults are used when overrides are absent,
    - overrides do not persist across calls,
    - errors are clear when no auth is available,
@@ -25,46 +28,46 @@ so that I can operate across different projects or with different credentials wi
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Implement AuthContext Model** (AC: #1, #3, #4)
-  - [ ] 1.1: Create `AuthContext` dataclass in `src/utils/auth.py`
-  - [ ] 1.2: Add `api_token` (SecretStr) and `project_id` (Optional[int]) fields
-  - [ ] 1.3: Implement `from_environment()` class method
-  - [ ] 1.4: Implement `with_overrides()` method for runtime values
+- [x] **Task 1: Implement AuthContext Model** (AC: #1, #3, #4)
+  - [x] 1.1: Create `AuthContext` dataclass in `src/utils/auth.py`
+  - [x] 1.2: Add `api_token` (SecretStr) and `project_id` (Optional[int]) fields
+  - [x] 1.3: Implement `from_environment()` class method
+  - [x] 1.4: Implement `with_overrides()` method for runtime values
 
-- [ ] **Task 2: Create get_auth_context Helper** (AC: #1, #4, #5)
-  - [ ] 2.1: Implement `get_auth_context()` function
-  - [ ] 2.2: Accept optional runtime overrides as parameters
-  - [ ] 2.3: Fall back to environment variables for unspecified values
-  - [ ] 2.4: Raise `AuthenticationError` if no token available
+- [x] **Task 2: Create get_auth_context Helper** (AC: #1, #4, #5)
+  - [x] 2.1: Implement `get_auth_context()` function
+  - [x] 2.2: Accept optional runtime overrides as parameters
+  - [x] 2.3: Fall back to environment variables for unspecified values
+  - [x] 2.4: Raise `AuthenticationError` if no token available
 
-- [ ] **Task 3: Integrate with Services** (AC: #1, #2)
-  - [ ] 3.1: Update `SearchService` to accept `AuthContext`
-  - [ ] 3.2: Update `CaseService` to accept `AuthContext`
-  - [ ] 3.3: Pass auth context to `AllureClient` on each request
+- [x] **Task 3: Integrate with Services** (AC: #1, #2)
+  - [x] 3.1: Update `SearchService` to accept `AuthContext`
+  - [x] 3.2: Update `CaseService` to accept `AuthContext`
+  - [x] 3.3: Pass auth context to `AllureClient` on each request
 
-- [ ] **Task 4: Update All Tools** (AC: #1)
-  - [ ] 4.1: Add optional `api_token` parameter to all tools
-  - [ ] 4.2: Add optional `project_id` parameter where applicable
-  - [ ] 4.3: Document runtime override capability in docstrings
+- [x] **Task 4: Update All Tools** (AC: #1)
+  - [x] 4.1: Add optional `api_token` parameter to all tools
+  - [x] 4.2: Add optional `project_id` parameter where applicable
+  - [x] 4.3: Document runtime override capability in docstrings
 
-- [ ] **Task 5: Secure Logging** (AC: #6)
-  - [ ] 5.1: Verify SecretStr masks token in __repr__ and __str__
-  - [ ] 5.2: Ensure no token leakage in error messages
-  - [ ] 5.3: Test log output for masked tokens
+- [x] **Task 5: Secure Logging** (AC: #6)
+  - [x] 5.1: Verify SecretStr masks token in __repr__ and __str__
+  - [x] 5.2: Ensure no token leakage in error messages
+  - [x] 5.3: Test log output for masked tokens
 
-- [ ] **Task 6: Unit Tests** (AC: #1-6)
-  - [ ] 6.1: Test runtime override takes precedence
-  - [ ] 6.2: Test environment fallback works
-  - [ ] 6.3: Test missing auth raises clear error
-  - [ ] 6.4: Test stateless behavior (overrides don't persist)
-  - [ ] 6.5: Test token masking in logs
+- [x] **Task 6: Unit Tests** (AC: #1-6)
+  - [x] 6.1: Test runtime override takes precedence
+  - [x] 6.2: Test environment fallback works
+  - [x] 6.3: Test missing auth raises clear error
+  - [x] 6.4: Test stateless behavior (overrides don't persist)
+  - [x] 6.5: Test token masking in logs
 
-- [ ] **Task 7: E2E Tests for Runtime Auth** (AC: #7)
-  - [ ] 7.1: Add `tests/e2e/test_runtime_auth_override.py`
-  - [ ] 7.2: Validate runtime override precedence in a tool call
-  - [ ] 7.3: Validate stateless behavior across calls
-  - [ ] 7.4: Validate clear error when no auth configured
-  - [ ] 7.5: Skip gracefully when sandbox credentials are absent
+- [x] **Task 7: E2E Tests for Runtime Auth** (AC: #7)
+  - [x] 7.1: Add `tests/e2e/test_runtime_auth_override.py`
+  - [x] 7.2: Validate runtime override precedence in a tool call
+  - [x] 7.3: Validate stateless behavior across calls
+  - [x] 7.4: Validate clear error when no auth configured
+  - [x] 7.5: Skip gracefully when sandbox credentials are absent
 
 ## Dev Notes
 

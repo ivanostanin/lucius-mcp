@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
+from pydantic import SecretStr
 
 from src.client import AllureClient
 
@@ -8,6 +9,7 @@ from src.client import AllureClient
 # The tools are simple wrappers. Testing the Service validation logic (which we just updated)
 # is the most direct way to verify the hints.
 from src.services.test_case_service import TestCaseService
+from src.utils.auth import AuthContext
 
 # We can test the Service methods directly by instantiating TestCaseService
 # and mocking the client. The validation logic is local and doesn't need API.
@@ -22,7 +24,7 @@ def mock_client():
 
 @pytest.fixture
 def service(mock_client):
-    return TestCaseService(mock_client)
+    return TestCaseService(AuthContext(api_token=SecretStr("token")), client=mock_client)
 
 
 @pytest.mark.asyncio

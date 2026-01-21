@@ -5,6 +5,8 @@ from typing import Any
 from src.client import AllureClient
 from src.client.generated.models.shared_step_step_dto import SharedStepStepDto
 from src.services.test_case_service import TestCaseService
+from src.utils.auth import get_auth_context
+from src.utils.config import settings
 
 
 def _format_steps(scenario: Any) -> str:
@@ -37,6 +39,7 @@ async def link_shared_step(
     test_case_id: int,
     shared_step_id: int,
     position: int | None = None,
+    api_token: str | None = None,
 ) -> str:
     """Link a shared step to a test case.
 
@@ -52,6 +55,7 @@ async def link_shared_step(
             - 0 = Insert at beginning
             - None = Append to end (default)
             - N = Insert after step N (so it becomes the (N+1)th step)
+        api_token: Optional override for the default API token.
 
     Returns:
         Confirmation with updated step list preview.
@@ -63,13 +67,15 @@ async def link_shared_step(
             position=0  # Insert at beginning
         )
     """
-    try:
-        client = AllureClient.from_env()
-    except ValueError as e:
-        return f"Error: {e}"
+    auth_context = get_auth_context(api_token=api_token)
+
+    client = AllureClient(
+        base_url=settings.ALLURE_ENDPOINT,
+        token=auth_context.api_token,
+    )
 
     async with client:
-        service = TestCaseService(client)
+        service = TestCaseService(auth_context, client=client)
         try:
             await service.add_shared_step_to_case(
                 test_case_id=test_case_id,

@@ -4,11 +4,12 @@ import pytest
 
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService
+from src.utils.auth import get_auth_context
 
 
 @pytest.mark.asyncio
 @pytest.mark.test_id("1.5-E2E-001")
-async def test_delete_test_case_e2e() -> None:
+async def test_delete_test_case_e2e(api_token: str) -> None:
     """Test ID: 1.5-E2E-001 - Soft Delete Test Case (P0)
 
     Story 1.5: Soft Delete & Archive
@@ -23,7 +24,10 @@ async def test_delete_test_case_e2e() -> None:
     project_id = int(os.getenv("ALLURE_PROJECT_ID", "1"))
 
     async with AllureClient.from_env() as client:
-        service = TestCaseService(client)
+        service = TestCaseService(
+            get_auth_context(api_token=api_token),
+            client=client,
+        )
 
         # GIVEN: A test case exists in Allure TestOps
         created = await service.create_test_case(

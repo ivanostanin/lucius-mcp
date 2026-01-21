@@ -1,16 +1,20 @@
 from typing import Annotated
 
-from pydantic import Field, SecretStr
+from pydantic import Field
 
 from src.client import AllureClient, AllureValidationError
 from src.services.search_service import SearchQueryParser, SearchService, TestCaseDetails, TestCaseListResult
+from src.utils.auth import AuthContext, get_auth_context
 from src.utils.config import settings
 
 
-def _build_client(api_token: str | None) -> AllureClient:
-    if api_token:
-        return AllureClient(base_url=settings.ALLURE_ENDPOINT, token=SecretStr(api_token))
-    return AllureClient.from_env()
+def _build_client(api_token: str | None) -> tuple[AllureClient, AuthContext]:
+    auth_context = get_auth_context(api_token=api_token)
+    client = AllureClient(
+        base_url=settings.ALLURE_ENDPOINT,
+        token=auth_context.api_token,
+    )
+    return client, auth_context
 
 
 async def list_test_cases(
@@ -39,8 +43,9 @@ async def list_test_cases(
     Returns:
         A formatted list of test cases with pagination info.
     """
-    async with _build_client(api_token) as client:
-        service = SearchService(client)
+    client, auth_context = _build_client(api_token)
+    async with client:
+        service = SearchService(auth_context, client=client)
         result = await service.list_test_cases(
             project_id=project_id,
             page=page,
@@ -109,8 +114,9 @@ async def search_test_cases(
     if not parsed.name_query and not parsed.tags:
         raise AllureValidationError("Search query must include a name or tag filter")
 
-    async with _build_client(api_token) as client:
-        service = SearchService(client)
+    client, auth_context = _build_client(api_token)
+    async with client:
+        service = SearchService(auth_context, client=client)
         result = await service.search_test_cases(
             project_id=project_id,
             query=query,
@@ -141,8 +147,9 @@ async def get_test_case_details(
     if not isinstance(test_case_id, int) or test_case_id <= 0:
         raise AllureValidationError("Test case ID must be a positive integer")
 
-    async with _build_client(api_token) as client:
-        service = SearchService(client)
+    client, auth_context = _build_client(api_token)
+    async with client:
+        service = SearchService(auth_context, client=client)
         details = await service.get_test_case_details(test_case_id)
 
     return _format_test_case_details(details)

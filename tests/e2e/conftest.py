@@ -7,6 +7,7 @@ from collections.abc import AsyncGenerator
 import pytest
 
 from src.client import AllureClient
+from src.utils.auth import get_auth_context
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 
@@ -26,16 +27,24 @@ async def allure_client() -> AsyncGenerator[AllureClient]:
     if not base_url or not token:
         pytest.skip("Sandbox credentials not configured (ALLURE_ENDPOINT/TOKEN)")
 
-    from pydantic import SecretStr
+    auth_context = get_auth_context(api_token=token)
 
     # We can't use AllureClient.from_env() because we might be using sandbox vars
     # preventing internal env var conflict if standard vars are also set.
     async with AllureClient(
         base_url=base_url,
-        token=SecretStr(token),
+        token=auth_context.api_token,
         # Note: project_id isn't strictly needing to be set on client if we pass it to methods,
     ) as client:
         yield client
+
+
+@pytest.fixture
+def api_token() -> str:
+    token = os.getenv("ALLURE_API_TOKEN")
+    if not token:
+        pytest.skip("Sandbox credentials not configured (ALLURE_API_TOKEN)")
+    return token
 
 
 @pytest.fixture

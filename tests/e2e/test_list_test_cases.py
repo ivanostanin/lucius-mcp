@@ -5,6 +5,7 @@ import pytest
 from src.client import AllureClient
 from src.client.exceptions import AllureValidationError
 from src.services.search_service import SearchService
+from src.utils.auth import get_auth_context
 
 pytestmark = pytest.mark.skipif(
     not (os.getenv("ALLURE_ENDPOINT") and os.getenv("ALLURE_API_TOKEN")),
@@ -13,8 +14,15 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.mark.asyncio
-async def test_list_test_cases_paginates_and_formats(allure_client: AllureClient, project_id: int) -> None:
-    service = SearchService(allure_client)
+async def test_list_test_cases_paginates_and_formats(
+    allure_client: AllureClient,
+    project_id: int,
+    api_token: str,
+) -> None:
+    service = SearchService(
+        get_auth_context(api_token=api_token),
+        client=allure_client,
+    )
 
     # Fetch first page with small size to force pagination hint
     result = await service.list_test_cases(project_id=project_id, page=0, size=1)
@@ -36,8 +44,15 @@ async def test_list_test_cases_paginates_and_formats(allure_client: AllureClient
 
 
 @pytest.mark.asyncio
-async def test_list_test_cases_filters_are_aql_compatible(allure_client: AllureClient, project_id: int) -> None:
-    service = SearchService(allure_client)
+async def test_list_test_cases_filters_are_aql_compatible(
+    allure_client: AllureClient,
+    project_id: int,
+    api_token: str,
+) -> None:
+    service = SearchService(
+        get_auth_context(api_token=api_token),
+        client=allure_client,
+    )
 
     # Exercise AQL-compatible filters: name contains, status equals, tag equals
     result = await service.list_test_cases(
@@ -61,8 +76,14 @@ async def test_list_test_cases_filters_are_aql_compatible(allure_client: AllureC
 
 
 @pytest.mark.asyncio
-async def test_list_test_cases_handles_invalid_project(allure_client: AllureClient) -> None:
-    service = SearchService(allure_client)
+async def test_list_test_cases_handles_invalid_project(
+    allure_client: AllureClient,
+    api_token: str,
+) -> None:
+    service = SearchService(
+        get_auth_context(api_token=api_token),
+        client=allure_client,
+    )
 
     with pytest.raises(AllureValidationError):
         await service.list_test_cases(project_id=-1)

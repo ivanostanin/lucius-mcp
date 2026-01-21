@@ -15,7 +15,12 @@ from src.tools.unlink_shared_step import unlink_shared_step
     not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
 )
 @pytest.mark.asyncio
-async def test_link_unlink_shared_step_flow(project_id: int, allure_client: AllureClient, cleanup_tracker: Any) -> None:
+async def test_link_unlink_shared_step_flow(
+    project_id: int,
+    allure_client: AllureClient,
+    cleanup_tracker: Any,
+    api_token: str,
+) -> None:
     """
     E2E Test: Link and Unlink Shared Step.
 
@@ -29,7 +34,11 @@ async def test_link_unlink_shared_step_flow(project_id: int, allure_client: Allu
     """
     # 1. Create Shared Step
     ss_name = f"E2E Shared Step {os.urandom(4).hex()}"
-    ss_output = await create_shared_step(project_id=project_id, name=ss_name)
+    ss_output = await create_shared_step(
+        project_id=project_id,
+        name=ss_name,
+        api_token=api_token,
+    )
 
     match = re.search(r"ID: (\d+)", ss_output)
     assert match, "Could not extract Shared Step ID"
@@ -38,7 +47,11 @@ async def test_link_unlink_shared_step_flow(project_id: int, allure_client: Allu
 
     # 2. Create Test Case
     tc_name = f"E2E TC with Shared Step {os.urandom(4).hex()}"
-    tc_output = await create_test_case(project_id=project_id, name=tc_name)
+    tc_output = await create_test_case(
+        project_id=project_id,
+        name=tc_name,
+        api_token=api_token,
+    )
 
     match = re.search(r"ID: (\d+)", tc_output)
     assert match, "Could not extract Test Case ID"
@@ -46,7 +59,11 @@ async def test_link_unlink_shared_step_flow(project_id: int, allure_client: Allu
     cleanup_tracker.track_test_case(test_case_id)
 
     # 3. Link Shared Step
-    link_output = await link_shared_step(test_case_id=test_case_id, shared_step_id=shared_step_id)
+    link_output = await link_shared_step(
+        test_case_id=test_case_id,
+        shared_step_id=shared_step_id,
+        api_token=api_token,
+    )
     assert "✅ Linked Shared Step" in link_output
     assert f"ID: {shared_step_id}" in link_output
 
@@ -65,7 +82,11 @@ async def test_link_unlink_shared_step_flow(project_id: int, allure_client: Allu
     assert getattr(step.actual_instance, "shared_step_id", None) == shared_step_id
 
     # 5. Unlink Shared Step
-    unlink_output = await unlink_shared_step(test_case_id=test_case_id, shared_step_id=shared_step_id)
+    unlink_output = await unlink_shared_step(
+        test_case_id=test_case_id,
+        shared_step_id=shared_step_id,
+        api_token=api_token,
+    )
     assert "✅ Unlinked Shared Step" in unlink_output
 
     # 6. Verify Unlink

@@ -5,6 +5,7 @@ import pytest
 from src.client import AllureClient
 from src.services.search_service import SearchService
 from src.tools.search import _format_search_results
+from src.utils.auth import get_auth_context
 
 pytestmark = pytest.mark.skipif(
     not (os.getenv("ALLURE_ENDPOINT") and os.getenv("ALLURE_API_TOKEN")),
@@ -13,8 +14,15 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.mark.asyncio
-async def test_search_test_cases_name_only(allure_client: AllureClient, project_id: int) -> None:
-    service = SearchService(allure_client)
+async def test_search_test_cases_name_only(
+    allure_client: AllureClient,
+    project_id: int,
+    api_token: str,
+) -> None:
+    service = SearchService(
+        get_auth_context(api_token=api_token),
+        client=allure_client,
+    )
 
     result = await service.search_test_cases(project_id=project_id, query="login", page=0, size=5)
     text = _format_search_results(result, "login")
@@ -24,8 +32,15 @@ async def test_search_test_cases_name_only(allure_client: AllureClient, project_
 
 
 @pytest.mark.asyncio
-async def test_search_test_cases_tag_only(allure_client: AllureClient, project_id: int) -> None:
-    service = SearchService(allure_client)
+async def test_search_test_cases_tag_only(
+    allure_client: AllureClient,
+    project_id: int,
+    api_token: str,
+) -> None:
+    service = SearchService(
+        get_auth_context(api_token=api_token),
+        client=allure_client,
+    )
 
     result = await service.search_test_cases(project_id=project_id, query="tag:smoke", page=0, size=5)
     text = _format_search_results(result, "tag:smoke")
@@ -35,8 +50,15 @@ async def test_search_test_cases_tag_only(allure_client: AllureClient, project_i
 
 
 @pytest.mark.asyncio
-async def test_search_test_cases_multiple_tags(allure_client: AllureClient, project_id: int) -> None:
-    service = SearchService(allure_client)
+async def test_search_test_cases_multiple_tags(
+    allure_client: AllureClient,
+    project_id: int,
+    api_token: str,
+) -> None:
+    service = SearchService(
+        get_auth_context(api_token=api_token),
+        client=allure_client,
+    )
 
     result = await service.search_test_cases(project_id=project_id, query="tag:smoke tag:regression", page=0, size=5)
     text = _format_search_results(result, "tag:smoke tag:regression")
@@ -46,8 +68,15 @@ async def test_search_test_cases_multiple_tags(allure_client: AllureClient, proj
 
 
 @pytest.mark.asyncio
-async def test_search_test_cases_combined_and_case_insensitive(allure_client: AllureClient, project_id: int) -> None:
-    service = SearchService(allure_client)
+async def test_search_test_cases_combined_and_case_insensitive(
+    allure_client: AllureClient,
+    project_id: int,
+    api_token: str,
+) -> None:
+    service = SearchService(
+        get_auth_context(api_token=api_token),
+        client=allure_client,
+    )
 
     result = await service.search_test_cases(project_id=project_id, query="Login tag:SMOKE", page=0, size=5)
     text = _format_search_results(result, "Login tag:SMOKE")

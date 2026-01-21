@@ -5,6 +5,7 @@ import pytest
 from src.client import AllureClient
 from src.tools.create_test_case import create_test_case
 from src.tools.update_test_case import update_test_case
+from src.utils.auth import get_auth_context
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 # Skip all tests if sandbox environment is not configured
@@ -21,10 +22,19 @@ def run_name(test_run_id):
 
 @pytest.mark.asyncio
 async def test_create_tool_success_output(
-    allure_client: AllureClient, cleanup_tracker: CleanupTracker, project_id: int, run_name: str
+    allure_client: AllureClient,
+    cleanup_tracker: CleanupTracker,
+    project_id: int,
+    run_name: str,
+    api_token: str,
 ):
     """Verify create tool output is human friendly."""
-    result = await create_test_case(project_id=project_id, name=run_name, description="Testing tool output")
+    result = await create_test_case(
+        project_id=project_id,
+        name=run_name,
+        description="Testing tool output",
+        api_token=api_token,
+    )
 
     # Check format: "Created Test Case ID: <id> Name: <name>"
     assert "Created Test Case ID:" in result
@@ -43,13 +53,20 @@ async def test_create_tool_success_output(
 
 @pytest.mark.asyncio
 async def test_update_tool_success_output(
-    allure_client: AllureClient, cleanup_tracker: CleanupTracker, project_id: int, run_name: str
+    allure_client: AllureClient,
+    cleanup_tracker: CleanupTracker,
+    project_id: int,
+    run_name: str,
+    api_token: str,
 ):
     """Verify update tool output is human friendly."""
     # Setup: Create via service first
     from src.services.test_case_service import TestCaseService
 
-    service = TestCaseService(allure_client)
+    service = TestCaseService(
+        get_auth_context(api_token=api_token),
+        client=allure_client,
+    )
 
     created = await service.create_test_case(project_id=project_id, name=run_name)
     cleanup_tracker.track_test_case(created.id)

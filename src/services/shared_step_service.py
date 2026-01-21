@@ -13,6 +13,8 @@ from src.client import (
 )
 from src.client.exceptions import AllureAPIError, AllureValidationError
 from src.services.attachment_service import AttachmentService
+from src.utils.auth import AuthContext
+from src.utils.config import settings
 from src.utils.schema_hint import generate_schema_hint
 
 logger = logging.getLogger(__name__)
@@ -27,11 +29,17 @@ class SharedStepService:
 
     def __init__(
         self,
-        client: AllureClient,
+        auth_context: AuthContext,
+        client: AllureClient | None = None,
         attachment_service: AttachmentService | None = None,
+        base_url: str | None = None,
     ) -> None:
-        self._client = client
-        self._attachment_service = attachment_service or AttachmentService(client)
+        self._auth = auth_context
+        self._client = client or AllureClient(
+            base_url=base_url or settings.ALLURE_ENDPOINT,
+            token=auth_context.api_token,
+        )
+        self._attachment_service = attachment_service or AttachmentService(self._client)
 
     async def create_shared_step(
         self,

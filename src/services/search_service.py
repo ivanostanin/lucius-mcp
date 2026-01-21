@@ -3,6 +3,8 @@ from dataclasses import dataclass
 
 from src.client import AllureClient, PageTestCaseDto, TestCaseDto, TestCaseScenarioV2Dto
 from src.client.exceptions import AllureNotFoundError, AllureValidationError, TestCaseNotFoundError
+from src.utils.auth import AuthContext
+from src.utils.config import settings
 
 
 @dataclass
@@ -69,8 +71,17 @@ class SearchQueryParser:
 class SearchService:
     """Service for search and discovery operations."""
 
-    def __init__(self, client: AllureClient) -> None:
-        self._client = client
+    def __init__(
+        self,
+        auth_context: AuthContext,
+        client: AllureClient | None = None,
+        base_url: str | None = None,
+    ) -> None:
+        self._auth = auth_context
+        self._client = client or AllureClient(
+            base_url=base_url or settings.ALLURE_ENDPOINT,
+            token=auth_context.api_token,
+        )
 
     async def get_test_case_details(self, test_case_id: int) -> TestCaseDetails:
         """Retrieve a single test case with full details."""

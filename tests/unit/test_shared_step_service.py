@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from pydantic import SecretStr
 
 from src.client import (
     AllureClient,
@@ -10,6 +11,7 @@ from src.client import (
 )
 from src.client.exceptions import AllureValidationError
 from src.services.shared_step_service import SharedStepService
+from src.utils.auth import AuthContext
 
 
 @pytest.fixture
@@ -24,7 +26,7 @@ def mock_client():
 
 @pytest.fixture
 def service(mock_client):
-    return SharedStepService(mock_client)
+    return SharedStepService(AuthContext(api_token=SecretStr("token")), client=mock_client)
 
 
 @pytest.mark.asyncio

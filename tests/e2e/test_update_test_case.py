@@ -4,6 +4,7 @@ import pytest
 
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService, TestCaseUpdate
+from src.utils.auth import get_auth_context
 
 
 # Skip E2E tests if no API token/endpoint provided
@@ -11,12 +12,20 @@ from src.services.test_case_service import TestCaseService, TestCaseUpdate
     not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
 )
 @pytest.mark.asyncio
-async def test_update_test_case_e2e(project_id: int, allure_client: AllureClient, pixel_b64: str) -> None:
+async def test_update_test_case_e2e(
+    project_id: int,
+    allure_client: AllureClient,
+    pixel_b64: str,
+    api_token: str,
+) -> None:
     """End-to-end test for updating a test case."""
 
     # 1. Setup
     # Fixture 'allure_client' provides authenticated client
-    service = TestCaseService(allure_client)
+    service = TestCaseService(
+        get_auth_context(api_token=api_token),
+        client=allure_client,
+    )
 
     # Fixture 'project_id' provides valid project ID
     # project_id = ...
@@ -120,12 +129,19 @@ async def test_update_test_case_e2e(project_id: int, allure_client: AllureClient
     not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
 )
 @pytest.mark.asyncio
-async def test_e2e_u1_update_core_fields(project_id: int, allure_client: AllureClient) -> None:
+async def test_e2e_u1_update_core_fields(
+    project_id: int,
+    allure_client: AllureClient,
+    api_token: str,
+) -> None:
     """
     E2E-U1: Update Core Fields.
     Test updating name, description, precondition, and expected_result.
     """
-    service = TestCaseService(allure_client)
+    service = TestCaseService(
+        get_auth_context(api_token=api_token),
+        client=allure_client,
+    )
     test_case_id = None
 
     try:
@@ -167,12 +183,19 @@ async def test_e2e_u1_update_core_fields(project_id: int, allure_client: AllureC
     not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
 )
 @pytest.mark.asyncio
-async def test_e2e_u2_update_status_workflow(project_id: int, allure_client: AllureClient) -> None:
+async def test_e2e_u2_update_status_workflow(
+    project_id: int,
+    allure_client: AllureClient,
+    api_token: str,
+) -> None:
     """
     E2E-U2: Update Status & Workflow.
     Test updating status_id, workflow_id, test_layer_id, and automated flag.
     """
-    service = TestCaseService(allure_client)
+    service = TestCaseService(
+        get_auth_context(api_token=api_token),
+        client=allure_client,
+    )
     test_case_id = None
 
     try:
@@ -200,12 +223,19 @@ async def test_e2e_u2_update_status_workflow(project_id: int, allure_client: All
     not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
 )
 @pytest.mark.asyncio
-async def test_e2e_u3_update_tags(project_id: int, allure_client: AllureClient) -> None:
+async def test_e2e_u3_update_tags(
+    project_id: int,
+    allure_client: AllureClient,
+    api_token: str,
+) -> None:
     """
     E2E-U3: Update Tags.
     Test replacing tags, adding new tags, and removing all tags.
     """
-    service = TestCaseService(allure_client)
+    service = TestCaseService(
+        get_auth_context(api_token=api_token),
+        client=allure_client,
+    )
     test_case_id = None
 
     try:
@@ -251,12 +281,19 @@ async def test_e2e_u3_update_tags(project_id: int, allure_client: AllureClient) 
     not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
 )
 @pytest.mark.asyncio
-async def test_e2e_u4_update_custom_fields(project_id: int, allure_client: AllureClient) -> None:
+async def test_e2e_u4_update_custom_fields(
+    project_id: int,
+    allure_client: AllureClient,
+    api_token: str,
+) -> None:
     """
     E2E-U4: Update Custom Fields.
     Test replacing custom field values and adding new custom fields.
     """
-    service = TestCaseService(allure_client)
+    service = TestCaseService(
+        get_auth_context(api_token=api_token),
+        client=allure_client,
+    )
     test_case_id = None
 
     try:

@@ -18,7 +18,10 @@ from tests.e2e.helpers.cleanup import CleanupTracker
 @pytest.mark.test_id("story-2.3-e2e-link-unlink-shared-step")
 @pytest.mark.asyncio
 async def test_link_shared_step_flow(
-    project_id: int, allure_client: AllureClient, cleanup_tracker: CleanupTracker
+    project_id: int,
+    allure_client: AllureClient,
+    cleanup_tracker: CleanupTracker,
+    api_token: str,
 ) -> None:
     """
     E2E for Story 2.3: Link Shared Step to Test Case.
@@ -36,7 +39,12 @@ async def test_link_shared_step_flow(
     ss_name = "E2E Shared Step for Linking"
     ss_steps = [{"action": "Shared Action 1", "expected": "Shared Expected 1"}]
 
-    ss_result = await create_shared_step(project_id=project_id, name=ss_name, steps=ss_steps)
+    ss_result = await create_shared_step(
+        project_id=project_id,
+        name=ss_name,
+        steps=ss_steps,
+        api_token=api_token,
+    )
 
     ss_match = re.search(r"ID: (\d+)", ss_result)
     assert ss_match, "Could not extract Shared Step ID"
@@ -54,7 +62,12 @@ async def test_link_shared_step_flow(
         tc_name = "E2E Test Case for Linking"
         tc_steps = [{"action": "Step 1", "expected": "Exp 1"}]
 
-        tc_result = await create_test_case(project_id=project_id, name=tc_name, steps=tc_steps)
+        tc_result = await create_test_case(
+            project_id=project_id,
+            name=tc_name,
+            steps=tc_steps,
+            api_token=api_token,
+        )
 
         tc_match = re.search(r"ID: (\d+)", tc_result)
         assert tc_match, "Could not extract Test Case ID"
@@ -67,6 +80,7 @@ async def test_link_shared_step_flow(
             test_case_id=test_case_id,
             shared_step_id=shared_step_id,
             position=None,  # Append
+            api_token=api_token,
         )
 
         assert "Linked Shared Step" in link_result
@@ -86,7 +100,11 @@ async def test_link_shared_step_flow(
         assert found_link, f"Shared Step {shared_step_id} not found in Test Case {test_case_id} steps"
 
         # 5. Unlink Shared Step
-        unlink_result = await unlink_shared_step(test_case_id=test_case_id, shared_step_id=shared_step_id)
+        unlink_result = await unlink_shared_step(
+            test_case_id=test_case_id,
+            shared_step_id=shared_step_id,
+            api_token=api_token,
+        )
 
         assert "Unlinked Shared Step" in unlink_result
 
