@@ -1,12 +1,20 @@
 .env
 .env.test
-#.claude/
-.codex/
-#.gemini/
-.venv/
-#_bmad/
 .idea/
-.agent/
+
+# BMAD
+# It's ok to have it gitignored if agent supports access to gitignored files
+_bmad/
+
+# Claude Code
+.claude/
+!/.claude/settings.local.json
+# Codex CLI
+.codex/
+# Gemini CLI
+.gemini/
+# Antigravity BMAD workflows
+#.agent/
 
 # Python
 __pycache__/
@@ -31,6 +39,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+.venv/
 
 # Pytest
 .pytest_cache/
@@ -44,4 +53,3 @@ MANIFEST
 .coverage
 
 .openapi-generator/
-!/.claude/settings.local.json
