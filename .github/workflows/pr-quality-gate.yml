@@ -1,0 +1,61 @@
+name: Pull Request Quality Gate
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      
+      - name: Install uv
+        run: pip install uv
+      
+      - name: Install dependencies
+        run: uv sync
+      
+      - name: Run ruff linting
+        run: uv run ruff check .
+      
+      - name: Run mypy type checking
+        run: uv run mypy .
+      
+      - name: Run unit and integration tests
+        run: uv run --env-file .env.test pytest tests/unit/ tests/integration/ -v
+      
+      - name: Install Node.js for mcpb
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install mcpb CLI
+        run: npm install -g @anthropic-ai/mcpb
+      
+      - name: Build mcpb bundle
+        run: ./deployment/scripts/build-mcpb.sh
+      
+      - name: Verify bundle was created
+        run: |
+          VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          BUNDLE_FILE="dist/lucius-mcp-${VERSION}.mcpb"
+          if [ ! -f "$BUNDLE_FILE" ]; then
+            echo "ERROR: Bundle file $BUNDLE_FILE was not created"
+            exit 1
+          fi
+          echo "✅ Bundle created: $BUNDLE_FILE"
+          ls -lh "$BUNDLE_FILE"
+      
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcpb-bundle-pr-${{ github.event.pull_request.number }}
+          path: dist/*.mcpb
+          retention-days: 7

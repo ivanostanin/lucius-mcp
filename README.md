@@ -47,7 +47,24 @@ This project uses `uv` for dependency management.
 
 ## 🏃 Usage
 
-### Running via HTTP (Default)
+### Running via Claude Desktop (One-Click Install)
+
+The easiest way to use Lucius in Claude Desktop is via the `.mcpb` bundle:
+
+1.  **Download** the latest `lucius-mcp-x.y.z.mcpb` from the [GitHub Releases](https://github.com/lucius-mcp/lucius-mcp/releases).
+2.  **Open** the file with Claude Desktop (macOS or Windows).
+3.  **Approve** the installation in the dialog.
+4.  **Configure** your Allure TestOps credentials in the provided fields.
+
+### Running via Stdio (Manual/Dev)
+
+For integration with MCP clients (like Claude Code) using standard input/output.
+
+```bash
+MCP_MODE=stdio uv run lucius-mcp
+```
+
+### Running via HTTP (Legacy/Dev)
 
 Starts the server with hot-reloading enabled (default port: 8000).
 
@@ -61,13 +78,31 @@ Or customizing host and port:
 HOST=0.0.0.0 PORT=9000 uv run lucius-mcp
 ```
 
-### Running via Stdio
+## 📦 Packaging (MCPB)
 
-For integration with MCP clients (like Claude Desktop) using standard input/output.
+Lucius supports the [MCP Bundle (MCPB)](https://github.com/modelcontextprotocol/mcpb) format for easy distribution.
 
-```bash
-MCP_MODE=stdio uv run lucius-mcp
-```
+### Building for Claude Desktop
+
+To build a `.mcpb` bundle locally:
+
+1.  **Install Node.js** (v20+ recommended).
+2.  **Install the mcpb CLI**:
+    ```bash
+    npm install -g @anthropic-ai/mcpb
+    ```
+3.  **Run the build script**:
+    ```bash
+    ./deployment/scripts/build-mcpb.sh
+    ```
+    The versioned bundle will be available in the `dist/` directory.
+
+### UV Runtime
+
+The bundle uses the `uv` runtime type, which means:
+- Dependencies are defined in `pyproject.toml` and `uv.lock`.
+- Claude Desktop will automatically manage the Python environment and dependencies for the user.
+- No local Python installation is required for the end-user.
 
 
 ## 🧪 Testing

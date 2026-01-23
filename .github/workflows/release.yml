@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  validate-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Extract version from tag
+        id: get_version
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          echo "tag_version=$TAG_VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Validate version matches pyproject.toml
+        run: |
+          PROJECT_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          TAG_VERSION=${{ steps.get_version.outputs.tag_version }}
+          
+          if [ "$PROJECT_VERSION" != "$TAG_VERSION" ]; then
+            echo "ERROR: Version mismatch!"
+            echo "  Tag version: $TAG_VERSION"
+            echo "  pyproject.toml version: $PROJECT_VERSION"
+            echo "Please ensure the git tag matches the version in pyproject.toml"
+            exit 1
+          fi
+          
+          echo "✅ Version validation passed: $PROJECT_VERSION"
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      
+      - name: Install uv
+        run: pip install uv
+      
+      - name: Install dependencies
+        run: uv sync
+      
+      - name: Run tests
+        run: uv run --env-file .env.test pytest tests/unit/ tests/integration/ -v
+      
+      - name: Run linting
+        run: uv run ruff check .
+      
+      - name: Run type checking
+        run: uv run mypy .
+      
+      - name: Install Node.js for mcpb
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install mcpb CLI
+        run: npm install -g @anthropic-ai/mcpb
+      
+      - name: Build mcpb bundle
+        run: ./deployment/scripts/build-mcpb.sh
+      
+      - name: Verify bundle was created
+        id: verify_bundle
+        run: |
+          VERSION=${{ steps.get_version.outputs.tag_version }}
+          BUNDLE_FILE="dist/lucius-mcp-${VERSION}.mcpb"
+          
+          if [ ! -f "$BUNDLE_FILE" ]; then
+            echo "ERROR: Bundle file $BUNDLE_FILE was not created"
+            exit 1
+          fi
+          
+          echo "bundle_file=$BUNDLE_FILE" >> $GITHUB_OUTPUT
+          echo "✅ Bundle created: $BUNDLE_FILE"
+          ls -lh "$BUNDLE_FILE"
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ steps.verify_bundle.outputs.bundle_file }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      # Optional: Publish to PyPI
+      # Uncomment if you want to publish to PyPI
+      # - name: Build Python package
+      #   run: uv build
+      # 
+      # - name: Publish to PyPI
+      #   uses: pypa/gh-action-pypi-publish@release/v1
+      #   with:
+      #     password: ${{ secrets.PYPI_API_TOKEN }}

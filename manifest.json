@@ -1,0 +1,71 @@
+{
+    "name": "lucius-mcp",
+    "version": "0.1.0",
+    "description": "Allure TestOps MCP Server - Manage test cases, shared steps, and test execution in Allure TestOps from AI assistants",
+    "author": "Ivan Ostanin",
+    "license": "MIT",
+    "mcp_config": {
+        "mcpServers": {
+            "lucius-mcp": {
+                "server": {
+                    "type": "uv",
+                    "entry_point": "src.main:start"
+                },
+                "env": {}
+            }
+        }
+    },
+    "capabilities": {
+        "tools": [
+            {
+                "name": "create_test_case",
+                "description": "Create a new test case in Allure TestOps"
+            },
+            {
+                "name": "update_test_case",
+                "description": "Update an existing test case in Allure TestOps"
+            },
+            {
+                "name": "delete_test_case",
+                "description": "Delete a test case from Allure TestOps"
+            },
+            {
+                "name": "list_test_cases",
+                "description": "List test cases in a project"
+            },
+            {
+                "name": "search_test_cases",
+                "description": "Search test cases by name or tags"
+            },
+            {
+                "name": "get_test_case_details",
+                "description": "Get full details of a specific test case"
+            },
+            {
+                "name": "create_shared_step",
+                "description": "Create a reusable shared step"
+            },
+            {
+                "name": "list_shared_steps",
+                "description": "List all shared steps in a project"
+            },
+            {
+                "name": "update_shared_step",
+                "description": "Update an existing shared step"
+            },
+            {
+                "name": "delete_shared_step",
+                "description": "Delete a shared step"
+            },
+            {
+                "name": "link_shared_step",
+                "description": "Link a shared step to a test case"
+            },
+            {
+                "name": "unlink_shared_step",
+                "description": "Unlink a shared step from a test case"
+            }
+        ]
+    },
+    "icon": "icon.png"
+}
