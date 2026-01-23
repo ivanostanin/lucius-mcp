@@ -8,6 +8,7 @@ from src.services.search_service import SearchService
 from src.services.test_case_service import TestCaseService
 from src.tools.search import _format_test_case_details
 from src.utils.auth import get_auth_context
+from tests.e2e.helpers.cleanup import CleanupTracker
 
 pytestmark = pytest.mark.skipif(
     not (os.getenv("ALLURE_ENDPOINT") and os.getenv("ALLURE_API_TOKEN")),
@@ -19,6 +20,7 @@ pytestmark = pytest.mark.skipif(
 async def test_get_test_case_details_with_full_content(
     allure_client: AllureClient,
     project_id: int,
+    cleanup_tracker: CleanupTracker,
     api_token: str,
 ) -> None:
     """Test get_test_case_details with a test case that has steps, description, and preconditions."""
@@ -38,6 +40,7 @@ async def test_get_test_case_details_with_full_content(
     )
     test_case_id = created.id
     assert test_case_id is not None
+    cleanup_tracker.track_test_case(test_case_id)
 
     # Now retrieve the details
     search_service = SearchService(auth_context, client=allure_client)
