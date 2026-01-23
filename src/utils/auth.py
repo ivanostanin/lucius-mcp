@@ -102,7 +102,7 @@ def get_auth_context(
                 "1. Set ALLURE_API_TOKEN environment variable, or\n"
                 "2. Provide api_token argument to this tool"
             ) from None
-        base_context = AuthContext(api_token=SecretStr(api_token))
+        base_context = AuthContext(api_token=SecretStr(api_token), project_id=project_id)
 
     if api_token or project_id is not None:
         return base_context.with_overrides(api_token=api_token, project_id=project_id)

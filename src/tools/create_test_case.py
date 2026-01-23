@@ -37,6 +37,9 @@ async def create_test_case(
 
     Returns:
         A message confirming creation with the ID and Name.
+
+    Raises:
+        AuthenticationError: If no API token available from environment or arguments.
     """
 
     auth_context = get_auth_context(api_token=api_token, project_id=project_id)

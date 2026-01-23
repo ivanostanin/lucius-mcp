@@ -63,7 +63,7 @@ development_status:
   3-1-list-test-cases-by-project: done
   3-2-retrieve-full-test-case-details: done
   3-3-search-test-cases-by-name-or-tag: done
-  3-4-runtime-authentication-override: ready-for-review
+  3-4-runtime-authentication-override: done
   epic-3-retrospective: optional
 
   # Epic 4: Production Operations (Phase 2 Priority)

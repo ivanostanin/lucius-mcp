@@ -88,3 +88,23 @@ def test_auth_context_masks_token_in_repr() -> None:
 
     assert "secret123" not in repr(context)
     assert "secret123" not in str(context)
+
+
+def test_auth_context_token_masked_in_actual_logs(caplog: pytest.LogCaptureFixture) -> None:
+    """Integration test: verify token masking in actual log output (AC#6)."""
+    import logging
+
+    from src.utils.auth import AuthContext
+
+    # Enable logging capture
+    caplog.set_level(logging.INFO)
+
+    logger = logging.getLogger("test_logger")
+    context = AuthContext(api_token=SecretStr("secret123"))
+
+    # Log the context
+    logger.info("Auth context created: %s", context)
+
+    # Verify the actual secret token does NOT appear in logs
+    assert "secret123" not in caplog.text
+    # SecretStr masks itself in repr/str, so the raw token should never appear

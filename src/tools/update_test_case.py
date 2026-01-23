@@ -50,6 +50,9 @@ async def update_test_case(  # noqa: C901
 
     Args:
         api_token: Optional override for the default API token.
+
+    Raises:
+        AuthenticationError: If no API token available from environment or arguments.
     """
     auth_context = get_auth_context(api_token=api_token)
 

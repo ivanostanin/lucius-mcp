@@ -5,6 +5,7 @@ import pytest
 from src.client import AllureClient
 from src.client.exceptions import TestCaseNotFoundError
 from src.services.search_service import SearchService
+from src.services.test_case_service import TestCaseService
 from src.tools.search import _format_test_case_details
 from src.utils.auth import get_auth_context
 
@@ -15,33 +16,48 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.mark.asyncio
-async def test_get_test_case_details_smoke(
+async def test_get_test_case_details_with_full_content(
     allure_client: AllureClient,
     project_id: int,
     api_token: str,
 ) -> None:
-    service = SearchService(
-        get_auth_context(api_token=api_token),
-        client=allure_client,
-    )
+    """Test get_test_case_details with a test case that has steps, description, and preconditions."""
+    auth_context = get_auth_context(api_token=api_token)
 
-    # Use a small page to find at least one test case ID
-    page = await service.list_test_cases(project_id=project_id, page=0, size=1)
-    assert page.items, "Expected at least one test case in project"
-    test_case_id = page.items[0].id
+    # Create a test case with full details to ensure we have content to verify
+    case_service = TestCaseService(auth_context, client=allure_client)
+    created = await case_service.create_test_case(
+        project_id=project_id,
+        name="E2E Test: Get Details with Full Content",
+        description="This test case has a description for E2E testing",
+        steps=[
+            {"action": "Step 1: Perform action", "expected": "Expected result 1"},
+            {"action": "Step 2: Verify outcome", "expected": "Expected result 2"},
+        ],
+        tags=["e2e-test", "get-details"],
+    )
+    test_case_id = created.id
     assert test_case_id is not None
 
-    details = await service.get_test_case_details(test_case_id)
+    # Now retrieve the details
+    search_service = SearchService(auth_context, client=allure_client)
+    details = await search_service.get_test_case_details(test_case_id)
     text = _format_test_case_details(details)
 
+    # Verify all expected content is present
     assert str(test_case_id) in text
     assert details.test_case.name in text
-    # Spot-check formatting and metadata presence
     assert "Status:" in text
-    assert "Steps:" in text or "Preconditions:" in text or "Description:" in text
 
-    # Stronger metadata assertions (best-effort; scenario/test data dependent)
-    assert "Tags:" in text or "Custom Fields:" in text or "Attachments:" in text
+    # Verify we have steps and description (from our created test case)
+    assert "Steps:" in text
+    assert "Description:" in text
+    assert "Step 1: Perform action" in text
+    assert "Expected result 1" in text
+
+    # Verify tags are present
+    assert "Tags:" in text
+    assert "e2e-test" in text
 
 
 @pytest.mark.asyncio

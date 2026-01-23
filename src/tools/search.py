@@ -42,6 +42,9 @@ async def list_test_cases(
 
     Returns:
         A formatted list of test cases with pagination info.
+
+    Raises:
+        AuthenticationError: If no API token available from environment or arguments.
     """
     client, auth_context = _build_client(api_token)
     async with client:
@@ -97,6 +100,9 @@ async def search_test_cases(
     Returns:
         List of matching test cases or "No test cases found matching query."
 
+    Raises:
+        AuthenticationError: If no API token available from environment or arguments.
+
     Examples:
         search_test_cases(123, "login")
         → "Found 5 test cases matching 'login':
@@ -143,6 +149,9 @@ async def get_test_case_details(
 
     Returns:
         Formatted test case details including all metadata.
+
+    Raises:
+        AuthenticationError: If no API token available from environment or arguments.
     """
     if not isinstance(test_case_id, int) or test_case_id <= 0:
         raise AllureValidationError("Test case ID must be a positive integer")

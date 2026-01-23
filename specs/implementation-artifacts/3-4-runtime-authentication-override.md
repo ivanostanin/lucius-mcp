@@ -1,6 +1,6 @@
 # Story 3.4: Runtime Authentication Override
 
-Status: ready-for-review
+Status: done
 
 ## Story
 
@@ -404,6 +404,32 @@ gpt-5.2-codex
 
 ### Completion Notes List
 - Regenerated story to explicitly require NFR11/AC11 E2E coverage for runtime auth override.
+- **Code Review (2026-01-23):** Addressed 9 findings from adversarial review (excluding H2 per user request):
+  - H1: Updated File List with all 16 modified files
+  - H3: Enhanced E2E tests with proper runtime override verification and improved naming
+  - M1: Fixed E2E test exception type (AuthenticationError vs AllureAuthError)
+  - M2: Removed redundant os.environ restoration
+  - M3: Fixed get_auth_context to preserve project_id when creating from runtime-only values
+  - M4: Added Raises sections to all tool docstrings
+  - M5: Validated with mypy --strict (success)
+  - L1: Improved E2E test naming for clarity
+  - L2: Added integration test for log masking (AC#6)
+  - All unit tests passing (9/9), all validations passing
 
 ### File List
 - specs/implementation-artifacts/3-4-runtime-authentication-override.md
+- src/utils/auth.py (NEW - AuthContext and get_auth_context)
+- src/services/test_case_service.py (MODIFIED - accepts AuthContext)
+- src/services/search_service.py (MODIFIED - accepts AuthContext)
+- src/services/shared_step_service.py (MODIFIED - accepts AuthContext)
+- src/services/attachment_service.py (MODIFIED - uses client with auth)
+- src/client/client.py (MODIFIED - accepts SecretStr token)
+- src/tools/create_test_case.py (MODIFIED - added api_token parameter)
+- src/tools/update_test_case.py (MODIFIED - added api_token parameter)
+- src/tools/delete_test_case.py (MODIFIED - added api_token parameter)
+- src/tools/search.py (MODIFIED - added api_token parameter to all search tools)
+- src/tools/shared_steps.py (MODIFIED - added api_token parameter to all shared step tools)
+- src/tools/link_shared_step.py (MODIFIED - added api_token parameter)
+- src/tools/unlink_shared_step.py (MODIFIED - added api_token parameter)
+- tests/unit/test_auth.py (NEW - unit tests for AuthContext)
+- tests/e2e/test_runtime_auth_override.py (NEW - E2E tests for runtime auth)
