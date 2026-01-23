@@ -1,5 +1,3 @@
-import os
-
 import pytest
 
 from src.client import AllureClient
@@ -9,11 +7,6 @@ from src.services.test_case_service import TestCaseService
 from src.tools.search import _format_test_case_details
 from src.utils.auth import get_auth_context
 from tests.e2e.helpers.cleanup import CleanupTracker
-
-pytestmark = pytest.mark.skipif(
-    not (os.getenv("ALLURE_ENDPOINT") and os.getenv("ALLURE_API_TOKEN")),
-    reason="Sandbox credentials not configured (ALLURE_ENDPOINT/TOKEN)",
-)
 
 
 @pytest.mark.asyncio

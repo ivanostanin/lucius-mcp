@@ -1,4 +1,3 @@
-import os
 from typing import Any
 
 import pytest
@@ -10,9 +9,6 @@ from src.utils.auth import get_auth_context
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 
-@pytest.mark.skipif(
-    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
-)
 @pytest.mark.asyncio
 async def test_full_house_creation(
     project_id: int,
@@ -104,9 +100,6 @@ async def test_full_house_creation(
     assert attachment_found, "Global attachment 'evidence.png' not found in scenario"
 
 
-@pytest.mark.skipif(
-    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
-)
 @pytest.mark.asyncio
 async def test_url_attachment_flow(
     project_id: int,
@@ -164,14 +157,6 @@ async def test_url_attachment_flow(
     assert attachment_found, f"Attachment '{filename}' not found in scenario"
 
 
-# ==========================================
-# Real E2E Tests (using actual TestOps instance)
-# ==========================================
-
-
-@pytest.mark.skipif(
-    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
-)
 @pytest.mark.asyncio
 async def test_e2e_3_custom_fields_creation(
     project_id: int,
@@ -211,9 +196,6 @@ async def test_e2e_3_custom_fields_creation(
     assert "Priority" in cf_values or "Component" in cf_values  # At least one should be set
 
 
-@pytest.mark.skipif(
-    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
-)
 @pytest.mark.asyncio
 async def test_e2e_4_minimal_creation(
     project_id: int,
@@ -246,9 +228,6 @@ async def test_e2e_4_minimal_creation(
     assert fetched_case.description is None or fetched_case.description == ""
 
 
-@pytest.mark.skipif(
-    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
-)
 @pytest.mark.asyncio
 async def test_e2e_5_step_level_attachments(
     project_id: int,
@@ -302,9 +281,6 @@ async def test_e2e_5_step_level_attachments(
     assert found_attachment, "Step-level attachment not found in scenario"
 
 
-@pytest.mark.skipif(
-    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
-)
 @pytest.mark.asyncio
 async def test_e2e_6_complex_step_hierarchy(
     project_id: int,
@@ -346,9 +322,6 @@ async def test_e2e_6_complex_step_hierarchy(
     assert len(scenario.steps) >= 3, f"Expected at least 3 steps, got {len(scenario.steps)}"
 
 
-@pytest.mark.skipif(
-    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
-)
 @pytest.mark.asyncio
 async def test_e2e_7_edge_cases(
     project_id: int,

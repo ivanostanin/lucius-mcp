@@ -1,5 +1,3 @@
-import os
-
 import pytest
 
 from src.client import AllureClient
@@ -8,10 +6,6 @@ from src.utils.auth import get_auth_context
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 
-# Skip E2E tests if no API token/endpoint provided
-@pytest.mark.skipif(
-    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
-)
 @pytest.mark.asyncio
 async def test_update_test_case_e2e(
     project_id: int,
@@ -118,14 +112,6 @@ async def test_update_test_case_e2e(
     assert step_found, "Initial step not found in scenario after update"
 
 
-# ==========================================
-# Comprehensive Update Tests (Core)
-# ==========================================
-
-
-@pytest.mark.skipif(
-    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
-)
 @pytest.mark.asyncio
 async def test_e2e_u1_update_core_fields(
     project_id: int,
@@ -173,9 +159,6 @@ async def test_e2e_u1_update_core_fields(
     assert fetched_case.description == "**Updated** description with markdown"
 
 
-@pytest.mark.skipif(
-    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
-)
 @pytest.mark.asyncio
 async def test_e2e_u2_update_status_workflow(
     project_id: int,
@@ -209,9 +192,6 @@ async def test_e2e_u2_update_status_workflow(
     assert updated_case.automated == (not initial_automated)
 
 
-@pytest.mark.skipif(
-    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
-)
 @pytest.mark.asyncio
 async def test_e2e_u3_update_tags(
     project_id: int,
@@ -263,9 +243,6 @@ async def test_e2e_u3_update_tags(
     assert len(final_tag_names) == 0
 
 
-@pytest.mark.skipif(
-    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
-)
 @pytest.mark.asyncio
 async def test_e2e_u4_update_custom_fields(
     project_id: int,

@@ -1,4 +1,3 @@
-import os
 from typing import Any
 
 import pytest
@@ -9,9 +8,6 @@ from src.utils.auth import get_auth_context
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 
-@pytest.mark.skipif(
-    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
-)
 @pytest.mark.asyncio
 async def test_e2e_u5_update_steps(
     project_id: int,
@@ -69,9 +65,6 @@ async def test_e2e_u5_update_steps(
     assert "New Step 1" in step_bodies or "New Step 2" in step_bodies or "New Step 3" in step_bodies
 
 
-@pytest.mark.skipif(
-    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
-)
 @pytest.mark.asyncio
 async def test_e2e_u6_update_global_attachments(
     project_id: int,
@@ -129,9 +122,6 @@ async def test_e2e_u6_update_global_attachments(
     assert step_found, "Original step not preserved"
 
 
-@pytest.mark.skipif(
-    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
-)
 @pytest.mark.asyncio
 async def test_e2e_u7_update_links(
     project_id: int,
@@ -170,9 +160,6 @@ async def test_e2e_u7_update_links(
         assert "JIRA-123" in link_names or "Documentation" in link_names
 
 
-@pytest.mark.skipif(
-    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
-)
 @pytest.mark.asyncio
 async def test_e2e_u8_combined_updates(
     project_id: int,
@@ -221,9 +208,6 @@ async def test_e2e_u8_combined_updates(
     assert scenario.steps is not None
 
 
-@pytest.mark.skipif(
-    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
-)
 @pytest.mark.asyncio
 async def test_e2e_u9_edge_cases(
     project_id: int,
@@ -265,9 +249,6 @@ async def test_e2e_u9_edge_cases(
     assert updated_case.name == "E2E-U9 Edge Cases"  # Name should be preserved
 
 
-@pytest.mark.skipif(
-    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
-)
 @pytest.mark.asyncio
 async def test_e2e_u10_nested_steps(
     project_id: int,

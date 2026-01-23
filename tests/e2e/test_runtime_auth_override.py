@@ -1,4 +1,3 @@
-import os
 import re
 
 import pytest
@@ -9,17 +8,11 @@ from src.utils.error import AuthenticationError
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 
-def _sandbox_configured() -> bool:
-    return bool(os.getenv("ALLURE_ENDPOINT") and os.getenv("ALLURE_API_TOKEN"))
-
-
 @pytest.mark.asyncio
-async def test_api_token_parameter_is_optional(project_id: int, cleanup_tracker: CleanupTracker) -> None:
+async def test_api_token_parameter_is_optional(
+    project_id: int, cleanup_tracker: CleanupTracker, api_token: str
+) -> None:
     """Verify that api_token parameter works when provided."""
-    if not _sandbox_configured():
-        pytest.skip("Sandbox credentials not configured (ALLURE_ENDPOINT/TOKEN)")
-
-    api_token = os.environ["ALLURE_API_TOKEN"]
 
     result = await create_test_case(
         project_id=project_id,
@@ -34,16 +27,13 @@ async def test_api_token_parameter_is_optional(project_id: int, cleanup_tracker:
 
 @pytest.mark.asyncio
 async def test_runtime_token_overrides_environment(
-    monkeypatch: pytest.MonkeyPatch, project_id: int, cleanup_tracker: CleanupTracker
+    monkeypatch: pytest.MonkeyPatch, project_id: int, cleanup_tracker: CleanupTracker, api_token: str
 ) -> None:
     """Verify that runtime api_token takes precedence over environment variable.
 
     This is the critical test for AC#1: runtime arguments override environment.
     """
-    if not _sandbox_configured():
-        pytest.skip("Sandbox credentials not configured (ALLURE_ENDPOINT/TOKEN)")
-
-    real_token = os.environ["ALLURE_API_TOKEN"]
+    real_token = api_token
 
     # Set environment to use the real token
     monkeypatch.setenv("ALLURE_API_TOKEN", real_token)
@@ -65,13 +55,10 @@ async def test_runtime_token_overrides_environment(
 
 
 @pytest.mark.asyncio
-async def test_runtime_overrides_do_not_persist_across_calls(project_id: int, cleanup_tracker: CleanupTracker) -> None:
+async def test_runtime_overrides_do_not_persist_across_calls(
+    project_id: int, cleanup_tracker: CleanupTracker, api_token: str
+) -> None:
     """Verify that runtime auth is stateless (AC#3)."""
-    if not _sandbox_configured():
-        pytest.skip("Sandbox credentials not configured (ALLURE_ENDPOINT/TOKEN)")
-
-    api_token = os.environ["ALLURE_API_TOKEN"]
-
     # First call with runtime token
     first_result = await create_test_case(
         project_id=project_id,
@@ -98,9 +85,6 @@ async def test_runtime_overrides_do_not_persist_across_calls(project_id: int, cl
 @pytest.mark.asyncio
 async def test_clear_error_when_no_auth_configured(monkeypatch: pytest.MonkeyPatch) -> None:
     """Verify clear error message when neither env nor runtime auth provided (AC#5)."""
-    if not _sandbox_configured():
-        pytest.skip("Sandbox credentials not configured (ALLURE_ENDPOINT/TOKEN)")
-
     # Remove environment token
     monkeypatch.delenv("ALLURE_API_TOKEN", raising=False)
 
@@ -112,9 +96,6 @@ async def test_clear_error_when_no_auth_configured(monkeypatch: pytest.MonkeyPat
 @pytest.mark.asyncio
 async def test_invalid_runtime_token_fails_with_clear_error(project_id: int) -> None:
     """Verify that invalid runtime token produces clear auth error."""
-    if not _sandbox_configured():
-        pytest.skip("Sandbox credentials not configured (ALLURE_ENDPOINT/TOKEN)")
-
     # This should fail at the API level with auth error
     with pytest.raises(AllureAuthError):  # Will be AllureAuthError from API
         await create_test_case(project_id=project_id, name="Invalid Token", api_token="invalid")  # noqa: S106

@@ -1,16 +1,9 @@
-import os
-
 import pytest
 
 from src.client import AllureClient
 from src.client.exceptions import AllureValidationError
 from src.services.search_service import SearchService
 from src.utils.auth import get_auth_context
-
-pytestmark = pytest.mark.skipif(
-    not (os.getenv("ALLURE_ENDPOINT") and os.getenv("ALLURE_API_TOKEN")),
-    reason="Sandbox credentials not configured (ALLURE_ENDPOINT/TOKEN)",
-)
 
 
 @pytest.mark.asyncio

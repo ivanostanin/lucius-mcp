@@ -1,5 +1,3 @@
-import os
-
 import pytest
 
 from src.client import AllureClient
@@ -8,9 +6,6 @@ from src.utils.auth import get_auth_context
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 
-@pytest.mark.skipif(
-    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
-)
 @pytest.mark.asyncio
 @pytest.mark.test_id("1.5-E2E-001")
 async def test_delete_test_case_e2e(

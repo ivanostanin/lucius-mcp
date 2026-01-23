@@ -1,4 +1,3 @@
-import logging
 import os
 import re
 
@@ -49,81 +48,71 @@ async def test_link_shared_step_flow(
     ss_match = re.search(r"ID: (\d+)", ss_result)
     assert ss_match, "Could not extract Shared Step ID"
     shared_step_id = int(ss_match.group(1))
+    cleanup_tracker.track_shared_step(shared_step_id)
 
     # Track for cleanup (though create_shared_step doesn't have auto-cleanup in tool yet,
     # we should track it if possible, or manual clean in finally)
     # Note: CleanupTracker currently focuses on Test Cases.
     # We'll rely on sandbox cleanup or implementing shared step cleanup if needed.
 
-    test_case_id = None
+    # 2. Create Test Case
+    tc_name = "E2E Test Case for Linking"
+    tc_steps = [{"action": "Step 1", "expected": "Exp 1"}]
 
-    try:
-        # 2. Create Test Case
-        tc_name = "E2E Test Case for Linking"
-        tc_steps = [{"action": "Step 1", "expected": "Exp 1"}]
+    tc_result = await create_test_case(
+        project_id=project_id,
+        name=tc_name,
+        steps=tc_steps,
+        api_token=api_token,
+    )
 
-        tc_result = await create_test_case(
-            project_id=project_id,
-            name=tc_name,
-            steps=tc_steps,
-            api_token=api_token,
-        )
+    tc_match = re.search(r"ID: (\d+)", tc_result)
+    assert tc_match, "Could not extract Test Case ID"
+    test_case_id = int(tc_match.group(1))
 
-        tc_match = re.search(r"ID: (\d+)", tc_result)
-        assert tc_match, "Could not extract Test Case ID"
-        test_case_id = int(tc_match.group(1))
+    cleanup_tracker.track_test_case(test_case_id)
 
-        cleanup_tracker.track_test_case(test_case_id)
+    # 3. Link Shared Step
+    link_result = await link_shared_step(
+        test_case_id=test_case_id,
+        shared_step_id=shared_step_id,
+        position=None,  # Append
+        api_token=api_token,
+    )
 
-        # 3. Link Shared Step
-        link_result = await link_shared_step(
-            test_case_id=test_case_id,
-            shared_step_id=shared_step_id,
-            position=None,  # Append
-            api_token=api_token,
-        )
+    assert "Linked Shared Step" in link_result
+    assert str(shared_step_id) in link_result
 
-        assert "Linked Shared Step" in link_result
-        assert str(shared_step_id) in link_result
+    # 4. Verify Link in Allure
+    scenario = await allure_client.get_test_case_scenario(test_case_id)
 
-        # 4. Verify Link in Allure
-        scenario = await allure_client.get_test_case_scenario(test_case_id)
+    found_link = False
+    for step in scenario.steps:
+        # Check if step is a shared step reference
+        if step.actual_instance and hasattr(step.actual_instance, "shared_step_id"):
+            if step.actual_instance.shared_step_id == shared_step_id:
+                found_link = True
+                break
 
-        found_link = False
-        for step in scenario.steps:
-            # Check if step is a shared step reference
-            if step.actual_instance and hasattr(step.actual_instance, "shared_step_id"):
-                if step.actual_instance.shared_step_id == shared_step_id:
-                    found_link = True
-                    break
+    assert found_link, f"Shared Step {shared_step_id} not found in Test Case {test_case_id} steps"
 
-        assert found_link, f"Shared Step {shared_step_id} not found in Test Case {test_case_id} steps"
+    # 5. Unlink Shared Step
+    unlink_result = await unlink_shared_step(
+        test_case_id=test_case_id,
+        shared_step_id=shared_step_id,
+        api_token=api_token,
+    )
 
-        # 5. Unlink Shared Step
-        unlink_result = await unlink_shared_step(
-            test_case_id=test_case_id,
-            shared_step_id=shared_step_id,
-            api_token=api_token,
-        )
+    assert "Unlinked Shared Step" in unlink_result
 
-        assert "Unlinked Shared Step" in unlink_result
+    # 6. Verify Unlink
+    scenario_after = await allure_client.get_test_case_scenario(test_case_id)
 
-        # 6. Verify Unlink
-        scenario_after = await allure_client.get_test_case_scenario(test_case_id)
+    found_link_after = False
+    for step in scenario_after.steps:
+        if step.actual_instance and hasattr(step.actual_instance, "shared_step_id"):
+            if step.actual_instance.shared_step_id == shared_step_id:
+                found_link_after = True
+                break
 
-        found_link_after = False
-        for step in scenario_after.steps:
-            if step.actual_instance and hasattr(step.actual_instance, "shared_step_id"):
-                if step.actual_instance.shared_step_id == shared_step_id:
-                    found_link_after = True
-                    break
-
-        assert not found_link_after, "Shared Step reference should have been removed"
-
-    finally:
-        # Cleanup Shared Step manually since tracker might not cover it yet
-        logger = logging.getLogger(__name__)
-        try:
-            await allure_client.delete_shared_step(shared_step_id)
-        except Exception as e:
-            logger.warning(f"Failed to cleanup shared step {shared_step_id}: {e}")
+    assert not found_link_after, "Shared Step reference should have been removed"
