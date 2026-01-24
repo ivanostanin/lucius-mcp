@@ -20,6 +20,29 @@ cp pyproject.toml build/mcpb-bundle/
 cp uv.lock build/mcpb-bundle/
 cp manifest.json build/mcpb-bundle/
 cp README.md build/mcpb-bundle/
+cp .mcpbignore build/mcpb-bundle/
+
+# Update manifest version from pyproject.toml
+MANIFEST_PATH="build/mcpb-bundle/manifest.json"
+if [ -f "$MANIFEST_PATH" ]; then
+    python3 - "$MANIFEST_PATH" "$VERSION" <<'PY'
+import json
+import sys
+
+path, version = sys.argv[1], sys.argv[2]
+with open(path) as f:
+    data = json.load(f)
+
+data["version"] = version
+
+with open(path, "w") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+PY
+else
+    echo "ERROR: manifest.json not found in bundle"
+    exit 1
+fi
 
 # Copy icon if it exists
 if [ -f "icon.png" ]; then
@@ -51,4 +74,5 @@ VERSIONED_NAME="lucius-mcp-${VERSION}.mcpb"
 mv "$BUNDLE_FILE" "../../dist/$VERSIONED_NAME"
 
 cd ../..
+rm -rf build/*
 echo "✅ Successfully created dist/$VERSIONED_NAME"

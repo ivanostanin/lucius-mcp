@@ -56,6 +56,8 @@ select = ["E", "F", "B", "I", "UP", "N", "S", "C90", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101"]
+"scripts/**/*.py" = ["RUF001"]
+"deployment/scripts/**/*.py" = ["RUF001"]
 
 [tool.mypy]
 strict = true

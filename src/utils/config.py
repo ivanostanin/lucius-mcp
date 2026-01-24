@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, SecretStr
@@ -8,9 +9,15 @@ class Settings(BaseSettings):
     """
     Application settings managed by pydantic-settings.
     Reads from environment variables and .env file.
+    Falls back to environment variables if .env file is absent.
     """
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=Path(__file__).parent.parent / ".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        env_ignore_empty=True,
+    )
 
     # Allure TestOps Configuration
     ALLURE_ENDPOINT: str = Field(default="https://demo.testops.cloud", description="Allure TestOps Base URL")

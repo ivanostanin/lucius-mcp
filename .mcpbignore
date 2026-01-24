@@ -1,0 +1,74 @@
+src/client/generated/docs/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+tests/
+.coverage
+.env
+.env.*
+.openapi-generator-ignore
+.github/
+deployment/
+examples/
+openapi/
+scripts/
+specs/
+
+.env
+.env.test
+.idea/
+
+# BMAD
+# It's ok to have it gitignored if agent supports access to gitignored files
+_bmad/
+
+# Claude Code
+.claude/
+!/.claude/settings.local.json
+# Codex CLI
+.codex/
+# Gemini CLI
+.gemini/
+# Antigravity BMAD workflows
+.agent/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.venv/
+
+# Pytest
+.pytest_cache/
+.ruff_cache/
+
+.mypy_cache/
+
+# Allure Report
+/allure-results/
+
+.coverage
+
+.openapi-generator/

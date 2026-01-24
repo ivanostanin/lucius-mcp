@@ -18,6 +18,7 @@ from src.tools.update_test_case import update_test_case
 from src.utils.config import settings
 from src.utils.error import agent_hint_handler
 from src.utils.logger import configure_logging, get_logger
+from src.version import __version__
 
 # Configure logging early
 configure_logging(
@@ -28,6 +29,7 @@ logger = get_logger("lucius-mcp")
 # Initialize FastMCP server
 mcp = FastMCP(
     name="lucius-mcp",
+    version=__version__,
 )
 
 # Register tools
@@ -40,16 +42,6 @@ mcp.tool()(list_test_cases)
 mcp.tool()(search_test_cases)
 mcp.tool()(get_test_case_details)
 register_shared_steps(mcp)
-
-
-@mcp.tool()
-def no_op_tool() -> str:
-    """
-    A placeholder tool to verify the MCP server is reachable.
-    Returns a simple 'Ready' string.
-    """
-    logger.info("no_op_tool invoked")
-    return "Ready"
 
 
 # The ASGI app and main app are created lazily or only when needed for HTTP mode
@@ -81,16 +73,19 @@ async def lifespan(app: Starlette) -> typing.AsyncGenerator[None]:
 
 
 # Create main Starlette application lazily
-def get_app() -> Starlette:
-    return Starlette(
-        debug=False,
-        lifespan=lifespan,
-        exception_handlers={Exception: agent_hint_handler},
-        routes=[
-            # Mount the FastMCP ASGI app under /
-            Mount("/", app=get_mcp_asgi())
-        ],
-    )
+def get_app() -> Starlette | None:
+    if settings.MCP_MODE == "http":
+        return Starlette(
+            debug=False,
+            lifespan=lifespan,
+            exception_handlers={Exception: agent_hint_handler},
+            routes=[
+                # Mount the FastMCP ASGI app under /
+                Mount("/", app=get_mcp_asgi())
+            ],
+        )
+    else:
+        return None
 
 
 # For uvicorn.run("src.main:app", ...)
@@ -101,11 +96,13 @@ def start() -> None:
     """Entry point for running the application directly."""
     if settings.MCP_MODE == "stdio":
         try:
-            asyncio.run(mcp.run_stdio_async(show_banner=False))
+            asyncio.run(mcp.run_stdio_async(show_banner=False, log_level=settings.LOG_LEVEL))
         except KeyboardInterrupt:
             os._exit(0)
-    else:
+    elif settings.MCP_MODE == "http":
         uvicorn.run("src.main:app", host=settings.HOST, port=settings.PORT, reload=True, ws="wsproto")
+    else:
+        raise ValueError(f"Invalid MCP mode: {settings.MCP_MODE}")
 
 
 if __name__ == "__main__":

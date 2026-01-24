@@ -1,71 +1,114 @@
 {
-    "name": "lucius-mcp",
-    "version": "0.1.0",
-    "description": "Allure TestOps MCP Server - Manage test cases, shared steps, and test execution in Allure TestOps from AI assistants",
-    "author": "Ivan Ostanin",
-    "license": "MIT",
+  "manifest_version": "0.4",
+  "name": "lucius-mcp",
+  "version": "0.1.0",
+  "description": "Allure TestOps MCP Server",
+  "author": {
+    "name": "Ivan Ostanin"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lucius-mcp/lucius-mcp"
+  },
+  "server": {
+    "type": "uv",
+    "entry_point": "src.main:start",
     "mcp_config": {
-        "mcpServers": {
-            "lucius-mcp": {
-                "server": {
-                    "type": "uv",
-                    "entry_point": "src.main:start"
-                },
-                "env": {}
-            }
-        }
+      "command": "uv",
+      "args": [
+        "run",
+        "lucius-mcp"
+      ],
+      "env": {
+        "ALLURE_ENDPOINT": "${user_config.allure_endpoint}",
+        "ALLURE_PROJECT_ID": "${user_config.allure_project_id}",
+        "ALLURE_API_TOKEN": "${user_config.allure_api_token}",
+        "MCP_MODE": "stdio"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "create_test_case",
+      "description": "Create a new test case in Allure TestOps."
     },
-    "capabilities": {
-        "tools": [
-            {
-                "name": "create_test_case",
-                "description": "Create a new test case in Allure TestOps"
-            },
-            {
-                "name": "update_test_case",
-                "description": "Update an existing test case in Allure TestOps"
-            },
-            {
-                "name": "delete_test_case",
-                "description": "Delete a test case from Allure TestOps"
-            },
-            {
-                "name": "list_test_cases",
-                "description": "List test cases in a project"
-            },
-            {
-                "name": "search_test_cases",
-                "description": "Search test cases by name or tags"
-            },
-            {
-                "name": "get_test_case_details",
-                "description": "Get full details of a specific test case"
-            },
-            {
-                "name": "create_shared_step",
-                "description": "Create a reusable shared step"
-            },
-            {
-                "name": "list_shared_steps",
-                "description": "List all shared steps in a project"
-            },
-            {
-                "name": "update_shared_step",
-                "description": "Update an existing shared step"
-            },
-            {
-                "name": "delete_shared_step",
-                "description": "Delete a shared step"
-            },
-            {
-                "name": "link_shared_step",
-                "description": "Link a shared step to a test case"
-            },
-            {
-                "name": "unlink_shared_step",
-                "description": "Unlink a shared step from a test case"
-            }
-        ]
+    {
+      "name": "update_test_case",
+      "description": "Update an existing test case in Allure TestOps."
     },
-    "icon": "icon.png"
+    {
+      "name": "delete_test_case",
+      "description": "Archive an obsolete test case."
+    },
+    {
+      "name": "link_shared_step",
+      "description": "Link a shared step to a test case."
+    },
+    {
+      "name": "unlink_shared_step",
+      "description": "Remove a shared step reference from a test case."
+    },
+    {
+      "name": "list_test_cases",
+      "description": "List all test cases in a project."
+    },
+    {
+      "name": "search_test_cases",
+      "description": "Search for test cases by name or tag."
+    },
+    {
+      "name": "get_test_case_details",
+      "description": "Get complete details of a specific test case."
+    },
+    {
+      "name": "create_shared_step",
+      "description": "Create a new reusable Shared Step."
+    },
+    {
+      "name": "list_shared_steps",
+      "description": "List shared steps in a project to find existing ones."
+    },
+    {
+      "name": "update_shared_step",
+      "description": "Update an existing shared step."
+    },
+    {
+      "name": "delete_shared_step",
+      "description": "Delete a shared step from the library."
+    }
+  ],
+  "user_config": {
+    "allure_endpoint": {
+      "type": "string",
+      "title": "Endpoint URL",
+      "description": "Allure TestOps Endpoint URL. For example: https://app.testops.cloud/",
+      "required": true,
+      "sensitive": false
+    },
+    "allure_project_id": {
+      "type": "string",
+      "title": "Project ID",
+      "description": "Identifier of the project in Allure TestOps.",
+      "required": true,
+      "sensitive": false
+    },
+    "allure_api_token": {
+      "type": "string",
+      "title": "API Token",
+      "description": "API Token for authentication in Allure TestOps. See https://docs.qameta.io/allure-testops/integrations/testops/#get-api-token.",
+      "required": true,
+      "sensitive": true
+    }
+  },
+  "compatibility": {
+    "platforms": [
+      "darwin",
+      "linux",
+      "win32"
+    ],
+    "runtimes": {
+      "python": ">=3.14"
+    }
+  },
+  "license": "MIT"
 }
