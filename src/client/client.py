@@ -7,7 +7,7 @@ standardized error handling.
 
 import time
 from collections.abc import Awaitable
-from typing import TypeVar
+from typing import Literal, TypeVar, cast, overload
 
 import httpx
 from pydantic import SecretStr
@@ -87,6 +87,23 @@ class SharedStepStepDtoWithId(SharedStepStepDto):
 logger = get_logger(__name__)
 
 T = TypeVar("T")
+
+type ApiType = (
+    TestCaseControllerApi
+    | SharedStepControllerApi
+    | SharedStepAttachmentControllerApi
+    | TestCaseAttachmentControllerApi
+    | TestCaseScenarioControllerApi
+    | SharedStepScenarioControllerApi
+    | TestCaseOverviewControllerApi
+    | TestCaseSearchControllerApi
+)
+
+type NormalizedScenarioDict = dict[str, object]
+
+type ScenarioStepsMap = dict[str, dict[str, object]]
+
+type AttachmentsMap = dict[str, dict[str, object]]
 
 # Export models for convenience
 __all__ = [
@@ -380,13 +397,54 @@ class AllureClient:
     def _raise_missing_api(api_name: str) -> None:
         raise AllureAPIError(f"Internal error: {api_name} not initialized")
 
-    async def _get_api(self, attr_name: str, *, error_name: str | None = None) -> T:
+    @overload
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_test_case_api"], *, error_name: str | None = None
+    ) -> TestCaseControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_shared_step_api"], *, error_name: str | None = None
+    ) -> SharedStepControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_shared_step_attachment_api"], *, error_name: str | None = None
+    ) -> SharedStepAttachmentControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_attachment_api"], *, error_name: str | None = None
+    ) -> TestCaseAttachmentControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_scenario_api"], *, error_name: str | None = None
+    ) -> TestCaseScenarioControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_shared_step_scenario_api"], *, error_name: str | None = None
+    ) -> SharedStepScenarioControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_overview_api"], *, error_name: str | None = None
+    ) -> TestCaseOverviewControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_search_api"], *, error_name: str | None = None
+    ) -> TestCaseSearchControllerApi: ...
+
+    async def _get_api(self, attr_name: str, *, error_name: str | None = None) -> ApiType:
         self._require_entered()
         await self._ensure_valid_token()
         api = getattr(self, attr_name)
         if api is None:
             self._raise_missing_api(error_name or attr_name.lstrip("_"))
-        return api
+        return cast(ApiType, api)
 
     async def _call_api(self, coro: Awaitable[T]) -> T:
         try:
@@ -402,10 +460,14 @@ class AllureClient:
             self._handle_api_exception(e)
             raise
 
-    def _extract_response_data(self, response: httpx.Response) -> dict:
+    @staticmethod
+    def _extract_response_data(response: httpx.Response) -> dict[str, object]:
         if not 200 <= response.status_code <= 299:
             raise ApiException(status=response.status_code, reason=response.reason_phrase, body=response.text)
-        return response.json()
+        data = response.json()
+        if isinstance(data, dict):
+            return data
+        raise ApiException(status=response.status_code, reason=response.reason_phrase, body=response.text)
 
     async def _create_scenario_step_via_api(
         self,
@@ -432,9 +494,31 @@ class AllureClient:
                 )
             )
         data = self._extract_response_data(response)
+        raw_created_step_id = data.get("createdStepId")
+        created_step_id = raw_created_step_id if isinstance(raw_created_step_id, int) else None
         return ScenarioStepCreatedResponseDto.model_construct(
-            created_step_id=data.get("createdStepId"),
+            created_step_id=created_step_id,
         )
+
+    @overload
+    async def _upload_attachment_via_api(
+        self,
+        api: TestCaseAttachmentControllerApi,
+        *,
+        test_case_id: int,
+        shared_step_id: None = None,
+        file_data: list[bytes | str | tuple[str, bytes]],
+    ) -> list[TestCaseAttachmentRowDto]: ...
+
+    @overload
+    async def _upload_attachment_via_api(
+        self,
+        api: SharedStepAttachmentControllerApi,
+        *,
+        test_case_id: None = None,
+        shared_step_id: int,
+        file_data: list[bytes | str | tuple[str, bytes]],
+    ) -> list[SharedStepAttachmentRowDto]: ...
 
     async def _upload_attachment_via_api(
         self,
@@ -752,7 +836,8 @@ class AllureClient:
         # print(f"DEBUG Initial Raw Normalized Scenario: {raw_data}")
         return self._denormalize_to_v2_from_dict(raw_data)
 
-    def _denormalize_to_v2_from_dict(self, raw: dict) -> TestCaseScenarioV2Dto:
+    @staticmethod
+    def _denormalize_to_v2_from_dict(raw: dict[str, object]) -> TestCaseScenarioV2Dto:
         """Convert a raw NormalizedScenarioDto dict into a TestCaseScenarioV2Dto tree.
 
         This bypasses the generated from_dict which has broken oneOf deserialization.
