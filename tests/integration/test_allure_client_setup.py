@@ -46,7 +46,7 @@ async def test_client_init_parameters() -> None:
     base_url = "https://custom.allure.com"
     token = SecretStr("custom-token")
 
-    client = AllureClient(base_url, token)
+    client = AllureClient(base_url, token, project=1)
     assert client._base_url == base_url
     assert client._token == token
 
@@ -55,11 +55,11 @@ async def test_client_init_parameters() -> None:
 async def test_client_requires_leading_scheme() -> None:
     """Verify that base_url is expected to be a full URL with scheme."""
     with pytest.raises(ValueError, match="Invalid base_url scheme"):
-        AllureClient("demo.testops.cloud", SecretStr("token"))
+        AllureClient("demo.testops.cloud", SecretStr("token"), project=1)
 
     # These should NOT raise
-    AllureClient("http://demo.testops.cloud", SecretStr("token"))
-    AllureClient("https://demo.testops.cloud", SecretStr("token"))
+    AllureClient("http://demo.testops.cloud", SecretStr("token"), project=1)
+    AllureClient("https://demo.testops.cloud", SecretStr("token"), project=1)
 
 
 @pytest.mark.asyncio
@@ -76,6 +76,6 @@ async def test_client_environment_logic_parity() -> None:
     assert token == "env-token"  # noqa: S105
 
     if endpoint and token:
-        client = AllureClient(endpoint, SecretStr(token))
+        client = AllureClient(endpoint, SecretStr(token), project=1)
         assert client._base_url == endpoint
         assert client._token.get_secret_value() == token

@@ -19,6 +19,7 @@ from src.client import (
     TestCaseOverviewDto,
     TestCasePatchV2Dto,
 )
+from src.client.generated.exceptions import ApiException
 
 
 @pytest.fixture
@@ -320,5 +321,5 @@ async def test_create_scenario_step_error_raises_validation_error(
 
     async with AllureClient(base_url, token, project=1) as client:
         step_dto = ScenarioStepCreateDto(test_case_id=1, body="Action")
-        with pytest.raises(AllureValidationError, match="Validation error"):
+        with pytest.raises(ApiException, match="Bad Request"):
             await client.create_scenario_step(1, step_dto)

@@ -22,6 +22,7 @@ from src.services.attachment_service import AttachmentService
 from src.services.test_case_service import TestCaseService, TestCaseUpdate
 
 
+@pytest.fixture
 def mock_client() -> AsyncMock:
     client = AsyncMock(spec=AllureClient)
     client.api_client = Mock()
@@ -152,7 +153,7 @@ async def test_create_test_case_validation_error(service: TestCaseService) -> No
     with pytest.raises(AllureValidationError, match="255 characters or less"):
         await service.create_test_case("a" * 256)
 
-    service._client.get_project.return_value = 0
+    service._project_id = 0
     with pytest.raises(AllureValidationError, match="Project ID is required"):
         await service.create_test_case("Test")
 
@@ -272,14 +273,14 @@ class TestProjectIdValidation:
     @pytest.mark.asyncio
     async def test_project_id_zero_raises_error(self, service: TestCaseService) -> None:
         """Zero project_id should raise validation error."""
-        service._client.get_project.return_value = 0
+        service._project_id = 0
         with pytest.raises(AllureValidationError, match="Project ID is required"):
             await service.create_test_case("Test")
 
     @pytest.mark.asyncio
     async def test_project_id_negative_raises_error(self, service: TestCaseService) -> None:
         """Negative project_id should raise validation error."""
-        service._client.get_project.return_value = -1
+        service._project_id = -1
         with pytest.raises(AllureValidationError, match="Project ID is required"):
             await service.create_test_case("Test")
 
@@ -605,9 +606,9 @@ class TestUpdateTestCase:
         # Verify scenario was cleared
         assert mock_client.update_test_case.call_count >= 1
 
-        # Verify create_scenario_step was called for Parent, Child 1, Child 2, and Grandchild
-        # Total: 4 calls
-        assert mock_client.create_scenario_step.call_count == 4
+        # Verify create_scenario_step was called for Parent, Child 1, Child 2, Grandchild, and preserved attachment
+        # Total: 5 calls
+        assert mock_client.create_scenario_step.call_count == 5
 
         # Verify the hierarchy by checking parent_id relationships
         calls = mock_client.create_scenario_step.call_args_list
@@ -631,6 +632,10 @@ class TestUpdateTestCase:
         grandchild_call = calls[3]
         assert grandchild_call.kwargs["step"].parent_id == 2002  # Child 2's ID
         assert grandchild_call.kwargs["step"].body == "Grandchild"
+
+        # Final call preserves existing attachment
+        preserved_call = calls[4]
+        assert preserved_call.kwargs["step"].attachment_id == 1
 
     @pytest.mark.asyncio
     async def test_recreate_scenario_rollback(self, service: TestCaseService, mock_client: AsyncMock) -> None:

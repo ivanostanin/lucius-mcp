@@ -33,9 +33,7 @@ from .generated.api.test_case_scenario_controller_api import TestCaseScenarioCon
 from .generated.api.test_case_search_controller_api import TestCaseSearchControllerApi
 from .generated.api_client import ApiClient
 from .generated.configuration import Configuration
-from .generated.exceptions import (
-    ApiException,
-)
+from .generated.exceptions import ApiException
 from .generated.models.attachment_step_dto import AttachmentStepDto
 from .generated.models.body_step_dto import BodyStepDto
 from .generated.models.custom_field_value_with_cf_dto import CustomFieldValueWithCfDto

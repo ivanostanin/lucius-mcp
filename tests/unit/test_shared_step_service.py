@@ -102,11 +102,11 @@ async def test_list_shared_steps_success(service, mock_client):
 @pytest.mark.asyncio
 async def test_create_shared_step_fail_validation(service):
     """Test validation errors."""
-    service._client.get_project.return_value = -1
+    service._project_id = -1
     with pytest.raises(AllureValidationError):
         await service.create_shared_step(name="Valid")
 
-    service._client.get_project.return_value = 1
+    service._project_id = 1
     with pytest.raises(AllureValidationError):
         await service.create_shared_step(name="")
 

@@ -1,7 +1,6 @@
 from unittest.mock import MagicMock
 
 import pytest
-from pydantic import SecretStr
 
 from src.client import AllureClient
 
@@ -9,7 +8,6 @@ from src.client import AllureClient
 # The tools are simple wrappers. Testing the Service validation logic (which we just updated)
 # is the most direct way to verify the hints.
 from src.services.test_case_service import TestCaseService
-from src.utils.auth import AuthContext
 
 # We can test the Service methods directly by instantiating TestCaseService
 # and mocking the client. The validation logic is local and doesn't need API.
@@ -19,12 +17,13 @@ from src.utils.auth import AuthContext
 def mock_client():
     client = MagicMock(spec=AllureClient)
     client.api_client = MagicMock()
+    client.get_project.return_value = 1
     return client
 
 
 @pytest.fixture
 def service(mock_client):
-    return TestCaseService(AuthContext(api_token=SecretStr("token")), client=mock_client)
+    return TestCaseService(client=mock_client)
 
 
 @pytest.mark.asyncio
@@ -36,7 +35,7 @@ async def test_create_test_case_invalid_steps_hint(service):
     with pytest.raises(Exception) as excinfo:  # Catch generic or AllureValidationError
         # We manually call validation or the method
         # Calling create_test_case will trigger validation first
-        await service.create_test_case(project_id=1, name="Test", steps=invalid_steps)
+        await service.create_test_case(name="Test", steps=invalid_steps)
 
     # Assertions
     # Check if we got AllureValidationError (or subclass)
@@ -54,7 +53,7 @@ async def test_create_test_case_invalid_tags_hint(service):
     invalid_tags = "not a list"
 
     with pytest.raises(Exception) as excinfo:
-        await service.create_test_case(project_id=1, name="Test", tags=invalid_tags)
+        await service.create_test_case(name="Test", tags=invalid_tags)
 
     error_str = str(excinfo.value)
     assert "Tags must be a list" in error_str
@@ -68,7 +67,7 @@ async def test_create_test_case_invalid_tag_item_hint(service):
     invalid_tags = [123]
 
     with pytest.raises(Exception) as excinfo:
-        await service.create_test_case(project_id=1, name="Test", tags=invalid_tags)
+        await service.create_test_case(name="Test", tags=invalid_tags)
 
     error_str = str(excinfo.value)
     assert "Tag at index 0 must be a string" in error_str
@@ -82,7 +81,7 @@ async def test_create_test_case_invalid_attachments_hint(service):
     invalid_attachments = ["not a dict"]
 
     with pytest.raises(Exception) as excinfo:
-        await service.create_test_case(project_id=1, name="Test", attachments=invalid_attachments)
+        await service.create_test_case(name="Test", attachments=invalid_attachments)
 
     error_str = str(excinfo.value)
     error_str = str(excinfo.value)
@@ -97,7 +96,7 @@ async def test_update_test_case_invalid_nested_step_hint(service):
     steps = [{"action": "step 1", "attachments": ["not a dict"]}]
 
     with pytest.raises(Exception) as excinfo:
-        await service.create_test_case(project_id=1, name="Test", steps=steps)
+        await service.create_test_case(name="Test", steps=steps)
 
     error_str = str(excinfo.value)
     assert "Step 0: 'attachments' must be a list" in error_str or "must be a dictionary" in error_str
@@ -111,7 +110,7 @@ async def test_create_test_case_invalid_custom_fields_hint(service):
     invalid_cfs = ["not a dict"]
 
     with pytest.raises(Exception) as excinfo:
-        await service.create_test_case(project_id=1, name="Test", custom_fields=invalid_cfs)
+        await service.create_test_case(name="Test", custom_fields=invalid_cfs)
 
     error_str = str(excinfo.value)
     assert "Custom fields must be a dictionary" in error_str

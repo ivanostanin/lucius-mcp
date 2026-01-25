@@ -49,11 +49,10 @@ async def test_create_test_case_tool_success(mock_service: Mock, mock_client: Mo
     # Verify kwargs were passed correctly
     # We check that the arguments passed match what we expect
     # Since call_args can be (args, kwargs), we might need to inspect closely.
-    # The tool calls: await service.create_test_case(project_id=..., ...)
+    # The tool calls: await service.create_test_case(name=..., ...)
     # So all are kwargs.
 
     actual_kwargs = call_args.kwargs
-    assert actual_kwargs["project_id"] == project_id
     assert actual_kwargs["name"] == name
     assert actual_kwargs["custom_fields"] == custom_fields
     assert actual_kwargs["steps"] == steps

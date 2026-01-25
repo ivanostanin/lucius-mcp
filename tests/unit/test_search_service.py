@@ -173,7 +173,7 @@ async def test_search_test_cases_parses_query(service: SearchService, mock_clien
 
 @pytest.mark.asyncio
 async def test_list_test_cases_validates_project_id(service: SearchService) -> None:
-    service._client.get_project.return_value = 0
+    service._project_id = 0
     with pytest.raises(AllureValidationError, match="Project ID is required and must be positive"):
         await service.list_test_cases()
 
