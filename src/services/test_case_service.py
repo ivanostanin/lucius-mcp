@@ -29,8 +29,6 @@ from src.client.generated.models.shared_step_step_dto import SharedStepStepDto
 from src.client.generated.models.test_case_patch_v2_dto import TestCasePatchV2Dto
 from src.client.generated.models.test_case_scenario_v2_dto import TestCaseScenarioV2Dto
 from src.services.attachment_service import AttachmentService
-from src.utils.auth import AuthContext
-from src.utils.config import settings
 from src.utils.schema_hint import generate_schema_hint
 
 # Maximum lengths based on API constraints
@@ -76,22 +74,16 @@ class TestCaseService:
 
     def __init__(
         self,
-        auth_context: AuthContext,
-        client: AllureClient | None = None,
+        client: AllureClient,
         attachment_service: AttachmentService | None = None,
-        base_url: str | None = None,
     ) -> None:
-        self._auth = auth_context
-        self._client = client or AllureClient(
-            base_url=base_url or settings.ALLURE_ENDPOINT,
-            token=auth_context.api_token,
-        )
+        self._client = client
+        self._project_id = client.get_project()
         self._attachment_service = attachment_service or AttachmentService(self._client)
         self._cf_cache: dict[int, dict[str, int]] = {}  # {project_id: {name: id}}
 
     async def create_test_case(
         self,
-        project_id: int,
         name: str,
         description: str | None = None,
         steps: list[dict[str, Any]] | None = None,
@@ -102,7 +94,6 @@ class TestCaseService:
         """Create a new test case.
 
         Args:
-            project_id: The ID of the project where the test case will be created.
             name: The name of the test case.
             description: Optional description.
             steps: Optional list of steps [{'action': '...', 'expected': '...', 'attachments': [...]}]
@@ -118,7 +109,7 @@ class TestCaseService:
             AllureValidationError: If validation fails.
         """
         # 1. Input Validation
-        self._validate_project_id(project_id)
+        self._validate_project_id(self._project_id)
         self._validate_name(name)
         self._validate_steps(steps)
         self._validate_tags(tags)
@@ -128,11 +119,11 @@ class TestCaseService:
         # 2. Resolve custom fields if provided
         resolved_custom_fields = []
         if custom_fields:
-            project_cfs = await self._get_resolved_custom_fields(project_id)
+            project_cfs = await self._get_resolved_custom_fields(self._project_id)
             for key, value in custom_fields.items():
                 cf_id = project_cfs.get(key)
                 if cf_id is None:
-                    raise AllureValidationError(f"Custom field '{key}' not found in project {project_id}.")
+                    raise AllureValidationError(f"Custom field '{key}' not found in project {self._project_id}.")
 
                 resolved_custom_fields.append(
                     CustomFieldValueWithCfDto(custom_field=CustomFieldDto(id=cf_id, name=key), name=value)
@@ -142,7 +133,7 @@ class TestCaseService:
         tag_dtos = self._build_tag_dtos(tags)
         try:
             data = TestCaseCreateV2Dto(
-                project_id=project_id,
+                project_id=self._project_id,
                 name=name,
                 description=description,
                 tags=tag_dtos,
@@ -153,7 +144,7 @@ class TestCaseService:
             raise AllureValidationError(f"Invalid test case data: {e}", suggestions=[hint]) from e
 
         # 4. Create the test case
-        created_test_case = await self._client.create_test_case(project_id, data)
+        created_test_case = await self._client.create_test_case(data)
         test_case_id = created_test_case.id
 
         if test_case_id is None:
@@ -561,7 +552,7 @@ class TestCaseService:
     # Validation Methods
     # ==========================================
 
-    def _validate_project_id(self, project_id: int) -> None:
+    def _validate_project_id(self, project_id: int | None) -> None:
         """Validate project ID."""
         if not isinstance(project_id, int):
             raise AllureValidationError(f"Project ID must be an integer, got {type(project_id).__name__}")

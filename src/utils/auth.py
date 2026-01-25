@@ -1,13 +1,12 @@
 """Authentication context helpers."""
 
-# todo use settings from utils.config and make overrides more straightforward.
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 
 from pydantic import SecretStr
 
+from src.utils.config import settings
 from src.utils.error import AuthenticationError
 
 
@@ -37,16 +36,12 @@ class AuthContext:
         Raises:
             AuthenticationError: If ALLURE_API_TOKEN is not set.
         """
-        token = os.environ.get("ALLURE_API_TOKEN")
-        if not token:
+        if not settings.ALLURE_API_TOKEN:
             raise AuthenticationError(
                 "No API token configured. Set ALLURE_API_TOKEN environment variable or provide api_token argument."
             )
 
-        project_id_str = os.environ.get("ALLURE_PROJECT_ID")
-        project_id = int(project_id_str) if project_id_str else None
-
-        return cls(api_token=SecretStr(token), project_id=project_id)
+        return cls(api_token=settings.ALLURE_API_TOKEN, project_id=settings.ALLURE_PROJECT_ID)
 
     def with_overrides(
         self,

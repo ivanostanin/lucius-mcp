@@ -5,8 +5,6 @@ from typing import Any
 from src.client import AllureClient
 from src.client.generated.models.shared_step_step_dto import SharedStepStepDto
 from src.services.test_case_service import TestCaseService
-from src.utils.auth import get_auth_context
-from src.utils.config import settings
 
 
 def _format_steps(scenario: Any) -> str:
@@ -29,7 +27,7 @@ def _format_steps(scenario: Any) -> str:
 async def unlink_shared_step(
     test_case_id: int,
     shared_step_id: int,
-    api_token: str | None = None,
+    project_id: int | None = None,
 ) -> str:
     """Remove a shared step reference from a test case.
 
@@ -39,7 +37,7 @@ async def unlink_shared_step(
     Args:
         test_case_id: The test case to modify.
         shared_step_id: The shared step to unlink.
-        api_token: Optional override for the default API token.
+        project_id: Optional override for the default Project ID.
 
     Returns:
         Confirmation with updated step list.
@@ -50,15 +48,9 @@ async def unlink_shared_step(
     Example:
         unlink_shared_step(test_case_id=12345, shared_step_id=789)
     """
-    auth_context = get_auth_context(api_token=api_token)
 
-    client = AllureClient(
-        base_url=settings.ALLURE_ENDPOINT,
-        token=auth_context.api_token,
-    )
-
-    async with client:
-        service = TestCaseService(auth_context, client=client)
+    async with AllureClient.from_env(project=project_id) as client:
+        service = TestCaseService(client=client)
         try:
             await service.remove_shared_step_from_case(
                 test_case_id=test_case_id,

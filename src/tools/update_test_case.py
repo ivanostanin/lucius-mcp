@@ -4,8 +4,6 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService, TestCaseUpdate
-from src.utils.auth import get_auth_context
-from src.utils.config import settings
 
 
 async def update_test_case(  # noqa: C901
@@ -39,30 +37,44 @@ async def update_test_case(  # noqa: C901
         list[dict[str, str]] | None,
         Field(description="New list of external links. Each dict has 'name', 'url', and optional 'type'."),
     ] = None,
-    api_token: Annotated[str | None, Field(description="Optional API token override.")] = None,
+    project_id: int | None = None,
 ) -> str:
     """Update an existing test case in Allure TestOps.
 
-    This tool allows partial updates. Only fields that are provided will be updated.
-    If 'steps' are provided, they replace all existing steps.
-    If 'attachments' are provided, they replace all existing global attachments.
-    To preserve existing steps or attachments while updating the other, omit the field you want to preserve.
+    Performs a partial update: only supplied fields are sent to the API. When
+    provided, ``steps`` replace all existing steps, and ``attachments`` replace
+    all existing global attachments. Omit a field to preserve its current value.
 
     Args:
-        api_token: Optional override for the default API token.
+        test_case_id: The ID of the test case to update.
+        name: New name for the test case.
+        description: New description for the test case.
+        precondition: New precondition text.
+        steps: New list of steps. Each step is a dict with ``action``,
+            ``expected``, and optional ``attachments`` list.
+        tags: New list of tags.
+        attachments: New list of global attachments. Each dict has ``name`` and
+            either ``content`` (base64) or ``url``.
+        custom_fields: Custom field updates as a name-to-value mapping.
+        automated: Whether the test case is automated.
+        expected_result: Global expected result for the test case.
+        status_id: ID of the test case status.
+        test_layer_id: ID of the test layer.
+        workflow_id: ID of the workflow.
+        links: New list of external links. Each dict has ``name``, ``url``,
+            and optional ``type``.
+        project_id: Optional override for the default Project ID.
+
+    Returns:
+        A confirmation message summarizing the update.
 
     Raises:
-        AuthenticationError: If no API token available from environment or arguments.
+        AuthenticationError: If no API token available from environment or
+            arguments.
     """
-    auth_context = get_auth_context(api_token=api_token)
 
-    client = AllureClient(
-        base_url=settings.ALLURE_ENDPOINT,
-        token=auth_context.api_token,
-    )
-
-    async with client:
-        service = TestCaseService(auth_context, client=client)
+    async with AllureClient.from_env(project=project_id) as client:
+        service = TestCaseService(client=client)
         update_data = TestCaseUpdate(
             name=name,
             description=description,

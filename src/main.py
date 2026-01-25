@@ -8,13 +8,7 @@ from fastmcp import FastMCP
 from starlette.applications import Starlette
 from starlette.routing import Mount
 
-from src.tools.create_test_case import create_test_case
-from src.tools.delete_test_case import delete_test_case
-from src.tools.link_shared_step import link_shared_step
-from src.tools.search import get_test_case_details, list_test_cases, search_test_cases
-from src.tools.shared_steps import register as register_shared_steps
-from src.tools.unlink_shared_step import unlink_shared_step
-from src.tools.update_test_case import update_test_case
+from src.tools import all_tools
 from src.utils.config import settings
 from src.utils.error import agent_hint_handler
 from src.utils.logger import configure_logging, get_logger
@@ -33,16 +27,8 @@ mcp = FastMCP(
 )
 
 # Register tools
-mcp.tool()(create_test_case)
-mcp.tool()(update_test_case)
-mcp.tool()(delete_test_case)
-mcp.tool()(link_shared_step)
-mcp.tool()(unlink_shared_step)
-mcp.tool()(list_test_cases)
-mcp.tool()(search_test_cases)
-mcp.tool()(get_test_case_details)
-register_shared_steps(mcp)
-
+for tool in all_tools:
+    mcp.tool()(tool)
 
 # The ASGI app and main app are created lazily or only when needed for HTTP mode
 _mcp_asgi = None

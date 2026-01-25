@@ -6,8 +6,6 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService
-from src.utils.auth import get_auth_context
-from src.utils.config import settings
 
 
 async def delete_test_case(
@@ -15,7 +13,7 @@ async def delete_test_case(
     confirm: Annotated[
         bool, Field(description="Must be set to True to proceed with deletion. Safety measure.")
     ] = False,
-    api_token: Annotated[str | None, Field(description="Optional API token override.")] = None,
+    project_id: Annotated[int | None, Field(description="Optional Allure TestOps project ID override.")] = None,
 ) -> str:
     """Archive an obsolete test case.
 
@@ -30,7 +28,7 @@ async def delete_test_case(
             Found in the URL: /testcase/12345 -> test_case_id=12345
         confirm: Must be set to True to proceed with deletion.
             This is a safety measure to prevent accidental deletions.
-        api_token: Optional override for the default API token.
+        project_id: Optional override for the default Project ID.
 
     Returns:
         Confirmation message with the archived test case details.
@@ -42,15 +40,8 @@ async def delete_test_case(
             f"test case {test_case_id}."
         )
 
-    auth_context = get_auth_context(api_token=api_token)
-
-    client = AllureClient(
-        base_url=settings.ALLURE_ENDPOINT,
-        token=auth_context.api_token,
-    )
-
-    async with client:
-        service = TestCaseService(auth_context, client=client)
+    async with AllureClient.from_env(project=project_id) as client:
+        service = TestCaseService(client=client)
         try:
             result = await service.delete_test_case(test_case_id)
         except Exception as e:

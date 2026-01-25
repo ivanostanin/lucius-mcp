@@ -13,8 +13,6 @@ from src.client import (
 )
 from src.client.exceptions import AllureAPIError, AllureValidationError
 from src.services.attachment_service import AttachmentService
-from src.utils.auth import AuthContext
-from src.utils.config import settings
 from src.utils.schema_hint import generate_schema_hint
 
 logger = logging.getLogger(__name__)
@@ -29,28 +27,21 @@ class SharedStepService:
 
     def __init__(
         self,
-        auth_context: AuthContext,
-        client: AllureClient | None = None,
+        client: AllureClient,
         attachment_service: AttachmentService | None = None,
-        base_url: str | None = None,
     ) -> None:
-        self._auth = auth_context
-        self._client = client or AllureClient(
-            base_url=base_url or settings.ALLURE_ENDPOINT,
-            token=auth_context.api_token,
-        )
+        self._client = client
+        self._project_id = client.get_project()
         self._attachment_service = attachment_service or AttachmentService(self._client)
 
     async def create_shared_step(
         self,
-        project_id: int,
         name: str,
         steps: list[dict[str, Any]] | None = None,
     ) -> SharedStepDto:
         """Create a new shared step with optional steps.
 
         Args:
-            project_id: ID of the project.
             name: Name of the shared step.
             steps: Optional list of steps.
 
@@ -58,13 +49,13 @@ class SharedStepService:
             The created SharedStepDto.
         """
         # 1. Validation
-        self._validate_project_id(project_id)
+        self._validate_project_id(self._project_id)
         self._validate_name(name)
         self._validate_steps(steps)
 
         # 2. Create Shared Step container
         try:
-            shared_step = await self._client.create_shared_step(project_id, name)
+            shared_step = await self._client.create_shared_step(self._project_id, name)
         except Exception as e:
             raise AllureAPIError(f"Failed to create shared step '{name}': {e}") from e
 
@@ -97,7 +88,6 @@ class SharedStepService:
 
     async def list_shared_steps(
         self,
-        project_id: int,
         page: int = 0,
         size: int = 100,
         search: str | None = None,
@@ -106,7 +96,6 @@ class SharedStepService:
         """List shared steps for a project.
 
         Args:
-            project_id: Project ID.
             page: Page number (0-based).
             size: Page size.
             search: Optional search query.
@@ -115,10 +104,10 @@ class SharedStepService:
         Returns:
             List of SharedStepDto.
         """
-        self._validate_project_id(project_id)
+        self._validate_project_id(self._project_id)
 
         page_dto: PageSharedStepDto = await self._client.list_shared_steps(
-            project_id=project_id, page=page, size=size, search=search, archived=archived
+            project_id=self._project_id, page=page, size=size, search=search, archived=archived
         )
 
         return page_dto.content or []

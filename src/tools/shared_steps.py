@@ -4,21 +4,17 @@ from fastmcp import FastMCP
 
 from src.client import AllureClient
 from src.services.shared_step_service import SharedStepService
-from src.utils.auth import get_auth_context
-from src.utils.config import settings
 
 
 async def create_shared_step(
     name: str,
-    project_id: int,
     steps: list[dict[str, Any]] | None = None,
-    api_token: str | None = None,
+    project_id: int | None = None,
 ) -> str:
     """Create a new reusable Shared Step.
 
     Args:
         name: The name of the shared step (e.g., "Login as Admin").
-        project_id: The ID of the project where the shared step will be created.
         steps: Optional list of steps. Each step is a dictionary with:
                - action (str): The step description (e.g., "Enter username").
                - expected (str, optional): The expected result.
@@ -26,18 +22,12 @@ async def create_shared_step(
                  - content (str): Base64 encoded content.
                  - name (str): Filename.
                - steps (list[dict], optional): Nested steps (recursive structure).
-        api_token: Optional override for the default API token.
+        project_id: Optional override for the default Project ID.
     """
-    auth_context = get_auth_context(api_token=api_token, project_id=project_id)
 
-    client = AllureClient(
-        base_url=settings.ALLURE_ENDPOINT,
-        token=auth_context.api_token,
-    )
-
-    async with client:
-        service = SharedStepService(auth_context, client=client)
-        shared_step = await service.create_shared_step(project_id=project_id, name=name, steps=steps)
+    async with AllureClient.from_env(project=project_id) as client:
+        service = SharedStepService(client=client)
+        shared_step = await service.create_shared_step(name=name, steps=steps)
 
         return (
             f"Successfully created Shared Step:\n"
@@ -49,35 +39,25 @@ async def create_shared_step(
 
 
 async def list_shared_steps(
-    project_id: int,
     page: int = 0,
     size: int = 100,
     search: str | None = None,
     archived: bool = False,
-    api_token: str | None = None,
+    project_id: int | None = None,
 ) -> str:
     """List shared steps in a project to find existing ones.
 
     Args:
-        project_id: The ID of the project.
         page: Page number (0-based, default 0).
         size: Number of items per page (default 100).
         search: Optional search query to filter by name.
         archived: Whether to include archived steps (default False).
-        api_token: Optional override for the default API token.
+        project_id: Optional override for the default Project ID.
     """
-    auth_context = get_auth_context(api_token=api_token, project_id=project_id)
 
-    client = AllureClient(
-        base_url=settings.ALLURE_ENDPOINT,
-        token=auth_context.api_token,
-    )
-
-    async with client:
-        service = SharedStepService(auth_context, client=client)
-        steps = await service.list_shared_steps(
-            project_id=project_id, page=page, size=size, search=search, archived=archived
-        )
+    async with AllureClient.from_env(project=project_id) as client:
+        service = SharedStepService(client=client)
+        steps = await service.list_shared_steps(page=page, size=size, search=search, archived=archived)
 
         if not steps:
             return f"No shared steps found for project {project_id}."
@@ -95,7 +75,7 @@ async def update_shared_step(
     step_id: int,
     name: str | None = None,
     description: str | None = None,
-    api_token: str | None = None,
+    project_id: int | None = None,
 ) -> str:
     """Update an existing shared step.
 
@@ -109,7 +89,7 @@ async def update_shared_step(
             Found via list_shared_steps or in the Allure URL.
         name: New name for the shared step (optional).
         description: New description (optional).
-        api_token: Optional override for the default API token.
+        project_id: Optional override for the default Project ID.
 
     Returns:
         Confirmation message with summary of changes.
@@ -120,15 +100,9 @@ async def update_shared_step(
             name="Login as Admin (Updated)"
         )
     """
-    auth_context = get_auth_context(api_token=api_token)
 
-    client = AllureClient(
-        base_url=settings.ALLURE_ENDPOINT,
-        token=auth_context.api_token,
-    )
-
-    async with client:
-        service = SharedStepService(auth_context, client=client)
+    async with AllureClient.from_env(project=project_id) as client:
+        service = SharedStepService(client=client)
         updated, changed = await service.update_shared_step(step_id=step_id, name=name, description=description)
 
         if not changed:
@@ -148,7 +122,7 @@ async def update_shared_step(
 async def delete_shared_step(
     step_id: int,
     confirm: bool = False,
-    api_token: str | None = None,
+    project_id: int | None = None,
 ) -> str:
     """Delete a shared step from the library.
 
@@ -158,7 +132,7 @@ async def delete_shared_step(
     Args:
         step_id: The shared step ID to delete (required).
         confirm: Must be True to proceed (safety measure).
-        api_token: Optional override for the default API token.
+        project_id: Optional override for the default Project ID.
 
     Returns:
         Confirmation message.
@@ -177,15 +151,8 @@ async def delete_shared_step(
             "WARNING: Deleting a shared step used by test cases will break those references."
         )
 
-    auth_context = get_auth_context(api_token=api_token)
-
-    client = AllureClient(
-        base_url=settings.ALLURE_ENDPOINT,
-        token=auth_context.api_token,
-    )
-
-    async with client:
-        service = SharedStepService(auth_context, client=client)
+    async with AllureClient.from_env(project=project_id) as client:
+        service = SharedStepService(client=client)
         await service.delete_shared_step(step_id=step_id)
 
         return f"🗑️  Archived Shared Step {step_id}\n\nThe shared step has been successfully archived."

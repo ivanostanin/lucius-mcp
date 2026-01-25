@@ -130,7 +130,8 @@ class AllureClient:
 
         async with AllureClient(
             base_url="https://demo.testops.cloud",
-            token=SecretStr("your-api-token")
+            token=SecretStr("your-api-token"),
+            project=0
         ) as client:
             # client is initialized and authenticated
             pass
@@ -141,6 +142,7 @@ class AllureClient:
         self,
         base_url: str,
         token: SecretStr,
+        project: int,
         timeout: float = 30.0,
     ) -> None:
         """Initialize AllureClient.
@@ -148,6 +150,7 @@ class AllureClient:
         Args:
             base_url: Allure TestOps instance base URL
             token: API token (will be exchanged for JWT Bearer token)
+            project: Target Allure TestOps project ID
             timeout: Request timeout in seconds (default: 30.0)
         """
         if not base_url.startswith(("http://", "https://")):
@@ -155,6 +158,7 @@ class AllureClient:
 
         self._base_url = base_url.rstrip("/")
         self._token = token
+        self._project = project
         self._timeout = timeout
         self._jwt_token: str | None = None
         self._token_expires_at: float | None = None
@@ -174,12 +178,17 @@ class AllureClient:
         self._is_entered = False
 
     @classmethod
-    def from_env(cls, timeout: float = 30.0) -> AllureClient:
+    def from_env(cls, project: int | None = None, timeout: float = 30.0) -> AllureClient:
         """Initialize AllureClient from environment variables.
 
         Expects:
             ALLURE_ENDPOINT: The base URL of the Allure TestOps instance.
-            ALLURE_TOKEN: The API token for authentication.
+            ALLURE_API_TOKEN: The API token for authentication.
+            ALLURE_PROJECT_ID: The target project ID.
+
+        Args:
+            project: Optional target Allure TestOps project ID to override the one from environment variables.
+            timeout: Request timeout in seconds (default: 30.0)
 
         Returns:
             An initialized AllureClient instance.
@@ -188,14 +197,31 @@ class AllureClient:
             KeyError: If required environment variables are missing.
             ValueError: If settings validation fails.
         """
+        if not settings.ALLURE_ENDPOINT:
+            raise KeyError("ALLURE_ENDPOINT is not set in environment or config")
         if not settings.ALLURE_API_TOKEN:
             raise KeyError("ALLURE_API_TOKEN is not set in environment or config")
+
+        if not isinstance(settings.ALLURE_PROJECT_ID, int) or settings.ALLURE_PROJECT_ID <= 0:
+            raise ValueError("ALLURE_PROJECT_ID must be a positive integer")
+
+        if project:
+            p = project
+        else:
+            p = settings.ALLURE_PROJECT_ID
 
         return cls(
             base_url=settings.ALLURE_ENDPOINT,
             token=settings.ALLURE_API_TOKEN,
+            project=p,
             timeout=timeout,
         )
+
+    def set_project(self, project: int) -> None:
+        self._project = project
+
+    def get_project(self) -> int:
+        return self._project
 
     async def _get_jwt_token(self) -> str:
         """Exchange API token for a JWT Bearer token.
@@ -353,11 +379,10 @@ class AllureClient:
     # Test Case operations
     # ==========================================
 
-    async def create_test_case(self, project_id: int, data: TestCaseCreateV2Dto) -> TestCaseOverviewDto:
+    async def create_test_case(self, data: TestCaseCreateV2Dto) -> TestCaseOverviewDto:
         """Create a new test case in the specified project.
 
         Args:
-            project_id: Target project ID.
             data: Test case definition (name, scenario, etc.).
 
         Returns:
@@ -379,8 +404,7 @@ class AllureClient:
 
         # Ensure project_id is set in the body as required by the model
         if hasattr(data, "project_id") and not data.project_id:
-            data.project_id = project_id
-
+            data.project_id = self._project
         try:
             # create13 is the generated method name for POST /api/testcase
             response = await self._test_case_api.create13(test_case_create_v2_dto=data, _request_timeout=self._timeout)

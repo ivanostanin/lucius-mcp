@@ -3,8 +3,6 @@ from dataclasses import dataclass
 
 from src.client import AllureClient, PageTestCaseDto, TestCaseDto, TestCaseScenarioV2Dto
 from src.client.exceptions import AllureNotFoundError, AllureValidationError, TestCaseNotFoundError
-from src.utils.auth import AuthContext
-from src.utils.config import settings
 
 
 @dataclass
@@ -73,15 +71,10 @@ class SearchService:
 
     def __init__(
         self,
-        auth_context: AuthContext,
-        client: AllureClient | None = None,
-        base_url: str | None = None,
+        client: AllureClient,
     ) -> None:
-        self._auth = auth_context
-        self._client = client or AllureClient(
-            base_url=base_url or settings.ALLURE_ENDPOINT,
-            token=auth_context.api_token,
-        )
+        self._client = client
+        self._project_id = client.get_project()
 
     async def get_test_case_details(self, test_case_id: int) -> TestCaseDetails:
         """Retrieve a single test case with full details."""
@@ -104,7 +97,6 @@ class SearchService:
 
     async def list_test_cases(
         self,
-        project_id: int,
         page: int = 0,
         size: int = 20,
         name_filter: str | None = None,
@@ -114,7 +106,6 @@ class SearchService:
         """List test cases in a project with pagination.
 
         Args:
-            project_id: Project ID.
             page: Zero-based page index.
             size: Page size.
             name_filter: Optional search query for test case name.
@@ -124,11 +115,11 @@ class SearchService:
         Returns:
             TestCaseListResult with items and pagination metadata.
         """
-        self._validate_project_id(project_id)
+        self._validate_project_id(self._project_id)
         self._validate_pagination(page, size)
 
         response = await self._client.list_test_cases(
-            project_id=project_id,
+            project_id=self._project_id,
             page=page,
             size=size,
             search=name_filter,
@@ -140,7 +131,6 @@ class SearchService:
 
     async def search_test_cases(
         self,
-        project_id: int,
         query: str,
         page: int = 0,
         size: int = 20,
@@ -148,7 +138,6 @@ class SearchService:
         """Search test cases by name and/or tag query.
 
         Args:
-            project_id: Project ID.
             query: Search query with optional tag: filters.
             page: Zero-based page index.
             size: Page size.
@@ -156,7 +145,7 @@ class SearchService:
         Returns:
             TestCaseListResult with items and pagination metadata.
         """
-        self._validate_project_id(project_id)
+        self._validate_project_id(self._project_id)
         self._validate_pagination(page, size)
 
         if not isinstance(query, str) or not query.strip():
@@ -167,7 +156,7 @@ class SearchService:
             raise AllureValidationError("Search query must include a name or tag filter")
 
         response = await self._client.list_test_cases(
-            project_id=project_id,
+            project_id=self._project_id,
             page=page,
             size=size,
             search=parsed.name_query,

@@ -4,27 +4,15 @@ from pydantic import Field
 
 from src.client import AllureClient, AllureValidationError
 from src.services.search_service import SearchQueryParser, SearchService, TestCaseDetails, TestCaseListResult
-from src.utils.auth import AuthContext, get_auth_context
-from src.utils.config import settings
-
-
-def _build_client(api_token: str | None) -> tuple[AllureClient, AuthContext]:
-    auth_context = get_auth_context(api_token=api_token)
-    client = AllureClient(
-        base_url=settings.ALLURE_ENDPOINT,
-        token=auth_context.api_token,
-    )
-    return client, auth_context
 
 
 async def list_test_cases(
-    project_id: Annotated[int, Field(description="Allure TestOps project ID to list test cases from.")],
     page: Annotated[int, Field(description="Zero-based page index.")] = 0,
     size: Annotated[int, Field(description="Number of results per page (max 100).", le=100)] = 20,
     name_filter: Annotated[str | None, Field(description="Optional name/description search.")] = None,
     tags: Annotated[list[str] | None, Field(description="Optional tag filters (exact match).", max_length=100)] = None,
     status: Annotated[str | None, Field(description="Optional status filter (exact match).", max_length=100)] = None,
-    api_token: Annotated[str | None, Field(description="Optional API token override.")] = None,
+    project_id: Annotated[int | None, Field(description="Allure TestOps project ID to list test cases from.")] = None,
 ) -> str:
     """List all test cases in a project.
 
@@ -32,13 +20,12 @@ async def list_test_cases(
     Use this to review existing test documentation in a project.
 
     Args:
-        project_id: The Allure TestOps project ID to list test cases from.
         page: Page number for pagination (0-indexed). Default: 0.
         size: Number of results per page (max 100). Default: 20.
         name_filter: Optional filter to search by name or description.
         tags: Optional list of tag names to filter by (exact match).
         status: Optional test case status name to filter by (exact match).
-        api_token: Optional override for the default API token.
+        project_id: Optional override for the default Project ID.
 
     Returns:
         A formatted list of test cases with pagination info.
@@ -46,11 +33,10 @@ async def list_test_cases(
     Raises:
         AuthenticationError: If no API token available from environment or arguments.
     """
-    client, auth_context = _build_client(api_token)
-    async with client:
-        service = SearchService(auth_context, client=client)
+
+    async with AllureClient.from_env(project=project_id) as client:
+        service = SearchService(client=client)
         result = await service.list_test_cases(
-            project_id=project_id,
             page=page,
             size=size,
             name_filter=name_filter,
@@ -62,7 +48,6 @@ async def list_test_cases(
 
 
 async def search_test_cases(
-    project_id: Annotated[int, Field(description="Allure TestOps project ID to search test cases in.")],
     query: Annotated[
         str,
         Field(
@@ -74,7 +59,7 @@ async def search_test_cases(
     ],
     page: Annotated[int, Field(description="Zero-based page index.")] = 0,
     size: Annotated[int, Field(description="Number of results per page (max 100).", le=100)] = 20,
-    api_token: Annotated[str | None, Field(description="Optional API token override.")] = None,
+    project_id: Annotated[int | None, Field(description="Allure TestOps project ID to list test cases from.")] = None,
 ) -> str:
     """Search for test cases by name or tag.
 
@@ -87,7 +72,6 @@ async def search_test_cases(
     - Combined: "login tag:smoke" finds test cases with "login" in name AND "smoke" tag
 
     Args:
-        project_id: The Allure TestOps project ID to search in.
         query: Search query. Examples:
             - "login flow" (name search)
             - "tag:smoke" (tag filter)
@@ -95,7 +79,7 @@ async def search_test_cases(
             - "authentication tag:security" (combined)
         page: Page number (0-indexed). Default: 0.
         size: Results per page (max 100). Default: 20.
-        api_token: Optional override for the default API token.
+        project_id: Optional override for the default Project ID.
 
     Returns:
         List of matching test cases or "No test cases found matching query."
@@ -120,11 +104,9 @@ async def search_test_cases(
     if not parsed.name_query and not parsed.tags:
         raise AllureValidationError("Search query must include a name or tag filter")
 
-    client, auth_context = _build_client(api_token)
-    async with client:
-        service = SearchService(auth_context, client=client)
+    async with AllureClient.from_env(project=project_id) as client:
+        service = SearchService(client=client)
         result = await service.search_test_cases(
-            project_id=project_id,
             query=query,
             page=page,
             size=size,
@@ -135,7 +117,7 @@ async def search_test_cases(
 
 async def get_test_case_details(
     test_case_id: Annotated[int, Field(description="ID of the test case to retrieve.")],
-    api_token: Annotated[str | None, Field(description="Optional API token override.")] = None,
+    project_id: Annotated[int | None, Field(description="Allure TestOps project ID to list test cases from.")] = None,
 ) -> str:
     """Get complete details of a specific test case.
 
@@ -145,7 +127,7 @@ async def get_test_case_details(
 
     Args:
         test_case_id: The unique ID of the test case to retrieve.
-        api_token: Optional override for the default API token.
+        project_id: Optional override for the default Project ID.
 
     Returns:
         Formatted test case details including all metadata.
@@ -156,9 +138,8 @@ async def get_test_case_details(
     if not isinstance(test_case_id, int) or test_case_id <= 0:
         raise AllureValidationError("Test case ID must be a positive integer")
 
-    client, auth_context = _build_client(api_token)
-    async with client:
-        service = SearchService(auth_context, client=client)
+    async with AllureClient.from_env(project=project_id) as client:
+        service = SearchService(client=client)
         details = await service.get_test_case_details(test_case_id)
 
     return _format_test_case_details(details)

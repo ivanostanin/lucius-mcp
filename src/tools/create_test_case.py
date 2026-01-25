@@ -4,24 +4,20 @@ from typing import Any
 
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService
-from src.utils.auth import get_auth_context
-from src.utils.config import settings
 
 
 async def create_test_case(
-    project_id: int,
     name: str,
     description: str | None = None,
     steps: list[dict[str, Any]] | None = None,
     tags: list[str] | None = None,
     attachments: list[dict[str, str]] | None = None,
     custom_fields: dict[str, str] | None = None,
-    api_token: str | None = None,
+    project_id: int | None = None,
 ) -> str:
     """Create a new test case in Allure TestOps.
 
     Args:
-        project_id: The ID of the project.
         name: The name of the test case.
         description: A markdown description of the test case.
         steps: List of steps. Each step must be a dict with 'action' and 'expected' keys.
@@ -33,7 +29,7 @@ async def create_test_case(
                                     'content_type': 'application/pdf'}]
         custom_fields: Dictionary of custom field names and their values.
                        Example: {'Layer': 'UI', 'Component': 'Auth'}
-        api_token: Optional API token override. Uses ALLURE_API_TOKEN if not provided.
+        project_id: Optional override for the default Project ID.
 
     Returns:
         A message confirming creation with the ID and Name.
@@ -42,18 +38,10 @@ async def create_test_case(
         AuthenticationError: If no API token available from environment or arguments.
     """
 
-    auth_context = get_auth_context(api_token=api_token, project_id=project_id)
-
-    client = AllureClient(
-        base_url=settings.ALLURE_ENDPOINT,
-        token=auth_context.api_token,
-    )
-
-    async with client:
-        service = TestCaseService(auth_context, client=client)
+    async with AllureClient.from_env(project=project_id) as client:
+        service = TestCaseService(client=client)
         try:
             result = await service.create_test_case(
-                project_id=project_id,
                 name=name,
                 description=description,
                 steps=steps,
