@@ -2,7 +2,6 @@ import pytest
 
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService, TestCaseUpdate
-from src.utils.auth import get_auth_context
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 
@@ -12,16 +11,12 @@ async def test_update_test_case_e2e(
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,
     pixel_b64: str,
-    api_token: str,
 ) -> None:
     """End-to-end test for updating a test case."""
 
     # 1. Setup
     # Fixture 'allure_client' provides authenticated client
-    service = TestCaseService(
-        get_auth_context(api_token=api_token),
-        client=allure_client,
-    )
+    service = TestCaseService(client=allure_client)
 
     # Fixture 'project_id' provides valid project ID
     # project_id = ...
@@ -29,7 +24,7 @@ async def test_update_test_case_e2e(
     # Create initial test case
     case_name = "E2E Update Test"
     initial_steps = [{"action": "Initial Step"}]
-    created_case = await service.create_test_case(project_id, case_name, steps=initial_steps)
+    created_case = await service.create_test_case(name=case_name, steps=initial_steps)
     test_case_id = created_case.id
     assert test_case_id is not None
     cleanup_tracker.track_test_case(test_case_id)
@@ -117,22 +112,16 @@ async def test_e2e_u1_update_core_fields(
     project_id: int,
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,
-    api_token: str,
 ) -> None:
     """
     E2E-U1: Update Core Fields.
     Test updating name, description, precondition, and expected_result.
     """
-    service = TestCaseService(
-        get_auth_context(api_token=api_token),
-        client=allure_client,
-    )
+    service = TestCaseService(client=allure_client)
 
     # Create initial test case
     case_name = "E2E-U1 Initial Name"
-    created_case = await service.create_test_case(
-        project_id=project_id, name=case_name, description="Initial description"
-    )
+    created_case = await service.create_test_case(name=case_name, description="Initial description")
     test_case_id = created_case.id
     assert test_case_id is not None
     cleanup_tracker.track_test_case(test_case_id)
@@ -164,19 +153,15 @@ async def test_e2e_u2_update_status_workflow(
     project_id: int,
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,
-    api_token: str,
 ) -> None:
     """
     E2E-U2: Update Status & Workflow.
     Test updating status_id, workflow_id, test_layer_id, and automated flag.
     """
-    service = TestCaseService(
-        get_auth_context(api_token=api_token),
-        client=allure_client,
-    )
+    service = TestCaseService(client=allure_client)
 
     # Create initial test case
-    created_case = await service.create_test_case(project_id=project_id, name="E2E-U2 Status Test")
+    created_case = await service.create_test_case(name="E2E-U2 Status Test")
     test_case_id = created_case.id
     assert test_case_id is not None
     cleanup_tracker.track_test_case(test_case_id)
@@ -197,21 +182,15 @@ async def test_e2e_u3_update_tags(
     project_id: int,
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,
-    api_token: str,
 ) -> None:
     """
     E2E-U3: Update Tags.
     Test replacing tags, adding new tags, and removing all tags.
     """
-    service = TestCaseService(
-        get_auth_context(api_token=api_token),
-        client=allure_client,
-    )
+    service = TestCaseService(client=allure_client)
 
     # Create with initial tags
-    created_case = await service.create_test_case(
-        project_id=project_id, name="E2E-U3 Tags Test", tags=["initial", "tag1"]
-    )
+    created_case = await service.create_test_case(name="E2E-U3 Tags Test", tags=["initial", "tag1"])
     test_case_id = created_case.id
     assert test_case_id is not None
     cleanup_tracker.track_test_case(test_case_id)
@@ -248,22 +227,16 @@ async def test_e2e_u4_update_custom_fields(
     project_id: int,
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,
-    api_token: str,
 ) -> None:
     """
     E2E-U4: Update Custom Fields.
     Test replacing custom field values and adding new custom fields.
     """
-    service = TestCaseService(
-        get_auth_context(api_token=api_token),
-        client=allure_client,
-    )
+    service = TestCaseService(client=allure_client)
 
     # Create with initial custom fields
     # Note: Custom fields must exist in the project
-    created_case = await service.create_test_case(
-        project_id=project_id, name="E2E-U4 Custom Fields Test", custom_fields={"Feature": "Test"}
-    )
+    created_case = await service.create_test_case(name="E2E-U4 Custom Fields Test", custom_fields={"Feature": "Test"})
     test_case_id = created_case.id
     assert test_case_id is not None
     cleanup_tracker.track_test_case(test_case_id)

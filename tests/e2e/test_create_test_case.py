@@ -5,7 +5,6 @@ import pytest
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService
 from src.tools.create_test_case import create_test_case
-from src.utils.auth import get_auth_context
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 
@@ -15,7 +14,6 @@ async def test_full_house_creation(
     allure_client: AllureClient,
     cleanup_tracker: Any,
     pixel_b64: str,
-    api_token: str,
 ) -> None:
     """
     E2E-1: The "Full House" Test Case.
@@ -37,13 +35,12 @@ async def test_full_house_creation(
 
     # Call Tool
     result_msg = await create_test_case(
-        project_id=project_id,
         name=name,
         description=description,
         steps=steps,
         tags=tags,
         attachments=attachments,
-        api_token=api_token,
+        project_id=project_id,
     )
 
     # Verifications
@@ -61,10 +58,7 @@ async def test_full_house_creation(
     cleanup_tracker.track_test_case(test_case_id)
 
     # Verify in Allure
-    service = TestCaseService(
-        get_auth_context(api_token=api_token),
-        client=allure_client,
-    )
+    service = TestCaseService(client=allure_client)
     fetched_case = await service.get_test_case(test_case_id)
 
     assert fetched_case.name == name
@@ -105,7 +99,6 @@ async def test_url_attachment_flow(
     project_id: int,
     allure_client: AllureClient,
     cleanup_tracker: Any,
-    api_token: str,
 ) -> None:
     """
     E2E-2: Test Case with URL Attachment.
@@ -129,7 +122,6 @@ async def test_url_attachment_flow(
         project_id=project_id,
         name=name,
         attachments=attachments,
-        api_token=api_token,
     )
 
     # Verifications
@@ -162,16 +154,12 @@ async def test_e2e_3_custom_fields_creation(
     project_id: int,
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,
-    api_token: str,
 ) -> None:
     """
     E2E-3: Custom Fields Creation.
     Create a test case with custom fields using real TestOps instance.
     """
-    service = TestCaseService(
-        get_auth_context(api_token=api_token),
-        client=allure_client,
-    )
+    service = TestCaseService(client=allure_client)
 
     # Create test case with custom fields
     # Note: Custom fields must exist in the project
@@ -179,7 +167,7 @@ async def test_e2e_3_custom_fields_creation(
     custom_fields = {"Feature": "Flow", "Component": "Authentication"}
 
     created_case = await service.create_test_case(
-        project_id=project_id, name=case_name, description="Testing custom fields", custom_fields=custom_fields
+        name=case_name, description="Testing custom fields", custom_fields=custom_fields
     )
 
     test_case_id = created_case.id
@@ -201,20 +189,16 @@ async def test_e2e_4_minimal_creation(
     project_id: int,
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,
-    api_token: str,
 ) -> None:
     """
     E2E-4: Minimal Creation.
     Create test case with only required fields (project_id, name).
     """
-    service = TestCaseService(
-        get_auth_context(api_token=api_token),
-        client=allure_client,
-    )
+    service = TestCaseService(client=allure_client)
 
     case_name = "E2E-4 Minimal Test Case"
 
-    created_case = await service.create_test_case(project_id=project_id, name=case_name)
+    created_case = await service.create_test_case(name=case_name)
 
     test_case_id = created_case.id
     assert test_case_id is not None
@@ -234,16 +218,12 @@ async def test_e2e_5_step_level_attachments(
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,
     pixel_b64: str,
-    api_token: str,
 ) -> None:
     """
     E2E-5: Step-level Attachments.
     Create test case with attachments nested in steps.
     """
-    service = TestCaseService(
-        get_auth_context(api_token=api_token),
-        client=allure_client,
-    )
+    service = TestCaseService(client=allure_client)
 
     case_name = "E2E-5 Step Attachments Test"
     # Small 1x1 transparent PNG
@@ -256,7 +236,7 @@ async def test_e2e_5_step_level_attachments(
         }
     ]
 
-    created_case = await service.create_test_case(project_id=project_id, name=case_name, steps=steps)
+    created_case = await service.create_test_case(name=case_name, steps=steps)
 
     test_case_id = created_case.id
     assert test_case_id is not None
@@ -287,16 +267,12 @@ async def test_e2e_6_complex_step_hierarchy(
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,
     pixel_b64: str,
-    api_token: str,
 ) -> None:
     """
     E2E-6: Complex Step Hierarchy.
     Create test case with multiple steps, expected results, and attachments.
     """
-    service = TestCaseService(
-        get_auth_context(api_token=api_token),
-        client=allure_client,
-    )
+    service = TestCaseService(client=allure_client)
 
     case_name = "E2E-6 Complex Hierarchy Test"
 
@@ -310,7 +286,7 @@ async def test_e2e_6_complex_step_hierarchy(
         {"action": "Step 3: Update profile", "expected": "Profile updated successfully"},
     ]
 
-    created_case = await service.create_test_case(project_id=project_id, name=case_name, steps=steps)
+    created_case = await service.create_test_case(name=case_name, steps=steps)
 
     test_case_id = created_case.id
     assert test_case_id is not None
@@ -327,22 +303,18 @@ async def test_e2e_7_edge_cases(
     project_id: int,
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,
-    api_token: str,
 ) -> None:
     """
     E2E-7: Edge Cases.
     Test with empty description, no steps, no tags.
     """
-    service = TestCaseService(
-        get_auth_context(api_token=api_token),
-        client=allure_client,
-    )
+    service = TestCaseService(client=allure_client)
 
     case_name = "E2E-7 Edge Cases Test"
 
     # Create with empty optional fields
     created_case = await service.create_test_case(
-        project_id=project_id, name=case_name, description="", steps=None, tags=None, attachments=None
+        name=case_name, description="", steps=None, tags=None, attachments=None
     )
 
     test_case_id = created_case.id

@@ -18,7 +18,7 @@ def project_id() -> int:
 
 
 @pytest.fixture
-async def allure_client() -> AsyncGenerator[AllureClient]:
+async def allure_client(project_id: int) -> AsyncGenerator[AllureClient]:
     """Provide an authenticated AllureClient for E2E tests."""
     # Prioritize sandbox credentials if available
     base_url = os.getenv("ALLURE_ENDPOINT")
@@ -34,7 +34,7 @@ async def allure_client() -> AsyncGenerator[AllureClient]:
     async with AllureClient(
         base_url=base_url,
         token=auth_context.api_token,
-        # Note: project_id isn't strictly needing to be set on client if we pass it to methods,
+        project=project_id,
     ) as client:
         yield client
 

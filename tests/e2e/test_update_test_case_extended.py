@@ -4,7 +4,6 @@ import pytest
 
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService, TestCaseUpdate
-from src.utils.auth import get_auth_context
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 
@@ -14,20 +13,16 @@ async def test_e2e_u5_update_steps(
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,
     pixel_b64: str,
-    api_token: str,
 ) -> None:
     """
     E2E-U5: Update Steps.
     Test replacing all steps with new complex step hierarchy.
     """
-    service = TestCaseService(
-        get_auth_context(api_token=api_token),
-        client=allure_client,
-    )
+    service = TestCaseService(client=allure_client)
 
     # Create with initial steps
     initial_steps = [{"action": "Initial Step 1"}]
-    created_case = await service.create_test_case(project_id=project_id, name="E2E-U5 Steps Test", steps=initial_steps)
+    created_case = await service.create_test_case(name="E2E-U5 Steps Test", steps=initial_steps)
     test_case_id = created_case.id
     assert test_case_id is not None
     cleanup_tracker.track_test_case(test_case_id)
@@ -71,22 +66,16 @@ async def test_e2e_u6_update_global_attachments(
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,
     pixel_b64: str,
-    api_token: str,
 ) -> None:
     """
     E2E-U6: Update Global Attachments.
     Test adding new attachments while preserving steps.
     """
-    service = TestCaseService(
-        get_auth_context(api_token=api_token),
-        client=allure_client,
-    )
+    service = TestCaseService(client=allure_client)
 
     # Create with steps (no attachments)
     initial_steps = [{"action": "Step with no attachment"}]
-    created_case = await service.create_test_case(
-        project_id=project_id, name="E2E-U6 Attachments Test", steps=initial_steps
-    )
+    created_case = await service.create_test_case(name="E2E-U6 Attachments Test", steps=initial_steps)
     test_case_id = created_case.id
     assert test_case_id is not None
     cleanup_tracker.track_test_case(test_case_id)
@@ -127,19 +116,15 @@ async def test_e2e_u7_update_links(
     project_id: int,
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,
-    api_token: str,
 ) -> None:
     """
     E2E-U7: Update Links.
     Test adding and replacing external links.
     """
-    service = TestCaseService(
-        get_auth_context(api_token=api_token),
-        client=allure_client,
-    )
+    service = TestCaseService(client=allure_client)
 
     # Create test case
-    created_case = await service.create_test_case(project_id=project_id, name="E2E-U7 Links Test")
+    created_case = await service.create_test_case(name="E2E-U7 Links Test")
     test_case_id = created_case.id
     assert test_case_id is not None
     cleanup_tracker.track_test_case(test_case_id)
@@ -165,21 +150,15 @@ async def test_e2e_u8_combined_updates(
     project_id: int,
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,
-    api_token: str,
 ) -> None:
     """
     E2E-U8: Combined Updates.
     Test updating multiple fields (name, tags, steps, custom fields) at once.
     """
-    service = TestCaseService(
-        get_auth_context(api_token=api_token),
-        client=allure_client,
-    )
+    service = TestCaseService(client=allure_client)
 
     # Create initial test case
-    created_case = await service.create_test_case(
-        project_id=project_id, name="E2E-U8 Initial", tags=["old"], steps=[{"action": "Old step"}]
-    )
+    created_case = await service.create_test_case(name="E2E-U8 Initial", tags=["old"], steps=[{"action": "Old step"}])
     test_case_id = created_case.id
     assert test_case_id is not None
     cleanup_tracker.track_test_case(test_case_id)
@@ -213,21 +192,15 @@ async def test_e2e_u9_edge_cases(
     project_id: int,
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,
-    api_token: str,
 ) -> None:
     """
     E2E-U9: Edge Cases.
     Test idempotent updates, empty values, and graceful handling.
     """
-    service = TestCaseService(
-        get_auth_context(api_token=api_token),
-        client=allure_client,
-    )
+    service = TestCaseService(client=allure_client)
 
     # Create test case
-    created_case = await service.create_test_case(
-        project_id=project_id, name="E2E-U9 Edge Cases", description="Initial", tags=["tag1"]
-    )
+    created_case = await service.create_test_case(name="E2E-U9 Edge Cases", description="Initial", tags=["tag1"])
     test_case_id = created_case.id
     assert test_case_id is not None
     cleanup_tracker.track_test_case(test_case_id)
@@ -254,19 +227,15 @@ async def test_e2e_u10_nested_steps(
     project_id: int,
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,
-    api_token: str,
 ) -> None:
     """
     E2E-U10: Nested Steps.
     Test updating with multi-level nested steps.
     """
-    service = TestCaseService(
-        get_auth_context(api_token=api_token),
-        client=allure_client,
-    )
+    service = TestCaseService(client=allure_client)
 
     # Create initial test case
-    created_case = await service.create_test_case(project_id=project_id, name="E2E-U10 Nested Steps")
+    created_case = await service.create_test_case(name="E2E-U10 Nested Steps")
     test_case_id = created_case.id
     assert test_case_id is not None
     cleanup_tracker.track_test_case(test_case_id)

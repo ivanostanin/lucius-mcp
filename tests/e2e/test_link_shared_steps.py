@@ -19,7 +19,6 @@ async def test_link_unlink_shared_step_flow(
     project_id: int,
     allure_client: AllureClient,
     cleanup_tracker: Any,
-    api_token: str,
 ) -> None:
     """
     E2E Test: Link and Unlink Shared Step.
@@ -37,7 +36,6 @@ async def test_link_unlink_shared_step_flow(
     ss_output = await create_shared_step(
         project_id=project_id,
         name=ss_name,
-        api_token=api_token,
     )
 
     match = re.search(r"ID: (\d+)", ss_output)
@@ -50,7 +48,6 @@ async def test_link_unlink_shared_step_flow(
     tc_output = await create_test_case(
         project_id=project_id,
         name=tc_name,
-        api_token=api_token,
     )
 
     match = re.search(r"ID: (\d+)", tc_output)
@@ -62,7 +59,6 @@ async def test_link_unlink_shared_step_flow(
     link_output = await link_shared_step(
         test_case_id=test_case_id,
         shared_step_id=shared_step_id,
-        api_token=api_token,
     )
     assert "✅ Linked Shared Step" in link_output
     assert f"ID: {shared_step_id}" in link_output
@@ -85,7 +81,6 @@ async def test_link_unlink_shared_step_flow(
     unlink_output = await unlink_shared_step(
         test_case_id=test_case_id,
         shared_step_id=shared_step_id,
-        api_token=api_token,
     )
     assert "✅ Unlinked Shared Step" in unlink_output
 

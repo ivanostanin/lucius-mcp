@@ -3,7 +3,6 @@ import pytest
 from src.client import AllureClient
 from src.client.exceptions import AllureNotFoundError
 from src.services.test_case_service import TestCaseService, TestCaseUpdate
-from src.utils.auth import get_auth_context
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 
@@ -14,11 +13,8 @@ def run_name(test_run_id):
 
 
 @pytest.fixture
-def service(allure_client: AllureClient, api_token: str):
-    return TestCaseService(
-        get_auth_context(api_token=api_token),
-        client=allure_client,
-    )
+def service(allure_client: AllureClient):
+    return TestCaseService(client=allure_client)
 
 
 @pytest.mark.asyncio
@@ -36,7 +32,6 @@ async def test_test_case_lifecycle(
     # 1. CREATE
     print(f"\nCreate Test Case: {run_name}")
     created = await service.create_test_case(
-        project_id=project_id,
         name=run_name,
         description="Initial description",
         steps=[
@@ -96,7 +91,7 @@ async def test_update_idempotency(
     service: TestCaseService, cleanup_tracker: CleanupTracker, project_id: int, run_name: str
 ):
     """Test that applying the same update multiple times produces independent results (idempotency-ish)."""
-    case = await service.create_test_case(project_id=project_id, name=run_name)
+    case = await service.create_test_case(name=run_name)
     cleanup_tracker.track_test_case(case.id)
 
     update_data = TestCaseUpdate(description="Idempotent Update")
@@ -120,7 +115,6 @@ async def test_create_with_full_metadata(
 
     # Create test case with full metadata
     case = await service.create_test_case(
-        project_id=project_id,
         name=run_name,
         description="Full metadata description",
         steps=[],

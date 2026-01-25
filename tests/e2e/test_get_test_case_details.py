@@ -5,7 +5,6 @@ from src.client.exceptions import TestCaseNotFoundError
 from src.services.search_service import SearchService
 from src.services.test_case_service import TestCaseService
 from src.tools.search import _format_test_case_details
-from src.utils.auth import get_auth_context
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 
@@ -14,15 +13,12 @@ async def test_get_test_case_details_with_full_content(
     allure_client: AllureClient,
     project_id: int,
     cleanup_tracker: CleanupTracker,
-    api_token: str,
 ) -> None:
     """Test get_test_case_details with a test case that has steps, description, and preconditions."""
-    auth_context = get_auth_context(api_token=api_token)
 
     # Create a test case with full details to ensure we have content to verify
-    case_service = TestCaseService(auth_context, client=allure_client)
+    case_service = TestCaseService(client=allure_client)
     created = await case_service.create_test_case(
-        project_id=project_id,
         name="E2E Test: Get Details with Full Content",
         description="This test case has a description for E2E testing",
         steps=[
@@ -36,7 +32,7 @@ async def test_get_test_case_details_with_full_content(
     cleanup_tracker.track_test_case(test_case_id)
 
     # Now retrieve the details
-    search_service = SearchService(auth_context, client=allure_client)
+    search_service = SearchService(client=allure_client)
     details = await search_service.get_test_case_details(test_case_id)
     text = _format_test_case_details(details)
 
@@ -59,11 +55,7 @@ async def test_get_test_case_details_with_full_content(
 @pytest.mark.asyncio
 async def test_get_test_case_details_not_found(
     allure_client: AllureClient,
-    api_token: str,
 ) -> None:
-    service = SearchService(
-        get_auth_context(api_token=api_token),
-        client=allure_client,
-    )
+    service = SearchService(client=allure_client)
     with pytest.raises(TestCaseNotFoundError):
         await service.get_test_case_details(99999999)

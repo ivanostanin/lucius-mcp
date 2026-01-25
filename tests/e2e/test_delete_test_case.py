@@ -2,7 +2,6 @@ import pytest
 
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService
-from src.utils.auth import get_auth_context
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 
@@ -12,7 +11,6 @@ async def test_delete_test_case_e2e(
     allure_client: AllureClient,
     project_id: int,
     cleanup_tracker: CleanupTracker,
-    api_token: str,
 ) -> None:
     """Test ID: 1.5-E2E-001 - Soft Delete Test Case (P0)
 
@@ -22,14 +20,10 @@ async def test_delete_test_case_e2e(
     Validates that delete_test_case sets status to 'Archived' (not 404) and
     that the operation is idempotent.
     """
-    service = TestCaseService(
-        get_auth_context(api_token=api_token),
-        client=allure_client,
-    )
+    service = TestCaseService(client=allure_client)
 
     # GIVEN: A test case exists in Allure TestOps
     created = await service.create_test_case(
-        project_id=project_id,
         name="E2E Delete Test",
         description="Temporary test case for delete verification",
     )

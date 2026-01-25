@@ -3,22 +3,17 @@ import pytest
 from src.client import AllureClient
 from src.client.exceptions import AllureValidationError
 from src.services.search_service import SearchService
-from src.utils.auth import get_auth_context
 
 
 @pytest.mark.asyncio
 async def test_list_test_cases_paginates_and_formats(
     allure_client: AllureClient,
     project_id: int,
-    api_token: str,
 ) -> None:
-    service = SearchService(
-        get_auth_context(api_token=api_token),
-        client=allure_client,
-    )
+    service = SearchService(client=allure_client)
 
     # Fetch first page with small size to force pagination hint
-    result = await service.list_test_cases(project_id=project_id, page=0, size=1)
+    result = await service.list_test_cases(page=0, size=1)
 
     assert result.page == 0
     assert result.size == 1
@@ -40,16 +35,11 @@ async def test_list_test_cases_paginates_and_formats(
 async def test_list_test_cases_filters_are_aql_compatible(
     allure_client: AllureClient,
     project_id: int,
-    api_token: str,
 ) -> None:
-    service = SearchService(
-        get_auth_context(api_token=api_token),
-        client=allure_client,
-    )
+    service = SearchService(client=allure_client)
 
     # Exercise AQL-compatible filters: name contains, status equals, tag equals
     result = await service.list_test_cases(
-        project_id=project_id,
         page=0,
         size=5,
         name_filter="login",
@@ -71,12 +61,13 @@ async def test_list_test_cases_filters_are_aql_compatible(
 @pytest.mark.asyncio
 async def test_list_test_cases_handles_invalid_project(
     allure_client: AllureClient,
-    api_token: str,
 ) -> None:
-    service = SearchService(
-        get_auth_context(api_token=api_token),
-        client=allure_client,
-    )
+    original_project = allure_client.get_project()
+    allure_client.set_project(-1)
+    try:
+        service = SearchService(client=allure_client)
 
-    with pytest.raises(AllureValidationError):
-        await service.list_test_cases(project_id=-1)
+        with pytest.raises(AllureValidationError):
+            await service.list_test_cases()
+    finally:
+        allure_client.set_project(original_project)
