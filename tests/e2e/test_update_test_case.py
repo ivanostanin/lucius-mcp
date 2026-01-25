@@ -36,8 +36,8 @@ async def test_update_test_case_e2e(
 
     # Verify scenario immediately after creation
     initial_scenario = await allure_client.get_test_case_scenario(test_case_id)
-    assert allure_client._test_case_scenario_api is not None
-    raw_norm_init = await allure_client._test_case_scenario_api.get_normalized_scenario(id=test_case_id)
+    assert allure_client._scenario_api is not None
+    raw_norm_init = await allure_client._scenario_api.get_normalized_scenario(id=test_case_id)
     print(f"DEBUG Initial Raw Normalized Scenario: {raw_norm_init}")
     print(f"DEBUG Initial Denormalized Scenario: {initial_scenario}")
 
@@ -71,8 +71,8 @@ async def test_update_test_case_e2e(
     scenario = await allure_client.get_test_case_scenario(test_case_id)
     try:
         # Also try normalized scenario to see if steps are there
-        assert allure_client._test_case_scenario_api is not None
-        norm_scenario = await allure_client._test_case_scenario_api.get_normalized_scenario(id=test_case_id)
+        assert allure_client._scenario_api is not None
+        norm_scenario = await allure_client._scenario_api.get_normalized_scenario(id=test_case_id)
         print(f"DEBUG Final Normalized Scenario: {norm_scenario}")
     except Exception as e:
         print(f"DEBUG Normalized Scenario Error: {e}")

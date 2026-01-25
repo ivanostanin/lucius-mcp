@@ -1,30 +1,31 @@
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-from pydantic import SecretStr
 
-from src.client import AllureClient
+from src.client import (
+    AllureClient,
+    AttachmentStepDtoWithName,
+    BodyStepDtoWithSteps,
+)
 from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError
 from src.client.generated.models import (
     CustomFieldDto,
     CustomFieldProjectDto,
     CustomFieldProjectWithValuesDto,
     ScenarioStepCreatedResponseDto,
-    TestCaseAttachmentRowDto,
+    SharedStepScenarioDtoStepsInner,
     TestCaseDto,
     TestCasePatchV2Dto,
-    TestCaseScenarioDto,
-    TestCaseScenarioStepDto,
+    TestCaseScenarioV2Dto,
 )
 from src.services.attachment_service import AttachmentService
 from src.services.test_case_service import TestCaseService, TestCaseUpdate
-from src.utils.auth import AuthContext
 
 
-@pytest.fixture
 def mock_client() -> AsyncMock:
     client = AsyncMock(spec=AllureClient)
     client.api_client = Mock()
+    client.get_project.return_value = 1
     return client
 
 
@@ -36,7 +37,6 @@ def mock_attachment_service() -> AsyncMock:
 @pytest.fixture
 def service(mock_client: AsyncMock, mock_attachment_service: AsyncMock) -> TestCaseService:
     return TestCaseService(
-        AuthContext(api_token=SecretStr("token")),
         client=mock_client,
         attachment_service=mock_attachment_service,
     )
@@ -58,18 +58,16 @@ async def test_create_test_case_success_minimal(service: TestCaseService, mock_c
     result_mock.name = name
     mock_client.create_test_case.return_value = result_mock
 
-    result = await service.create_test_case(project_id, name)
+    result = await service.create_test_case(name)
 
     assert result.id == 100
     assert result.name == name
 
     mock_client.create_test_case.assert_called_once()
     call_args = mock_client.create_test_case.call_args
-    passed_dto = call_args[0][1]
+    passed_dto = call_args[0][0]
     assert passed_dto.name == name
     assert passed_dto.project_id == project_id
-    # Scenario should be None since steps are added separately
-    assert passed_dto.scenario is None
 
 
 @pytest.mark.asyncio
@@ -86,12 +84,12 @@ async def test_create_test_case_with_steps(
     mock_client.create_test_case.return_value = result_mock
     mock_client.create_scenario_step.return_value = mock_step_response
 
-    await service.create_test_case(project_id, name, steps=steps)
+    await service.create_test_case(name, steps=steps)
 
     # Test case created first
     mock_client.create_test_case.assert_called_once()
-    passed_dto = mock_client.create_test_case.call_args[0][1]
-    assert passed_dto.scenario is None  # Steps added separately
+    passed_dto = mock_client.create_test_case.call_args[0][0]
+    assert passed_dto.project_id == project_id
 
     # Steps added via separate API calls (1 action + 1 expected = 2 calls)
     assert mock_client.create_scenario_step.call_count == 2
@@ -127,16 +125,16 @@ async def test_create_test_case_with_attachments(
     mock_client.create_test_case.return_value = result_mock
     mock_client.create_scenario_step.return_value = mock_step_response
 
-    await service.create_test_case(project_id, name, attachments=attachments)
+    await service.create_test_case(name, attachments=attachments)
 
     # Verify attachment upload called with test_case_id (not project_id)
     test_case_id = 102
     mock_attachment_service.upload_attachment.assert_called_once_with(test_case_id, attachments[0])
 
-    # Verify create_test_case called (scenario is None)
+    # Verify create_test_case called with project_id
     call_args = mock_client.create_test_case.call_args
-    passed_dto = call_args[0][1]
-    assert passed_dto.scenario is None
+    passed_dto = call_args[0][0]
+    assert passed_dto.project_id == project_id
 
     # Verify attachment step was created via separate API call
     mock_client.create_scenario_step.assert_called_once()
@@ -147,22 +145,21 @@ async def test_create_test_case_with_attachments(
 @pytest.mark.asyncio
 async def test_create_test_case_validation_error(service: TestCaseService) -> None:
     """Test validation errors."""
-    project_id = 1
 
     with pytest.raises(AllureValidationError, match="name is required"):
-        await service.create_test_case(project_id, "")
+        await service.create_test_case("")
 
-    with pytest.raises(AllureValidationError, match="must be 255 characters or less"):
-        await service.create_test_case(project_id, "a" * 256)
+    with pytest.raises(AllureValidationError, match="255 characters or less"):
+        await service.create_test_case("a" * 256)
 
+    service._client.get_project.return_value = 0
     with pytest.raises(AllureValidationError, match="Project ID is required"):
-        await service.create_test_case(0, "Test")
+        await service.create_test_case("Test")
 
 
 @pytest.mark.asyncio
 async def test_create_test_case_with_custom_fields(service: TestCaseService, mock_client: AsyncMock) -> None:
     """Test custom fields mapping with resolution."""
-    project_id = 1
     name = "CF Test"
     custom_fields = {"Layer": "UI", "Priority": "High"}
 
@@ -185,14 +182,14 @@ async def test_create_test_case_with_custom_fields(service: TestCaseService, moc
         result_mock.name = name
         mock_client.create_test_case.return_value = result_mock
 
-        await service.create_test_case(project_id, name, custom_fields=custom_fields)
+        await service.create_test_case(name, custom_fields=custom_fields)
 
         # Verify resolution call
         mock_cf_api.get_custom_fields_with_values2.assert_called_once()
 
         # Verify test case creation DTO
         call_args = mock_client.create_test_case.call_args
-        passed_dto = call_args[0][1]
+        passed_dto = call_args[0][0]
 
         assert passed_dto.custom_fields is not None
         assert len(passed_dto.custom_fields) == 2
@@ -205,7 +202,6 @@ async def test_create_test_case_with_custom_fields(service: TestCaseService, moc
 @pytest.mark.asyncio
 async def test_create_test_case_custom_field_not_found(service: TestCaseService, mock_client: AsyncMock) -> None:
     """Test error when custom field is not found in project."""
-    project_id = 1
     name = "CF Fail"
     custom_fields = {"Unknown": "Value"}
 
@@ -217,7 +213,7 @@ async def test_create_test_case_custom_field_not_found(service: TestCaseService,
         return_value=mock_cf_api,
     ):
         with pytest.raises(AllureValidationError, match="Custom field 'Unknown' not found"):
-            await service.create_test_case(project_id, name, custom_fields=custom_fields)
+            await service.create_test_case(name, custom_fields=custom_fields)
 
 
 @pytest.mark.asyncio
@@ -228,7 +224,6 @@ async def test_create_test_case_with_step_attachments(
     mock_step_response: ScenarioStepCreatedResponseDto,
 ) -> None:
     """Test creating a test case with interleaved step attachments."""
-    project_id = 1
     name = "Step Att Test"
     step_att = {"name": "s.png", "content": "x"}
     steps = [{"action": "Act", "expected": "Exp", "attachments": [step_att]}]
@@ -239,7 +234,7 @@ async def test_create_test_case_with_step_attachments(
     mock_client.create_test_case.return_value = result_mock
     mock_client.create_scenario_step.return_value = mock_step_response
 
-    await service.create_test_case(project_id, name, steps=steps)
+    await service.create_test_case(name, steps=steps)
 
     # Verify attachment upload called with test_case_id (not project_id)
     test_case_id = 104
@@ -277,14 +272,16 @@ class TestProjectIdValidation:
     @pytest.mark.asyncio
     async def test_project_id_zero_raises_error(self, service: TestCaseService) -> None:
         """Zero project_id should raise validation error."""
+        service._client.get_project.return_value = 0
         with pytest.raises(AllureValidationError, match="Project ID is required"):
-            await service.create_test_case(0, "Test")
+            await service.create_test_case("Test")
 
     @pytest.mark.asyncio
     async def test_project_id_negative_raises_error(self, service: TestCaseService) -> None:
         """Negative project_id should raise validation error."""
+        service._client.get_project.return_value = -1
         with pytest.raises(AllureValidationError, match="Project ID is required"):
-            await service.create_test_case(-1, "Test")
+            await service.create_test_case("Test")
 
 
 class TestNameValidation:
@@ -294,19 +291,19 @@ class TestNameValidation:
     async def test_empty_name_raises_error(self, service: TestCaseService) -> None:
         """Empty name should raise validation error."""
         with pytest.raises(AllureValidationError, match="name is required"):
-            await service.create_test_case(1, "")
+            await service.create_test_case("")
 
     @pytest.mark.asyncio
     async def test_whitespace_only_name_raises_error(self, service: TestCaseService) -> None:
         """Whitespace-only name should raise validation error."""
         with pytest.raises(AllureValidationError, match="name is required"):
-            await service.create_test_case(1, "   ")
+            await service.create_test_case("   ")
 
     @pytest.mark.asyncio
     async def test_name_too_long_raises_error(self, service: TestCaseService) -> None:
         """Name exceeding 255 characters should raise validation error."""
-        with pytest.raises(AllureValidationError, match="must be 255 characters or less"):
-            await service.create_test_case(1, "a" * 256)
+        with pytest.raises(AllureValidationError, match="255 characters or less"):
+            await service.create_test_case("a" * 256)
 
 
 class TestStepsValidation:
@@ -316,37 +313,37 @@ class TestStepsValidation:
     async def test_steps_not_list_raises_error(self, service: TestCaseService) -> None:
         """Non-list steps should raise validation error."""
         with pytest.raises(AllureValidationError, match="Steps must be a list"):
-            await service.create_test_case(1, "Test", steps="not a list")  # type: ignore[arg-type]
+            await service.create_test_case("Test", steps="not a list")  # type: ignore[arg-type]
 
     @pytest.mark.asyncio
     async def test_step_not_dict_raises_error(self, service: TestCaseService) -> None:
         """Non-dict step should raise validation error."""
         with pytest.raises(AllureValidationError, match="Step at index 0 must be a dictionary"):
-            await service.create_test_case(1, "Test", steps=["not a dict"])  # type: ignore[list-item]
+            await service.create_test_case("Test", steps=["not a dict"])  # type: ignore[list-item]
 
     @pytest.mark.asyncio
     async def test_step_action_not_string_raises_error(self, service: TestCaseService) -> None:
         """Non-string action should raise validation error."""
         with pytest.raises(AllureValidationError, match="'action' must be a string"):
-            await service.create_test_case(1, "Test", steps=[{"action": 123}])
+            await service.create_test_case("Test", steps=[{"action": 123}])
 
     @pytest.mark.asyncio
     async def test_step_expected_not_string_raises_error(self, service: TestCaseService) -> None:
         """Non-string expected should raise validation error."""
         with pytest.raises(AllureValidationError, match="'expected' must be a string"):
-            await service.create_test_case(1, "Test", steps=[{"action": "A", "expected": 123}])
+            await service.create_test_case("Test", steps=[{"action": "A", "expected": 123}])
 
     @pytest.mark.asyncio
     async def test_step_attachments_not_list_raises_error(self, service: TestCaseService) -> None:
         """Non-list step attachments should raise validation error."""
         with pytest.raises(AllureValidationError, match="'attachments' must be a list"):
-            await service.create_test_case(1, "Test", steps=[{"action": "A", "attachments": "not a list"}])
+            await service.create_test_case("Test", steps=[{"action": "A", "attachments": "not a list"}])
 
     @pytest.mark.asyncio
     async def test_step_action_too_long_raises_error(self, service: TestCaseService) -> None:
         """Action exceeding 10000 characters should raise validation error."""
         with pytest.raises(AllureValidationError, match="'action' must be 10000 characters or less"):
-            await service.create_test_case(1, "Test", steps=[{"action": "x" * 10001}])
+            await service.create_test_case("Test", steps=[{"action": "x" * 10001}])
 
 
 class TestTagsValidation:
@@ -356,25 +353,25 @@ class TestTagsValidation:
     async def test_tags_not_list_raises_error(self, service: TestCaseService) -> None:
         """Non-list tags should raise validation error."""
         with pytest.raises(AllureValidationError, match="Tags must be a list"):
-            await service.create_test_case(1, "Test", tags="not a list")  # type: ignore[arg-type]
+            await service.create_test_case("Test", tags="not a list")  # type: ignore[arg-type]
 
     @pytest.mark.asyncio
     async def test_tag_not_string_raises_error(self, service: TestCaseService) -> None:
         """Non-string tag should raise validation error."""
         with pytest.raises(AllureValidationError, match="Tag at index 0 must be a string"):
-            await service.create_test_case(1, "Test", tags=[123])  # type: ignore[list-item]
+            await service.create_test_case("Test", tags=[123])  # type: ignore[list-item]
 
     @pytest.mark.asyncio
     async def test_tag_empty_raises_error(self, service: TestCaseService) -> None:
         """Empty tag should raise validation error."""
         with pytest.raises(AllureValidationError, match="Tag at index 0 cannot be empty"):
-            await service.create_test_case(1, "Test", tags=[""])
+            await service.create_test_case("Test", tags=[""])
 
     @pytest.mark.asyncio
     async def test_tag_too_long_raises_error(self, service: TestCaseService) -> None:
         """Tag exceeding 255 characters should raise validation error."""
         with pytest.raises(AllureValidationError, match="Tag at index 0 must be 255 characters or less"):
-            await service.create_test_case(1, "Test", tags=["t" * 256])
+            await service.create_test_case("Test", tags=["t" * 256])
 
 
 class TestAttachmentsValidation:
@@ -384,25 +381,25 @@ class TestAttachmentsValidation:
     async def test_attachments_not_list_raises_error(self, service: TestCaseService) -> None:
         """Non-list attachments should raise validation error."""
         with pytest.raises(AllureValidationError, match="Attachments must be a list"):
-            await service.create_test_case(1, "Test", attachments="not a list")  # type: ignore[arg-type]
+            await service.create_test_case("Test", attachments="not a list")  # type: ignore[arg-type]
 
     @pytest.mark.asyncio
     async def test_attachment_not_dict_raises_error(self, service: TestCaseService) -> None:
         """Non-dict attachment should raise validation error."""
         with pytest.raises(AllureValidationError, match="Attachment at index 0 must be a dictionary"):
-            await service.create_test_case(1, "Test", attachments=["not a dict"])  # type: ignore[list-item]
+            await service.create_test_case("Test", attachments=["not a dict"])  # type: ignore[list-item]
 
     @pytest.mark.asyncio
     async def test_attachment_missing_content_and_url_raises_error(self, service: TestCaseService) -> None:
         """Attachment without content or url should raise validation error."""
         with pytest.raises(AllureValidationError, match="must have either 'content' or 'url' key"):
-            await service.create_test_case(1, "Test", attachments=[{"name": "file.txt"}])
+            await service.create_test_case("Test", attachments=[{"name": "file.txt"}])
 
     @pytest.mark.asyncio
     async def test_attachment_content_without_name_raises_error(self, service: TestCaseService) -> None:
         """Attachment with content but no name should raise validation error."""
         with pytest.raises(AllureValidationError, match="must also have 'name'"):
-            await service.create_test_case(1, "Test", attachments=[{"content": "base64data"}])
+            await service.create_test_case("Test", attachments=[{"content": "base64data"}])
 
 
 class TestCustomFieldsValidation:
@@ -412,25 +409,24 @@ class TestCustomFieldsValidation:
     async def test_custom_fields_not_dict_raises_error(self, service: TestCaseService) -> None:
         """Non-dict custom_fields should raise validation error."""
         with pytest.raises(AllureValidationError, match="Custom fields must be a dictionary"):
-            await service.create_test_case(1, "Test", custom_fields=["not a dict"])  # type: ignore[arg-type]
+            await service.create_test_case("Test", custom_fields=["not a dict"])  # type: ignore[arg-type]
 
     @pytest.mark.asyncio
     async def test_custom_field_value_not_string_raises_error(self, service: TestCaseService) -> None:
         """Non-string custom field value should raise validation error."""
         with pytest.raises(AllureValidationError, match="must be a string"):
-            await service.create_test_case(1, "Test", custom_fields={"key": 123})  # type: ignore[dict-item]
+            await service.create_test_case("Test", custom_fields={"key": 123})  # type: ignore[dict-item]
 
     @pytest.mark.asyncio
     async def test_custom_field_empty_key_raises_error(self, service: TestCaseService) -> None:
         """Empty custom field key should raise validation error."""
         with pytest.raises(AllureValidationError, match="Custom field key cannot be empty"):
-            await service.create_test_case(1, "Test", custom_fields={"": "value"})
+            await service.create_test_case("Test", custom_fields={"": "value"})
 
 
 @pytest.mark.asyncio
 async def test_create_test_case_rollback_on_failure(service: TestCaseService, mock_client: AsyncMock) -> None:
     """Test that test case is deleted (rolled back) if step creation fails."""
-    project_id = 1
     name = "Rollback Test"
     steps = [{"action": "Fail", "expected": "Soon"}]
 
@@ -444,7 +440,7 @@ async def test_create_test_case_rollback_on_failure(service: TestCaseService, mo
 
     # 3. Call and expect rollback error
     with pytest.raises(AllureAPIError, match="Test case creation failed and was rolled back"):
-        await service.create_test_case(project_id, name, steps=steps)
+        await service.create_test_case(name, steps=steps)
 
     # 4. Verify original creation AND rollback deletion were called
     mock_client.create_test_case.assert_called_once()
@@ -452,17 +448,15 @@ async def test_create_test_case_rollback_on_failure(service: TestCaseService, mo
 
 
 @pytest.fixture
-def mock_scenario_response() -> TestCaseScenarioDto:
+def mock_scenario_response() -> TestCaseScenarioV2Dto:
     """Mock response for get_test_case_scenario."""
-    # Note: TestCaseScenarioDto.attachments is a separate list from .steps.
-    # Attachments are only in .steps if they are actually step-level attachments.
-    # This fixture should reflect that structure.
-    step = TestCaseScenarioStepDto(name="Existing Step")
-    # Note: .attachments is for test-case levelattachments, but in preservation logic
-    # we look at steps. For this test, we need to have the attachment as a row
-    # in attachments list to simulate real-world response where global attachments exist.
-    att = TestCaseAttachmentRowDto(id=1, name="Existing Att", entity="TestCaseAttachmentRowDto")
-    return TestCaseScenarioDto(steps=[step], attachments=[att])
+    body_step = SharedStepScenarioDtoStepsInner(
+        actual_instance=BodyStepDtoWithSteps(type="BodyStepDto", body="Existing Step")
+    )
+    att_step = SharedStepScenarioDtoStepsInner(
+        actual_instance=AttachmentStepDtoWithName(type="AttachmentStepDto", attachment_id=1, name="Existing Att")
+    )
+    return TestCaseScenarioV2Dto(steps=[body_step, att_step])
 
 
 class TestUpdateTestCase:
@@ -505,7 +499,7 @@ class TestUpdateTestCase:
 
     @pytest.mark.asyncio
     async def test_update_steps_preserves_attachments(
-        self, service: TestCaseService, mock_client: AsyncMock, mock_scenario_response: TestCaseScenarioDto
+        self, service: TestCaseService, mock_client: AsyncMock, mock_scenario_response: TestCaseScenarioV2Dto
     ) -> None:
         """Test updating steps only preserve existing global attachments."""
         test_case_id = 999
@@ -534,19 +528,15 @@ class TestUpdateTestCase:
         assert clear_dto.scenario is not None
         assert clear_dto.scenario.steps == []
 
-        # Verify create_scenario_step was called for new action
-        # Note: The existing attachment in mock_scenario_response is in .attachments field,
-        # NOT in .steps, so it won't be preserved this way. The current implementation
-        # doesn't preserve attachments from the .attachments field (only from attachment steps).
-        # So we expect only 1 call for the new action.
-        assert mock_client.create_scenario_step.call_count == 1
+        # Verify create_scenario_step was called for new action and preserved attachment
+        assert mock_client.create_scenario_step.call_count == 2
 
     @pytest.mark.asyncio
     async def test_update_attachments_preserves_steps(
         self,
         service: TestCaseService,
         mock_client: AsyncMock,
-        mock_scenario_response: TestCaseScenarioDto,
+        mock_scenario_response: TestCaseScenarioV2Dto,
         mock_attachment_service: AsyncMock,
     ) -> None:
         """Test updating attachments only preserves existing steps."""
@@ -577,19 +567,13 @@ class TestUpdateTestCase:
         mock_attachment_service.upload_attachment.assert_called_once()
 
         # Verify create_scenario_step was called:
-        # The existing step in mock_scenario_response is a TestCaseScenarioStepDto
-        # (just has a name field). The preservation logic in _get_existing_steps_to_preserve
-        # checks if step.actual_instance isinstance AttachmentStepDto - but TestCaseScenarioStepDto
-        # isn't wrapped in actual_instance in the client layer conversion.
-        # So it won't find the existing step type correctly.
-        # In reality, _get_existing_steps_to_preserve will not find preservable steps
-        # because the mock returns steps without proper actual_instance wrapping.
-        # We expect only 1 call for the new attachment.
-        assert mock_client.create_scenario_step.call_count == 1
+        # Existing body steps are preserved, and one new attachment step is added.
+        # We expect 2 calls: preserved body step + new attachment step.
+        assert mock_client.create_scenario_step.call_count == 2
 
     @pytest.mark.asyncio
     async def test_update_nested_steps(
-        self, service: TestCaseService, mock_client: AsyncMock, mock_scenario_response: TestCaseScenarioDto
+        self, service: TestCaseService, mock_client: AsyncMock, mock_scenario_response: TestCaseScenarioV2Dto
     ) -> None:
         """Test updating steps with nested hierarchy."""
         test_case_id = 999
@@ -654,9 +638,10 @@ class TestUpdateTestCase:
         test_case_id = 999
 
         # 1. Setup mock current scenario (to be restored)
-        # TestCaseScenarioDto expects TestCaseScenarioStepDto, not SharedStepScenarioDtoStepsInner
-        step = TestCaseScenarioStepDto(name="Old Step")
-        current_scenario = TestCaseScenarioDto(steps=[step])
+        step = SharedStepScenarioDtoStepsInner(
+            actual_instance=BodyStepDtoWithSteps(type="BodyStepDto", body="Old Step")
+        )
+        current_scenario = TestCaseScenarioV2Dto(steps=[step])
         mock_client.get_test_case_scenario.return_value = current_scenario
 
         # 2. Mock update_test_case for clearing (success first time, success on rollback)

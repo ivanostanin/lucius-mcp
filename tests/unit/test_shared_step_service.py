@@ -1,7 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from pydantic import SecretStr
 
 from src.client import (
     AllureClient,
@@ -11,7 +10,6 @@ from src.client import (
 )
 from src.client.exceptions import AllureValidationError
 from src.services.shared_step_service import SharedStepService
-from src.utils.auth import AuthContext
 
 
 @pytest.fixture
@@ -21,12 +19,13 @@ def mock_client():
     client.create_shared_step_scenario_step = AsyncMock()
     client.list_shared_steps = AsyncMock()
     client.upload_shared_step_attachment = AsyncMock()
+    client.get_project.return_value = 1
     return client
 
 
 @pytest.fixture
 def service(mock_client):
-    return SharedStepService(AuthContext(api_token=SecretStr("token")), client=mock_client)
+    return SharedStepService(client=mock_client)
 
 
 @pytest.mark.asyncio
@@ -58,7 +57,7 @@ async def test_create_shared_step_success(service, mock_client):
         }
     ]
 
-    result = await service.create_shared_step(project_id=1, name="Shared Step", steps=steps)
+    result = await service.create_shared_step(name="Shared Step", steps=steps)
 
     assert result.id == 100
     mock_client.create_shared_step.assert_called_once_with(1, "Shared Step")
@@ -93,7 +92,7 @@ async def test_list_shared_steps_success(service, mock_client):
     )
     mock_client.list_shared_steps.return_value = mock_page
 
-    result = await service.list_shared_steps(project_id=1, search="Step")
+    result = await service.list_shared_steps(search="Step")
 
     assert len(result) == 2
     assert result[0].name == "Step 1"
@@ -103,11 +102,13 @@ async def test_list_shared_steps_success(service, mock_client):
 @pytest.mark.asyncio
 async def test_create_shared_step_fail_validation(service):
     """Test validation errors."""
+    service._client.get_project.return_value = -1
     with pytest.raises(AllureValidationError):
-        await service.create_shared_step(project_id=-1, name="Valid")
+        await service.create_shared_step(name="Valid")
 
+    service._client.get_project.return_value = 1
     with pytest.raises(AllureValidationError):
-        await service.create_shared_step(project_id=1, name="")
+        await service.create_shared_step(name="")
 
 
 # ==========================================

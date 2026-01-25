@@ -1,7 +1,6 @@
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from pydantic import SecretStr
 
 from src.client import AllureClient
 from src.client.exceptions import AllureValidationError
@@ -10,13 +9,13 @@ from src.client.generated.models import (
 )
 from src.services.attachment_service import AttachmentService
 from src.services.test_case_service import TestCaseService
-from src.utils.auth import AuthContext
 
 
 @pytest.fixture
 def mock_client() -> AsyncMock:
     client = AsyncMock(spec=AllureClient)
     client.api_client = Mock()
+    client.get_project.return_value = 1
     return client
 
 
@@ -28,7 +27,6 @@ def mock_attachment_service() -> AsyncMock:
 @pytest.fixture
 def service(mock_client: AsyncMock, mock_attachment_service: AsyncMock) -> TestCaseService:
     return TestCaseService(
-        AuthContext(api_token=SecretStr("token")),
         client=mock_client,
         attachment_service=mock_attachment_service,
     )

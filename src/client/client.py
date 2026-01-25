@@ -6,7 +6,8 @@ standardized error handling.
 """
 
 import time
-from typing import Any
+from collections.abc import Awaitable
+from typing import TypeVar
 
 import httpx
 from pydantic import SecretStr
@@ -87,6 +88,8 @@ class SharedStepStepDtoWithId(SharedStepStepDto):
 
 logger = get_logger(__name__)
 
+T = TypeVar("T")
+
 # Export models for convenience
 __all__ = [
     "AllureClient",
@@ -95,8 +98,6 @@ __all__ = [
     "PageSharedStepDto",
     "PageTestCaseDto",
     "ScenarioStepCreateDto",
-    "ScenarioStepCreateDto",
-    "ScenarioStepCreatedResponseDto",
     "ScenarioStepCreatedResponseDto",
     "SharedStepAttachmentRowDto",
     "SharedStepCreateDto",
@@ -171,7 +172,6 @@ class AllureClient:
         self._shared_step_attachment_api: SharedStepAttachmentControllerApi | None = None
         self._attachment_api: TestCaseAttachmentControllerApi | None = None
         self._scenario_api: TestCaseScenarioControllerApi | None = None
-        self._test_case_scenario_api: TestCaseScenarioControllerApi | None = None
         self._shared_step_scenario_api: SharedStepScenarioControllerApi | None = None
         self._overview_api: TestCaseOverviewControllerApi
         self._search_api: TestCaseSearchControllerApi | None = None
@@ -307,7 +307,6 @@ class AllureClient:
             self._shared_step_attachment_api = SharedStepAttachmentControllerApi(self._api_client)
             self._attachment_api = TestCaseAttachmentControllerApi(self._api_client)
             self._scenario_api = TestCaseScenarioControllerApi(self._api_client)
-            self._test_case_scenario_api = TestCaseScenarioControllerApi(self._api_client)
             self._shared_step_scenario_api = SharedStepScenarioControllerApi(self._api_client)
             self._overview_api = TestCaseOverviewControllerApi(self._api_client)
             self._search_api = TestCaseSearchControllerApi(self._api_client)
@@ -375,6 +374,98 @@ class AllureClient:
 
         raise AllureAPIError(f"API request failed: {body}", status_code=status, response_body=body) from e
 
+    def _require_entered(self) -> None:
+        if not self._is_entered:
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+
+    @staticmethod
+    def _raise_missing_api(api_name: str) -> None:
+        raise AllureAPIError(f"Internal error: {api_name} not initialized")
+
+    async def _get_api(self, attr_name: str, *, error_name: str | None = None) -> T:
+        self._require_entered()
+        await self._ensure_valid_token()
+        api = getattr(self, attr_name)
+        if api is None:
+            self._raise_missing_api(error_name or attr_name.lstrip("_"))
+        return api
+
+    async def _call_api(self, coro: Awaitable[T]) -> T:
+        try:
+            return await coro
+        except ApiException as e:
+            self._handle_api_exception(e)
+            raise
+
+    async def _call_api_raw(self, coro: Awaitable[httpx.Response]) -> httpx.Response:
+        try:
+            return await coro
+        except ApiException as e:
+            self._handle_api_exception(e)
+            raise
+
+    def _extract_response_data(self, response: httpx.Response) -> dict:
+        if not 200 <= response.status_code <= 299:
+            raise ApiException(status=response.status_code, reason=response.reason_phrase, body=response.text)
+        return response.json()
+
+    async def _create_scenario_step_via_api(
+        self,
+        api: TestCaseScenarioControllerApi | SharedStepScenarioControllerApi,
+        step: ScenarioStepCreateDto,
+        *,
+        after_id: int | None = None,
+        with_expected_result: bool = False,
+    ) -> ScenarioStepCreatedResponseDto:
+        if isinstance(api, TestCaseScenarioControllerApi):
+            response = await self._call_api_raw(
+                api.create15_without_preload_content(
+                    scenario_step_create_dto=step,
+                    after_id=after_id,
+                    with_expected_result=with_expected_result,
+                    _request_timeout=self._timeout,
+                )
+            )
+        else:
+            response = await self._call_api_raw(
+                api.create20_without_preload_content(
+                    scenario_step_create_dto=step,
+                    _request_timeout=self._timeout,
+                )
+            )
+        data = self._extract_response_data(response)
+        return ScenarioStepCreatedResponseDto.model_construct(
+            created_step_id=data.get("createdStepId"),
+        )
+
+    async def _upload_attachment_via_api(
+        self,
+        api: TestCaseAttachmentControllerApi | SharedStepAttachmentControllerApi,
+        *,
+        test_case_id: int | None = None,
+        shared_step_id: int | None = None,
+        file_data: list[bytes | str | tuple[str, bytes]],
+    ) -> list[TestCaseAttachmentRowDto] | list[SharedStepAttachmentRowDto]:
+        if isinstance(api, TestCaseAttachmentControllerApi):
+            if test_case_id is None:
+                raise AllureValidationError("test_case_id is required for test case attachment upload")
+            return await self._call_api(
+                api.create16(
+                    test_case_id=test_case_id,
+                    file=file_data,
+                    _request_timeout=self._timeout,
+                )
+            )
+        if shared_step_id is None:
+            raise AllureValidationError("shared_step_id is required for shared step attachment upload")
+        return await self._call_api(
+            api.create21(
+                shared_step_id=shared_step_id,
+                file=file_data,
+                _request_timeout=self._timeout,
+            )
+        )
+
     # ==========================================
     # Test Case operations
     # ==========================================
@@ -394,26 +485,15 @@ class AllureClient:
             AllureAuthError: If unauthorized.
             AllureAPIError: If the server returns an error.
         """
-        if not self._is_entered:
-            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
-
-        await self._ensure_valid_token()
-        if self._test_case_api is None:
-            # This should not happen if _is_entered is True
-            raise AllureAPIError("Internal error: test_case_api not initialized")
+        api = await self._get_api("_test_case_api")
 
         # Ensure project_id is set in the body as required by the model
         if hasattr(data, "project_id") and not data.project_id:
             data.project_id = self._project
-        try:
-            # create13 is the generated method name for POST /api/testcase
-            response = await self._test_case_api.create13(test_case_create_v2_dto=data, _request_timeout=self._timeout)
-            # Switch view from TestCaseDto to TestCaseOverviewDto
-            # Since fields are compatible (mostly optional), we can use model_dump/validate
-            return TestCaseOverviewDto.model_validate(response.model_dump())
-        except ApiException as e:
-            self._handle_api_exception(e)
-            raise  # Should not be reached
+        response = await self._call_api(api.create13(test_case_create_v2_dto=data, _request_timeout=self._timeout))
+        # Switch view from TestCaseDto to TestCaseOverviewDto
+        # Since fields are compatible (mostly optional), we can use model_dump/validate
+        return TestCaseOverviewDto.model_validate(response.model_dump())
 
     @staticmethod
     def _escape_rql_value(value: str) -> str:
@@ -459,12 +539,7 @@ class AllureClient:
             AllureAuthError: If unauthorized.
             AllureAPIError: If the server returns an error.
         """
-        if not self._is_entered:
-            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
-
-        await self._ensure_valid_token()
-        if self._search_api is None:
-            raise AllureAPIError("Internal error: test_case search APIs not initialized")
+        search_api = await self._get_api("_search_api", error_name="test_case search APIs")
 
         if not isinstance(project_id, int) or project_id <= 0:
             raise AllureValidationError("Project ID must be a positive integer")
@@ -476,17 +551,15 @@ class AllureClient:
 
         rql = self._build_rql_filters(search=search, status=status, tags=tags)
 
-        try:
-            return await self._search_api.search1(
+        return await self._call_api(
+            search_api.search1(
                 project_id=project_id,
                 rql=rql,
                 page=page,
                 size=size,
                 _request_timeout=self._timeout,
             )
-        except ApiException as e:
-            self._handle_api_exception(e)
-            raise
+        )
 
     async def upload_attachment(
         self,
@@ -507,22 +580,12 @@ class AllureClient:
             AllureAuthError: If unauthorized.
             AllureAPIError: If the server returns an error.
         """
-        if not self._is_entered:
-            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
-
-        await self._ensure_valid_token()
-        if self._attachment_api is None:
-            raise AllureAPIError("Internal error: attachment_api not initialized")
-
-        try:
-            return await self._attachment_api.create16(
-                test_case_id=test_case_id,
-                file=file_data,
-                _request_timeout=self._timeout,
-            )
-        except ApiException as e:
-            self._handle_api_exception(e)
-            raise
+        attachment_api = await self._get_api("_attachment_api")
+        return await self._upload_attachment_via_api(
+            attachment_api,
+            test_case_id=test_case_id,
+            file_data=file_data,
+        )
 
     async def create_scenario_step(
         self,
@@ -548,49 +611,27 @@ class AllureClient:
             AllureAuthError: If unauthorized.
             AllureAPIError: If the server returns an error.
         """
-        if not self._is_entered:
-            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
-
-        await self._ensure_valid_token()
-        if self._scenario_api is None:
-            raise AllureAPIError("Internal error: scenario_api not initialized")
+        scenario_api = await self._get_api("_scenario_api")
 
         # Ensure test_case_id is set
         if step.test_case_id is None:
-            step = ScenarioStepCreateDto(
-                test_case_id=test_case_id,
-                body=step.body,
-                body_json=step.body_json,
-                attachment_id=step.attachment_id,
-                shared_step_id=step.shared_step_id,
-                parent_id=step.parent_id,
+            step = ScenarioStepCreateDto.model_validate(
+                {
+                    "testCaseId": test_case_id,
+                    "body": step.body,
+                    "bodyJson": step.body_json,
+                    "attachmentId": step.attachment_id,
+                    "sharedStepId": step.shared_step_id,
+                    "parentId": step.parent_id,
+                }
             )
 
-        try:
-            # We use without_preload_content to skip the problematic generated
-            # deserialization of NormalizedScenarioDto, which fails due to
-            # ambiguous oneOf schema matching for attachments.
-            response = await self._scenario_api.create15_without_preload_content(
-                scenario_step_create_dto=step,
-                after_id=after_id,
-                with_expected_result=with_expected_result,
-                _request_timeout=self._timeout,
-            )
-
-            # response is an httpx.Response object. Check for success status.
-            if not 200 <= response.status_code <= 299:
-                # Manually raise ApiException as the without_preload variant doesn't do it.
-                raise ApiException(status=response.status_code, reason=response.reason_phrase, body=response.text)
-
-            data = response.json()
-            # Use model_construct to bypass validation of the scenario field while
-            # providing the created_step_id needed by TestCaseService.
-            return ScenarioStepCreatedResponseDto.model_construct(
-                created_step_id=data.get("createdStepId"),
-            )
-        except ApiException as e:
-            self._handle_api_exception(e)
-            raise  # Should not be reached
+        return await self._create_scenario_step_via_api(
+            scenario_api,
+            step,
+            after_id=after_id,
+            with_expected_result=with_expected_result,
+        )
 
     async def delete_scenario_step(self, step_id: int) -> None:
         """Delete a scenario step.
@@ -601,21 +642,13 @@ class AllureClient:
         Raises:
             AllureAPIError: If the API request fails.
         """
-        if not self._is_entered:
-            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
-
-        await self._ensure_valid_token()
-        if self._scenario_api is None:
-            raise AllureAPIError("Internal error: scenario_api not initialized")
-
-        try:
-            await self._scenario_api.delete_by_id1(
+        scenario_api = await self._get_api("_scenario_api")
+        await self._call_api(
+            scenario_api.delete_by_id1(
                 id=step_id,
                 _request_timeout=self._timeout,
             )
-        except ApiException as e:
-            self._handle_api_exception(e)
-            raise  # Should not be reached
+        )
 
     async def get_test_case(self, test_case_id: int) -> TestCaseDto:
         """Retrieve a specific test case by its ID.
@@ -631,23 +664,15 @@ class AllureClient:
             AllureAuthError: If unauthorized.
             AllureAPIError: If the server returns an error.
         """
-        if not self._is_entered:
-            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
-
-        await self._ensure_valid_token()
-        if self._test_case_api is None:
-            raise AllureAPIError("Internal error: test_case_api not initialized")
+        test_case_api = await self._get_api("_test_case_api")
 
         try:
             # Use _without_preload_content to get raw JSON for missing fields (like customFields)
             # Actually, for customFields we now use get_overview
-            response = await self._test_case_api.find_one11_without_preload_content(
-                id=test_case_id, _request_timeout=self._timeout
+            response = await self._call_api_raw(
+                test_case_api.find_one11_without_preload_content(id=test_case_id, _request_timeout=self._timeout)
             )
-            if not 200 <= response.status_code <= 299:
-                raise ApiException(status=response.status_code, reason=response.reason_phrase, body=response.text)
-
-            raw_data = response.json()
+            raw_data = self._extract_response_data(response)
             # Use our subclass to support extra fields
             case = TestCaseDtoWithCF.model_validate(raw_data)
 
@@ -695,23 +720,14 @@ class AllureClient:
             AllureAuthError: If unauthorized.
             AllureAPIError: If the server returns an error.
         """
-        if not self._is_entered:
-            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
-
-        await self._ensure_valid_token()
-        if self._test_case_api is None:
-            raise AllureAPIError("Internal error: test_case_api not initialized")
-
-        try:
-            # print(f"DEBUG Payload: {data.to_json()}")
-            return await self._test_case_api.patch13(
+        test_case_api = await self._get_api("_test_case_api")
+        return await self._call_api(
+            test_case_api.patch13(
                 id=test_case_id,
                 test_case_patch_v2_dto=data,
                 _request_timeout=self._timeout,
             )
-        except ApiException as e:
-            self._handle_api_exception(e)
-            raise
+        )
 
     async def get_test_case_scenario(self, test_case_id: int) -> TestCaseScenarioV2Dto:
         """Retrieve the scenario (steps and attachments) for a test case.
@@ -727,44 +743,34 @@ class AllureClient:
             AllureAuthError: If unauthorized.
             AllureAPIError: If the server returns an error.
         """
-        if not self._is_entered:
-            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+        scenario_api = await self._get_api("_scenario_api", error_name="test_case_scenario_api")
 
-        await self._ensure_valid_token()
-        if self._test_case_scenario_api is None:
-            raise AllureAPIError("Internal error: test_case_scenario_api not initialized")
-
-        try:
-            # Use _without_preload_content to bypass broken oneOf deserialization
-            response = await self._test_case_scenario_api.get_normalized_scenario_without_preload_content(
+        response = await self._call_api_raw(
+            scenario_api.get_normalized_scenario_without_preload_content(
                 id=test_case_id, _request_timeout=self._timeout
             )
+        )
+        raw_data = self._extract_response_data(response)
+        # print(f"DEBUG Initial Raw Normalized Scenario: {raw_data}")
+        return self._denormalize_to_v2_from_dict(raw_data)
 
-            if not 200 <= response.status_code <= 299:
-                raise ApiException(status=response.status_code, reason=response.reason_phrase, body=response.text)
-
-            raw_data = response.json()
-            # print(f"DEBUG Initial Raw Normalized Scenario: {raw_data}")
-            return self._denormalize_to_v2_from_dict(raw_data)
-        except ApiException as e:
-            self._handle_api_exception(e)
-            raise
-
-    def _denormalize_to_v2_from_dict(self, raw: dict[str, Any]) -> TestCaseScenarioV2Dto:
+    def _denormalize_to_v2_from_dict(self, raw: dict) -> TestCaseScenarioV2Dto:
         """Convert a raw NormalizedScenarioDto dict into a TestCaseScenarioV2Dto tree.
 
         This bypasses the generated from_dict which has broken oneOf deserialization.
         """
-        root = raw.get("root")
-        if not root:
+        raw_root = raw.get("root")
+        if not isinstance(raw_root, dict):
             return TestCaseScenarioV2Dto(steps=[])
 
-        root_children = root.get("children")
-        if not root_children:
+        root_children = raw_root.get("children")
+        if not isinstance(root_children, list):
             return TestCaseScenarioV2Dto(steps=[])
 
-        scenario_steps = raw.get("scenarioSteps", {})
-        attachments_map = raw.get("attachments", {})
+        scenario_steps_raw = raw.get("scenarioSteps", {})
+        scenario_steps = scenario_steps_raw if isinstance(scenario_steps_raw, dict) else {}
+        attachments_raw = raw.get("attachments", {})
+        attachments_map = attachments_raw if isinstance(attachments_raw, dict) else {}
 
         # Recursive helper to build steps
         def build_steps(step_ids: list[int]) -> list[SharedStepScenarioDtoStepsInner]:
@@ -843,18 +849,8 @@ class AllureClient:
         Raises:
             AllureAPIError: If the API request fails.
         """
-        if not self._is_entered:
-            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
-
-        await self._ensure_valid_token()
-        if self._test_case_api is None:
-            raise AllureAPIError("Internal error: test_case_api not initialized")
-
-        try:
-            await self._test_case_api.delete13(id=test_case_id)
-        except ApiException as e:
-            self._handle_api_exception(e)
-            raise  # Should not be reached
+        test_case_api = await self._get_api("_test_case_api")
+        await self._call_api(test_case_api.delete13(id=test_case_id))
 
     # ==========================================
     # Shared Step operations
@@ -876,19 +872,9 @@ class AllureClient:
             AllureAuthError: If unauthorized.
             AllureAPIError: If the server returns an error.
         """
-        if not self._is_entered:
-            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
-
-        await self._ensure_valid_token()
-        if self._shared_step_api is None:
-            raise AllureAPIError("Internal error: shared_step_api not initialized")
-
-        try:
-            dto = SharedStepCreateDto(name=name, project_id=project_id)
-            return await self._shared_step_api.create19(shared_step_create_dto=dto, _request_timeout=self._timeout)
-        except ApiException as e:
-            self._handle_api_exception(e)
-            raise
+        shared_step_api = await self._get_api("_shared_step_api")
+        dto = SharedStepCreateDto(name=name, project_id=project_id)
+        return await self._call_api(shared_step_api.create19(dto, _request_timeout=self._timeout))
 
     async def list_shared_steps(
         self,
@@ -910,25 +896,18 @@ class AllureClient:
         Returns:
             Paginated list of shared steps.
         """
-        if not self._is_entered:
-            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
-
-        await self._ensure_valid_token()
-        if self._shared_step_api is None:
-            raise AllureAPIError("Internal error: shared_step_api not initialized")
-
-        try:
-            return await self._shared_step_api.find_all16(
-                project_id=project_id,
-                page=page,
-                size=size,
-                search=search,
-                archived=archived,
+        shared_step_api = await self._get_api("_shared_step_api")
+        return await self._call_api(
+            shared_step_api.find_all16(
+                project_id,
+                search,
+                archived,
+                page,
+                size,
+                None,
                 _request_timeout=self._timeout,
             )
-        except ApiException as e:
-            self._handle_api_exception(e)
-            raise
+        )
 
     async def create_shared_step_scenario_step(
         self,
@@ -942,38 +921,12 @@ class AllureClient:
         Returns:
             Response containing created step ID.
         """
-        if not self._is_entered:
-            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
-
-        await self._ensure_valid_token()
-        if self._shared_step_scenario_api is None:
-            raise AllureAPIError("Internal error: shared_step_scenario_api not initialized")
+        shared_step_scenario_api = await self._get_api("_shared_step_scenario_api")
 
         if not step.shared_step_id:
             raise AllureValidationError("shared_step_id is required for shared step scenario steps")
 
-        try:
-            # We use without_preload_content to skip the problematic generated
-            # deserialization of NormalizedScenarioDto, which fails due to
-            # ambiguous oneOf schema matching for attachments.
-            response = await self._shared_step_scenario_api.create20_without_preload_content(
-                scenario_step_create_dto=step,
-                _request_timeout=self._timeout,
-            )
-
-            # response is an httpx.Response object. Check for success status.
-            if not 200 <= response.status_code <= 299:
-                raise ApiException(status=response.status_code, reason=response.reason_phrase, body=response.text)
-
-            data = response.json()
-            # Use model_construct to bypass validation of the scenario field while
-            # providing the created_step_id needed by SharedStepService.
-            return ScenarioStepCreatedResponseDto.model_construct(
-                created_step_id=data.get("createdStepId"),
-            )
-        except ApiException as e:
-            self._handle_api_exception(e)
-            raise
+        return await self._create_scenario_step_via_api(shared_step_scenario_api, step)
 
     async def upload_shared_step_attachment(
         self,
@@ -989,22 +942,12 @@ class AllureClient:
         Returns:
             List of created attachment records.
         """
-        if not self._is_entered:
-            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
-
-        await self._ensure_valid_token()
-        if self._shared_step_attachment_api is None:
-            raise AllureAPIError("Internal error: shared_step_attachment_api not initialized")
-
-        try:
-            return await self._shared_step_attachment_api.create21(
-                shared_step_id=shared_step_id,
-                file=file_data,
-                _request_timeout=self._timeout,
-            )
-        except ApiException as e:
-            self._handle_api_exception(e)
-            raise
+        shared_step_attachment_api = await self._get_api("_shared_step_attachment_api")
+        return await self._upload_attachment_via_api(
+            shared_step_attachment_api,
+            shared_step_id=shared_step_id,
+            file_data=file_data,
+        )
 
     async def archive_shared_step(self, shared_step_id: int) -> None:
         """Archive a shared step.
@@ -1012,18 +955,8 @@ class AllureClient:
         Args:
             shared_step_id: ID of the shared step to archive.
         """
-        if not self._is_entered:
-            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
-
-        await self._ensure_valid_token()
-        if self._shared_step_api is None:
-            raise AllureAPIError("Internal error: shared_step_api not initialized")
-
-        try:
-            await self._shared_step_api.archive(id=shared_step_id, _request_timeout=self._timeout)
-        except ApiException as e:
-            self._handle_api_exception(e)
-            raise
+        shared_step_api = await self._get_api("_shared_step_api")
+        await self._call_api(shared_step_api.archive(id=shared_step_id, _request_timeout=self._timeout))
 
     async def get_shared_step(self, shared_step_id: int) -> SharedStepDto:
         """Retrieve a specific shared step by its ID.
@@ -1039,18 +972,8 @@ class AllureClient:
             AllureAuthError: If unauthorized.
             AllureAPIError: If the server returns an error.
         """
-        if not self._is_entered:
-            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
-
-        await self._ensure_valid_token()
-        if self._shared_step_api is None:
-            raise AllureAPIError("Internal error: shared_step_api not initialized")
-
-        try:
-            return await self._shared_step_api.find_one15(id=shared_step_id, _request_timeout=self._timeout)
-        except ApiException as e:
-            self._handle_api_exception(e)
-            raise
+        shared_step_api = await self._get_api("_shared_step_api")
+        return await self._call_api(shared_step_api.find_one15(id=shared_step_id, _request_timeout=self._timeout))
 
     async def update_shared_step(self, shared_step_id: int, data: SharedStepPatchDto) -> SharedStepDto:
         """Update an existing shared step with new data.
@@ -1068,22 +991,14 @@ class AllureClient:
             AllureAuthError: If unauthorized.
             AllureAPIError: If the server returns an error.
         """
-        if not self._is_entered:
-            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
-
-        await self._ensure_valid_token()
-        if self._shared_step_api is None:
-            raise AllureAPIError("Internal error: shared_step_api not initialized")
-
-        try:
-            return await self._shared_step_api.patch18(
+        shared_step_api = await self._get_api("_shared_step_api")
+        return await self._call_api(
+            shared_step_api.patch18(
                 id=shared_step_id,
                 shared_step_patch_dto=data,
                 _request_timeout=self._timeout,
             )
-        except ApiException as e:
-            self._handle_api_exception(e)
-            raise
+        )
 
     async def delete_shared_step(self, shared_step_id: int) -> None:
         """Delete a shared step from the system.
@@ -1097,16 +1012,6 @@ class AllureClient:
             AllureNotFoundError: If shared step doesn't exist.
             AllureAPIError: If the API request fails.
         """
-        if not self._is_entered:
-            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
-
-        await self._ensure_valid_token()
-        if self._shared_step_api is None:
-            raise AllureAPIError("Internal error: shared_step_api not initialized")
-
-        try:
-            # Soft delete via archive
-            await self._shared_step_api.archive(id=shared_step_id, _request_timeout=self._timeout)
-        except ApiException as e:
-            self._handle_api_exception(e)
-            raise
+        shared_step_api = await self._get_api("_shared_step_api")
+        # Soft delete via archive
+        await self._call_api(shared_step_api.archive(id=shared_step_id, _request_timeout=self._timeout))

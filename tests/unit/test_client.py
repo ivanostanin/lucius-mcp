@@ -49,7 +49,7 @@ def oauth_route(base_url: str, mock_oauth_response: dict[str, object]) -> respx.
 @respx.mock
 async def test_client_initialization(base_url: str, token: SecretStr, oauth_route: respx.Route) -> None:
     """Test that AllureClient initializes correctly and exchanges token."""
-    async with AllureClient(base_url, token) as client:
+    async with AllureClient(base_url, token, project=1) as client:
         assert client._base_url == base_url
         assert client._token == token
         assert client._api_client is not None
@@ -62,7 +62,7 @@ async def test_client_initialization(base_url: str, token: SecretStr, oauth_rout
 @respx.mock
 async def test_client_context_manager_closes(base_url: str, token: SecretStr, oauth_route: respx.Route) -> None:
     """Test that client closes properly on context manager exit."""
-    async with AllureClient(base_url, token) as client:
+    async with AllureClient(base_url, token, project=1) as client:
         api_client = client._api_client
         assert api_client is not None
         # Check if underlying pool manager is open (if initialized)
@@ -78,11 +78,11 @@ async def test_client_context_manager_closes(base_url: str, token: SecretStr, oa
 @respx.mock
 async def test_method_not_initialized(base_url: str, token: SecretStr, oauth_route: respx.Route) -> None:
     """Test that methods raise error when client not initialized."""
-    client = AllureClient(base_url, token)
+    client = AllureClient(base_url, token, project=1)
     # create_test_case will check if self._test_case_api is not None, raising AllureAPIError
     # The current implementation raises AllureAPIError with a clear message.
     with pytest.raises(AllureAPIError, match="Client not initialized"):
-        await client.create_test_case(1, TestCaseCreateV2Dto(name="Test", project_id=1))
+        await client.create_test_case(TestCaseCreateV2Dto(name="Test", project_id=1))
 
 
 @pytest.mark.asyncio
@@ -102,9 +102,9 @@ async def test_create_test_case_success(base_url: str, token: SecretStr, oauth_r
     # We should return mock response that matches what server sends (camelCase usually?)
     route = respx.post(f"{base_url}/api/testcase").mock(return_value=Response(200, json=mock_response))
 
-    async with AllureClient(base_url, token) as client:
+    async with AllureClient(base_url, token, project=1) as client:
         dto = TestCaseCreateV2Dto(name="Test Case", project_id=1, automation="manual")
-        result = await client.create_test_case(1, dto)
+        result = await client.create_test_case(dto)
 
     assert isinstance(result, TestCaseOverviewDto)
     assert result.id == 101
@@ -119,10 +119,10 @@ async def test_create_test_case_404_raises_not_found(base_url: str, token: Secre
     """Test that 404 raises AllureNotFoundError."""
     respx.post(f"{base_url}/api/testcase").mock(return_value=Response(404, text="Not Found"))
 
-    async with AllureClient(base_url, token) as client:
+    async with AllureClient(base_url, token, project=1) as client:
         dto = TestCaseCreateV2Dto(name="Test Case", project_id=1)
         with pytest.raises(AllureNotFoundError, match="Resource not found"):
-            await client.create_test_case(1, dto)
+            await client.create_test_case(dto)
 
 
 @pytest.mark.asyncio
@@ -133,10 +133,10 @@ async def test_create_test_case_400_raises_validation_error(
     """Test that 400 raises AllureValidationError."""
     respx.post(f"{base_url}/api/testcase").mock(return_value=Response(400, text="Bad Request"))
 
-    async with AllureClient(base_url, token) as client:
+    async with AllureClient(base_url, token, project=1) as client:
         dto = TestCaseCreateV2Dto(name="Test Case", project_id=1)
         with pytest.raises(AllureValidationError, match="Validation error"):
-            await client.create_test_case(1, dto)
+            await client.create_test_case(dto)
 
 
 @pytest.mark.asyncio
@@ -147,10 +147,10 @@ async def test_create_test_case_401_raises_auth_error(
     """Test that 401 raises AllureAuthError."""
     respx.post(f"{base_url}/api/testcase").mock(return_value=Response(401, text="Unauthorized"))
 
-    async with AllureClient(base_url, token) as client:
+    async with AllureClient(base_url, token, project=1) as client:
         dto = TestCaseCreateV2Dto(name="Test Case", project_id=1)
         with pytest.raises(AllureAuthError, match="Authentication failed"):
-            await client.create_test_case(1, dto)
+            await client.create_test_case(dto)
 
 
 @pytest.mark.asyncio
@@ -161,10 +161,10 @@ async def test_create_test_case_403_raises_auth_error(
     """Test that 403 raises AllureAuthError."""
     respx.post(f"{base_url}/api/testcase").mock(return_value=Response(403, text="Forbidden"))
 
-    async with AllureClient(base_url, token) as client:
+    async with AllureClient(base_url, token, project=1) as client:
         dto = TestCaseCreateV2Dto(name="Test Case", project_id=1)
         with pytest.raises(AllureAuthError, match="Authentication failed"):
-            await client.create_test_case(1, dto)
+            await client.create_test_case(dto)
 
 
 @pytest.mark.asyncio
@@ -175,10 +175,10 @@ async def test_create_test_case_429_raises_rate_limit_error(
     """Test that 429 raises AllureRateLimitError."""
     respx.post(f"{base_url}/api/testcase").mock(return_value=Response(429, text="Too Many Requests"))
 
-    async with AllureClient(base_url, token) as client:
+    async with AllureClient(base_url, token, project=1) as client:
         dto = TestCaseCreateV2Dto(name="Test Case", project_id=1)
         with pytest.raises(AllureRateLimitError, match="Rate limit exceeded"):
-            await client.create_test_case(1, dto)
+            await client.create_test_case(dto)
 
 
 @pytest.mark.asyncio
@@ -189,10 +189,10 @@ async def test_create_test_case_500_raises_generic_api_error(
     """Test that 500 raises generic AllureAPIError."""
     respx.post(f"{base_url}/api/testcase").mock(return_value=Response(500, text="Internal Server Error"))
 
-    async with AllureClient(base_url, token) as client:
+    async with AllureClient(base_url, token, project=1) as client:
         dto = TestCaseCreateV2Dto(name="Test Case", project_id=1)
         with pytest.raises(AllureAPIError, match="API request failed"):
-            await client.create_test_case(1, dto)
+            await client.create_test_case(dto)
 
 
 @pytest.mark.asyncio
@@ -202,7 +202,7 @@ async def test_get_test_case_success(base_url: str, token: SecretStr, oauth_rout
     mock_response = {"id": 1, "name": "Test Case"}
     route = respx.get(f"{base_url}/api/testcase/1").mock(return_value=Response(200, json=mock_response))
 
-    async with AllureClient(base_url, token) as client:
+    async with AllureClient(base_url, token, project=1) as client:
         result = await client.get_test_case(1)
 
     assert result.id == 1
@@ -217,7 +217,7 @@ async def test_update_test_case_success(base_url: str, token: SecretStr, oauth_r
     mock_response = {"id": 1, "name": "Updated Case"}
     route = respx.patch(f"{base_url}/api/testcase/1").mock(return_value=Response(200, json=mock_response))
 
-    async with AllureClient(base_url, token) as client:
+    async with AllureClient(base_url, token, project=1) as client:
         patch_dto = TestCasePatchV2Dto(name="Updated Case")
         result = await client.update_test_case(1, patch_dto)
 
@@ -232,7 +232,7 @@ async def test_delete_test_case_success(base_url: str, token: SecretStr, oauth_r
     """Test successful delete_test_case."""
     route = respx.delete(f"{base_url}/api/testcase/1").mock(return_value=Response(204))
 
-    async with AllureClient(base_url, token) as client:
+    async with AllureClient(base_url, token, project=1) as client:
         await client.delete_test_case(1)
 
     assert route.called
@@ -246,7 +246,7 @@ async def test_token_exchange_failure_raises_auth_error(base_url: str, token: Se
     respx.post(f"{base_url}/api/uaa/oauth/token").mock(return_value=Response(401, text="Invalid token"))
 
     with pytest.raises(AllureAuthError, match="Token exchange failed"):
-        async with AllureClient(base_url, token):
+        async with AllureClient(base_url, token, project=1):
             pass
 
 
@@ -264,7 +264,7 @@ async def test_token_renewal_on_expiry(base_url: str, token: SecretStr, monkeypa
     respx.post(f"{base_url}/api/uaa/oauth/token").mock(side_effect=mock_oauth_handler)
     respx.post(f"{base_url}/api/testcase").mock(return_value=Response(200, json={"id": 1, "name": "ok"}))
 
-    async with AllureClient(base_url, token) as client:
+    async with AllureClient(base_url, token, project=1) as client:
         assert call_count == 1
         assert client._jwt_token == "jwt-token-1"  # noqa: S105
 
@@ -273,7 +273,7 @@ async def test_token_renewal_on_expiry(base_url: str, token: SecretStr, monkeypa
 
         # Next request should trigger token refresh
         dto = TestCaseCreateV2Dto(name="Test Case", project_id=1, automation="manual")
-        await client.create_test_case(1, dto)
+        await client.create_test_case(dto)
 
         assert call_count == 2
         assert client._jwt_token == "jwt-token-2"  # noqa: S105
@@ -301,7 +301,7 @@ async def test_create_scenario_step_success(base_url: str, token: SecretStr, oau
 
     route = respx.post(f"{base_url}/api/testcase/step").mock(return_value=Response(200, json=mock_response))
 
-    async with AllureClient(base_url, token) as client:
+    async with AllureClient(base_url, token, project=1) as client:
         step_dto = ScenarioStepCreateDto(test_case_id=1, body="Action")
         result = await client.create_scenario_step(1, step_dto)
 
@@ -318,7 +318,7 @@ async def test_create_scenario_step_error_raises_validation_error(
     """Test that 400 in create_scenario_step raises AllureValidationError."""
     respx.post(f"{base_url}/api/testcase/step").mock(return_value=Response(400, text="Bad Request"))
 
-    async with AllureClient(base_url, token) as client:
+    async with AllureClient(base_url, token, project=1) as client:
         step_dto = ScenarioStepCreateDto(test_case_id=1, body="Action")
         with pytest.raises(AllureValidationError, match="Validation error"):
             await client.create_scenario_step(1, step_dto)

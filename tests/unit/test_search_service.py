@@ -1,7 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from pydantic import SecretStr
 
 from src.client import AllureClient, PageTestCaseDto, TestCaseDto, TestCaseDtoWithCF, TestCaseScenarioV2Dto
 from src.client.exceptions import AllureNotFoundError, AllureValidationError, TestCaseNotFoundError
@@ -10,7 +9,6 @@ from src.client.generated.models.custom_field_value_with_cf_dto import CustomFie
 from src.client.generated.models.test_tag_dto import TestTagDto
 from src.services.search_service import SearchQueryParser, SearchService, TestCaseDetails
 from src.tools.search import _format_search_results, _format_test_case_details
-from src.utils.auth import AuthContext
 
 
 @pytest.fixture
@@ -19,12 +17,13 @@ def mock_client() -> AllureClient:
     client.list_test_cases = AsyncMock()
     client.get_test_case = AsyncMock()
     client.get_test_case_scenario = AsyncMock()
+    client.get_project.return_value = 123
     return client
 
 
 @pytest.fixture
 def service(mock_client: AllureClient) -> SearchService:
-    return SearchService(AuthContext(api_token=SecretStr("token")), client=mock_client)
+    return SearchService(client=mock_client)
 
 
 @pytest.mark.asyncio
@@ -110,7 +109,7 @@ async def test_list_test_cases_returns_paginated_results(service: SearchService,
     )
     mock_client.list_test_cases.return_value = page
 
-    result = await service.list_test_cases(project_id=123)
+    result = await service.list_test_cases()
 
     assert result.total == 1
     assert result.page == 0
@@ -133,7 +132,6 @@ async def test_list_test_cases_passes_filters(service: SearchService, mock_clien
     mock_client.list_test_cases.return_value = page
 
     await service.list_test_cases(
-        project_id=123,
         page=1,
         size=50,
         name_filter="login",
@@ -157,7 +155,6 @@ async def test_search_test_cases_parses_query(service: SearchService, mock_clien
     mock_client.list_test_cases.return_value = page
 
     await service.search_test_cases(
-        project_id=123,
         query="login tag:smoke tag:auth",
         page=2,
         size=10,
@@ -176,27 +173,28 @@ async def test_search_test_cases_parses_query(service: SearchService, mock_clien
 
 @pytest.mark.asyncio
 async def test_list_test_cases_validates_project_id(service: SearchService) -> None:
+    service._client.get_project.return_value = 0
     with pytest.raises(AllureValidationError, match="Project ID is required and must be positive"):
-        await service.list_test_cases(project_id=0)
+        await service.list_test_cases()
 
 
 @pytest.mark.asyncio
 async def test_list_test_cases_validates_pagination(service: SearchService) -> None:
     with pytest.raises(AllureValidationError, match="Page must be a non-negative integer"):
-        await service.list_test_cases(project_id=1, page=-1)
+        await service.list_test_cases(page=-1)
 
     with pytest.raises(AllureValidationError, match="Size must be a positive integer"):
-        await service.list_test_cases(project_id=1, size=0)
+        await service.list_test_cases(size=0)
 
     with pytest.raises(AllureValidationError, match="Size must be 100 or less"):
-        await service.list_test_cases(project_id=1, size=101)
+        await service.list_test_cases(size=101)
 
 
 def test_format_search_results_handles_empty() -> None:
     empty_page = PageTestCaseDto(content=[], total_elements=0, number=0, size=20, total_pages=0)
-    empty_result = SearchService(AuthContext(api_token=SecretStr("token")), client=MagicMock())._build_result(
-        empty_page
-    )
+    mock_client = MagicMock(spec=AllureClient)
+    mock_client.get_project.return_value = 1
+    empty_result = SearchService(client=mock_client)._build_result(empty_page)
 
     text = _format_search_results(empty_result, "login tag:auth")
 
@@ -244,7 +242,9 @@ def test_format_search_results_includes_tags_and_pagination() -> None:
         TestCaseDto(id=2, name="Logout", tags=[]),
     ]
     page = PageTestCaseDto(content=items, total_elements=2, number=0, size=1, total_pages=2)
-    result = SearchService(AuthContext(api_token=SecretStr("token")), client=MagicMock())._build_result(page)
+    mock_client = MagicMock(spec=AllureClient)
+    mock_client.get_project.return_value = 1
+    result = SearchService(client=mock_client)._build_result(page)
 
     text = _format_search_results(result, "login")
 

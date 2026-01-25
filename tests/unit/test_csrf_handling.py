@@ -28,13 +28,13 @@ async def test_csrf_token_capture_and_injection() -> None:
         return_value=httpx.Response(200, json={"id": 123, "name": "Test Case"})
     )
 
-    async with AllureClient(base_url, token) as client:
+    async with AllureClient(base_url, token, project=1) as client:
         # The __aenter__ calls _ensure_valid_token which calls _get_jwt_token
         assert client._csrf_token == "test-csrf-token"  # noqa: S105
 
         # Now make an API call
         data = TestCaseCreateV2Dto(name="Test Case", project_id=1)
-        await client.create_test_case(project_id=1, data=data)
+        await client.create_test_case(data)
 
         # Verify the API call had the CSRF headers and cookies
         last_request = api_route.calls.last.request
@@ -58,10 +58,10 @@ async def test_logging_on_failure(caplog: pytest.LogCaptureFixture) -> None:
     # Mock API failure
     respx.post(f"{base_url}/api/testcase").mock(return_value=httpx.Response(400, content="Bad Request Data"))
 
-    async with AllureClient(base_url, token) as client:
+    async with AllureClient(base_url, token, project=1) as client:
         data = TestCaseCreateV2Dto(name="Test Case", project_id=1)
         with pytest.raises(AllureValidationError):
-            await client.create_test_case(project_id=1, data=data)
+            await client.create_test_case(data)
 
     # Check logs
     assert "API request failed with status 400" in caplog.text
