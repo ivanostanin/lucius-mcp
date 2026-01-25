@@ -37,7 +37,7 @@ async def update_test_case(  # noqa: C901
         list[dict[str, str]] | None,
         Field(description="New list of external links. Each dict has 'name', 'url', and optional 'type'."),
     ] = None,
-    project_id: int | None = None,
+    project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
 ) -> str:
     """Update an existing test case in Allure TestOps.
 

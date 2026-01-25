@@ -1,6 +1,8 @@
 """Tool for unlinking Shared Steps from Test Cases."""
 
-from typing import Any
+from typing import Annotated, Any
+
+from pydantic import Field
 
 from src.client import AllureClient
 from src.client.generated.models.shared_step_step_dto import SharedStepStepDto
@@ -25,9 +27,9 @@ def _format_steps(scenario: Any) -> str:
 
 
 async def unlink_shared_step(
-    test_case_id: int,
-    shared_step_id: int,
-    project_id: int | None = None,
+    test_case_id: Annotated[int, Field(description="The test case to modify.")],
+    shared_step_id: Annotated[int, Field(description="The shared step to unlink.")],
+    project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
 ) -> str:
     """Remove a shared step reference from a test case.
 

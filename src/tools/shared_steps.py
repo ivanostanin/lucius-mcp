@@ -1,15 +1,26 @@
-from typing import Any
+from typing import Annotated, Any
 
-from fastmcp import FastMCP
+from pydantic import Field
 
 from src.client import AllureClient
 from src.services.shared_step_service import SharedStepService
 
 
 async def create_shared_step(
-    name: str,
-    steps: list[dict[str, Any]] | None = None,
-    project_id: int | None = None,
+    name: Annotated[str, Field(description='The name of the shared step (e.g., "Login as Admin").')],
+    steps: Annotated[
+        list[dict[str, Any]] | None,
+        Field(
+            description="Optional list of steps. Each step is a dictionary with:"
+            ' - action (str): The step description (e.g., "Enter username").'
+            " - expected (str, optional): The expected result."
+            " - attachments (list[dict], optional): List of attachments containing:"
+            "   - content (str): Base64 encoded content."
+            "   - name (str): Filename."
+            " - steps (list[dict], optional): Nested steps (recursive structure)."
+        ),
+    ] = None,
+    project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
 ) -> str:
     """Create a new reusable Shared Step.
 
@@ -39,11 +50,11 @@ async def create_shared_step(
 
 
 async def list_shared_steps(
-    page: int = 0,
-    size: int = 100,
-    search: str | None = None,
-    archived: bool = False,
-    project_id: int | None = None,
+    page: Annotated[int, Field(description="Page number (0-based, default 0).")] = 0,
+    size: Annotated[int, Field(description="Number of items per page (default 100).")] = 100,
+    search: Annotated[str | None, Field(description="Optional search query to filter by name.")] = None,
+    archived: Annotated[bool, Field(description="Whether to include archived steps (default False).")] = False,
+    project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
 ) -> str:
     """List shared steps in a project to find existing ones.
 
@@ -72,10 +83,10 @@ async def list_shared_steps(
 
 
 async def update_shared_step(
-    step_id: int,
-    name: str | None = None,
-    description: str | None = None,
-    project_id: int | None = None,
+    step_id: Annotated[int, Field(description="The shared step ID to update (required).")],
+    name: Annotated[str | None, Field(description="New name for the shared step (optional).")] = None,
+    description: Annotated[str | None, Field(description="New description (optional).")] = None,
+    project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
 ) -> str:
     """Update an existing shared step.
 
@@ -120,9 +131,9 @@ async def update_shared_step(
 
 
 async def delete_shared_step(
-    step_id: int,
-    confirm: bool = False,
-    project_id: int | None = None,
+    step_id: Annotated[int, Field(description="The shared step ID to delete (required).")],
+    confirm: Annotated[bool, Field(description="Must be True to proceed (safety measure).")] = False,
+    project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
 ) -> str:
     """Delete a shared step from the library.
 
@@ -156,11 +167,3 @@ async def delete_shared_step(
         await service.delete_shared_step(step_id=step_id)
 
         return f"🗑️  Archived Shared Step {step_id}\n\nThe shared step has been successfully archived."
-
-
-def register(mcp: FastMCP) -> None:
-    """Register Shared Step tools with the MCP server."""
-    mcp.tool()(create_shared_step)
-    mcp.tool()(list_shared_steps)
-    mcp.tool()(update_shared_step)
-    mcp.tool()(delete_shared_step)

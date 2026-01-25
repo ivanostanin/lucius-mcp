@@ -1,6 +1,8 @@
 """Tool for linking Shared Steps to Test Cases."""
 
-from typing import Any
+from typing import Annotated, Any
+
+from pydantic import Field
 
 from src.client import AllureClient
 from src.client.generated.models.shared_step_step_dto import SharedStepStepDto
@@ -34,10 +36,18 @@ def _format_steps(scenario: Any) -> str:
 
 
 async def link_shared_step(
-    test_case_id: int,
-    shared_step_id: int,
-    position: int | None = None,
-    project_id: int | None = None,
+    test_case_id: Annotated[int, Field(description="The ID of test case to modify.")],
+    shared_step_id: Annotated[int, Field(description="The ID of shared step to link.")],
+    position: Annotated[
+        int | None,
+        Field(
+            description="Where to insert the shared step (0-indexed, optional)."
+            " 0 = Insert at beginning"
+            " None = Append to end (default)"
+            " N = Insert after step N (so it becomes the (N+1)th step)"
+        ),
+    ] = None,
+    project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
 ) -> str:
     """Link a shared step to a test case.
 
@@ -45,9 +55,9 @@ async def link_shared_step(
     The shared step's actions will expand at execution time.
 
     Args:
-        test_case_id: The test case to modify.
+        test_case_id: The ID of test case to modify.
             Found in URL: /testcase/12345
-        shared_step_id: The shared step to link.
+        shared_step_id: The ID of shared step to link.
             Found via list_shared_steps or in Allure UI.
         position: Where to insert the shared step (0-indexed, optional).
             - 0 = Insert at beginning
