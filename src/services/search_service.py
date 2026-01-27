@@ -131,23 +131,62 @@ class SearchService:
 
     async def search_test_cases(
         self,
-        query: str,
+        query: str | None = None,
         page: int = 0,
         size: int = 20,
+        *,
+        aql: str | None = None,
     ) -> TestCaseListResult:
-        """Search test cases by name and/or tag query.
+        """Search test cases by name/tag query or raw AQL.
+
+        When `aql` is provided, bypasses the simple query parser and passes
+        the raw AQL directly to the Allure search endpoint. This supports
+        complex queries with AND, OR, NOT operators and field-specific filters.
 
         Args:
-            query: Search query with optional tag: filters.
+            query: Simple search query with optional tag: filters (ignored if aql is set).
             page: Zero-based page index.
-            size: Page size.
+            size: Page size (max 100).
+            aql: Optional raw AQL query. Examples:
+                - 'status="failed" and tag="regression"'
+                - '(createdBy = "John" or createdBy = "Jane") and name ~= "test"'
+                - 'tag in ["smoke", "e2e"] and not automated = true'
 
         Returns:
             TestCaseListResult with items and pagination metadata.
+
+        Raises:
+            AllureValidationError: If query/AQL is empty or AQL syntax is invalid.
         """
         self._validate_project_id(self._project_id)
         self._validate_pagination(page, size)
 
+        # AQL mode: pass raw query to Allure
+        if aql is not None:
+            if not isinstance(aql, str) or not aql.strip():
+                raise AllureValidationError("AQL query must be a non-empty string")
+
+            # Optionally validate AQL syntax before executing
+            is_valid, _count = await self._client.validate_test_case_query(
+                project_id=self._project_id,
+                rql=aql,
+            )
+            if not is_valid:
+                raise AllureValidationError(
+                    f"Invalid AQL syntax: '{aql}'. "
+                    "Use operators: and, or, not. Strings must be double-quoted. "
+                    'Example: \'status="failed" and tag="regression"\''
+                )
+
+            response = await self._client.search_test_cases_aql(
+                project_id=self._project_id,
+                rql=aql,
+                page=page,
+                size=size,
+            )
+            return self._build_result(response)
+
+        # Simple query mode: parse and translate to internal search
         if not isinstance(query, str) or not query.strip():
             raise AllureValidationError("Search query must be a non-empty string")
 

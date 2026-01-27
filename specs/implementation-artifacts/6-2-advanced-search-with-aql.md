@@ -1,6 +1,6 @@
 # Story 6.2: Advanced Search with AQL
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -33,21 +33,21 @@ so that I can find test cases using sophisticated filtering patterns.
 
 ## Tasks / Subtasks
 
-- [ ] **Tool: search_test_cases (AQL support)** — Extend `search_test_cases` in `src/tools/search.py` with an optional raw AQL parameter (AC: 1-8). [Source: /Users/anmaro/Code/personal/github.com/lucius-mcp/specs/project-context.md:25-37]
-  - [ ] Validate only basic constraints (non-empty AQL when provided, page/size bounds) in the tool; let service errors bubble to the global handler (AC: 3). [Source: /Users/anmaro/Code/personal/github.com/lucius-mcp/specs/project-context.md:33-37]
-  - [ ] Reuse existing formatting helpers for LLM-friendly output. [Source: /Users/anmaro/Code/personal/github.com/lucius-mcp/src/tools/search.py:194-207]
+- [x] **Tool: search_test_cases (AQL support)** — Extend `search_test_cases` in `src/tools/search.py` with an optional raw AQL parameter (AC: 1-8). [Source: /Users/anmaro/Code/personal/github.com/lucius-mcp/specs/project-context.md:25-37]
+  - [x] Validate only basic constraints (non-empty AQL when provided, page/size bounds) in the tool; let service errors bubble to the global handler (AC: 3). [Source: /Users/anmaro/Code/personal/github.com/lucius-mcp/specs/project-context.md:33-37]
+  - [x] Reuse existing formatting helpers for LLM-friendly output. [Source: /Users/anmaro/Code/personal/github.com/lucius-mcp/src/tools/search.py:194-207]
 
-- [ ] **Service: search_test_cases (AQL passthrough)** — Extend `SearchService.search_test_cases` to accept optional raw AQL; when present, bypass `SearchQueryParser` and pass raw AQL to the client (AC: 1-8). [Source: /Users/anmaro/Code/personal/github.com/lucius-mcp/src/services/search_service.py:132-168]
-  - [ ] Optionally call AQL validation before executing the query to surface clearer syntax errors. [Source: /Users/anmaro/Code/personal/github.com/lucius-mcp/src/client/generated/docs/TestCaseSearchControllerApi.md:87-139]
+- [x] **Service: search_test_cases (AQL passthrough)** — Extend `SearchService.search_test_cases` to accept optional raw AQL; when present, bypass `SearchQueryParser` and pass raw AQL to the client (AC: 1-8). [Source: /Users/anmaro/Code/personal/github.com/lucius-mcp/src/services/search_service.py:132-168]
+  - [x] Optionally call AQL validation before executing the query to surface clearer syntax errors. [Source: /Users/anmaro/Code/personal/github.com/lucius-mcp/src/client/generated/docs/TestCaseSearchControllerApi.md:87-139]
 
-- [ ] **Client: AQL search & validation** — Extend `AllureClient` with:
-  - [ ] `search_test_cases_aql(project_id, rql, page, size, deleted, sort)` mapping to `TestCaseSearchControllerApi.search1` (AC: 1-2). [Source: /Users/anmaro/Code/personal/github.com/lucius-mcp/src/client/generated/docs/TestCaseSearchControllerApi.md:11-64]
-  - [ ] `validate_test_case_query(project_id, rql, deleted)` mapping to `TestCaseSearchControllerApi.validate_query1` and returning `AqlValidateResponseDto(valid, count)`. [Source: /Users/anmaro/Code/personal/github.com/lucius-mcp/src/client/generated/docs/TestCaseSearchControllerApi.md:87-139] [Source: /Users/anmaro/Code/personal/github.com/lucius-mcp/src/client/generated/models/aql_validate_response_dto.py:25-31]
+- [x] **Client: AQL search & validation** — Extend `AllureClient` with:
+  - [x] `search_test_cases_aql(project_id, rql, page, size, deleted, sort)` mapping to `TestCaseSearchControllerApi.search1` (AC: 1-2). [Source: /Users/anmaro/Code/personal/github.com/lucius-mcp/src/client/generated/docs/TestCaseSearchControllerApi.md:11-64]
+  - [x] `validate_test_case_query(project_id, rql, deleted)` mapping to `TestCaseSearchControllerApi.validate_query1` and returning `AqlValidateResponseDto(valid, count)`. [Source: /Users/anmaro/Code/personal/github.com/lucius-mcp/src/client/generated/docs/TestCaseSearchControllerApi.md:87-139] [Source: /Users/anmaro/Code/personal/github.com/lucius-mcp/src/client/generated/models/aql_validate_response_dto.py:25-31]
 
-- [ ] **Tests**
-  - [ ] Update `tests/e2e/test_search_test_cases.py` to cover AQL queries, invalid syntax handling, and pagination hints. [Source: /Users/anmaro/Code/personal/github.com/lucius-mcp/specs/implementation-artifacts/3-3-search-test-cases-by-name-or-tag.md:62-67]
-  - [ ] Add unit tests for `SearchService.search_test_cases` covering raw AQL vs. parsed name/tag queries (including invalid AQL). [Source: /Users/anmaro/Code/personal/github.com/lucius-mcp/specs/project-context.md:64-69]
-  - [ ] Regression tests to confirm existing `search_test_cases` and `list_test_cases` output remains unchanged when AQL is not used. [Source: /Users/anmaro/Code/personal/github.com/lucius-mcp/src/tools/search.py:9-115]
+- [x] **Tests**
+  - [x] Update `tests/e2e/test_search_test_cases.py` to cover AQL queries, invalid syntax handling, and pagination hints. [Source: /Users/anmaro/Code/personal/github.com/lucius-mcp/specs/implementation-artifacts/3-3-search-test-cases-by-name-or-tag.md:62-67]
+  - [x] Add unit tests for `SearchService.search_test_cases` covering raw AQL vs. parsed name/tag queries (including invalid AQL). [Source: /Users/anmaro/Code/personal/github.com/lucius-mcp/specs/project-context.md:64-69]
+  - [x] Regression tests to confirm existing `search_test_cases` and `list_test_cases` output remains unchanged when AQL is not used. [Source: /Users/anmaro/Code/personal/github.com/lucius-mcp/src/tools/search.py:9-115]
 
 ## Dev Notes
 
@@ -113,7 +113,20 @@ gpt-5.2-codex
 ### Completion Notes List
 
 - Story updated to extend `search_test_cases` instead of adding a new tool.
+- Implemented `search_test_cases_aql` and `validate_test_case_query` methods in `AllureClient`.
+- Extended `SearchService.search_test_cases` with optional `aql` parameter that bypasses query parser.
+- AQL validation is performed before query execution, providing clear error messages for invalid syntax.
+- Added comprehensive docstrings with AQL syntax examples in the tool layer.
+- All 162 unit/integration tests pass, including 7 new AQL-specific unit tests.
+- All 9 E2E search tests pass, including 5 new AQL-specific E2E tests.
+- `ruff` and `mypy --strict` pass.
 
 ### File List
 
-- /Users/anmaro/Code/personal/github.com/lucius-mcp/specs/implementation-artifacts/6-2-advanced-search-with-aql.md
+- src/client/client.py (added `search_test_cases_aql`, `validate_test_case_query`)
+- src/services/search_service.py (extended `search_test_cases` with `aql` parameter)
+- src/tools/search.py (added optional `aql` parameter to `search_test_cases`)
+- tests/unit/test_search_service.py (added 7 AQL unit tests)
+- tests/e2e/test_search_test_cases.py (added 5 AQL E2E tests)
+- specs/implementation-artifacts/6-2-advanced-search-with-aql.md
+- specs/implementation-artifacts/sprint-status.yaml

@@ -59,3 +59,99 @@ async def test_search_test_cases_combined_and_case_insensitive(
 
     assert "Found" in text or "No test cases found" in text
     assert "tags:" in text or "No test cases found" in text
+
+
+# =============================================
+# AQL Search E2E Tests
+# =============================================
+
+
+@pytest.mark.asyncio
+async def test_search_test_cases_aql_simple_query(
+    allure_client: AllureClient,
+    project_id: int,
+) -> None:
+    """Test AQL search with a simple name filter."""
+    service = SearchService(client=allure_client)
+
+    result = await service.search_test_cases(aql='name ~= "test"', page=0, size=5)
+    text = _format_search_results(result, 'name ~= "test"')
+
+    assert "Found" in text or "No test cases found" in text
+
+
+@pytest.mark.asyncio
+async def test_search_test_cases_aql_complex_query(
+    allure_client: AllureClient,
+    project_id: int,
+) -> None:
+    """Test AQL search with AND operator and multiple conditions."""
+
+    service = SearchService(client=allure_client)
+
+    # This query may not match anything, but should not error
+    result = await service.search_test_cases(
+        aql='name ~= "login" or name ~= "test"',
+        page=0,
+        size=5,
+    )
+    text = _format_search_results(result, 'name ~= "login" or name ~= "test"')
+
+    assert "Found" in text or "No test cases found" in text
+    assert "tags:" in text or "No test cases found" in text
+
+
+@pytest.mark.asyncio
+async def test_search_test_cases_aql_invalid_syntax_returns_error(
+    allure_client: AllureClient,
+    project_id: int,
+) -> None:
+    """Test that invalid AQL syntax returns a clear error message."""
+    from src.client.exceptions import AllureValidationError
+
+    service = SearchService(client=allure_client)
+
+    with pytest.raises(AllureValidationError, match="Invalid AQL syntax"):
+        await service.search_test_cases(
+            aql="this is not valid aql %%% syntax",
+            page=0,
+            size=5,
+        )
+
+
+@pytest.mark.asyncio
+async def test_search_test_cases_aql_pagination_hints(
+    allure_client: AllureClient,
+    project_id: int,
+) -> None:
+    """Test that AQL search includes pagination hints in output."""
+    service = SearchService(client=allure_client)
+
+    # Request a small page size to potentially trigger pagination hints
+    result = await service.search_test_cases(
+        aql='name ~= "e" or name ~= "a"',  # Broad query for more matches
+        page=0,
+        size=2,
+    )
+    text = _format_search_results(result, 'name ~= "e" or name ~= "a"')
+
+    # If there are multiple pages, pagination hint should be present
+    if result.total_pages > 1:
+        assert "page" in text.lower() or "Showing" in text
+
+
+@pytest.mark.asyncio
+async def test_search_test_cases_regression_simple_query_unchanged(
+    allure_client: AllureClient,
+    project_id: int,
+) -> None:
+    """Regression test: ensure simple query path still works after AQL changes."""
+    service = SearchService(client=allure_client)
+
+    # Use the simple query path (not AQL)
+    result = await service.search_test_cases(query="tag:smoke", page=0, size=5)
+    text = _format_search_results(result, "tag:smoke")
+
+    # Output format should match existing expectations
+    assert "Found" in text or "No test cases found" in text
+    assert "tags:" in text or "No test cases found" in text

@@ -75,7 +75,7 @@ development_status:
   epic-4-retrospective: optional
 
   # Epic 5: Execution Management (Phase 2)
-  epic-5: backlog
+  epic-5: in-progress
   5-1-create-and-list-launches: backlog
   5-2-get-launch-details: backlog
   5-3-delete-launch: backlog
@@ -85,7 +85,7 @@ development_status:
   # Epic 6: Advanced Organization & Discovery (Phase 2)
   epic-6: in-progress
   6-1-test-hierarchy-management: backlog
-  6-2-advanced-search-with-aql: ready-for-dev
+  6-2-advanced-search-with-aql: ready-for-review
   epic-6-retrospective: optional
 
   # Epic 7: Test Planning & Governance (Phase 3)

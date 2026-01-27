@@ -49,60 +49,98 @@ async def list_test_cases(
 
 async def search_test_cases(
     query: Annotated[
-        str,
+        str | None,
         Field(
             description=(
-                "Search query. Examples: 'login flow', 'tag:smoke', "
-                "'tag:smoke tag:regression', 'authentication tag:security'."
+                "Simple search query. Examples: 'login flow', 'tag:smoke', "
+                "'tag:smoke tag:regression', 'authentication tag:security'. "
+                "Ignored when 'aql' is provided."
             )
         ),
-    ],
+    ] = None,
+    aql: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Raw AQL (Allure Query Language) for complex searches. "
+                "Supports AND, OR, NOT operators, parentheses for grouping, and field filters. "
+                "Strings must be double-quoted. Examples:\n"
+                '  - \'status="failed" and tag="regression"\'\n'
+                '  - \'(createdBy = "John" or createdBy = "Jane") and name ~= "test"\'\n'
+                '  - \'tag in ["smoke", "e2e"] and automated = true\'\n'
+                '  - \'not status = "Draft" and layer = "API"\'\n'
+                "See https://docs.qameta.io/allure-testops/advanced/aql/ for the reference."
+            )
+        ),
+    ] = None,
     page: Annotated[int, Field(description="Zero-based page index.")] = 0,
     size: Annotated[int, Field(description="Number of results per page (max 100).", le=100)] = 20,
     project_id: Annotated[int | None, Field(description="Allure TestOps project ID to list test cases from.")] = None,
 ) -> str:
-    """Search for test cases by name or tag.
+    """Search for test cases by name, tag, or AQL query.
 
-    Find test cases matching your search criteria. Supports name search,
-    tag filtering, or both combined.
+    Find test cases matching your search criteria. Supports simple name/tag search
+    or advanced AQL (Allure Query Language) for complex filtering.
 
-    Query Syntax:
+    Simple Query Syntax (use 'query' parameter):
     - Plain text: Searches in test case names (case-insensitive)
     - tag:value: Filters by exact tag match
     - Combined: "login tag:smoke" finds test cases with "login" in name AND "smoke" tag
 
+    AQL Syntax (use 'aql' parameter):
+    - Operators: and, or, not
+    - Precedence: and binds tighter than or; use parentheses to group
+    - Strings are double-quoted; numbers are unquoted; booleans are true/false
+    - Comparison operators: =, !=, ~= (contains), in, not in
+    - Field examples: status, tag, name, createdBy, automated, layer
+
     Args:
-        query: Search query. Examples:
+        query: Simple search query. Examples:
             - "login flow" (name search)
             - "tag:smoke" (tag filter)
             - "tag:smoke tag:regression" (multiple tags - AND logic)
             - "authentication tag:security" (combined)
+        aql: Raw AQL query for advanced filtering. Examples:
+            - 'status="failed" and tag="regression"'
+            - '(createdBy = "John" or createdBy = "Jane") and name ~= "test"'
+            - 'tag in ["smoke", "e2e"] and automated = true'
+            - see https://docs.qameta.io/allure-testops/advanced/aql/ for the reference
         page: Page number (0-indexed). Default: 0.
         size: Results per page (max 100). Default: 20.
         project_id: Optional override for the default Project ID.
 
     Returns:
-        List of matching test cases or "No test cases found matching query."
+        List of matching test cases or descriptive error message.
 
     Raises:
         AuthenticationError: If no API token available from environment or arguments.
+        AllureValidationError: If AQL syntax is invalid or query is empty.
 
     Examples:
-        search_test_cases(123, "login")
+        search_test_cases(query="login")
         → "Found 5 test cases matching 'login':
            - [TC-1] User Login Flow (tags: smoke, auth)
            - [TC-2] Admin Login Test (tags: admin)"
 
-        search_test_cases(123, "tag:smoke tag:regression")
-        → "Found 12 test cases matching 'tag:smoke tag:regression':
+        search_test_cases(aql='status="failed" and tag="regression"')
+        → "Found 12 test cases matching 'status=\"failed\" and tag=\"regression\"':
            - [TC-5] Critical Path Test ..."
     """
-    if not isinstance(query, str) or not query.strip():
-        raise AllureValidationError("Search query must be a non-empty string")
+    # Validate that at least one search parameter is provided
+    if not aql and not query:
+        raise AllureValidationError(
+            "Either 'query' or 'aql' must be provided. Use 'query' for simple searches "
+            "or 'aql' for advanced AQL filtering."
+        )
 
-    parsed = SearchQueryParser.parse(query)
-    if not parsed.name_query and not parsed.tags:
-        raise AllureValidationError("Search query must include a name or tag filter")
+    # Validate simple query if provided (and not using AQL)
+    if not aql:
+        if not isinstance(query, str) or not query.strip():
+            raise AllureValidationError("Search query must be a non-empty string")
+
+        parsed = SearchQueryParser.parse(query)
+        if not parsed.name_query and not parsed.tags:
+            raise AllureValidationError("Search query must include a name or tag filter")
 
     async with AllureClient.from_env(project=project_id) as client:
         service = SearchService(client=client)
@@ -110,9 +148,12 @@ async def search_test_cases(
             query=query,
             page=page,
             size=size,
+            aql=aql,
         )
 
-    return _format_search_results(result, query)
+    # Use the appropriate display query for formatting
+    display_query = aql if aql else query
+    return _format_search_results(result, display_query or "")
 
 
 async def get_test_case_details(
@@ -154,7 +195,7 @@ def _format_test_case_list(result: TestCaseListResult) -> str:
     for tc in result.items:
         tags = ", ".join([t.name for t in (tc.tags or []) if t.name]) if tc.tags else "none"
         status = tc.status.name if tc.status and tc.status.name else "unknown"
-        lines.append(f"- [TC-{tc.id}] {tc.name} (status: {status}; tags: {tags})")
+        lines.append(f"- [#{tc.id}] {tc.name} (status: {status}; tags: {tags})")
 
     if result.page < result.total_pages - 1:
         lines.append(f"\nUse page={result.page + 1} to see more results.")
@@ -166,7 +207,7 @@ def _format_test_case_details(details: TestCaseDetails) -> str:
     tc = details.test_case
     scenario = details.scenario
 
-    lines: list[str] = [f"**Test Case TC-{tc.id}: {tc.name}**"]
+    lines: list[str] = [f"**Test Case #{tc.id}: {tc.name}**"]
     status_line = _format_status_line(tc)
     lines.append(status_line)
 
@@ -199,7 +240,7 @@ def _format_search_results(result: TestCaseListResult, query: str) -> str:
 
     for tc in result.items:
         tags = ", ".join([t.name for t in (tc.tags or []) if t.name]) if tc.tags else "none"
-        lines.append(f"- [TC-{tc.id}] {tc.name} (tags: {tags})")
+        lines.append(f"- [#{tc.id}] {tc.name} (tags: {tags})")
 
     if result.total_pages > 1:
         lines.append(f"\nShowing page {result.page + 1} of {result.total_pages}")

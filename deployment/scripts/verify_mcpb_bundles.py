@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import json
 import re
-import sys
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -51,9 +50,7 @@ def verify_manifest(
             expect(env.get("MCP_MODE") == "stdio", "python MCP_MODE must be stdio", errors)
             pythonpath = env.get("PYTHONPATH")
             expect(
-                isinstance(pythonpath, str)
-                and "${__dirname}" in pythonpath
-                and "server/lib" in pythonpath,
+                isinstance(pythonpath, str) and "${__dirname}" in pythonpath and "server/lib" in pythonpath,
                 "python PYTHONPATH must include ${__dirname} and server/lib",
                 errors,
             )

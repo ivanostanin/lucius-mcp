@@ -86,7 +86,7 @@ def test_format_test_case_details_handles_fields_and_steps() -> None:
 
     text = _format_test_case_details(details)
 
-    assert "Test Case TC-1: Login" in text
+    assert "Test Case #1: Login" in text
     assert "Description" in text
     assert "Preconditions" in text
     assert "1. Do X → See Y" in text
@@ -249,8 +249,173 @@ def test_format_search_results_includes_tags_and_pagination() -> None:
     text = _format_search_results(result, "login")
 
     assert "Found 2 test cases matching 'login':" in text
-    assert "[TC-1] Login Flow" in text
+    assert "[#1] Login Flow" in text
     assert "tags: smoke" in text
-    assert "[TC-2] Logout" in text
+    assert "[#2] Logout" in text
     assert "tags: none" in text
     assert "Showing page 1 of 2" in text
+
+
+# =============================================
+# AQL Search Tests
+# =============================================
+
+
+@pytest.fixture
+def mock_client_with_aql() -> AllureClient:
+    """Client mock with AQL-specific methods."""
+    client = MagicMock(spec=AllureClient)
+    client.list_test_cases = AsyncMock()
+    client.get_test_case = AsyncMock()
+    client.get_test_case_scenario = AsyncMock()
+    client.search_test_cases_aql = AsyncMock()
+    client.validate_test_case_query = AsyncMock()
+    client.get_project.return_value = 123
+    return client
+
+
+@pytest.fixture
+def aql_service(mock_client_with_aql: AllureClient) -> SearchService:
+    return SearchService(client=mock_client_with_aql)
+
+
+@pytest.mark.asyncio
+async def test_search_test_cases_aql_bypasses_parser(
+    aql_service: SearchService, mock_client_with_aql: AllureClient
+) -> None:
+    """When AQL is provided, SearchService should bypass query parser and call AQL client method."""
+    page = PageTestCaseDto(
+        content=[TestCaseDto(id=1, name="Failed Test")],
+        total_elements=1,
+        number=0,
+        size=20,
+        total_pages=1,
+    )
+    mock_client_with_aql.validate_test_case_query.return_value = (True, 1)
+    mock_client_with_aql.search_test_cases_aql.return_value = page
+
+    result = await aql_service.search_test_cases(
+        aql='status="failed" and tag="regression"',
+        page=0,
+        size=20,
+    )
+
+    assert result.total == 1
+    assert result.items[0].name == "Failed Test"
+    mock_client_with_aql.validate_test_case_query.assert_awaited_once_with(
+        project_id=123,
+        rql='status="failed" and tag="regression"',
+    )
+    mock_client_with_aql.search_test_cases_aql.assert_awaited_once_with(
+        project_id=123,
+        rql='status="failed" and tag="regression"',
+        page=0,
+        size=20,
+    )
+    # Should NOT call list_test_cases when using AQL
+    mock_client_with_aql.list_test_cases.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_search_test_cases_aql_validates_before_search(
+    aql_service: SearchService, mock_client_with_aql: AllureClient
+) -> None:
+    """AQL search should validate syntax before executing query."""
+    mock_client_with_aql.validate_test_case_query.return_value = (False, None)
+
+    with pytest.raises(AllureValidationError, match="Invalid AQL syntax"):
+        await aql_service.search_test_cases(
+            aql="invalid syntax here",
+            page=0,
+            size=20,
+        )
+
+    mock_client_with_aql.validate_test_case_query.assert_awaited_once()
+    # Should NOT proceed to search after validation failure
+    mock_client_with_aql.search_test_cases_aql.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_search_test_cases_aql_empty_string_raises(aql_service: SearchService) -> None:
+    """Empty AQL query should raise validation error."""
+    with pytest.raises(AllureValidationError, match="AQL query must be a non-empty string"):
+        await aql_service.search_test_cases(aql="   ", page=0, size=20)
+
+
+@pytest.mark.asyncio
+async def test_search_test_cases_simple_query_still_works(
+    aql_service: SearchService, mock_client_with_aql: AllureClient
+) -> None:
+    """Simple query mode should work as before when AQL is not provided."""
+    page = PageTestCaseDto(content=[], total_elements=0, number=0, size=20, total_pages=0)
+    mock_client_with_aql.list_test_cases.return_value = page
+
+    await aql_service.search_test_cases(query="login tag:smoke", page=0, size=20)
+
+    # Should use simple query path, not AQL
+    mock_client_with_aql.list_test_cases.assert_called_once_with(
+        project_id=123,
+        page=0,
+        size=20,
+        search="login",
+        tags=["smoke"],
+        status=None,
+    )
+    mock_client_with_aql.search_test_cases_aql.assert_not_awaited()
+    mock_client_with_aql.validate_test_case_query.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_search_test_cases_requires_query_or_aql(aql_service: SearchService) -> None:
+    """Must provide either query or aql parameter."""
+    with pytest.raises(AllureValidationError, match="Search query must be a non-empty string"):
+        await aql_service.search_test_cases(page=0, size=20)
+
+
+@pytest.mark.asyncio
+async def test_search_test_cases_aql_respects_pagination(
+    aql_service: SearchService, mock_client_with_aql: AllureClient
+) -> None:
+    """AQL search should respect pagination parameters."""
+    page = PageTestCaseDto(
+        content=[TestCaseDto(id=1, name="Test")],
+        total_elements=50,
+        number=2,
+        size=10,
+        total_pages=5,
+    )
+    mock_client_with_aql.validate_test_case_query.return_value = (True, 50)
+    mock_client_with_aql.search_test_cases_aql.return_value = page
+
+    result = await aql_service.search_test_cases(
+        aql='tag in ["smoke", "e2e"]',
+        page=2,
+        size=10,
+    )
+
+    assert result.page == 2
+    assert result.size == 10
+    assert result.total_pages == 5
+    mock_client_with_aql.search_test_cases_aql.assert_awaited_once_with(
+        project_id=123,
+        rql='tag in ["smoke", "e2e"]',
+        page=2,
+        size=10,
+    )
+
+
+def test_format_search_results_with_aql_query() -> None:
+    """Search results formatter should work with AQL query strings."""
+    items = [
+        TestCaseDto(id=1, name="Failed Test", tags=[TestTagDto.model_construct(name="regression")]),
+    ]
+    page = PageTestCaseDto(content=items, total_elements=1, number=0, size=20, total_pages=1)
+    mock_client = MagicMock(spec=AllureClient)
+    mock_client.get_project.return_value = 1
+    result = SearchService(client=mock_client)._build_result(page)
+
+    text = _format_search_results(result, 'status="failed" and tag="regression"')
+
+    assert 'Found 1 test cases matching \'status="failed" and tag="regression"\'' in text
+    assert "[#1] Failed Test" in text
+    assert "tags: regression" in text

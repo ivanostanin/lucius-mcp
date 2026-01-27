@@ -643,6 +643,108 @@ class AllureClient:
             )
         )
 
+    async def search_test_cases_aql(
+        self,
+        project_id: int,
+        rql: str,
+        page: int = 0,
+        size: int = 20,
+        deleted: bool = False,
+        sort: list[str] | None = None,
+    ) -> PageTestCaseDto:
+        """Search test cases using raw AQL (Allure Query Language).
+
+        This method passes the AQL query directly to the Allure search endpoint,
+        supporting complex queries with operators like AND, OR, NOT, and field filters.
+
+        Args:
+            project_id: Target project ID.
+            rql: Raw AQL query string (e.g., 'status="failed" and tag="regression"').
+            page: Zero-based page index.
+            size: Page size (max 100).
+            deleted: If True, include deleted test cases.
+            sort: Optional sort criteria (e.g., ["id,DESC"]).
+
+        Returns:
+            Paginated test case results matching the AQL query.
+
+        Raises:
+            AllureValidationError: If AQL syntax is invalid or input fails validation.
+            AllureNotFoundError: If project doesn't exist.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
+        """
+        search_api = await self._get_api("_search_api", error_name="test_case search APIs")
+
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+
+        if not isinstance(rql, str) or not rql.strip():
+            raise AllureValidationError("AQL query must be a non-empty string")
+
+        if not isinstance(page, int) or page < 0:
+            raise AllureValidationError("Page must be a non-negative integer")
+        if not isinstance(size, int) or size <= 0 or size > 100:
+            raise AllureValidationError("Size must be between 1 and 100")
+
+        return await self._call_api(
+            search_api.search1(
+                project_id=project_id,
+                rql=rql,
+                deleted=deleted,
+                page=page,
+                size=size,
+                sort=sort,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def validate_test_case_query(
+        self,
+        project_id: int,
+        rql: str,
+        deleted: bool = False,
+    ) -> tuple[bool, int | None]:
+        """Validate an AQL query without executing it.
+
+        Use this to check AQL syntax and get an estimated count of matching
+        test cases before running an expensive search.
+
+        Args:
+            project_id: Target project ID.
+            rql: Raw AQL query string to validate.
+            deleted: If True, include deleted test cases in count.
+
+        Returns:
+            A tuple of (is_valid, count). If valid is True, count is the
+            estimated number of matching test cases. If valid is False,
+            count may be None.
+
+        Raises:
+            AllureValidationError: If input fails basic validation.
+            AllureNotFoundError: If project doesn't exist.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
+        """
+        search_api = await self._get_api("_search_api", error_name="test_case search APIs")
+
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+
+        if not isinstance(rql, str) or not rql.strip():
+            raise AllureValidationError("AQL query must be a non-empty string")
+
+        response = await self._call_api(
+            search_api.validate_query1(
+                project_id=project_id,
+                rql=rql,
+                deleted=deleted,
+                _request_timeout=self._timeout,
+            )
+        )
+
+        return (response.valid or False, response.count)
+
     async def upload_attachment(
         self,
         test_case_id: int,
