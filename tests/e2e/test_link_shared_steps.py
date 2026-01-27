@@ -11,9 +11,6 @@ from src.tools.shared_steps import create_shared_step
 from src.tools.unlink_shared_step import unlink_shared_step
 
 
-# @pytest.mark.skipif(
-#     not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
-# )
 @pytest.mark.asyncio
 async def test_link_unlink_shared_step_flow(
     project_id: int,
