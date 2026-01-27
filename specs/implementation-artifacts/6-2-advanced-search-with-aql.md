@@ -1,6 +1,6 @@
 # Story 6.2: Advanced Search with AQL
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -129,4 +129,11 @@ gpt-5.2-codex
 - tests/unit/test_search_service.py (added 7 AQL unit tests)
 - tests/e2e/test_search_test_cases.py (added 5 AQL E2E tests)
 - specs/implementation-artifacts/6-2-advanced-search-with-aql.md
-- specs/implementation-artifacts/sprint-status.yaml
+
+## Senior Developer Review (AI)
+
+- **Outcome**: Approved with deferred Refactoring.
+- **Notes**: 
+    - Linter error in `test_search_test_cases.py` fixed.
+    - File list updated to include regression cleanup files.
+    - **CAUTION**: [Medium-2] Architectural violation in `src/tools/search.py` (Fat Tool) remains. Logic is duplicated between tool and service. User deferred this refactoring to maintain current delivery speed.
