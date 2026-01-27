@@ -1,6 +1,6 @@
 # Story 4.3: GitHub Actions CI/CD
 
-Status: ready-for-dev
+Status: done
 Story Key: 4-3-github-actions-ci-cd
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -24,29 +24,29 @@ so that CI/CD enforces code quality and ships reproducible Docker images and bun
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Audit existing CI workflows and map to AC (AC: #1-#5)
-  - [ ] Review `.github/workflows/pr-quality-gate.yml` for lint/type/test steps and current artifact steps
-  - [ ] Review `.github/workflows/release.yml` for tag validation and release artifact steps
-  - [ ] Review `.github/workflows/e2e-tests.yml` gating on Allure secrets
-  - [ ] Identify gaps for Docker build/push on PR and release
+- [x] Task 1: Audit existing CI workflows and map to AC (AC: #1-#5)
+  - [x] Review `.github/workflows/pr-quality-gate.yml` for lint/type/test steps and current artifact steps
+  - [x] Review `.github/workflows/release.yml` for tag validation and release artifact steps
+  - [x] Review `.github/workflows/e2e-tests.yml` gating on Allure secrets
+  - [x] Identify gaps for Docker build/push on PR and release
 
-- [ ] Task 2: Add Docker build/push for PR workflow (AC: #3, #5)
-  - [ ] Ensure Dockerfile path and build context align with Story 4.1 (expected: `deployment/Dockerfile`)
-  - [ ] Add registry login using repository secrets or `GITHUB_TOKEN` (GHCR)
-  - [ ] Build image with feature tags (e.g., `pr-<number>`, `sha-<short>`) and push to registry
+- [x] Task 2: Add Docker build/push for PR workflow (AC: #3, #5)
+  - [x] Ensure Dockerfile path and build context align with Story 4.1 (expected: `deployment/Dockerfile`)
+  - [x] Add registry login using repository secrets or `GITHUB_TOKEN` (GHCR)
+  - [x] Build image with feature tags (e.g., `pr-<number>`, `sha-<short>`) and push to registry
 
-- [ ] Task 3: Add Docker build/push for release workflow (AC: #4)
-  - [ ] Tag image with release version (from tag/pyproject) and push to registry after tests pass
-  - [ ] Keep existing mcpb bundle build/release steps intact
+- [x] Task 3: Add Docker build/push for release workflow (AC: #4)
+  - [x] Tag image with release version (from tag/pyproject) and push to registry after tests pass
+  - [x] Keep existing mcpb bundle build/release steps intact
 
-- [ ] Task 4: Verify PR status reporting (AC: #5)
-  - [ ] Ensure all CI jobs report pass/fail back to the PR
+- [x] Task 4: Verify PR status reporting (AC: #5)
+  - [x] Ensure all CI jobs report pass/fail back to the PR
 
-- [ ] Task 5: Implement MCPB verification and publishing (AC: #6-#8)
-  - [ ] Integrate `deployment/scripts/validate_mcpb.py` into `pr-quality-gate.yml` and `release.yml`
-  - [ ] Use `deployment/scripts/build-mcpb.sh` for bundle creation in both workflows
-  - [ ] Integrate `deployment/scripts/verify_mcpb_bundles.py` to validate bundles after build
-  - [ ] Ensure `release.yml` correctly publishes the bundles to GitHub Releases
+- [x] Task 5: Implement MCPB verification and publishing (AC: #6-#8)
+  - [x] Integrate `deployment/scripts/validate_mcpb.py` into `pr-quality-gate.yml` and `release.yml`
+  - [x] Use `deployment/scripts/build-mcpb.sh` for bundle creation in both workflows
+  - [x] Integrate `deployment/scripts/verify_mcpb_bundles.py` to validate bundles after build
+  - [x] Ensure `release.yml` correctly publishes the bundles to GitHub Releases
 
 ## Dev Notes
 
@@ -106,8 +106,8 @@ so that CI/CD enforces code quality and ships reproducible Docker images and bun
 
 ### Story Completion Status
 
-- Status: ready-for-dev
-- Completion note: Ultimate context engine analysis completed - comprehensive developer guide created.
+- Status: done
+- Completion note: Ultimate context engine analysis completed. CI/CD workflows implemented and verified via code review (Permissions fixed).
 
 ### References
 
@@ -128,16 +128,19 @@ gpt-5.2-codex
 
 ### Debug Log References
 
-- N/A (context generation only)
+- [Review Fix] Added `permissions: packages: write` to `pr-quality-gate.yml` and `release.yml` to authorize GHCR image pushes.
+- Verified logic for Docker build/push and MCPB bundle verification steps.
 
 ### Completion Notes List
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
+- Added Docker build and push steps to `pr-quality-gate.yml` (ghcr.io).
+- Added Docker build and push steps to `release.yml` (ghcr.io).
+- Integrated `verify_mcpb_bundles.py` into both workflows to ensure bundle validity.
+- Note: Docker build steps depend on `deployment/Dockerfile` (Story 4.1).
 
 ### File List
 
 - .github/workflows/pr-quality-gate.yml
 - .github/workflows/release.yml
-- .github/workflows/e2e-tests.yml (if required)
-- deployment/Dockerfile (from Story 4.1, required for Docker build)
-- deployment/scripts/* (only if a helper build script is added)
+

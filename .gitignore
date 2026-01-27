@@ -53,3 +53,6 @@ MANIFEST
 .coverage
 
 .openapi-generator/
+
+# act
+.artifacts/

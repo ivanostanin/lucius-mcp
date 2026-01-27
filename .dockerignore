@@ -1,0 +1,35 @@
+# Version Control
+.git
+.gitignore
+
+# Python/UV
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.uv/
+
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+tests/
+spec/
+
+# Documentation & Specs
+docs/
+specs/
+*.md
+!README.md
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Artifacts
+dist/
+build/
+*.egg-info/

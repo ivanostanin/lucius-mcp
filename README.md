@@ -78,6 +78,23 @@ Or customizing host and port:
 HOST=0.0.0.0 PORT=9000 uv run lucius-mcp
 ```
 
+### Local Workflow Testing (act)
+
+To run GitHub Actions locally using `nektos/act`:
+
+1.  **Install `act`**:
+    ```bash
+    brew install act
+    ```
+
+2.  **Run a workflow**:
+    ```bash
+    # Run a specific workflow (e.g., CI)
+    act -W .github/workflows/pr-quality-gate.yml 
+    ```
+
+    > **Note**: The `--artifact-server-path` flag is required to handle artifact uploads/downloads locally. Artifacts will be stored in `.artifacts/`.
+
 ## 📦 Packaging (MCPB)
 
 Lucius supports the [MCP Bundle (MCPB)](https://github.com/modelcontextprotocol/mcpb) format for easy distribution.

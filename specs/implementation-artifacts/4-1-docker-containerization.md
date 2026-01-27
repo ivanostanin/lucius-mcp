@@ -1,6 +1,6 @@
 # Story 4.1: Docker Containerization
 
-Status: ready-for-dev
+Status: done
 Story Key: 4-1-docker-containerization
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -22,19 +22,19 @@ so that it can be deployed consistently in containerized environments.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Define Docker build strategy (AC: #1, #4, #5, #6)
-  - [ ] Confirm base image choice compatible with Python 3.14 and `uv`
-  - [ ] Decide entrypoint command (`lucius-mcp`) and env defaults
-  - [ ] Confirm runtime mode handling (`MCP_MODE=http|stdio`) and exposed port
+- [x] Task 1: Define Docker build strategy (AC: #1, #4, #5, #6)
+  - [x] Confirm base image choice compatible with Python 3.14 and `uv`
+  - [x] Decide entrypoint command (`lucius-mcp`) and env defaults
+  - [x] Confirm runtime mode handling (`MCP_MODE=http|stdio`) and exposed port
 
-- [ ] Task 2: Implement Dockerfile under `deployment/` (AC: #1-#5)
-  - [ ] Add `deployment/Dockerfile` using a multi-stage build and `uv.lock`
-  - [ ] Ensure dependencies are installed reproducibly and app code is copied once
-  - [ ] Set entrypoint to run the MCP server without manual shell steps
+- [x] Task 2: Implement Dockerfile under `deployment/` (AC: #1-#5)
+  - [x] Add `deployment/Dockerfile` using a multi-stage build and `uv.lock`
+  - [x] Ensure dependencies are installed reproducibly and app code is copied once
+  - [x] Set entrypoint to run the MCP server without manual shell steps
 
-- [ ] Task 3: Build/run verification (AC: #1-#3, #5)
-  - [ ] `docker build -f deployment/Dockerfile -t lucius-mcp:local .`
-  - [ ] `docker run` starts server and reads env vars (`ALLURE_*`, `HOST`, `PORT`, `MCP_MODE`)
+- [x] Task 3: Build/run verification (AC: #1-#3, #5)
+  - [x] `docker build -f deployment/Dockerfile -t lucius-mcp:local .`
+  - [x] `docker run` starts server and reads env vars (`ALLURE_*`, `HOST`, `PORT`, `MCP_MODE`)
 
 ## Dev Notes
 
@@ -81,8 +81,8 @@ so that it can be deployed consistently in containerized environments.
 
 ### Story Completion Status
 
-- Status: ready-for-dev
-- Completion note: Ultimate context engine analysis completed - comprehensive developer guide created.
+- Status: done
+- Completion note: Docker implementation confirmed with HTTP and STDIO verification. Code review issues fixed (dockerignore location and content).
 
 ### References
 
@@ -100,16 +100,21 @@ gpt-5.2-codex
 
 ### Debug Log References
 
-- N/A (context generation only)
+- Fixed `ModuleNotFoundError` for `src` package in Docker container by adding `ENV PYTHONPATH="/app"` and adding missing `COPY src` to final stage in Dockerfile.
+- [Review Fix] Moved `.dockerignore` to root to correctly exclude `.git` and `.venv` from build context.
+- [Review Fix] Removed `uv.lock` from `.dockerignore` and exempted `README.md` to allow build to succeed.
 
 ### Completion Notes List
 
-- Ultimate context engine analysis completed - comprehensive developer guide created.
+- Created `deployment/Dockerfile` with multi-stage build (uv + python:3.14-slim).
+- Created `.dockerignore` to minimize build context.
+- Verified build and runtime for HTTP and STDIO modes.
+- Confirmed server startup and endpoint accessibility.
 
 ### File List
 
 - deployment/Dockerfile
-- deployment/.dockerignore (if needed)
+- .dockerignore
 - pyproject.toml
 - uv.lock
 - README.md

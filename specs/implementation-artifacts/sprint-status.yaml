@@ -70,10 +70,11 @@ development_status:
 
   # Epic 4: Production Operations (Phase 2 Priority)
   epic-4: in-progress
-  4-1-docker-containerization: ready-for-dev
+  4-1-docker-containerization: done
   4-2-helm-chart-for-kubernetes-deployment: ready-for-dev
-  4-3-github-actions-ci-cd: ready-for-dev
-  4-4-mcpb-package-build-claude-desktop: in-progress
+  4-3-github-actions-ci-cd: done
+  4-4-mcpb-package-build-claude-desktop: done
+  4-5-set-up-act: done
   4-6-mcpb-e2e-tests: ready-for-dev
   epic-4-retrospective: optional
 
