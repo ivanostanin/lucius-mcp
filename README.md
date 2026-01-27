@@ -95,11 +95,28 @@ To build a `.mcpb` bundle locally:
     ```bash
     ./deployment/scripts/build-mcpb.sh
     ```
-    The versioned bundle will be available in the `dist/` directory.
+    The versioned bundles will be available in the `dist/` directory:
+    - `lucius-mcp-<version>-uv.mcpb`
+    - `lucius-mcp-<version>-python.mcpb`
+
+### Manifests
+
+Bundle manifests live in `deployment/mcpb/`:
+- `manifest.uv.json`
+- `manifest.python.json`
+
+### Validation
+
+Validate each manifest against the code:
+
+```bash
+python deployment/scripts/validate_mcpb.py uv
+python deployment/scripts/validate_mcpb.py python
+```
 
 ### UV Runtime
 
-The bundle uses the `uv` runtime type, which means:
+The `uv` bundle uses the `uv` runtime type, which means:
 - Dependencies are defined in `pyproject.toml` and `uv.lock`.
 - Claude Desktop will automatically manage the Python environment and dependencies for the user.
 - No local Python installation is required for the end-user.

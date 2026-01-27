@@ -11,19 +11,20 @@
     "url": "https://github.com/lucius-mcp/lucius-mcp"
   },
   "server": {
-    "type": "uv",
+    "type": "python",
     "entry_point": "src.main:start",
     "mcp_config": {
-      "command": "uv",
+      "command": "python",
       "args": [
-        "run",
-        "lucius-mcp"
+        "-m",
+        "src.main"
       ],
       "env": {
         "ALLURE_ENDPOINT": "${user_config.allure_endpoint}",
         "ALLURE_PROJECT_ID": "${user_config.allure_project_id}",
         "ALLURE_API_TOKEN": "${user_config.allure_api_token}",
-        "MCP_MODE": "stdio"
+        "MCP_MODE": "stdio",
+        "PYTHONPATH": "${__dirname}:${__dirname}/server/lib"
       }
     }
   },

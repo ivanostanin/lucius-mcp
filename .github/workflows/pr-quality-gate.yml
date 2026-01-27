@@ -35,23 +35,31 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      
+
       - name: Install mcpb CLI
         run: npm install -g @anthropic-ai/mcpb
-      
-      - name: Build mcpb bundle
+
+      - name: Validate MCPB manifests
+        run: |
+          python deployment/scripts/validate_mcpb.py uv
+          python deployment/scripts/validate_mcpb.py python
+
+      - name: Build mcpb bundles
         run: ./deployment/scripts/build-mcpb.sh
-      
-      - name: Verify bundle was created
+
+      - name: Verify bundles were created
         run: |
           VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
-          BUNDLE_FILE="dist/lucius-mcp-${VERSION}.mcpb"
-          if [ ! -f "$BUNDLE_FILE" ]; then
-            echo "ERROR: Bundle file $BUNDLE_FILE was not created"
-            exit 1
-          fi
-          echo "✅ Bundle created: $BUNDLE_FILE"
-          ls -lh "$BUNDLE_FILE"
+          BUNDLE_UV="dist/lucius-mcp-${VERSION}-uv.mcpb"
+          BUNDLE_PYTHON="dist/lucius-mcp-${VERSION}-python.mcpb"
+          for BUNDLE_FILE in "$BUNDLE_UV" "$BUNDLE_PYTHON"; do
+            if [ ! -f "$BUNDLE_FILE" ]; then
+              echo "ERROR: Bundle file $BUNDLE_FILE was not created"
+              exit 1
+            fi
+            echo "✅ Bundle created: $BUNDLE_FILE"
+            ls -lh "$BUNDLE_FILE"
+          done
       
       - name: Upload bundle artifact
         uses: actions/upload-artifact@v4

@@ -4,17 +4,17 @@ import sys
 from pathlib import Path
 
 
-def validate_manifest():
-    manifest_path = Path("manifest.json")
+def validate_manifest(server_type: str):
+    manifest_path = Path("deployment/mcpb") / f"manifest.{server_type}.json"
     if not manifest_path.exists():
-        print("❌ manifest.json not found")
+        print(f"❌ {manifest_path} not found")
         sys.exit(1)
 
     try:
         with open(manifest_path) as f:
             manifest = json.load(f)
     except json.JSONDecodeError:
-        print("❌ manifest.json is not valid JSON")
+        print(f"❌ {manifest_path} is not valid JSON")
         sys.exit(1)
 
     required_fields = ["manifest_version", "name", "version", "server"]
@@ -23,7 +23,7 @@ def validate_manifest():
             print(f"❌ Missing required field: {field}")
             sys.exit(1)
 
-    print("✅ manifest.json structure looks correct")
+    print(f"✅ {manifest_path} structure looks correct")
     return manifest
 
 
@@ -104,8 +104,16 @@ def validate_tools(manifest, mcp_instance):
 
 
 if __name__ == "__main__":
-    print("🚀 Starting Bundle Validation")
-    manifest = validate_manifest()
+    server_type = "uv"
+    if len(sys.argv) > 1:
+        server_type = sys.argv[1]
+
+    if server_type not in {"uv", "python"}:
+        print("❌ Invalid server type. Use: uv or python")
+        sys.exit(1)
+
+    print(f"🚀 Starting Bundle Validation ({server_type})")
+    manifest = validate_manifest(server_type)
     mcp_instance = validate_server_entry_point(manifest)
     validate_tools(manifest, mcp_instance)
     print("🎉 Validation Successful")
