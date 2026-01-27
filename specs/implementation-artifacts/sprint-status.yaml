@@ -68,9 +68,9 @@ development_status:
 
   # Epic 4: Production Operations (Phase 2 Priority)
   epic-4: in-progress
-  4-1-docker-containerization: backlog
-  4-2-helm-chart-for-kubernetes-deployment: backlog
-  4-3-github-actions-ci-cd: backlog
+  4-1-docker-containerization: ready-for-dev
+  4-2-helm-chart-for-kubernetes-deployment: ready-for-dev
+  4-3-github-actions-ci-cd: ready-for-dev
   4-4-mcpb-package-build-claude-desktop: in-progress
   epic-4-retrospective: optional
 
@@ -83,9 +83,9 @@ development_status:
   epic-5-retrospective: optional
 
   # Epic 6: Advanced Organization & Discovery (Phase 2)
-  epic-6: backlog
+  epic-6: in-progress
   6-1-test-hierarchy-management: backlog
-  6-2-advanced-search-with-aql: backlog
+  6-2-advanced-search-with-aql: ready-for-dev
   epic-6-retrospective: optional
 
   # Epic 7: Test Planning & Governance (Phase 3)
