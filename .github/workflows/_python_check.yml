@@ -1,0 +1,46 @@
+name: Python Quality Check
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: 'Python version to use'
+        type: string
+        default: '3.14'
+      run-lint:
+        description: 'Whether to run Ruff linting'
+        type: boolean
+        default: true
+      run-typecheck:
+        description: 'Whether to run Mypy type checking'
+        type: boolean
+        default: true
+      run-tests:
+        description: 'Whether to run unit and integration tests'
+        type: boolean
+        default: true
+
+jobs:
+  python-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python Environment
+        uses: ./.github/actions/python-setup
+        with:
+          python-version: ${{ inputs.python-version }}
+      
+      - name: Run ruff linting
+        if: ${{ inputs.run-lint }}
+        run: uv run ruff check .
+      
+      - name: Run mypy type checking
+        if: ${{ inputs.run-typecheck }}
+        run: uv run mypy src
+      
+      - name: Run unit and integration tests
+        if: ${{ inputs.run-tests }}
+        run: |
+          echo "CI=true" > .env.test
+          uv run --env-file .env.test pytest tests/unit/ tests/integration/ -v

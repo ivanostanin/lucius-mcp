@@ -1,0 +1,76 @@
+name: Docker Build and Push
+
+on:
+  workflow_call:
+    inputs:
+      image-name:
+        description: 'Name of the image (without owner)'
+        type: string
+        default: 'lucius-mcp'
+      tags:
+        description: 'Comma or newline separated tags (suffixes only)'
+        type: string
+        required: true
+      labels:
+        description: 'Docker labels to apply'
+        type: string
+        required: true
+      push:
+        description: 'Whether to push the image to the registry'
+        type: boolean
+        default: true
+
+jobs:
+  docker-build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Convert owner to lowercase
+        id: prep
+        run: |
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "owner_lc=$OWNER_LC" >> $GITHUB_OUTPUT
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate full tags
+        id: tags
+        run: |
+          IMAGE_PATH="ghcr.io/${{ steps.prep.outputs.owner_lc }}/${{ inputs.image-name }}"
+          FULL_TAGS=""
+          # Handle newline or comma separated tags
+          CLEAN_TAGS=$(echo "${{ inputs.tags }}" | tr ',' '\n')
+          while IFS= read -r tag || [ -n "$tag" ]; do
+            tag=$(echo "$tag" | xargs) # trim whitespace
+            if [ -n "$tag" ]; then
+              if [ -n "$FULL_TAGS" ]; then
+                FULL_TAGS="${FULL_TAGS},"
+              fi
+              FULL_TAGS="${FULL_TAGS}${IMAGE_PATH}:${tag}"
+            fi
+          done <<< "$CLEAN_TAGS"
+          echo "full_tags=$FULL_TAGS" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: deployment/Dockerfile
+          push: ${{ inputs.push }}
+          tags: ${{ steps.tags.outputs.full_tags }}
+          labels: ${{ inputs.labels }}

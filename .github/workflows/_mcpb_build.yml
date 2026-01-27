@@ -1,0 +1,68 @@
+name: MCPB Build
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version of the project'
+        type: string
+        required: true
+      artifact-name:
+        description: 'Name for the uploaded artifact'
+        type: string
+        required: true
+
+jobs:
+  mcpb-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node.js for mcpb
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      
+      - name: Set up Python Environment
+        uses: ./.github/actions/python-setup
+        with:
+          python-version: '3.14'
+
+      - name: Install mcpb CLI
+        run: npm install -g @anthropic-ai/mcpb
+
+      - name: Validate MCPB manifests
+        env:
+          PYTHONPATH: .
+        run: |
+          uv run python deployment/scripts/validate_mcpb.py uv
+          uv run python deployment/scripts/validate_mcpb.py python
+
+      - name: Build mcpb bundles
+        run: ./deployment/scripts/build-mcpb.sh
+
+      - name: Verify bundles were created
+        run: |
+          BUNDLE_UV="dist/lucius-mcp-${{ inputs.version }}-uv.mcpb"
+          BUNDLE_PYTHON="dist/lucius-mcp-${{ inputs.version }}-python.mcpb"
+          for BUNDLE_FILE in "$BUNDLE_UV" "$BUNDLE_PYTHON"; do
+            if [ ! -f "$BUNDLE_FILE" ]; then
+              echo "ERROR: Bundle file $BUNDLE_FILE was not created"
+              exit 1
+            fi
+            echo "✅ Bundle created: $BUNDLE_FILE"
+            ls -lh "$BUNDLE_FILE"
+          done
+      
+      - name: Verify bundle content
+        run: |
+          BUNDLE_UV="dist/lucius-mcp-${{ inputs.version }}-uv.mcpb"
+          BUNDLE_PYTHON="dist/lucius-mcp-${{ inputs.version }}-python.mcpb"
+          python deployment/scripts/verify_mcpb_bundles.py "$BUNDLE_UV" "$BUNDLE_PYTHON"
+      
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: dist/*.mcpb
+          retention-days: 7

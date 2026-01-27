@@ -6,15 +6,13 @@ on:
       - 'v*'
 
 jobs:
-  validate-and-release:
+  validate-version:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      packages: write
-    
+    outputs:
+      version: ${{ steps.get_version.outputs.tag_version }}
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Extract version from tag
         id: get_version
         run: |
@@ -28,113 +26,59 @@ jobs:
           
           if [ "$PROJECT_VERSION" != "$TAG_VERSION" ]; then
             echo "ERROR: Version mismatch!"
-            echo "  Tag version: $TAG_VERSION"
-            echo "  pyproject.toml version: $PROJECT_VERSION"
-            echo "Please ensure the git tag matches the version in pyproject.toml"
+            echo "Tag version: $TAG_VERSION"
+            echo "pyproject.toml version: $PROJECT_VERSION"
             exit 1
           fi
-          
-          echo "✅ Version validation passed: $PROJECT_VERSION"
-      
-      - name: Set up Python
-        uses: actions/setup-python@v5
+
+  python-quality:
+    needs: validate-version
+    uses: ./.github/workflows/_python_check.yml
+    with:
+      python-version: '3.14'
+
+  mcpb-build:
+    needs: [validate-version, python-quality]
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/_mcpb_build.yml
+    with:
+      version: ${{ needs.validate-version.outputs.version }}
+      artifact-name: mcpb-bundle-${{ needs.validate-version.outputs.version }}
+
+  docker-build:
+    needs: validate-version
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/_docker_build_push.yml
+    with:
+      image-name: lucius-mcp
+      tags: |
+        ${{ needs.validate-version.outputs.version }}
+        latest
+      labels: |
+        org.opencontainers.image.source=https://github.com/${{ github.repository }}
+        org.opencontainers.image.description=Release ${{ needs.validate-version.outputs.version }}
+      push: true
+
+  github-release:
+    needs: [validate-version, mcpb-build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
         with:
-          python-version: '3.14'
-      
-      - name: Install uv
-        run: pip install uv
-      
-      - name: Install dependencies
-        run: uv sync
-      
-      - name: Run tests
-        run: uv run --env-file .env.test pytest tests/unit/ tests/integration/ -v
-      
-      - name: Run linting
-        run: uv run ruff check .
-      
-      - name: Run type checking
-        run: uv run mypy .
-      
-      - name: Install Node.js for mcpb
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install mcpb CLI
-        run: npm install -g @anthropic-ai/mcpb
-
-      - name: Validate MCPB manifests
-        run: |
-          python deployment/scripts/validate_mcpb.py uv
-          python deployment/scripts/validate_mcpb.py python
-
-      - name: Build mcpb bundles
-        run: ./deployment/scripts/build-mcpb.sh
-
-      - name: Verify bundles were created
-        id: verify_bundle
-        run: |
-          VERSION=${{ steps.get_version.outputs.tag_version }}
-          BUNDLE_UV="dist/lucius-mcp-${VERSION}-uv.mcpb"
-          BUNDLE_PYTHON="dist/lucius-mcp-${VERSION}-python.mcpb"
-
-          for BUNDLE_FILE in "$BUNDLE_UV" "$BUNDLE_PYTHON"; do
-            if [ ! -f "$BUNDLE_FILE" ]; then
-              echo "ERROR: Bundle file $BUNDLE_FILE was not created"
-              exit 1
-            fi
-            echo "✅ Bundle created: $BUNDLE_FILE"
-            ls -lh "$BUNDLE_FILE"
-          done
-
-          # Run the verification script
-          python deployment/scripts/verify_mcpb_bundles.py "$BUNDLE_UV" "$BUNDLE_PYTHON"
-
-          {
-            echo "bundle_files<<EOF"
-            echo "$BUNDLE_UV"
-            echo "$BUNDLE_PYTHON"
-            echo "EOF"
-          } >> $GITHUB_OUTPUT
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Convert owner to lowercase
-        run: |
-          echo "OWNER_LC=${OWNER,,}" >>${GITHUB_ENV}
-        env:
-          OWNER: '${{ github.repository_owner }}'
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: deployment/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ env.OWNER_LC }}/lucius-mcp:${{ steps.get_version.outputs.tag_version }}
-            ghcr.io/${{ env.OWNER_LC }}/lucius-mcp:latest
-          labels: |
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.description=Release ${{ steps.get_version.outputs.tag_version }}
-
+          name: mcpb-bundle-${{ needs.validate-version.outputs.version }}
+          path: dist/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: ${{ steps.verify_bundle.outputs.bundle_files }}
+          files: dist/*.mcpb
           generate_release_notes: true
           draft: false
           prerelease: false

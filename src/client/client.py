@@ -263,6 +263,7 @@ class AllureClient:
                         "token": self._token.get_secret_value(),
                     },
                     headers={"Accept": "application/json"},
+                    timeout=self._timeout*2,
                 )
                 response.raise_for_status()
                 data = response.json()

@@ -2,3 +2,5 @@
 --container-architecture linux/amd64
 --action-offline-mode
 --artifact-server-path .artifacts
+--secret-file .ci/act/act.secrets
+--var-file .ci/act/act.vars

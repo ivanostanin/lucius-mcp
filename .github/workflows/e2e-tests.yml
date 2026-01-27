@@ -4,38 +4,33 @@ on:
   push:
     branches: [main]
   pull_request:
+    branches: [main]
 
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    if: ${{ secrets.ALLURE_ENDPOINT != '' }}
+    if: github.event_name != 'pull_request' || vars.ALLURE_ENDPOINT != ''
     
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Set up Python
-        uses: actions/setup-python@v5
+
+      - name: Set up Python Environment
+        uses: ./.github/actions/python-setup
         with:
           python-version: '3.14'
-      
-      - name: Install uv
-        run: pip install uv
-      
-      - name: Install dependencies
-        run: uv sync
       
       - name: Install Allure Commandline
         run: |
           sudo apt-get update && sudo apt-get install -y default-jre
-          wget https://github.com/allure-framework/allure2/releases/download/2.27.0/allure-2.27.0.tgz
-          tar -zxvf allure-2.27.0.tgz
-          sudo ln -s $(pwd)/allure-2.27.0/bin/allure /usr/bin/allure
+          wget https://github.com/allure-framework/allure2/releases/download/2.36.0/allure-2.36.0.tgz
+          tar -zxvf allure-2.36.0.tgz
+          sudo ln -s $(pwd)/allure-2.36.0/bin/allure /usr/bin/allure
       
       - name: Run E2E tests
         env:
-          ALLURE_ENDPOINT: ${{ secrets.ALLURE_ENDPOINT }}
+          ALLURE_ENDPOINT: ${{ vars.ALLURE_ENDPOINT }}
           ALLURE_API_TOKEN: ${{ secrets.ALLURE_API_TOKEN }}
-          ALLURE_PROJECT_ID: ${{ secrets.ALLURE_PROJECT_ID }}
+          ALLURE_PROJECT_ID: ${{ vars.ALLURE_PROJECT_ID }}
         run: uv run pytest tests/e2e/ -v --tb=short --alluredir=allure-results
       
       - name: Generate Allure Report

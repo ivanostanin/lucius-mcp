@@ -56,3 +56,5 @@ MANIFEST
 
 # act
 .artifacts/
+/.ci/act/act.secrets
+/.ci/act/act.vars
