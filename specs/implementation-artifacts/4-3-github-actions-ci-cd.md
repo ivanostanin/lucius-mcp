@@ -18,6 +18,9 @@ so that CI/CD enforces code quality and ships reproducible Docker images and bun
 3. **PR Docker Build & Push:** Given a pull request, when CI runs, then it builds the Docker image with a feature tag and pushes it to the registry.
 4. **Release Docker Build & Push:** Given a release tag, when CI runs, then it builds the Docker image and pushes it to the registry.
 5. **Status Reporting:** Given any CI run on a pull request, then the workflow reports pass/fail status to the pull request.
+6. **MCPB Manifest Verification:** Given a PR or release, when CI runs, then it verifies the MCP bundle manifests using `deployment/scripts/validate_mcpb.py`.
+7. **MCPB Build & Verification:** Given a PR or release, when CI runs, then it builds and verifies MCP bundles using `deployment/scripts/build-mcpb.sh` and `deployment/scripts/verify_mcpb_bundles.py`.
+8. **MCPB Release Publishing:** Given a release tag, when CI runs, then it publishes the built MCP bundles to the GitHub Release.
 
 ## Tasks / Subtasks
 
@@ -39,6 +42,12 @@ so that CI/CD enforces code quality and ships reproducible Docker images and bun
 - [ ] Task 4: Verify PR status reporting (AC: #5)
   - [ ] Ensure all CI jobs report pass/fail back to the PR
 
+- [ ] Task 5: Implement MCPB verification and publishing (AC: #6-#8)
+  - [ ] Integrate `deployment/scripts/validate_mcpb.py` into `pr-quality-gate.yml` and `release.yml`
+  - [ ] Use `deployment/scripts/build-mcpb.sh` for bundle creation in both workflows
+  - [ ] Integrate `deployment/scripts/verify_mcpb_bundles.py` to validate bundles after build
+  - [ ] Ensure `release.yml` correctly publishes the bundles to GitHub Releases
+
 ## Dev Notes
 
 ### Developer Context
@@ -48,7 +57,7 @@ so that CI/CD enforces code quality and ships reproducible Docker images and bun
   - E2E tests: `.github/workflows/e2e-tests.yml` runs only when Allure secrets are configured. [Source: .github/workflows/e2e-tests.yml:1-52]
   - Release: `.github/workflows/release.yml` validates tag version, runs tests/lint/type checks, and builds MCPB bundles for GitHub Releases. It does **not** build/push Docker images yet. [Source: .github/workflows/release.yml:1-106]
 - Docker containerization (Story 4.1) is a dependency for CI Docker builds. Architecture expects a `deployment/Dockerfile`; none is currently present in the repo, so coordinate with Story 4.1 before wiring Docker build steps. [Source: specs/project-planning-artifacts/epics.md:328-340; specs/architecture.md:170-206]
-- Keep MCPB packaging steps intact (bundles are currently validated, built, and released). [Source: .github/workflows/pr-quality-gate.yml:42-69; .github/workflows/release.yml:66-106]
+- Keep MCPB packaging steps intact, but refine them to use official scripts. Bundles must be validated (`deployment/scripts/validate_mcpb.py`), built (`deployment/scripts/build-mcpb.sh`), and verified (`deployment/scripts/verify_mcpb_bundles.py`) before being released. [Source: .github/workflows/pr-quality-gate.yml:42-69; .github/workflows/release.yml:66-106]
 
 ### Technical Requirements
 
