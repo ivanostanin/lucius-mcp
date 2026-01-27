@@ -11,9 +11,9 @@ from src.tools.unlink_shared_step import unlink_shared_step
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 
-@pytest.mark.skipif(
-    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
-)
+# @pytest.mark.skipif(
+#     not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"), reason="Allure environment variables not set"
+# )
 @pytest.mark.test_id("story-2.3-e2e-link-unlink-shared-step")
 @pytest.mark.asyncio
 async def test_link_shared_step_flow(
