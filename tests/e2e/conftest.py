@@ -14,7 +14,11 @@ from tests.e2e.helpers.cleanup import CleanupTracker
 @pytest.fixture
 def project_id() -> int:
     """Get project ID from environment."""
-    return int(os.getenv("ALLURE_PROJECT_ID", "1"))
+    project_id = os.getenv("ALLURE_PROJECT_ID", "0")
+    project_id = int(project_id) if project_id else 0
+    if project_id <= 0:
+        pytest.skip("ALLURE_PROJECT_ID must be a positive integer")
+    return project_id
 
 
 @pytest.fixture
@@ -25,7 +29,7 @@ async def allure_client(project_id: int) -> AsyncGenerator[AllureClient]:
     token = os.getenv("ALLURE_API_TOKEN")
 
     if not base_url or not token:
-        pytest.skip("Sandbox credentials not configured (ALLURE_ENDPOINT/TOKEN)")
+        pytest.skip("Sandbox credentials not configured (ALLURE_ENDPOINT/ALLURE_API_TOKEN)")
 
     auth_context = get_auth_context(api_token=token)
 

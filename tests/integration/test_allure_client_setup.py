@@ -10,7 +10,9 @@ from src.client import AllureClient
 
 
 @pytest.mark.asyncio
-@patch.dict(os.environ, {"ALLURE_ENDPOINT": "https://env.allure.com", "ALLURE_API_TOKEN": "env-token"})
+@patch.dict(
+    os.environ, {"ALLURE_ENDPOINT": "https://env.allure.com", "ALLURE_API_TOKEN": "env-token", "ALLURE_PROJECT_ID": "1"}
+)
 async def test_client_from_env_success() -> None:
     """Test that client can be initialized from environment variables."""
     # We need to reload settings if we want to test the actual pydantic-settings behavior

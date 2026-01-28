@@ -1,17 +1,9 @@
-import os
-
 import pytest
 
 from src.client import AllureClient
 from src.tools.create_test_case import create_test_case
 from src.tools.update_test_case import update_test_case
 from tests.e2e.helpers.cleanup import CleanupTracker
-
-# Skip all tests if sandbox environment is not configured
-pytestmark = pytest.mark.skipif(
-    not os.getenv("ALLURE_ENDPOINT") or not os.getenv("ALLURE_API_TOKEN"),
-    reason="Allure sandbox environment variables not set",
-)
 
 
 @pytest.fixture
