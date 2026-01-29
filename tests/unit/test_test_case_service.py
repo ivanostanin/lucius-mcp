@@ -213,7 +213,8 @@ async def test_create_test_case_custom_field_not_found(service: TestCaseService,
         "src.client.generated.api.test_case_custom_field_controller_api.TestCaseCustomFieldControllerApi",
         return_value=mock_cf_api,
     ):
-        with pytest.raises(AllureValidationError, match="Custom field 'Unknown' not found"):
+        # Expect the new aggregated error format
+        with pytest.raises(AllureValidationError, match="The following custom fields were not found"):
             await service.create_test_case(name, custom_fields=custom_fields)
 
 

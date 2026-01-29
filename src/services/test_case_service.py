@@ -120,14 +120,27 @@ class TestCaseService:
         resolved_custom_fields = []
         if custom_fields:
             project_cfs = await self._get_resolved_custom_fields(self._project_id)
+            missing_fields = []
+
             for key, value in custom_fields.items():
                 cf_id = project_cfs.get(key)
                 if cf_id is None:
-                    raise AllureValidationError(f"Custom field '{key}' not found in project {self._project_id}.")
+                    missing_fields.append(key)
+                else:
+                    resolved_custom_fields.append(
+                        CustomFieldValueWithCfDto(custom_field=CustomFieldDto(id=cf_id, name=key), name=value)
+                    )
 
-                resolved_custom_fields.append(
-                    CustomFieldValueWithCfDto(custom_field=CustomFieldDto(id=cf_id, name=key), name=value)
+            if missing_fields:
+                missing_list_str = "\n".join([f"- {name}" for name in missing_fields])
+                error_msg = (
+                    f"The following custom fields were not found in project {self._project_id}:\n"
+                    f"{missing_list_str}\n\n"
+                    f"Usage Hint:\n"
+                    f"To fix this, please exclude all missing custom fields from your request and try again.\n"
+                    f"Only include fields that explicitly exist in the project configuration."
                 )
+                raise AllureValidationError(error_msg)
 
         # 3. Create TestCaseCreateV2Dto with validation
         tag_dtos = self._build_tag_dtos(tags)
