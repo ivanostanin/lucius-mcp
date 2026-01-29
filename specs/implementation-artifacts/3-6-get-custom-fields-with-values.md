@@ -81,5 +81,20 @@ gpt-5.2-codex
 
 ### Completion Notes List
 
-### File List
+## File List
+
+- src/client/client.py
+- src/services/test_case_service.py
+- src/tools/get_custom_fields.py
+- src/tools/__init__.py
+- tests/unit/test_test_case_service_custom_fields.py
+- tests/integration/test_custom_fields.py
+- tests/integration/test_get_custom_fields_tool.py
+
+## Change Log
+
+| Date | Actor | Description |
+| :--- | :--- | :--- |
+| 2025-05-23 | Product Owner | Created story |
+| 2026-01-29 | Dev Agent | Implemented client/service methods, tool, and tests. |
 

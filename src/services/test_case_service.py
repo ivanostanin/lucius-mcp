@@ -185,6 +185,32 @@ class TestCaseService:
         """
         return await self._client.get_test_case(test_case_id)
 
+    async def get_custom_fields(self, name: str | None = None) -> list[dict[str, Any]]:
+        """Get custom fields for the project with optional name filtering."""
+        cfs = await self._client.get_custom_fields_with_values(self._project_id)
+
+        result = []
+        filter_name = name.lower() if name else None
+
+        for cf in cfs:
+            if not cf.custom_field or not cf.custom_field.custom_field:
+                continue
+
+            field_name = cf.custom_field.custom_field.name
+            if not field_name:
+                continue
+
+            if filter_name and filter_name not in field_name.lower():
+                continue
+
+            values = []
+            if cf.values:
+                values = [v.name for v in cf.values if v.name]
+
+            result.append({"name": field_name, "required": bool(cf.custom_field.required), "values": values})
+
+        return result
+
     async def update_test_case(self, test_case_id: int, data: TestCaseUpdate) -> TestCaseDto:
         """Update an existing test case.
 

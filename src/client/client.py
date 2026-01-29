@@ -28,6 +28,7 @@ from .generated.api.shared_step_controller_api import SharedStepControllerApi
 from .generated.api.shared_step_scenario_controller_api import SharedStepScenarioControllerApi
 from .generated.api.test_case_attachment_controller_api import TestCaseAttachmentControllerApi
 from .generated.api.test_case_controller_api import TestCaseControllerApi
+from .generated.api.test_case_custom_field_controller_api import TestCaseCustomFieldControllerApi
 from .generated.api.test_case_overview_controller_api import TestCaseOverviewControllerApi
 from .generated.api.test_case_scenario_controller_api import TestCaseScenarioControllerApi
 from .generated.api.test_case_search_controller_api import TestCaseSearchControllerApi
@@ -36,6 +37,7 @@ from .generated.configuration import Configuration
 from .generated.exceptions import ApiException
 from .generated.models.attachment_step_dto import AttachmentStepDto
 from .generated.models.body_step_dto import BodyStepDto
+from .generated.models.custom_field_project_with_values_dto import CustomFieldProjectWithValuesDto
 from .generated.models.custom_field_value_with_cf_dto import CustomFieldValueWithCfDto
 from .generated.models.page_shared_step_dto import PageSharedStepDto
 from .generated.models.page_test_case_dto import PageTestCaseDto
@@ -55,6 +57,7 @@ from .generated.models.test_case_patch_v2_dto import TestCasePatchV2Dto
 from .generated.models.test_case_row_dto import TestCaseRowDto
 from .generated.models.test_case_scenario_dto import TestCaseScenarioDto
 from .generated.models.test_case_scenario_v2_dto import TestCaseScenarioV2Dto
+from .generated.models.test_case_tree_selection_dto import TestCaseTreeSelectionDto
 
 
 # Subclasses to add missing fields to generated models
@@ -97,6 +100,7 @@ type ApiType = (
     | SharedStepScenarioControllerApi
     | TestCaseOverviewControllerApi
     | TestCaseSearchControllerApi
+    | TestCaseCustomFieldControllerApi
 )
 
 type NormalizedScenarioDict = dict[str, object]
@@ -110,6 +114,7 @@ __all__ = [
     "AllureClient",
     "AttachmentStepDtoWithName",
     "BodyStepDtoWithSteps",
+    "CustomFieldProjectWithValuesDto",
     "PageSharedStepDto",
     "PageTestCaseDto",
     "ScenarioStepCreateDto",
@@ -129,6 +134,7 @@ __all__ = [
     "TestCaseRowDto",
     "TestCaseScenarioDto",
     "TestCaseScenarioV2Dto",
+    "TestCaseTreeSelectionDto",
 ]
 
 
@@ -190,6 +196,7 @@ class AllureClient:
         self._shared_step_scenario_api: SharedStepScenarioControllerApi | None = None
         self._overview_api: TestCaseOverviewControllerApi
         self._search_api: TestCaseSearchControllerApi | None = None
+        self._test_case_custom_field_api: TestCaseCustomFieldControllerApi | None = None
         self._is_entered = False
 
     @classmethod
@@ -326,6 +333,7 @@ class AllureClient:
             self._shared_step_scenario_api = SharedStepScenarioControllerApi(self._api_client)
             self._overview_api = TestCaseOverviewControllerApi(self._api_client)
             self._search_api = TestCaseSearchControllerApi(self._api_client)
+            self._test_case_custom_field_api = TestCaseCustomFieldControllerApi(self._api_client)
 
     @property
     def api_client(self) -> ApiClient:
@@ -438,6 +446,11 @@ class AllureClient:
     async def _get_api(
         self, attr_name: Literal["_search_api"], *, error_name: str | None = None
     ) -> TestCaseSearchControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_test_case_custom_field_api"], *, error_name: str | None = None
+    ) -> TestCaseCustomFieldControllerApi: ...
 
     async def _get_api(self, attr_name: str, *, error_name: str | None = None) -> ApiType:
         self._require_entered()
@@ -816,6 +829,32 @@ class AllureClient:
             step,
             after_id=after_id,
             with_expected_result=with_expected_result,
+        )
+
+    async def get_custom_fields_with_values(self, project_id: int) -> list[CustomFieldProjectWithValuesDto]:
+        """Fetch all custom fields and their allowed values for a project.
+
+        Args:
+            project_id: Target project ID.
+
+        Returns:
+            List of custom field DTOs with values.
+
+        Raises:
+            AllureValidationError: If project_id is invalid.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
+        """
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+
+        cf_api = await self._get_api("_test_case_custom_field_api")
+
+        return await self._call_api(
+            cf_api.get_custom_fields_with_values2(
+                test_case_tree_selection_dto=TestCaseTreeSelectionDto(project_id=project_id),
+                _request_timeout=self._timeout,
+            )
         )
 
     async def delete_scenario_step(self, step_id: int) -> None:
