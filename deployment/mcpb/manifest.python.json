@@ -4,12 +4,17 @@
   "version": "0.1.0",
   "description": "Allure TestOps MCP Server",
   "author": {
-    "name": "Ivan Ostanin"
+    "name": "Ivan Ostanin",
+    "email": "ivan@ostanin.me",
+    "url": "https://github.com/ivanostanin/"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/lucius-mcp/lucius-mcp"
+    "url": "https://github.com/ivanostanin/lucius-mcp/"
   },
+  "homepage": "https://github.com/ivanostanin/lucius-mcp",
+  "documentation": "https://github.com/ivanostanin/lucius-mcp#readme",
+  "support": "https://github.com/ivanostanin/lucius-mcp/issues",
   "server": {
     "type": "python",
     "entry_point": "src.main:start",
@@ -111,5 +116,11 @@
       "python": ">=3.14"
     }
   },
-  "license": "MIT"
+  "license": "Apache-2.0",
+  "keywords": [
+    "allure",
+    "testops",
+    "allure-testops",
+    "python"
+  ]
 }

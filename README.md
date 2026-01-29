@@ -47,6 +47,18 @@ This project uses `uv` for dependency management.
 
 ## 🏃 Usage
 
+### Add to Claude Code (MCP)
+
+1.  **Add the MCP**:
+    ```bash
+    claude mcp add testops-mcp --transport stdio \
+      --env ALLURE_ENDPOINT=https://your-testops.example \
+      --env ALLURE_PROJECT_ID=123 \
+      --env ALLURE_API_TOKEN=your_token \
+      --env MCP_MODE=stdio \
+      -- uvx --from lucius-mcp start
+    ```
+
 ### Running via Claude Desktop (One-Click Install)
 
 The easiest way to use Lucius in Claude Desktop is via the `.mcpb` bundle:
@@ -64,7 +76,7 @@ For integration with MCP clients (like Claude Code) using standard input/output.
 uv run start
 ```
 
-Or 
+Or
 
 ```bash
 MCP_MODE=stdio uv run start

@@ -3,7 +3,10 @@ name = "lucius-mcp"
 version = "0.1.0"
 description = "Allure TestOps MCP Server"
 readme = "README.md"
-authors = [{ name = "Ivan Ostanin" }]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Ivan Ostanin", email = "ivan@ostanin.me" }]
+keywords = ["mcp", "allure", "testops", "allure-testops", "mcp-server", "fastmcp", "model-context-protocol"]
 requires-python = ">=3.14"
 dependencies = [
     "fastmcp>=2.14.4",
@@ -17,6 +20,28 @@ dependencies = [
     "python-json-logger>=2.0.7",
     "rich>=13.7.0",
 ]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development",
+    "Topic :: Utilities",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
+    "Typing :: Typed",
+    "Environment :: Console",
+    "Operating System :: OS Independent",
+    "Natural Language :: English",
+]
+
+[project.urls]
+Homepage = "https://github.com/ivanostanin/lucius-mcp"
+Documentation = "https://github.com/ivanostanin/lucius-mcp#readme"
+Repository = "https://github.com/ivanostanin/lucius-mcp.git"
+Issues = "https://github.com/ivanostanin/lucius-mcp/issues"
+Changelog = "https://github.com/ivanostanin/lucius-mcp/blob/main/CHANGELOG.md"
+Releases = "https://github.com/ivanostanin/lucius-mcp/releases"
 
 [project.scripts]
 start = "src.main:start"
@@ -44,6 +69,7 @@ dev = [
     "pytest-mock>=3.15.1",
     "respx>=0.22.0",
     "ruff>=0.14.14",
+    "twine>=6.2.0",
 ]
 
 [tool.ruff]
@@ -79,8 +105,8 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 python_classes = [
-    "TestUpdateTestCase", 
-    "TestAddSharedStepToCase", 
+    "TestUpdateTestCase",
+    "TestAddSharedStepToCase",
     "TestRemoveSharedStepFromCase",
     "TestProjectIdValidation",
     "TestNameValidation",
@@ -94,3 +120,4 @@ markers = [
     "test_id: Test ID for traceability to requirements and test design documents",
     "priority: Test execution priority"
 ]
+
