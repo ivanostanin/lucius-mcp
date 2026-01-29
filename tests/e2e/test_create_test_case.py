@@ -164,7 +164,7 @@ async def test_e2e_3_custom_fields_creation(
     # Create test case with custom fields
     # Note: Custom fields must exist in the project
     case_name = "E2E-3 Custom Fields Test"
-    custom_fields = {"Feature": "Flow", "Component": "Authentication"}
+    custom_fields = {"Feature": "Flow", "Component": "Chat"}
 
     created_case = await service.create_test_case(
         name=case_name, description="Testing custom fields", custom_fields=custom_fields

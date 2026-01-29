@@ -19,7 +19,6 @@ from src.client.generated.models import (
     TestCaseCreateV2Dto,
     TestCaseDto,
     TestCaseOverviewDto,
-    TestCaseTreeSelectionDto,
     TestTagDto,
 )
 from src.client.generated.models.attachment_step_dto import AttachmentStepDto
@@ -83,7 +82,7 @@ class TestCaseService:
         # {project_id: {name: {"id": int, "values": list[str]}}}
         self._cf_cache: dict[int, dict[str, dict[str, Any]]] = {}
 
-    async def create_test_case(
+    async def create_test_case(  # noqa: C901
         self,
         name: str,
         description: str | None = None,
@@ -760,34 +759,26 @@ class TestCaseService:
         if project_id in self._cf_cache:
             return self._cf_cache[project_id]
 
-        try:
-            from src.client.generated.api.test_case_custom_field_controller_api import TestCaseCustomFieldControllerApi
+        # Use the client wrapper method for consistent error handling and response processing
+        cfs = await self._client.get_custom_fields_with_values(project_id)
+        logger.debug("Fetched %d custom fields for project %d", len(cfs), project_id)
+        mapping = {}
+        for cf_with_values in cfs:
+            if cf_with_values.custom_field and cf_with_values.custom_field.custom_field:
+                inner_cf = cf_with_values.custom_field.custom_field
+                if inner_cf.name and inner_cf.id:
+                    values = []
+                    if cf_with_values.values:
+                        values = [v.name for v in cf_with_values.values if v.name]
 
-            api = TestCaseCustomFieldControllerApi(self._client.api_client)
-            selection = TestCaseTreeSelectionDto(project_id=project_id)
-            cfs = await api.get_custom_fields_with_values2(test_case_tree_selection_dto=selection)
+                    mapping[inner_cf.name] = {
+                        "id": inner_cf.id,
+                        "required": bool(cf_with_values.custom_field.required),
+                        "values": values,
+                    }
 
-            mapping = {}
-            for cf_with_values in cfs:
-                if cf_with_values.custom_field and cf_with_values.custom_field.custom_field:
-                    inner_cf = cf_with_values.custom_field.custom_field
-                    if inner_cf.name and inner_cf.id:
-                        values = []
-                        if cf_with_values.values:
-                            values = [v.name for v in cf_with_values.values if v.name]
-
-                        mapping[inner_cf.name] = {
-                            "id": inner_cf.id,
-                            "required": bool(cf_with_values.custom_field.required),
-                            "values": values,
-                        }
-
-            self._cf_cache[project_id] = mapping
-            return mapping
-        except Exception as e:
-            # If we fail to fetch CFs, we might want to warn or raise.
-            # For now, let's raise as it's critical for resolving names to IDs.
-            raise AllureValidationError(f"Failed to fetch custom fields for project {project_id}: {e}") from e
+        self._cf_cache[project_id] = mapping
+        return mapping
 
     def _build_custom_field_dtos(self, custom_fields: dict[str, str] | None) -> list[CustomFieldValueWithCfDto]:
         """DEPRECATED: Use inline resolution in create_test_case."""

@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -164,9 +164,8 @@ async def test_create_test_case_with_custom_fields(service: TestCaseService, moc
     name = "CF Test"
     custom_fields = {"Layer": "UI", "Priority": "High"}
 
-    # Mock custom field resolution
-    mock_cf_api = AsyncMock()
-    mock_cf_api.get_custom_fields_with_values2.return_value = [
+    # Mock custom field resolution directly on the client
+    mock_client.get_custom_fields_with_values.return_value = [
         CustomFieldProjectWithValuesDto(
             custom_field=CustomFieldProjectDto(custom_field=CustomFieldDto(id=10, name="Layer"))
         ),
@@ -175,29 +174,25 @@ async def test_create_test_case_with_custom_fields(service: TestCaseService, moc
         ),
     ]
 
-    with patch(
-        "src.client.generated.api.test_case_custom_field_controller_api.TestCaseCustomFieldControllerApi",
-        return_value=mock_cf_api,
-    ):
-        result_mock = Mock(id=103)
-        result_mock.name = name
-        mock_client.create_test_case.return_value = result_mock
+    result_mock = Mock(id=103)
+    result_mock.name = name
+    mock_client.create_test_case.return_value = result_mock
 
-        await service.create_test_case(name, custom_fields=custom_fields)
+    await service.create_test_case(name, custom_fields=custom_fields)
 
-        # Verify resolution call
-        mock_cf_api.get_custom_fields_with_values2.assert_called_once()
+    # Verify resolution call
+    mock_client.get_custom_fields_with_values.assert_called_once_with(1)
 
-        # Verify test case creation DTO
-        call_args = mock_client.create_test_case.call_args
-        passed_dto = call_args[0][0]
+    # Verify test case creation DTO
+    call_args = mock_client.create_test_case.call_args
+    passed_dto = call_args[0][0]
 
-        assert passed_dto.custom_fields is not None
-        assert len(passed_dto.custom_fields) == 2
+    assert passed_dto.custom_fields is not None
+    assert len(passed_dto.custom_fields) == 2
 
-        cf_map = {cf.custom_field.name: (cf.custom_field.id, cf.name) for cf in passed_dto.custom_fields}
-        assert cf_map["Layer"] == (10, "UI")
-        assert cf_map["Priority"] == (20, "High")
+    cf_map = {cf.custom_field.name: (cf.custom_field.id, cf.name) for cf in passed_dto.custom_fields}
+    assert cf_map["Layer"] == (10, "UI")
+    assert cf_map["Priority"] == (20, "High")
 
 
 @pytest.mark.asyncio
@@ -206,16 +201,12 @@ async def test_create_test_case_custom_field_not_found(service: TestCaseService,
     name = "CF Fail"
     custom_fields = {"Unknown": "Value"}
 
-    mock_cf_api = AsyncMock()
-    mock_cf_api.get_custom_fields_with_values2.return_value = []
+    # Mock custom field resolution directly on the client
+    mock_client.get_custom_fields_with_values.return_value = []
 
-    with patch(
-        "src.client.generated.api.test_case_custom_field_controller_api.TestCaseCustomFieldControllerApi",
-        return_value=mock_cf_api,
-    ):
-        # Expect the new aggregated error format
-        with pytest.raises(AllureValidationError, match="The following custom fields were not found"):
-            await service.create_test_case(name, custom_fields=custom_fields)
+    # Expect the new aggregated error format
+    with pytest.raises(AllureValidationError, match="The following custom fields were not found"):
+        await service.create_test_case(name, custom_fields=custom_fields)
 
 
 @pytest.mark.asyncio

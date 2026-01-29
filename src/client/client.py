@@ -23,6 +23,10 @@ from .exceptions import (
     AllureRateLimitError,
     AllureValidationError,
 )
+from .generated.api.custom_field_controller_api import CustomFieldControllerApi
+from .generated.api.custom_field_project_controller_api import CustomFieldProjectControllerApi
+from .generated.api.custom_field_project_controller_v2_api import CustomFieldProjectControllerV2Api
+from .generated.api.custom_field_value_project_controller_api import CustomFieldValueProjectControllerApi
 from .generated.api.shared_step_attachment_controller_api import SharedStepAttachmentControllerApi
 from .generated.api.shared_step_controller_api import SharedStepControllerApi
 from .generated.api.shared_step_scenario_controller_api import SharedStepScenarioControllerApi
@@ -101,6 +105,10 @@ type ApiType = (
     | TestCaseOverviewControllerApi
     | TestCaseSearchControllerApi
     | TestCaseCustomFieldControllerApi
+    | CustomFieldControllerApi
+    | CustomFieldProjectControllerApi
+    | CustomFieldProjectControllerV2Api
+    | CustomFieldValueProjectControllerApi
 )
 
 type NormalizedScenarioDict = dict[str, object]
@@ -197,6 +205,10 @@ class AllureClient:
         self._overview_api: TestCaseOverviewControllerApi
         self._search_api: TestCaseSearchControllerApi | None = None
         self._test_case_custom_field_api: TestCaseCustomFieldControllerApi | None = None
+        self._custom_field_api: CustomFieldControllerApi | None = None
+        self._custom_field_project_api: CustomFieldProjectControllerApi | None = None
+        self._custom_field_project_v2_api: CustomFieldProjectControllerV2Api | None = None
+        self._custom_field_value_project_api: CustomFieldValueProjectControllerApi | None = None
         self._is_entered = False
 
     @classmethod
@@ -334,6 +346,10 @@ class AllureClient:
             self._overview_api = TestCaseOverviewControllerApi(self._api_client)
             self._search_api = TestCaseSearchControllerApi(self._api_client)
             self._test_case_custom_field_api = TestCaseCustomFieldControllerApi(self._api_client)
+            self._custom_field_api = CustomFieldControllerApi(self._api_client)
+            self._custom_field_project_api = CustomFieldProjectControllerApi(self._api_client)
+            self._custom_field_project_v2_api = CustomFieldProjectControllerV2Api(self._api_client)
+            self._custom_field_value_project_api = CustomFieldValueProjectControllerApi(self._api_client)
 
     @property
     def api_client(self) -> ApiClient:
@@ -451,6 +467,26 @@ class AllureClient:
     async def _get_api(
         self, attr_name: Literal["_test_case_custom_field_api"], *, error_name: str | None = None
     ) -> TestCaseCustomFieldControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_custom_field_api"], *, error_name: str | None = None
+    ) -> CustomFieldControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_custom_field_project_api"], *, error_name: str | None = None
+    ) -> CustomFieldProjectControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_custom_field_project_v2_api"], *, error_name: str | None = None
+    ) -> CustomFieldProjectControllerV2Api: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_custom_field_value_project_api"], *, error_name: str | None = None
+    ) -> CustomFieldValueProjectControllerApi: ...
 
     async def _get_api(self, attr_name: str, *, error_name: str | None = None) -> ApiType:
         self._require_entered()
@@ -834,6 +870,10 @@ class AllureClient:
     async def get_custom_fields_with_values(self, project_id: int) -> list[CustomFieldProjectWithValuesDto]:
         """Fetch all custom fields and their allowed values for a project.
 
+        This method uses CustomFieldProjectControllerV2Api to find all custom fields
+        associated with the project and then fetches their allowed values using
+        CustomFieldValueProjectControllerApi.
+
         Args:
             project_id: Target project ID.
 
@@ -848,14 +888,40 @@ class AllureClient:
         if not isinstance(project_id, int) or project_id <= 0:
             raise AllureValidationError("Project ID must be a positive integer")
 
-        cf_api = await self._get_api("_test_case_custom_field_api")
+        v2_api = await self._get_api("_custom_field_project_v2_api")
+        val_api = await self._get_api("_custom_field_value_project_api")
 
-        return await self._call_api(
-            cf_api.get_custom_fields_with_values2(
-                test_case_tree_selection_dto=TestCaseTreeSelectionDto(project_id=project_id),
-                _request_timeout=self._timeout,
-            )
-        )
+        # 1. Get all custom fields for project
+        page = await self._call_api(v2_api.find_by_project1(project_id=project_id))
+
+        results: list[CustomFieldProjectWithValuesDto] = []
+
+        from src.client.generated.models.custom_field_value_dto import CustomFieldValueDto
+
+        for cf_proj in page.content or []:
+            if not cf_proj.custom_field or cf_proj.custom_field.id is None:
+                continue
+
+            # 2. Get values for each field
+            try:
+                values_page = await self._call_api(
+                    val_api.find_all22(project_id=project_id, custom_field_id=cf_proj.custom_field.id)
+                )
+
+                allowed_values = [CustomFieldValueDto(id=v.id, name=v.name) for v in values_page.content or []]
+
+                results.append(
+                    CustomFieldProjectWithValuesDto(
+                        custom_field=cf_proj,  # Wait, CustomFieldProjectWithValuesDto expect CustomFieldProjectDto
+                        values=allowed_values,
+                    )
+                )
+            except AllureAPIError as e:
+                # If fetching values fails for one field, log and continue
+                logger.warning(f"Failed to fetch values for custom field {cf_proj.custom_field.name}: {e}")
+                results.append(CustomFieldProjectWithValuesDto(custom_field=cf_proj, values=[]))
+
+        return results
 
     async def delete_scenario_step(self, step_id: int) -> None:
         """Delete a scenario step.

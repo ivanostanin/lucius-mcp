@@ -236,13 +236,13 @@ async def test_e2e_u4_update_custom_fields(
 
     # Create with initial custom fields
     # Note: Custom fields must exist in the project
-    created_case = await service.create_test_case(name="E2E-U4 Custom Fields Test", custom_fields={"Feature": "Test"})
+    created_case = await service.create_test_case(name="E2E-U4 Custom Fields Test", custom_fields={"Feature": "Flow"})
     test_case_id = created_case.id
     assert test_case_id is not None
     cleanup_tracker.track_test_case(test_case_id)
 
     # Update custom fields
-    update_data = TestCaseUpdate(custom_fields={"Feature": "Flow", "Component": "API"})
+    update_data = TestCaseUpdate(custom_fields={"Feature": "Onboarding Banner", "Component": "Chat"})
     await service.update_test_case(test_case_id, update_data)
 
     # Verify custom fields updated
@@ -251,4 +251,4 @@ async def test_e2e_u4_update_custom_fields(
     if custom_fields:
         cf_values = {cf.custom_field.name: cf.name for cf in custom_fields if cf.custom_field}
         # At least one should be updated
-        assert cf_values.get("Feature") == "Flow" or cf_values.get("Component") == "API"
+        assert cf_values.get("Feature") == "Onboarding Banner" or cf_values.get("Component") == "Chat"

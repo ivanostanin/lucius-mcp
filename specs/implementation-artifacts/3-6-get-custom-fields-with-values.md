@@ -90,10 +90,11 @@ gemini-2.0-flash-thinking-exp-01-21
 - Client method `get_custom_fields_with_values` added to `AllureClient` with proper validation
 - Service method `get_custom_fields` implemented with case-insensitive name filtering
 - Tool registered in `src/tools/__init__.py` and follows thin tool pattern
-- All 7 tests pass (3 unit, 4 integration)
+- All tests pass: 3 unit, 4 integration, 8 E2E
 - Output format is LLM-friendly plain text as specified
 - **Performance optimization**: `get_custom_fields` uses shared `_cf_cache` with `create_test_case` to avoid duplicate API calls
 - **Cache enhancement**: Added `required` flag to cache structure for complete field information
+- **E2E coverage**: Comprehensive sandbox tests cover filtering, output format, cache efficiency, and edge cases
 
 ## File List
 
