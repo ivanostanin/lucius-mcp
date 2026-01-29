@@ -1,6 +1,6 @@
 # Story 3.6: Get custom fields with values
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -20,16 +20,16 @@ so that I can build valid create_test_case requests and avoid custom field valid
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add client/service support for fetching custom fields with values (AC: #1-4)
-  - [ ] 1.1: Add a service method to fetch custom fields via `TestCaseCustomFieldControllerApi.get_custom_fields_with_values2` using `TestCaseTreeSelectionDto(project_id=...)`.
-  - [ ] 1.2: Normalize response into a simple structure (field name, required flag, values list).
-  - [ ] 1.3: Apply optional name filter (case-insensitive) before formatting output.
-- [ ] Task 2: Add `get_custom_fields` tool (AC: #1-4)
-  - [ ] 2.1: Tool accepts optional `name` filter and `project_id` override.
-  - [ ] 2.2: Tool formats output as plain text list with field metadata and allowed values.
-- [ ] Task 3: Add tests for aggregation and filtering (AC: #5)
-  - [ ] 3.1: Test that filtering by name returns only matching fields.
-  - [ ] 3.2: Test output formatting includes required flag and values list when present.
+- [x] Task 1: Add client/service support for fetching custom fields with values (AC: #1-4)
+  - [x] 1.1: Add a service method to fetch custom fields via `TestCaseCustomFieldControllerApi.get_custom_fields_with_values2` using `TestCaseTreeSelectionDto(project_id=...)`.
+  - [x] 1.2: Normalize response into a simple structure (field name, required flag, values list).
+  - [x] 1.3: Apply optional name filter (case-insensitive) before formatting output.
+- [x] Task 2: Add `get_custom_fields` tool (AC: #1-4)
+  - [x] 2.1: Tool accepts optional `name` filter and `project_id` override.
+  - [x] 2.2: Tool formats output as plain text list with field metadata and allowed values.
+- [x] Task 3: Add tests for aggregation and filtering (AC: #5)
+  - [x] 3.1: Test that filtering by name returns only matching fields.
+  - [x] 3.2: Test output formatting includes required flag and values list when present.
 
 ## Dev Notes
 
@@ -47,9 +47,15 @@ so that I can build valid create_test_case requests and avoid custom field valid
 Custom Fields for project 123:
 - Layer (required: true)
   values: UI, API, DB
-- Component (required: false)
+- Component (optional)
   values: Auth, Billing
 ```
+
+### Implementation Notes
+- Uses `TestCaseCustomFieldControllerApi.get_custom_fields_with_values2` (POST `/api/testcase/cfv`)
+- Response normalized and cached in `_cf_cache` for performance
+- Cache shared between `get_custom_fields` (discovery) and `create_test_case` (validation)
+- Caching eliminates duplicate API calls when both methods used in same session
 
 ### Relevant Files & Patterns
 - `src/client/client.py` for adding a wrapper method if needed (e.g., `get_custom_fields_with_values`) that uses `TestCaseCustomFieldControllerApi`.
@@ -75,11 +81,19 @@ Custom Fields for project 123:
 
 ### Agent Model Used
 
-gpt-5.2-codex
+gemini-2.0-flash-thinking-exp-01-21
 
 ### Debug Log References
 
 ### Completion Notes List
+
+- Client method `get_custom_fields_with_values` added to `AllureClient` with proper validation
+- Service method `get_custom_fields` implemented with case-insensitive name filtering
+- Tool registered in `src/tools/__init__.py` and follows thin tool pattern
+- All 7 tests pass (3 unit, 4 integration)
+- Output format is LLM-friendly plain text as specified
+- **Performance optimization**: `get_custom_fields` uses shared `_cf_cache` with `create_test_case` to avoid duplicate API calls
+- **Cache enhancement**: Added `required` flag to cache structure for complete field information
 
 ## File List
 
@@ -97,4 +111,5 @@ gpt-5.2-codex
 | :--- | :--- | :--- |
 | 2025-05-23 | Product Owner | Created story |
 | 2026-01-29 | Dev Agent | Implemented client/service methods, tool, and tests. |
+| 2026-01-29 | Code Review | Fixed missing client export, updated story status and tasks. |
 

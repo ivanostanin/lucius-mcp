@@ -131,7 +131,7 @@ class TestCaseService:
                 else:
                     cf_id = cf_info["id"]
                     allowed_values = cf_info["values"]
-                    
+
                     # Validate value if allowed_values are present
                     if allowed_values and value not in allowed_values:
                         invalid_values.append(f"'{key}': '{value}' (Allowed: {', '.join(allowed_values)})")
@@ -141,7 +141,7 @@ class TestCaseService:
                         )
 
             error_messages = []
-            
+
             if missing_fields:
                 missing_list_str = "\n".join([f"- {name}" for name in missing_fields])
                 error_messages.append(
@@ -150,9 +150,7 @@ class TestCaseService:
 
             if invalid_values:
                 invalid_list_str = "\n".join([f"- {item}" for item in invalid_values])
-                error_messages.append(
-                    f"The following custom field values are invalid:\n{invalid_list_str}"
-                )
+                error_messages.append(f"The following custom field values are invalid:\n{invalid_list_str}")
 
             if error_messages:
                 full_error_msg = "\n\n".join(error_messages) + (
@@ -220,28 +218,23 @@ class TestCaseService:
         return await self._client.get_test_case(test_case_id)
 
     async def get_custom_fields(self, name: str | None = None) -> list[dict[str, Any]]:
-        """Get custom fields for the project with optional name filtering."""
-        cfs = await self._client.get_custom_fields_with_values(self._project_id)
+        """Get custom fields for the project with optional name filtering.
+
+        This method uses the internal cache to avoid duplicate API calls when
+        both get_custom_fields and create_test_case are used in the same session.
+        """
+        # Use cached resolution method to get field mapping
+        cf_mapping = await self._get_resolved_custom_fields(self._project_id)
 
         result = []
         filter_name = name.lower() if name else None
 
-        for cf in cfs:
-            if not cf.custom_field or not cf.custom_field.custom_field:
-                continue
-
-            field_name = cf.custom_field.custom_field.name
-            if not field_name:
-                continue
-
+        # Convert the cached mapping back to the display format
+        for field_name, field_info in cf_mapping.items():
             if filter_name and filter_name not in field_name.lower():
                 continue
 
-            values = []
-            if cf.values:
-                values = [v.name for v in cf.values if v.name]
-
-            result.append({"name": field_name, "required": bool(cf.custom_field.required), "values": values})
+            result.append({"name": field_name, "required": field_info["required"], "values": field_info["values"]})
 
         return result
 
@@ -491,7 +484,9 @@ class TestCaseService:
                         # If we want validation here, we should add it.
                         # For now, adapting to the new dict structure is required.
                         resolved_cfs.append(
-                            CustomFieldValueWithCfDto(custom_field=CustomFieldDto(id=cf_info["id"], name=key), name=value)
+                            CustomFieldValueWithCfDto(
+                                custom_field=CustomFieldDto(id=cf_info["id"], name=key), name=value
+                            )
                         )
                 patch_kwargs["custom_fields"] = resolved_cfs
                 has_changes = True
@@ -780,8 +775,12 @@ class TestCaseService:
                         values = []
                         if cf_with_values.values:
                             values = [v.name for v in cf_with_values.values if v.name]
-                        
-                        mapping[inner_cf.name] = {"id": inner_cf.id, "values": values}
+
+                        mapping[inner_cf.name] = {
+                            "id": inner_cf.id,
+                            "required": bool(cf_with_values.custom_field.required),
+                            "values": values,
+                        }
 
             self._cf_cache[project_id] = mapping
             return mapping

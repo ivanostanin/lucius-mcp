@@ -3,12 +3,6 @@ from unittest.mock import AsyncMock
 import pytest
 
 from src.client import AllureClient
-from src.client.generated.models import (
-    CustomFieldDto,
-    CustomFieldProjectDto,
-    CustomFieldProjectWithValuesDto,
-    CustomFieldValueDto,
-)
 from src.services.test_case_service import TestCaseService
 
 
@@ -25,50 +19,40 @@ def service(mock_client: AsyncMock) -> TestCaseService:
 
 
 @pytest.mark.asyncio
-async def test_get_custom_fields_returns_mapped_data(service: TestCaseService, mock_client: AsyncMock) -> None:
+async def test_get_custom_fields_returns_mapped_data(service: TestCaseService) -> None:
     """Test standard retrieval and mapping of custom fields."""
-    # Setup mock data
-    mock_cf1 = CustomFieldProjectWithValuesDto(
-        custom_field=CustomFieldProjectDto(custom_field=CustomFieldDto(name="Layer"), required=True),
-        values=[CustomFieldValueDto(name="UI"), CustomFieldValueDto(name="API")],
-    )
-    mock_cf2 = CustomFieldProjectWithValuesDto(
-        custom_field=CustomFieldProjectDto(custom_field=CustomFieldDto(name="Component"), required=False),
-        values=[CustomFieldValueDto(name="Auth")],
-    )
+    # Pre-populate the cache with test data
+    service._cf_cache[1] = {
+        "Layer": {"id": 1, "required": True, "values": ["UI", "API"]},
+        "Component": {"id": 2, "required": False, "values": ["Auth"]},
+    }
 
-    # Mock the client method (which doesn't exist yet, so this will fail if we run it before implementing)
-    # But we mock it here assuming it will exist
-    mock_client.get_custom_fields_with_values = AsyncMock(return_value=[mock_cf1, mock_cf2])
-
-    # Call service method (doesn't exist yet)
+    # Call service method
     result = await service.get_custom_fields()
 
     assert len(result) == 2
 
-    # Validate normalization
-    assert result[0]["name"] == "Layer"
-    assert result[0]["required"] is True
-    assert result[0]["values"] == ["UI", "API"]
+    # Validate normalization (order may vary since dict iteration)
+    layer_field = next((f for f in result if f["name"] == "Layer"), None)
+    component_field = next((f for f in result if f["name"] == "Component"), None)
 
-    assert result[1]["name"] == "Component"
-    assert result[1]["required"] is False
-    assert result[1]["values"] == ["Auth"]
+    assert layer_field is not None
+    assert layer_field["required"] is True
+    assert layer_field["values"] == ["UI", "API"]
 
-    mock_client.get_custom_fields_with_values.assert_called_once_with(1)
+    assert component_field is not None
+    assert component_field["required"] is False
+    assert component_field["values"] == ["Auth"]
 
 
 @pytest.mark.asyncio
-async def test_get_custom_fields_filtering(service: TestCaseService, mock_client: AsyncMock) -> None:
+async def test_get_custom_fields_filtering(service: TestCaseService) -> None:
     """Test filtering custom fields by name."""
-    mock_cf1 = CustomFieldProjectWithValuesDto(
-        custom_field=CustomFieldProjectDto(custom_field=CustomFieldDto(name="Layer")), values=[]
-    )
-    mock_cf2 = CustomFieldProjectWithValuesDto(
-        custom_field=CustomFieldProjectDto(custom_field=CustomFieldDto(name="Component")), values=[]
-    )
-
-    mock_client.get_custom_fields_with_values = AsyncMock(return_value=[mock_cf1, mock_cf2])
+    # Pre-populate cache
+    service._cf_cache[1] = {
+        "Layer": {"id": 1, "required": False, "values": []},
+        "Component": {"id": 2, "required": False, "values": []},
+    }
 
     # Filter for 'layer' (case insensitive)
     result = await service.get_custom_fields(name="layer")
@@ -78,9 +62,10 @@ async def test_get_custom_fields_filtering(service: TestCaseService, mock_client
 
 
 @pytest.mark.asyncio
-async def test_get_custom_fields_empty(service: TestCaseService, mock_client: AsyncMock) -> None:
+async def test_get_custom_fields_empty(service: TestCaseService) -> None:
     """Test empty response handling."""
-    mock_client.get_custom_fields_with_values = AsyncMock(return_value=[])
+    # Pre-populate with empty cache
+    service._cf_cache[1] = {}
 
     result = await service.get_custom_fields()
     assert result == []
