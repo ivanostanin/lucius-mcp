@@ -2,6 +2,10 @@ import pytest
 from starlette.applications import Starlette
 from starlette.routing import Mount
 
+from src.utils.config import settings
+
+settings.MCP_MODE = "http"
+
 # Fixtures are imported via pytest_plugins to avoid re-import warnings
 pytest_plugins = [
     "tests.support.fixtures.base",
