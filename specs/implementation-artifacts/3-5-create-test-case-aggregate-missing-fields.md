@@ -1,6 +1,6 @@
 # Story 3.5: Create test case aggregate missing fields
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -24,16 +24,16 @@ so that I can correct my request in a single retry without guessing which fields
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Aggregate custom field validation errors in `TestCaseService.create_test_case` (AC: #1-3)
-  - [ ] 1.1: Collect all missing custom field names before raising validation error.
-  - [ ] 1.2: Collect all invalid custom field values (if values are validated client-side) before raising validation error.
-  - [ ] 1.3: Format error message to list all missing fields and invalid values in one response with guidance to exclude missing fields.
-- [ ] Task 2: Ensure Agent Hint formatting is preserved and LLM-friendly (AC: #3-4)
-  - [ ] 2.1: Use existing AllureValidationError flow for aggregated messages.
-  - [ ] 2.2: Maintain structured text output (bulleted list) with explicit guidance block.
-- [ ] Task 3: Add/extend tests for aggregated error output (AC: #5)
-  - [ ] 3.1: Unit or integration test that passes multiple missing custom fields and asserts all names listed.
-  - [ ] 3.2: Unit or integration test that passes invalid custom field values (if applicable) and asserts all listed.
+- [x] Task 1: Aggregate custom field validation errors in `TestCaseService.create_test_case` (AC: #1-3)
+  - [x] 1.1: Collect all missing custom field names before raising validation error.
+  - [x] 1.2: Collect all invalid custom field values (if values are validated client-side) before raising validation error.
+  - [x] 1.3: Format error message to list all missing fields and invalid values in one response with guidance to exclude missing fields.
+- [x] Task 2: Ensure Agent Hint formatting is preserved and LLM-friendly (AC: #3-4)
+  - [x] 2.1: Use existing AllureValidationError flow for aggregated messages.
+  - [x] 2.2: Maintain structured text output (bulleted list) with explicit guidance block.
+- [x] Task 3: Add/extend tests for aggregated error output (AC: #5)
+  - [x] 3.1: Unit or integration test that passes multiple missing custom fields and asserts all names listed.
+  - [x] 3.2: Unit or integration test that passes invalid custom field values (if applicable) and asserts all listed.
 
 ## Dev Notes
 
@@ -80,4 +80,6 @@ gpt-5.2-codex
 ### Completion Notes List
 
 ### File List
+- src/services/test_case_service.py
+- tests/integration/test_custom_field_aggregation.py
 

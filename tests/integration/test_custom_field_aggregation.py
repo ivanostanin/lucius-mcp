@@ -8,6 +8,7 @@ from src.client.generated.models import (
     CustomFieldDto,
     CustomFieldProjectDto,
     CustomFieldProjectWithValuesDto,
+    CustomFieldValueDto,
 )
 from src.services.test_case_service import TestCaseService
 
@@ -72,9 +73,56 @@ async def test_create_test_case_aggregated_missing_fields_error(service, mock_cl
 @pytest.mark.asyncio
 async def test_create_test_case_invalid_values_aggregation(service, mock_client):
     """
-    Placeholder for second AC: Invalid values aggregation.
-    Note: Current implementation of TestCaseService might not validate values client-side
-    unless checking against enum values from the fetched CFs.
-    If value validation is added, this test should be expanded.
+    Test that providing invalid values for custom fields (where allowed values are defined)
+    returns an aggregated error listing ALL invalid values.
     """
-    pass
+    with patch(
+        "src.client.generated.api.test_case_custom_field_controller_api.TestCaseCustomFieldControllerApi"
+    ) as mock_api_cls:
+        mock_api_instance = mock_api_cls.return_value
+
+        # Define custom fields with constrained values
+        # Field 1: "Priority" [High, Medium, Low]
+        cf_priority = CustomFieldProjectWithValuesDto(
+            custom_field=CustomFieldProjectDto(custom_field=CustomFieldDto(id=101, name="Priority")),
+            values=[
+                CustomFieldValueDto(id=1, name="High"),
+                CustomFieldValueDto(id=2, name="Medium"),
+                CustomFieldValueDto(id=3, name="Low"),
+            ],
+        )
+
+        # Field 2: "OS" [Mac, Windows, Linux]
+        cf_os = CustomFieldProjectWithValuesDto(
+            custom_field=CustomFieldProjectDto(custom_field=CustomFieldDto(id=102, name="OS")),
+            values=[
+                CustomFieldValueDto(id=4, name="Mac"),
+                CustomFieldValueDto(id=5, name="Windows"),
+                CustomFieldValueDto(id=6, name="Linux"),
+            ],
+        )
+
+        mock_api_instance.get_custom_fields_with_values2 = AsyncMock(return_value=[cf_priority, cf_os])
+
+        # Action: Try to create a test case with invalid values for both fields
+        custom_fields = {
+            "Priority": "Critical",  # Invalid, only High/Medium/Low allowed
+            "OS": "Android",         # Invalid, only Mac/Windows/Linux allowed
+        }
+
+        # Assert: Expect AllureValidationError
+        with pytest.raises(AllureValidationError) as exc_info:
+            await service.create_test_case(name="Test Case", custom_fields=custom_fields)
+
+        error_msg = str(exc_info.value)
+
+        # Verify invalid values are listed
+        assert "'Priority': 'Critical'" in error_msg
+        assert "Allowed: High, Medium, Low" in error_msg
+        
+        assert "'OS': 'Android'" in error_msg
+        assert "Allowed: Mac, Windows, Linux" in error_msg
+
+        # Verify guidance
+        assert "Correct any invalid values" in error_msg
+

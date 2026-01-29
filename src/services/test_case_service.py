@@ -80,7 +80,8 @@ class TestCaseService:
         self._client = client
         self._project_id = client.get_project()
         self._attachment_service = attachment_service or AttachmentService(self._client)
-        self._cf_cache: dict[int, dict[str, int]] = {}  # {project_id: {name: id}}
+        # {project_id: {name: {"id": int, "values": list[str]}}}
+        self._cf_cache: dict[int, dict[str, dict[str, Any]]] = {}
 
     async def create_test_case(
         self,
@@ -121,26 +122,46 @@ class TestCaseService:
         if custom_fields:
             project_cfs = await self._get_resolved_custom_fields(self._project_id)
             missing_fields = []
+            invalid_values = []
 
             for key, value in custom_fields.items():
-                cf_id = project_cfs.get(key)
-                if cf_id is None:
+                cf_info = project_cfs.get(key)
+                if cf_info is None:
                     missing_fields.append(key)
                 else:
-                    resolved_custom_fields.append(
-                        CustomFieldValueWithCfDto(custom_field=CustomFieldDto(id=cf_id, name=key), name=value)
-                    )
+                    cf_id = cf_info["id"]
+                    allowed_values = cf_info["values"]
+                    
+                    # Validate value if allowed_values are present
+                    if allowed_values and value not in allowed_values:
+                        invalid_values.append(f"'{key}': '{value}' (Allowed: {', '.join(allowed_values)})")
+                    else:
+                        resolved_custom_fields.append(
+                            CustomFieldValueWithCfDto(custom_field=CustomFieldDto(id=cf_id, name=key), name=value)
+                        )
 
+            error_messages = []
+            
             if missing_fields:
                 missing_list_str = "\n".join([f"- {name}" for name in missing_fields])
-                error_msg = (
-                    f"The following custom fields were not found in project {self._project_id}:\n"
-                    f"{missing_list_str}\n\n"
-                    f"Usage Hint:\n"
-                    f"To fix this, please exclude all missing custom fields from your request and try again.\n"
-                    f"Only include fields that explicitly exist in the project configuration."
+                error_messages.append(
+                    f"The following custom fields were not found in project {self._project_id}:\n{missing_list_str}"
                 )
-                raise AllureValidationError(error_msg)
+
+            if invalid_values:
+                invalid_list_str = "\n".join([f"- {item}" for item in invalid_values])
+                error_messages.append(
+                    f"The following custom field values are invalid:\n{invalid_list_str}"
+                )
+
+            if error_messages:
+                full_error_msg = "\n\n".join(error_messages) + (
+                    "\n\nUsage Hint:\n"
+                    "1. Exclude all missing custom fields from your request.\n"
+                    "2. Correct any invalid values to match the allowed options.\n"
+                    "3. Only include fields that explicitly exist in the project configuration."
+                )
+                raise AllureValidationError(full_error_msg)
 
         # 3. Create TestCaseCreateV2Dto with validation
         tag_dtos = self._build_tag_dtos(tags)
@@ -462,10 +483,15 @@ class TestCaseService:
                 resolved_cfs = []
                 project_cfs = await self._get_resolved_custom_fields(project_id)
                 for key, value in data.custom_fields.items():
-                    cf_id = project_cfs.get(key)
-                    if cf_id:
+                    cf_info = project_cfs.get(key)
+                    if cf_info:
+                        # For updates, we blindly trust if it exists, or should we validate?
+                        # The plan implies validating create, let's also validate update to be safe,
+                        # but typically update is just "prepare kwargs".
+                        # If we want validation here, we should add it.
+                        # For now, adapting to the new dict structure is required.
                         resolved_cfs.append(
-                            CustomFieldValueWithCfDto(custom_field=CustomFieldDto(id=cf_id, name=key), name=value)
+                            CustomFieldValueWithCfDto(custom_field=CustomFieldDto(id=cf_info["id"], name=key), name=value)
                         )
                 patch_kwargs["custom_fields"] = resolved_cfs
                 has_changes = True
@@ -734,8 +760,8 @@ class TestCaseService:
                 raise AllureValidationError(f"Invalid tag '{t}': {e}", suggestions=[hint]) from e
         return tag_dtos
 
-    async def _get_resolved_custom_fields(self, project_id: int) -> dict[str, int]:
-        """Get or fetch custom field name-to-id mapping for a project."""
+    async def _get_resolved_custom_fields(self, project_id: int) -> dict[str, dict[str, Any]]:
+        """Get or fetch custom field name-to-info mapping for a project."""
         if project_id in self._cf_cache:
             return self._cf_cache[project_id]
 
@@ -751,7 +777,11 @@ class TestCaseService:
                 if cf_with_values.custom_field and cf_with_values.custom_field.custom_field:
                     inner_cf = cf_with_values.custom_field.custom_field
                     if inner_cf.name and inner_cf.id:
-                        mapping[inner_cf.name] = inner_cf.id
+                        values = []
+                        if cf_with_values.values:
+                            values = [v.name for v in cf_with_values.values if v.name]
+                        
+                        mapping[inner_cf.name] = {"id": inner_cf.id, "values": values}
 
             self._cf_cache[project_id] = mapping
             return mapping
