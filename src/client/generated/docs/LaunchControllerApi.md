@@ -1898,7 +1898,7 @@ async with src.client.generated.ApiClient(configuration) as api_client:
     ignore_id = [56] # List[int] |  (optional)
     page = 0 # int | Zero-based page index (0..N) (optional) (default to 0)
     size = 10 # int | The size of the page to be returned (optional) (default to 10)
-    sort = ["name,ASC"] # List[str] | Sorting criteria in the format: property(,asc|desc). Default sort order is ascending. Multiple sort criteria are supported. (optional) (default to ["name,ASC"])
+    sort = [name,ASC] # List[str] | Sorting criteria in the format: property(,asc|desc). Default sort order is ascending. Multiple sort criteria are supported. (optional) (default to [name,ASC])
 
     try:
         # Suggest for launches
@@ -1922,7 +1922,7 @@ Name | Type | Description  | Notes
  **ignore_id** | [**List[int]**](int.md)|  | [optional] 
  **page** | **int**| Zero-based page index (0..N) | [optional] [default to 0]
  **size** | **int**| The size of the page to be returned | [optional] [default to 10]
- **sort** | [**List[str]**](str.md)| Sorting criteria in the format: property(,asc|desc). Default sort order is ascending. Multiple sort criteria are supported. | [optional] [default to [&quot;name,ASC&quot;]]
+ **sort** | [**List[str]**](str.md)| Sorting criteria in the format: property(,asc|desc). Default sort order is ascending. Multiple sort criteria are supported. | [optional] [default to [name,ASC]]
 
 ### Return type
 

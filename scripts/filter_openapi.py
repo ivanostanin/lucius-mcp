@@ -9,7 +9,7 @@ KEEP_TAGS = {
     # Core Entities
     "test-case-controller",
     "shared-step-controller",
-    # "project-controller",
+    "project-controller",
     "launch-controller",
     # Test Case Details
     "test-case-attachment-controller",
@@ -24,6 +24,14 @@ KEEP_TAGS = {
     "test-case-search-controller",
     "launch-search-controller",
     "test-case-bulk-controller",
+    # Project & Custom Field Management
+    "custom-field-controller",
+    "custom-field-project-controller",
+    "custom-field-project-controller-v-2",
+    "custom-field-schema-controller",
+    "custom-field-value-controller",
+    "custom-field-value-project-controller",
+    "status-controller",
 }
 
 
