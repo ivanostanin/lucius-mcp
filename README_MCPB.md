@@ -22,7 +22,7 @@ The manifest specifies `server.type = "uv"`. Compatible clients (like Claude Des
 To run manually:
 
 ```bash
-uv run lucius-mcp
+uv run start
 ```
 
 Or via the entry point:

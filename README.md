@@ -15,15 +15,15 @@ A Model Context Protocol (MCP) server for Allure TestOps, built with `FastMCP` a
 
 The server can be configured using environment variables or a `.env` file.
 
-| Variable | Description | Default |
-| :--- | :--- | :--- |
+| Variable | Description | Default                      |
+| :--- | :--- |:-----------------------------|
 | `ALLURE_ENDPOINT` | Allure TestOps Base URL | `https://demo.testops.cloud` |
-| `ALLURE_PROJECT_ID` | Default Project ID | `None` |
-| `ALLURE_API_TOKEN` | Allure API Token | `None` |
-| `LOG_LEVEL` | Logging level | `INFO` |
-| `HOST` | Host to bind the server to | `127.0.0.1` |
-| `PORT` | Port to bind the server to | `8000` |
-| `MCP_MODE` | Running mode: `http` or `stdio` | `http` |
+| `ALLURE_PROJECT_ID` | Default Project ID | `None`                       |
+| `ALLURE_API_TOKEN` | Allure API Token | `None`                       |
+| `LOG_LEVEL` | Logging level | `INFO`                       |
+| `HOST` | Host to bind the server to | `127.0.0.1`                  |
+| `PORT` | Port to bind the server to | `8000`                       |
+| `MCP_MODE` | Running mode: `http` or `stdio` | `stdio`                      |
 
 ## 🛠️ Installation
 
@@ -56,26 +56,33 @@ The easiest way to use Lucius in Claude Desktop is via the `.mcpb` bundle:
 3.  **Approve** the installation in the dialog.
 4.  **Configure** your Allure TestOps credentials in the provided fields.
 
-### Running via Stdio (Manual/Dev)
+### Running via Stdio
 
 For integration with MCP clients (like Claude Code) using standard input/output.
 
 ```bash
-MCP_MODE=stdio uv run lucius-mcp
+uv run start
 ```
 
-### Running via HTTP (Legacy/Dev)
+Or 
+
+```bash
+MCP_MODE=stdio uv run start
+```
+
+
+### Running via HTTP
 
 Starts the server with hot-reloading enabled (default port: 8000).
 
 ```bash
-uv run lucius-mcp
+MCP_MODE=http uv run start
 ```
 
 Or customizing host and port:
 
 ```bash
-HOST=0.0.0.0 PORT=9000 uv run lucius-mcp
+HOST=0.0.0.0 PORT=9000 uv run start
 ```
 
 ### Local Workflow Testing (act)

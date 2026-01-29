@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.scripts]
-lucius-mcp = "src.main:start"
+start = "src.main:start"
 
 [tool.uv]
 package = true

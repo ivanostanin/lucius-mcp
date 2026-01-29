@@ -17,7 +17,7 @@
       "command": "uv",
       "args": [
         "run",
-        "lucius-mcp"
+        "start"
       ],
       "env": {
         "ALLURE_ENDPOINT": "${user_config.allure_endpoint}",
