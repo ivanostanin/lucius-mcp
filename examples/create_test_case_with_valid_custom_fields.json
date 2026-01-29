@@ -1,0 +1,28 @@
+{
+    "name": "User Registration Flow with Valid Custom Fields",
+    "description": "This test case demonstrates using custom fields with valid values from the allowed options",
+    "project_id": 166,
+    "custom_fields": {
+        "Priority": "High",
+        "OS": "Mac",
+        "Feature": "Authentication"
+    },
+    "steps": [
+        {
+            "action": "Navigate to registration page",
+            "expected": "Registration form is displayed"
+        },
+        {
+            "action": "Fill in user details",
+            "expected": "Form accepts the input"
+        },
+        {
+            "action": "Submit registration",
+            "expected": "User account is created successfully"
+        }
+    ],
+    "tags": [
+        "registration",
+        "smoke"
+    ]
+}

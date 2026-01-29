@@ -1,0 +1,20 @@
+{
+    "name": "Test Case with Missing Custom Fields",
+    "description": "This example demonstrates what happens when you use custom fields that don't exist in the project. The server will return an aggregated error listing all missing fields.",
+    "project_id": 166,
+    "custom_fields": {
+        "Priority": "High",
+        "NonExistentField1": "SomeValue",
+        "NonExistentField2": "AnotherValue",
+        "ValidField": "ValidValue"
+    },
+    "steps": [
+        {
+            "action": "Perform action",
+            "expected": "Expected result"
+        }
+    ],
+    "tags": [
+        "example"
+    ]
+}

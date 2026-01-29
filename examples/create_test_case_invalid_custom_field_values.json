@@ -1,0 +1,20 @@
+{
+    "name": "Test Case with Invalid Custom Field Values",
+    "description": "This example demonstrates what happens when you provide values that are not in the allowed list for custom fields. The server will return an aggregated error listing all invalid values with their allowed options.",
+    "project_id": 166,
+    "custom_fields": {
+        "Priority": "Critical",
+        "OS": "Android",
+        "Feature": "Authentication"
+    },
+    "steps": [
+        {
+            "action": "Perform action",
+            "expected": "Expected result"
+        }
+    ],
+    "tags": [
+        "example"
+    ],
+    "_comment": "Assuming Priority allows [High, Medium, Low] and OS allows [Mac, Windows, Linux], this will fail with aggregated errors for both Priority and OS"
+}

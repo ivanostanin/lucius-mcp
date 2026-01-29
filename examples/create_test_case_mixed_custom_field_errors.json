@@ -1,0 +1,21 @@
+{
+    "name": "Test Case with Mixed Custom Field Errors",
+    "description": "This example demonstrates the aggregated error response when both missing fields and invalid values are present. The server will list all issues in a single response.",
+    "project_id": 166,
+    "custom_fields": {
+        "Priority": "Critical",
+        "NonExistentField": "SomeValue",
+        "OS": "Android",
+        "ValidField": "ValidValue"
+    },
+    "steps": [
+        {
+            "action": "Perform action",
+            "expected": "Expected result"
+        }
+    ],
+    "tags": [
+        "example"
+    ],
+    "_comment": "This will return an error listing: (1) missing fields: NonExistentField, and (2) invalid values: Priority='Critical', OS='Android' with their allowed options"
+}
