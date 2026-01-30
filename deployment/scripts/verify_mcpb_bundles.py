@@ -58,7 +58,7 @@ def verify_manifest(
             errors.append("python mcp_config.env must be an object")
     else:
         expect(mcp_config.get("command") == "uv", "uv mcp_config.command must be uv", errors)
-        expect(mcp_config.get("args") == ["run", "lucius-mcp"], "uv mcp_config.args must be [run, lucius-mcp]", errors)
+        expect(mcp_config.get("args") == ["run", "start"], "uv mcp_config.args must be [run, start]", errors)
 
 
 def verify_python_bundle_contents(names: set[str], errors: list[str]) -> None:

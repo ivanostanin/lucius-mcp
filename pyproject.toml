@@ -70,6 +70,7 @@ dev = [
     "respx>=0.22.0",
     "ruff>=0.14.14",
     "twine>=6.2.0",
+    "pre-commit>=4.0.0",
 ]
 
 [tool.ruff]
