@@ -69,28 +69,46 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           name: mcpb-bundle-${{ needs.validate-version.outputs.version }}
           path: dist/
 
+      - name: Get Changelog Entry
+        id: changelog_reader
+        uses: mindsers/changelog-reader-action@v2
+        with:
+          version: ${{ github.ref_name }}
+          path: ./CHANGELOG.md
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
+          body: ${{ steps.changelog_reader.outputs.changes }}
           files: dist/*.mcpb
-          generate_release_notes: true
-          draft: false
-          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      # Optional: Publish to PyPI
-      # Uncomment if you want to publish to PyPI
-      # - name: Build Python package
-      #   run: uv build
-      # 
-      # - name: Publish to PyPI
-      #   uses: pypa/gh-action-pypi-publish@release/v1
-      #   with:
-      #     password: ${{ secrets.PYPI_API_TOKEN }}
+
+  pypi-publish:
+    needs: python-quality
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python Environment
+        uses: ./.github/actions/python-setup
+
+      - name: Build package
+        run: uv build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}

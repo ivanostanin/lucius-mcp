@@ -1,6 +1,9 @@
 # Changelog
 
-## [Unreleased]
+## [v0.2.1] - 2026-01-30
+
+### Fixed
+- Deployment workflows: release description now includes the changelog, and PyPI publishing steps are corrected.
 
 ## [v0.2.0]
 
