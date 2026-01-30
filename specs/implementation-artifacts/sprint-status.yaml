@@ -68,6 +68,7 @@ development_status:
   3-6-get-custom-fields-with-values: ready-for-review
   3-7-crud-test-layers: ready-for-dev
   3-8-manage-test-case-custom-fields: ready-for-dev
+  3-7-crud-test-layers: ready-for-review
   epic-3-retrospective: optional
 
   # Epic 4: Production Operations (Phase 2 Priority)

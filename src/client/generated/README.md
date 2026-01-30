@@ -234,6 +234,17 @@ Class | Method | HTTP request | Description
 *TestCaseSearchControllerApi* | [**validate_query1**](src/client/generated/docs/TestCaseSearchControllerApi.md#validate_query1) | **GET** /api/testcase/query/validate | Find all test cases by given AQL
 *TestCaseTagControllerApi* | [**get_tags**](src/client/generated/docs/TestCaseTagControllerApi.md#get_tags) | **GET** /api/testcase/{testCaseId}/tag | Find tags for test case
 *TestCaseTagControllerApi* | [**set_tags**](src/client/generated/docs/TestCaseTagControllerApi.md#set_tags) | **POST** /api/testcase/{testCaseId}/tag | Set test tags for test case
+*TestLayerControllerApi* | [**create9**](src/client/generated/docs/TestLayerControllerApi.md#create9) | **POST** /api/testlayer | 
+*TestLayerControllerApi* | [**delete9**](src/client/generated/docs/TestLayerControllerApi.md#delete9) | **DELETE** /api/testlayer/{id} | 
+*TestLayerControllerApi* | [**find_all7**](src/client/generated/docs/TestLayerControllerApi.md#find_all7) | **GET** /api/testlayer | 
+*TestLayerControllerApi* | [**find_one8**](src/client/generated/docs/TestLayerControllerApi.md#find_one8) | **GET** /api/testlayer/{id} | 
+*TestLayerControllerApi* | [**patch9**](src/client/generated/docs/TestLayerControllerApi.md#patch9) | **PATCH** /api/testlayer/{id} | 
+*TestLayerControllerApi* | [**suggest4**](src/client/generated/docs/TestLayerControllerApi.md#suggest4) | **GET** /api/testlayer/suggest | 
+*TestLayerSchemaControllerApi* | [**create8**](src/client/generated/docs/TestLayerSchemaControllerApi.md#create8) | **POST** /api/testlayerschema | Create a new test layer schema
+*TestLayerSchemaControllerApi* | [**delete8**](src/client/generated/docs/TestLayerSchemaControllerApi.md#delete8) | **DELETE** /api/testlayerschema/{id} | Delete test layer schema by id
+*TestLayerSchemaControllerApi* | [**find_all6**](src/client/generated/docs/TestLayerSchemaControllerApi.md#find_all6) | **GET** /api/testlayerschema | Find all test layer schemas for given project
+*TestLayerSchemaControllerApi* | [**find_one7**](src/client/generated/docs/TestLayerSchemaControllerApi.md#find_one7) | **GET** /api/testlayerschema/{id} | Find test layer schema by id
+*TestLayerSchemaControllerApi* | [**patch8**](src/client/generated/docs/TestLayerSchemaControllerApi.md#patch8) | **PATCH** /api/testlayerschema/{id} | Patch test layer schema
 
 
 ## Documentation For Models

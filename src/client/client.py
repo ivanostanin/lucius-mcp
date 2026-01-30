@@ -36,6 +36,8 @@ from .generated.api.test_case_custom_field_controller_api import TestCaseCustomF
 from .generated.api.test_case_overview_controller_api import TestCaseOverviewControllerApi
 from .generated.api.test_case_scenario_controller_api import TestCaseScenarioControllerApi
 from .generated.api.test_case_search_controller_api import TestCaseSearchControllerApi
+from .generated.api.test_layer_controller_api import TestLayerControllerApi
+from .generated.api.test_layer_schema_controller_api import TestLayerSchemaControllerApi
 from .generated.api_client import ApiClient
 from .generated.configuration import Configuration
 from .generated.exceptions import ApiException
@@ -43,6 +45,7 @@ from .generated.models.attachment_step_dto import AttachmentStepDto
 from .generated.models.body_step_dto import BodyStepDto
 from .generated.models.custom_field_project_with_values_dto import CustomFieldProjectWithValuesDto
 from .generated.models.custom_field_value_with_cf_dto import CustomFieldValueWithCfDto
+from .generated.models.custom_field_with_values_dto import CustomFieldWithValuesDto
 from .generated.models.page_shared_step_dto import PageSharedStepDto
 from .generated.models.page_test_case_dto import PageTestCaseDto
 from .generated.models.scenario_step_create_dto import ScenarioStepCreateDto
@@ -109,6 +112,8 @@ type ApiType = (
     | CustomFieldProjectControllerApi
     | CustomFieldProjectControllerV2Api
     | CustomFieldValueProjectControllerApi
+    | TestLayerControllerApi
+    | TestLayerSchemaControllerApi
 )
 
 type NormalizedScenarioDict = dict[str, object]
@@ -123,6 +128,7 @@ __all__ = [
     "AttachmentStepDtoWithName",
     "BodyStepDtoWithSteps",
     "CustomFieldProjectWithValuesDto",
+    "CustomFieldWithValuesDto",
     "PageSharedStepDto",
     "PageTestCaseDto",
     "ScenarioStepCreateDto",
@@ -209,6 +215,8 @@ class AllureClient:
         self._custom_field_project_api: CustomFieldProjectControllerApi | None = None
         self._custom_field_project_v2_api: CustomFieldProjectControllerV2Api | None = None
         self._custom_field_value_project_api: CustomFieldValueProjectControllerApi | None = None
+        self._test_layer_api: TestLayerControllerApi | None = None
+        self._test_layer_schema_api: TestLayerSchemaControllerApi | None = None
         self._is_entered = False
 
     @classmethod
@@ -350,6 +358,8 @@ class AllureClient:
             self._custom_field_project_api = CustomFieldProjectControllerApi(self._api_client)
             self._custom_field_project_v2_api = CustomFieldProjectControllerV2Api(self._api_client)
             self._custom_field_value_project_api = CustomFieldValueProjectControllerApi(self._api_client)
+            self._test_layer_api = TestLayerControllerApi(self._api_client)
+            self._test_layer_schema_api = TestLayerSchemaControllerApi(self._api_client)
 
     @property
     def api_client(self) -> ApiClient:
@@ -922,6 +932,49 @@ class AllureClient:
                 results.append(CustomFieldProjectWithValuesDto(custom_field=cf_proj, values=[]))
 
         return results
+
+    async def get_test_case_custom_fields(
+        self,
+        test_case_id: int,
+        project_id: int,
+    ) -> list[CustomFieldProjectWithValuesDto]:
+        """Fetch custom fields with values for a specific test case.
+
+        Args:
+            test_case_id: Target test case ID.
+            project_id: The project ID context.
+
+        Returns:
+            List of custom field DTOs with their assigned values.
+        """
+        api = await self._get_api("_test_case_custom_field_api")
+        return await self._call_api(
+            api.get_custom_fields_with_values3(
+                test_case_id=test_case_id,
+                project_id=project_id,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def update_cfvs_of_test_case(
+        self,
+        test_case_id: int,
+        custom_fields: list[CustomFieldWithValuesDto],
+    ) -> None:
+        """Update custom field values for a test case.
+
+        Args:
+            test_case_id: Target test case ID.
+            custom_fields: List of custom field DTOs with new values.
+        """
+        api = await self._get_api("_test_case_custom_field_api")
+        await self._call_api(
+            api.update_cfvs_of_test_case(
+                test_case_id=test_case_id,
+                custom_field_with_values_dto=custom_fields,
+                _request_timeout=self._timeout,
+            )
+        )
 
     async def delete_scenario_step(self, step_id: int) -> None:
         """Delete a scenario step.
