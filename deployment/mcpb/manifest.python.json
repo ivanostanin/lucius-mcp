@@ -85,6 +85,38 @@
     {
       "name": "get_custom_fields",
       "description": "List all custom fields available in a project."
+    },
+    {
+      "name": "list_test_layers",
+      "description": "List test layers to discover available test layer taxonomy."
+    },
+    {
+      "name": "create_test_layer",
+      "description": "Create a new test layer."
+    },
+    {
+      "name": "update_test_layer",
+      "description": "Update an existing test layer."
+    },
+    {
+      "name": "delete_test_layer",
+      "description": "Delete a test layer."
+    },
+    {
+      "name": "list_test_layer_schemas",
+      "description": "List test layer schemas for a project."
+    },
+    {
+      "name": "create_test_layer_schema",
+      "description": "Create a new test layer schema."
+    },
+    {
+      "name": "update_test_layer_schema",
+      "description": "Update an existing test layer schema."
+    },
+    {
+      "name": "delete_test_layer_schema",
+      "description": "Delete a test layer schema."
     }
   ],
   "user_config": {
