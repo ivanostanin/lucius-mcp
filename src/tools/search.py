@@ -63,13 +63,13 @@ async def search_test_cases(
         Field(
             description=(
                 "Raw AQL (Allure Query Language) for complex searches. "
+                "Important: see https://docs.qameta.io/allure-testops/advanced/aql/ for the full AQL syntax reference."
                 "Supports AND, OR, NOT operators, parentheses for grouping, and field filters. "
                 "Strings must be double-quoted. Examples:\n"
                 '  - \'status="failed" and tag="regression"\'\n'
                 '  - \'(createdBy = "John" or createdBy = "Jane") and name ~= "test"\'\n'
                 '  - \'tag in ["smoke", "e2e"] and automated = true\'\n'
-                '  - \'not status = "Draft" and layer = "API"\'\n'
-                "See https://docs.qameta.io/allure-testops/advanced/aql/ for the reference."
+                '  - \'not status = "Draft" and layer = "API"\''
             )
         ),
     ] = None,
@@ -87,6 +87,7 @@ async def search_test_cases(
     - tag:value: Filters by exact tag match
     - Combined: "login tag:smoke" finds test cases with "login" in name AND "smoke" tag
 
+    Important: see https://docs.qameta.io/allure-testops/advanced/aql/ for the full AQL syntax reference.
     AQL Syntax (use 'aql' parameter):
     - Operators: and, or, not
     - Precedence: and binds tighter than or; use parentheses to group
@@ -104,7 +105,9 @@ async def search_test_cases(
             - 'status="failed" and tag="regression"'
             - '(createdBy = "John" or createdBy = "Jane") and name ~= "test"'
             - 'tag in ["smoke", "e2e"] and automated = true'
-            - see https://docs.qameta.io/allure-testops/advanced/aql/ for the reference
+            - 'id = 17'
+            - 'cf["Story"] = "Story 2"'
+            - 'cfv in ["Auth", "Story 2"]'
         page: Page number (0-indexed). Default: 0.
         size: Results per page (max 100). Default: 20.
         project_id: Optional override for the default Project ID.

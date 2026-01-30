@@ -1,0 +1,4 @@
+{
+    "aql": "status=\"failed\" and tag=\"regression\"",
+    "project_id": 166
+}

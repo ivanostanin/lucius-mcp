@@ -1,0 +1,4 @@
+{
+    "aql": "(createdBy ~= \"Ivan\" or createdBy = \"Jane\") and name ~= \"User\" and automation = true",
+    "project_id": 166
+}
