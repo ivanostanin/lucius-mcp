@@ -18,7 +18,8 @@ from src.utils.schema_hint import generate_schema_hint
 
 logger = logging.getLogger(__name__)
 
-# Constants
+# Constants - from Allure TestOps API constraints
+# These limits match the database schema VARCHAR field lengths for test layer names and schema keys
 MAX_NAME_LENGTH = 255
 MAX_KEY_LENGTH = 255
 
@@ -95,7 +96,10 @@ class TestLayerService:
         try:
             return await self._client._test_layer_api.create9(test_layer_create_dto=create_dto)
         except Exception as e:
-            raise AllureAPIError(f"Failed to create test layer '{name}': {e}") from e
+            raise AllureAPIError(
+                f"Failed to create test layer '{name}': {e}. "
+                "Ensure the name is unique and you have project permissions."
+            ) from e
 
     async def get_test_layer(self, layer_id: int) -> TestLayerDto:
         """Get a test layer by ID.
@@ -160,29 +164,36 @@ class TestLayerService:
             updated = await self._client._test_layer_api.patch9(id=layer_id, test_layer_patch_dto=patch_data)
             return updated, True
         except Exception as e:
-            raise AllureAPIError(f"Failed to update test layer {layer_id}: {e}") from e
+            raise AllureAPIError(
+                f"Failed to update test layer {layer_id}: {e}. "
+                "Check that the layer exists and you have update permissions."
+            ) from e
 
-    async def delete_test_layer(self, layer_id: int) -> None:
+    async def delete_test_layer(self, layer_id: int) -> bool:
         """Delete a test layer with idempotent behavior.
 
         Args:
             layer_id: The test layer ID to delete
 
+        Returns:
+            True if the layer was deleted, False if it was already deleted/not found
+
         Raises:
             AllureAPIError: If the API request fails (other than 404)
 
         Note:
-            This operation is idempotent. If already deleted (404), returns gracefully.
+            This operation is idempotent. If already deleted (404), returns False.
         """
         if not self._client._test_layer_api:
             raise AllureAPIError("Test Layer API is not initialized")
 
         try:
             await self._client._test_layer_api.delete9(id=layer_id)
+            return True
         except AllureNotFoundError:
             # Idempotent: if already deleted, this is fine
             logger.debug(f"Test layer {layer_id} already deleted or not found")
-            pass
+            return False
 
     # ==========================================
     # Test Layer Schema CRUD Operations
@@ -262,7 +273,10 @@ class TestLayerService:
         try:
             return await self._client._test_layer_schema_api.create8(test_layer_schema_create_dto=create_dto)
         except Exception as e:
-            raise AllureAPIError(f"Failed to create test layer schema '{key}': {e}") from e
+            raise AllureAPIError(
+                f"Failed to create test layer schema '{key}': {e}. "
+                "Ensure the project_id and test_layer_id are valid, and the key is unique within the project."
+            ) from e
 
     async def get_test_layer_schema(self, schema_id: int) -> TestLayerSchemaDto:
         """Get a test layer schema by ID.
@@ -343,29 +357,36 @@ class TestLayerService:
             )
             return updated, True
         except Exception as e:
-            raise AllureAPIError(f"Failed to update test layer schema {schema_id}: {e}") from e
+            raise AllureAPIError(
+                f"Failed to update test layer schema {schema_id}: {e}. "
+                "Check that the schema exists and the new values are valid."
+            ) from e
 
-    async def delete_test_layer_schema(self, schema_id: int) -> None:
+    async def delete_test_layer_schema(self, schema_id: int) -> bool:
         """Delete a test layer schema with idempotent behavior.
 
         Args:
             schema_id: The test layer schema ID to delete
 
+        Returns:
+            True if the schema was deleted, False if it was already deleted/not found
+
         Raises:
             AllureAPIError: If the API request fails (other than 404)
 
         Note:
-            This operation is idempotent. If already deleted (404), returns gracefully.
+            This operation is idempotent. If already deleted (404), returns False.
         """
         if not self._client._test_layer_schema_api:
             raise AllureAPIError("Test Layer Schema API is not initialized")
 
         try:
             await self._client._test_layer_schema_api.delete8(id=schema_id)
+            return True
         except AllureNotFoundError:
             # Idempotent: if already deleted, this is fine
             logger.debug(f"Test layer schema {schema_id} already deleted or not found")
-            pass
+            return False
 
     # ==========================================
     # Validation Methods

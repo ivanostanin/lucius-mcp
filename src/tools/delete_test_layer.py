@@ -23,6 +23,9 @@ async def delete_test_layer(
     """
     async with AllureClient.from_env(project=project_id) as client:
         service = TestLayerService(client)
-        await service.delete_test_layer(layer_id=layer_id)
+        deleted = await service.delete_test_layer(layer_id=layer_id)
 
-    return f"✅ Test layer {layer_id} deleted successfully!"
+    if deleted:
+        return f"✅ Test layer {layer_id} deleted successfully!"
+    else:
+        return f"[INFO] Test layer {layer_id} was already deleted or doesn't exist - no action taken."

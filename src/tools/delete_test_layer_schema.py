@@ -23,6 +23,9 @@ async def delete_test_layer_schema(
     """
     async with AllureClient.from_env(project=project_id) as client:
         service = TestLayerService(client)
-        await service.delete_test_layer_schema(schema_id=schema_id)
+        deleted = await service.delete_test_layer_schema(schema_id=schema_id)
 
-    return f"✅ Test layer schema {schema_id} deleted successfully!"
+    if deleted:
+        return f"✅ Test layer schema {schema_id} deleted successfully!"
+    else:
+        return f"[INFO] Test layer schema {schema_id} was already deleted or doesn't exist - no action taken."
