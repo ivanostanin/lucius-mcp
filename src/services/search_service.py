@@ -62,7 +62,7 @@ class SearchQueryParser:
 
         return ParsedQuery(
             name_query=name_query if name_query else None,
-            tags=[t.lower() for t in tags],
+            tags=tags,
         )
 
 

@@ -155,7 +155,7 @@ async def test_search_test_cases_parses_query(service: SearchService, mock_clien
     mock_client.list_test_cases.return_value = page
 
     await service.search_test_cases(
-        query="login tag:smoke tag:auth",
+        query="login tag:SMOKE tag:auth",
         page=2,
         size=10,
     )
@@ -165,7 +165,7 @@ async def test_search_test_cases_parses_query(service: SearchService, mock_clien
         page=2,
         size=10,
         search="login",
-        tags=["smoke", "auth"],
+        tags=["SMOKE", "auth"],
         status=None,
     )
     assert SearchService.search_test_cases.__doc__
@@ -232,7 +232,7 @@ def test_search_query_parser_parses_combined() -> None:
 def test_search_query_parser_normalizes_case() -> None:
     parsed = SearchQueryParser.parse("tag:SMOKE tag:Auth")
 
-    assert parsed.tags == ["smoke", "auth"]
+    assert parsed.tags == ["SMOKE", "Auth"]
 
 
 def test_format_search_results_includes_tags_and_pagination() -> None:
