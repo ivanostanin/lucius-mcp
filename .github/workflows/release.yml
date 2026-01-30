@@ -48,7 +48,7 @@ jobs:
       artifact-name: mcpb-bundle-${{ needs.validate-version.outputs.version }}
 
   docker-build:
-    needs: python-quality
+    needs: [python-quality, validate-version]
     permissions:
       contents: read
       packages: write

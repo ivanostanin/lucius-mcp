@@ -1,5 +1,10 @@
 # Changelog
 
+## [v0.2.2] - 2026-01-30
+
+### Fixed
+- Docker image build.
+
 ## [v0.2.1] - 2026-01-30
 
 ### Fixed

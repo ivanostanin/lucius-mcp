@@ -231,7 +231,7 @@ uv run mypy --strict src/
 
 ## Release process
 1. Bump version in `pyproject.toml`.
-2. Run `uv build` and `uv sync --all-extras` to update dependencies.
+2. Run `uv sync --all-extras` to update dependencies.
 3. Write release notes in `CHANGELOG.md`.
 4. Commit changes.
 5. Create a tag with the new version.
