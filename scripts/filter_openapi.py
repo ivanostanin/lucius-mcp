@@ -32,6 +32,9 @@ KEEP_TAGS = {
     "custom-field-value-controller",
     "custom-field-value-project-controller",
     "status-controller",
+    # Test Layer Management
+    "test-layer-controller",
+    "test-layer-schema-controller",
 }
 
 
