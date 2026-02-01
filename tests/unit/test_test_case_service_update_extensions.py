@@ -7,7 +7,6 @@ from src.client.exceptions import AllureAPIError
 from src.client.generated.models import (
     SharedStepScenarioDtoStepsInner,
     TestCaseDto,
-    TestCasePatchV2Dto,
     TestCaseScenarioV2Dto,
 )
 from src.services.test_case_service import TestCaseService, TestCaseUpdate
@@ -54,10 +53,12 @@ async def test_update_nested_steps_fix(mock_client: AsyncMock, mock_scenario_res
     await service.update_test_case(test_case_id, data)
 
     # Verify existing scenario cleared first
-    mock_client.update_test_case.assert_called_once()
-    patch_dto: TestCasePatchV2Dto = mock_client.update_test_case.call_args[0][1]
-    assert patch_dto.scenario is not None
-    assert patch_dto.scenario.steps == []
+    clear_calls = [
+        call
+        for call in mock_client.update_test_case.call_args_list
+        if call[0][1].scenario is not None and call[0][1].scenario.steps == []
+    ]
+    assert len(clear_calls) == 1
 
     # Verify steps creation via create_scenario_step
     # Expect 4 calls: Parent, Child 1, Child 2, Grandchild
@@ -114,7 +115,12 @@ async def test_recreate_scenario_rollback_fix(mock_client: AsyncMock) -> None:
     # Should have called update_test_case to clear execution twice:
     # 1. Initial clear
     # 2. Rollback clear
-    assert mock_client.update_test_case.call_count == 2
+    clear_calls = [
+        call
+        for call in mock_client.update_test_case.call_args_list
+        if call[0][1].scenario is not None and call[0][1].scenario.steps == []
+    ]
+    assert len(clear_calls) == 2
 
     # Verify get_test_case_scenario was called (at least once for backup, likely more for prep)
     assert mock_client.get_test_case_scenario.call_count >= 1

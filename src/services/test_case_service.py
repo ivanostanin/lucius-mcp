@@ -14,7 +14,6 @@ from src.client.generated.models import (
     CustomFieldDto,
     CustomFieldValueDto,
     CustomFieldValueWithCfDto,
-    CustomFieldWithValuesDto,
     ExternalLinkDto,
     ScenarioStepCreateDto,
     SharedStepScenarioDtoStepsInner,
@@ -51,7 +50,7 @@ class TestCaseUpdate:
     steps: list[dict[str, Any]] | None = None
     tags: list[str] | None = None
     attachments: list[dict[str, str]] | None = None
-    custom_fields: dict[str, str] | None = None
+    custom_fields: dict[str, str | list[str]] | None = None
     automated: bool | None = None
     expected_result: str | None = None
     status_id: int | None = None
@@ -91,7 +90,7 @@ class TestCaseService:
         steps: list[dict[str, Any]] | None = None,
         tags: list[str] | None = None,
         attachments: list[dict[str, str]] | None = None,
-        custom_fields: dict[str, str] | None = None,
+        custom_fields: dict[str, str | list[str]] | None = None,
         test_layer_id: int | None = None,
     ) -> TestCaseOverviewDto:
         """Create a new test case.
@@ -132,21 +131,26 @@ class TestCaseService:
                 cf_info = project_cfs.get(key)
                 if cf_info is None:
                     missing_fields.append(key)
-                else:
-                    cf_id = cf_info["id"]
-                    allowed_values = cf_info["values"]
-                    values_map = cf_info.get("values_map", {})
+                    continue
 
-                    # Validate value if allowed_values are present
-                    if allowed_values and value not in allowed_values:
-                        invalid_values.append(f"'{key}': '{value}' (Allowed: {', '.join(allowed_values)})")
-                    else:
-                        val_id = values_map.get(value)
-                        resolved_custom_fields.append(
-                            CustomFieldValueWithCfDto(
-                                custom_field=CustomFieldDto(id=cf_id, name=key), id=val_id, name=value
-                            )
-                        )
+                cf_id = cf_info["id"]
+                allowed_values = cf_info["values"]
+                values_map = cf_info.get("values_map", {})
+
+                input_values = [value] if isinstance(value, str) else value
+                if allowed_values:
+                    for item in input_values:
+                        if item not in allowed_values:
+                            invalid_values.append(f"'{key}': '{item}' (Allowed: {', '.join(allowed_values)})")
+
+                if allowed_values and invalid_values:
+                    continue
+
+                for item in input_values:
+                    val_id = values_map.get(item)
+                    resolved_custom_fields.append(
+                        CustomFieldValueWithCfDto(custom_field=CustomFieldDto(id=cf_id, name=key), id=val_id, name=item)
+                    )
 
             error_messages = []
 
@@ -263,11 +267,27 @@ class TestCaseService:
         for cf in cfs:
             if cf.custom_field and cf.custom_field.custom_field and cf.custom_field.custom_field.name:
                 name = cf.custom_field.custom_field.name
-                values = [v.name for v in cf.values] if cf.values else []
+                values = cf.values or []
                 # Normalize: Single value -> Scalar, else List
-                val: Any = values[0] if len(values) == 1 else values
+                val: Any = values[0].name if len(values) == 1 else [v.name for v in values]
                 result[name] = val
         return result
+
+    async def update_test_case_custom_fields(
+        self, test_case_id: int, custom_fields: dict[str, str | list[str]]
+    ) -> list[CustomFieldValueWithCfDto]:
+        """Update only custom fields via dedicated endpoint.
+
+        Args:
+            test_case_id: ID of the test case.
+            custom_fields: Mapping of Names -> Value(s).
+
+        Returns:
+            List of updated CF DTOs.
+        """
+        resolved_dtos = await self._build_custom_field_dtos(self._project_id, custom_fields)
+        await self._client.update_test_case_custom_fields(test_case_id, resolved_dtos)
+        return resolved_dtos
 
     async def update_test_case(self, test_case_id: int, data: TestCaseUpdate) -> TestCaseDto:  # noqa: C901
         """Update an existing test case.
@@ -281,67 +301,96 @@ class TestCaseService:
         """
         # 1. Fetch current state for idempotency and partial updates
         current_case = await self.get_test_case(test_case_id)
+        project_id = current_case.project_id or self._project_id
 
-        # 2. Prepare patches for simple fields and tags
+        # 2. Check if we can use the dedicated CF endpoint
+        # If ONLY custom_fields are provided, use the dedicated endpoint
+        has_metadata_changes = any(
+            [
+                data.name is not None,
+                data.description is not None,
+                data.precondition is not None,
+                data.tags is not None,
+                data.automated is not None,
+                data.expected_result is not None,
+                data.status_id is not None,
+                data.test_layer_id is not None,
+                data.workflow_id is not None,
+                data.links is not None,
+            ]
+        )
+        has_scenario_changes = data.steps is not None or data.attachments is not None
+        if data.custom_fields is not None and not (has_metadata_changes or has_scenario_changes):
+            await self.update_test_case_custom_fields(test_case_id, data.custom_fields)
+            updated_case = await self.get_test_case(test_case_id)
+            return updated_case if updated_case is not None else current_case
+
+        # 3. Handle Metadata Patches
         patch_kwargs, has_changes = await self._prepare_field_updates(current_case, data)
 
-        # 3. Handle Scenario (Steps and Attachments)
-        scenario_dto_v2 = await self._prepare_scenario_update(test_case_id, data)
-        # We do NOT add scenario to patch_kwargs because patch13 endpoint has issues with BodyStepDto serialization.
-        # Instead, we will recreate the scenario step-by-step if needed.
-        if scenario_dto_v2:
+        # 4. Handle Custom Fields in mixed update (replacement)
+        if data.custom_fields is not None:
+            # For mixed updates via patch13, we need to provide the FULL list of custom fields
+            # since the API replaces them. We merge current + updates.
+            current_cf_dtos = await self._client.get_test_case_custom_fields(test_case_id, project_id)
+
+            # Build map of {field_name: CustomFieldValueWithCfDto[]}
+            # We use list of DTOs to support multi-value fields in the map
+            cf_map: dict[str, list[CustomFieldValueWithCfDto]] = {}
+            for cf in current_cf_dtos:
+                if cf.custom_field and cf.custom_field.custom_field and cf.custom_field.custom_field.name:
+                    fname = cf.custom_field.custom_field.name
+                    fid = cf.custom_field.custom_field.id
+                    cf_map[fname] = [
+                        CustomFieldValueWithCfDto(
+                            custom_field=CustomFieldDto(id=fid, name=fname),
+                            id=v.id,
+                            name=v.name,
+                        )
+                        for v in (cf.values or [])
+                    ]
+
+            # Resolve New Field DTOs
+            new_cf_dtos = await self._build_custom_field_dtos_legacy(project_id, data.custom_fields)
+
+            # Merge into map
+            for cf_dto in new_cf_dtos:
+                custom_field = cf_dto.custom_field
+                if custom_field is None or custom_field.name is None:
+                    continue
+                fname = custom_field.name
+                if cf_dto.name is None:  # Clear indicator in building logic
+                    cf_map.pop(fname, None)
+                else:
+                    # _build_custom_field_dtos_legacy returns flattened list, so we group them
+                    if fname not in cf_map or data.custom_fields.get(fname) is not None:
+                        # If explicitly mentioned in updates, replace entire field value list
+                        cf_map[fname] = [cf_dto]
+                    else:
+                        # Append? No, the legacy builder for patch13 is tricky.
+                        # Actually, if it's in data.custom_fields, we should have processed it already.
+                        pass
+
+            # Flatten map back to list
+            final_cfs: list[CustomFieldValueWithCfDto] = []
+            for item_list in cf_map.values():
+                final_cfs.extend(item_list)
+
+            patch_kwargs["customFields"] = final_cfs
             has_changes = True
 
-        # 4. Idempotency Check
-        # Custom fields are changes too, even if not in patch_kwargs
-        if data.custom_fields:
+        # 5. Handle Scenario
+        scenario_dto_v2 = await self._prepare_scenario_update(test_case_id, data)
+        if scenario_dto_v2:
             has_changes = True
 
         if not has_changes:
             return current_case
 
-        # 5. Handle Custom Fields (Fetch-Merge-Replace)
-        current_cf_dtos = await self._client.get_test_case_custom_fields(
-            test_case_id, current_case.project_id or self._project_id
-        )
-
-        # Build map of {field_name: CustomFieldValueWithCfDto}
-        # Note: In CustomFieldValueWithCfDto (used for update),
-        # 'name' is the VALUE and 'custom_field.id' is the FIELD ID.
-        cf_map: dict[str, CustomFieldValueWithCfDto] = {}
-        for cf in current_cf_dtos:
-            if cf.custom_field and cf.custom_field.custom_field:
-                field_name = cf.custom_field.custom_field.name
-                if field_name:
-                    # Take first value or None if empty
-                    first_val_name = cf.values[0].name if cf.values else None
-                    cf_map[field_name] = CustomFieldValueWithCfDto(
-                        custom_field=CustomFieldDto(id=cf.custom_field.custom_field.id), name=first_val_name
-                    )
-
-        # Apply Updates
-        if data.custom_fields:
-            project_cfs = await self._get_resolved_custom_fields(current_case.project_id or self._project_id)
-            for key, value in data.custom_fields.items():
-                if value == "[]" or value == "":
-                    # Clear: Remove from map
-                    cf_map.pop(key, None)
-                else:
-                    cf_info = project_cfs.get(key)
-                    if cf_info:
-                        val_id = cf_info.get("values_map", {}).get(value)
-                        cf_map[key] = CustomFieldValueWithCfDto(
-                            custom_field=CustomFieldDto(id=cf_info["id"]), id=val_id, name=value
-                        )
-
-        # Set in patch kwargs
-        patch_kwargs["customFields"] = list(cf_map.values())
-
         # 6. Apply Update
-        updated_case = current_case
         try:
             patch_data = TestCasePatchV2Dto(**patch_kwargs)
-            updated_case = await self._client.update_test_case(test_case_id, patch_data)
+            await self._client.update_test_case(test_case_id, patch_data)
         except PydanticValidationError as e:
             hint = generate_schema_hint(TestCasePatchV2Dto)
             raise AllureValidationError(f"Invalid update data: {e}", suggestions=[hint]) from e
@@ -349,10 +398,9 @@ class TestCaseService:
         # 7. Apply Scenario Re-creation
         if scenario_dto_v2 and scenario_dto_v2.steps is not None:
             await self._recreate_scenario(test_case_id, scenario_dto_v2.steps)
-            # Refetch to get consistent state
-            updated_case = await self.get_test_case(test_case_id)
 
-        return updated_case
+        updated_case = await self.get_test_case(test_case_id)
+        return updated_case if updated_case is not None else current_case
 
     async def delete_test_case(self, test_case_id: int) -> DeleteResult:
         """Archive/soft-delete a test case."""
@@ -546,66 +594,6 @@ class TestCaseService:
         # so we DO NOT add them to patch_kwargs here.
 
         return patch_kwargs, has_changes
-
-    async def _prepare_custom_field_update_dtos(
-        self, project_id: int, custom_fields: dict[str, str]
-    ) -> list[CustomFieldWithValuesDto]:
-        """Prepare DTOs for dedicated custom field endpoint."""
-        resolved_dtos = []
-        project_cfs = await self._get_resolved_custom_fields(project_id)
-
-        missing_fields = []
-        invalid_values = []
-
-        for key, value in custom_fields.items():
-            cf_info = project_cfs.get(key)
-            if cf_info is None:
-                missing_fields.append(key)
-                continue
-
-            cf_id = cf_info["project_cf_id"]  # Use project-scoped ID
-            allowed_values = cf_info["values"]
-            values_map = cf_info.get("values_map", {})
-
-            # Handle clearing logic: "[]" or explicit empty indicator
-            final_values: list[CustomFieldValueDto] = []
-
-            if value == "[]" or value == "":
-                # Clear operation
-                final_values = []
-            else:
-                # Validate value if allowed_values are present
-                if allowed_values and value not in allowed_values:
-                    invalid_values.append(f"'{key}': '{value}' (Allowed: {', '.join(allowed_values)})")
-                else:
-                    val_id = values_map.get(value)
-                    if val_id:
-                        final_values = [CustomFieldValueDto(id=val_id)]
-                    else:
-                        final_values = [CustomFieldValueDto(name=value)]
-
-            resolved_dtos.append(CustomFieldWithValuesDto(custom_field=CustomFieldDto(id=cf_id), values=final_values))
-
-        if missing_fields or invalid_values:
-            error_messages = []
-            if missing_fields:
-                missing_list_str = "\n".join([f"- {name}" for name in missing_fields])
-                error_messages.append(
-                    f"The following custom fields were not found in project {project_id}:\n{missing_list_str}"
-                )
-            if invalid_values:
-                invalid_list_str = "\n".join([f"- {item}" for item in invalid_values])
-                error_messages.append(f"The following custom field values are invalid:\n{invalid_list_str}")
-
-            full_error_msg = "\n\n".join(error_messages) + (
-                "\n\nUsage Hint:\n"
-                "1. Exclude all missing custom fields from your request.\n"
-                "2. Correct any invalid values to match the allowed options.\n"
-                "3. To CLEAR a value, pass '[]' or an empty string."
-            )
-            raise AllureValidationError(full_error_msg)
-
-        return resolved_dtos
 
     async def _prepare_scenario_update(self, test_case_id: int, data: TestCaseUpdate) -> TestCaseScenarioV2Dto | None:
         """Prepare the scenario DTO if steps or attachments need updating."""
@@ -830,8 +818,8 @@ class TestCaseService:
             if "content" in att and "name" not in att:
                 raise AllureValidationError(f"Attachment at index {i} with 'content' must also have 'name'")
 
-    def _validate_custom_fields(self, custom_fields: dict[str, str] | None) -> None:
-        """Validate custom fields dictionary."""
+    def _validate_custom_fields(self, custom_fields: dict[str, str | list[str]] | None) -> None:
+        """Validate custom fields dictionary structure."""
         if custom_fields is None:
             return
 
@@ -844,10 +832,16 @@ class TestCaseService:
         for key, value in custom_fields.items():
             if not isinstance(key, str):
                 raise AllureValidationError(f"Custom field key must be a string, got {type(key).__name__}")
-            if not isinstance(value, str):
+            if not isinstance(value, (str, list)):
                 raise AllureValidationError(
-                    f"Custom field value for '{key}' must be a string, got {type(value).__name__}"
+                    f"Custom field value for '{key}' must be a string or list of strings, got {type(value).__name__}"
                 )
+            if isinstance(value, list):
+                for i, v in enumerate(value):
+                    if not isinstance(v, str):
+                        raise AllureValidationError(
+                            f"Custom field '{key}' item {i} must be a string, got {type(v).__name__}"
+                        )
             if not key.strip():
                 raise AllureValidationError("Custom field key cannot be empty")
 
@@ -927,19 +921,95 @@ class TestCaseService:
         self._cf_cache[project_id] = mapping
         return mapping
 
-    def _build_custom_field_dtos(self, custom_fields: dict[str, str] | None) -> list[CustomFieldValueWithCfDto]:
-        """DEPRECATED: Use inline resolution in create_test_case."""
-        if not custom_fields:
-            return []
+    async def _build_custom_field_dtos(  # noqa: C901
+        self, project_id: int, custom_fields: dict[str, str | list[str]]
+    ) -> list[CustomFieldValueWithCfDto]:
+        # ) -> list[CustomFieldWithValuesDto]:
+        """Build DTOs for dedicated custom field endpoint with aggregated validation."""
+        resolved_dtos = []
+        project_cfs = await self._get_resolved_custom_fields(project_id)
 
-        cf_dtos = []
+        missing_fields = []
+        invalid_values = []
+        required_missing = []
+
+        # Check for required fields (on update, we only check if they are being cleared)
+        for cf_name, info in project_cfs.items():
+            if info["required"] and cf_name in custom_fields:
+                val = custom_fields[cf_name]
+                if val == "" or val == [] or val == "[]":
+                    required_missing.append(cf_name)
+
         for key, value in custom_fields.items():
-            if not key:
-                raise AllureValidationError("Custom field key cannot be empty.")
-            if not isinstance(value, str):
-                raise AllureValidationError(f"Custom field '{key}' value must be a string.")
-            cf_dtos.append(CustomFieldValueWithCfDto(custom_field=CustomFieldDto(name=key), name=value))
-        return cf_dtos
+            cf_info = project_cfs.get(key)
+            if cf_info is None:
+                missing_fields.append(key)
+                continue
+
+            cf_id = cf_info["project_cf_id"]  # Use project-scoped ID
+            allowed_values = cf_info["values"]
+            values_map = cf_info.get("values_map", {})
+
+            # Normalize value to list
+            input_values = [value] if isinstance(value, str) else value
+            final_values: list[CustomFieldValueDto] = []
+
+            # Handle clearing logic: "[]" or empty string/list
+            if value == "[]" or value == "" or value == []:
+                final_values = []
+            else:
+                for v in input_values:
+                    if allowed_values and v not in allowed_values:
+                        invalid_values.append(f"'{key}': '{v}' (Allowed: {', '.join(allowed_values)})")
+                    else:
+                        vid = values_map.get(v)
+                        if vid:
+                            final_values.append(CustomFieldValueDto(id=vid))
+                        else:
+                            final_values.append(CustomFieldValueDto(name=v))
+            for _ in final_values:
+                resolved_dtos.append(
+                    CustomFieldValueWithCfDto(custom_field=CustomFieldDto(id=cf_id), id=_.id, name=_.name)
+                )
+
+        logger.debug("Resolved CF DTOs for update: %s", [d.to_dict() for d in resolved_dtos])
+
+        # Build aggregated error message
+        errors = []
+        if missing_fields:
+            errors.append(f"Fields not found: {', '.join(missing_fields)}")
+        if invalid_values:
+            errors.append(f"Invalid values: {'; '.join(invalid_values)}")
+        if required_missing:
+            errors.append(f"Required fields cannot be cleared: {', '.join(required_missing)}")
+
+        if errors:
+            raise AllureValidationError(
+                "\n".join(errors) + "\n\nUsage Hint: Use get_custom_fields to see available fields and values."
+            )
+
+        return resolved_dtos
+
+    async def _build_custom_field_dtos_legacy(
+        self, project_id: int, custom_fields: dict[str, str | list[str]]
+    ) -> list[CustomFieldValueWithCfDto]:
+        """Build flat DTOs for mixed update patch endpoint."""
+        dtos = []
+        # We reuse the logic but flatten it
+        structured = await self._build_custom_field_dtos(project_id, custom_fields)
+
+        project_cfs = await self._get_resolved_custom_fields(project_id)
+
+        for s_dto in structured:
+            custom_field = s_dto.custom_field
+            if custom_field is None or custom_field.id is None:
+                continue
+            fname = next((k for k, v in project_cfs.items() if v["project_cf_id"] == custom_field.id), None)
+            fid = project_cfs[fname]["id"] if fname else custom_field.id
+
+            # Clear indicator for merging logic in update_test_case
+            dtos.append(CustomFieldValueWithCfDto(custom_field=CustomFieldDto(id=fid, name=fname), id=None, name=None))
+        return dtos
 
     def _build_scenario_step_dto(
         self,

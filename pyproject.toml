@@ -77,7 +77,7 @@ dev = [
 [tool.ruff]
 line-length = 120
 target-version = "py314"
-exclude = ["src/client/generated"]
+exclude = ["src/client/generated", "src/client/overridden"]
 
 [tool.ruff.lint]
 select = ["E", "F", "B", "I", "UP", "N", "S", "C90", "RUF"]
@@ -91,16 +91,12 @@ select = ["E", "F", "B", "I", "UP", "N", "S", "C90", "RUF"]
 strict = true
 python_version = "3.14"
 plugins = ["pydantic.mypy"]
-exclude = "src/client/generated/"
+exclude = ["src/client/generated", "src/client/overridden"]
 
 [[tool.mypy.overrides]]
-module = "src.client.generated.*"
+module = ["src.client.generated.*", "src.client.overridden.*"]
 ignore_errors = true
 implicit_reexport = true
-
-[[tool.mypy.overrides]]
-module = "src.client.generated"
-ignore_errors = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

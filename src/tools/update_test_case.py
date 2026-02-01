@@ -25,8 +25,8 @@ async def update_test_case(  # noqa: C901
         Field(description="New list of global attachments. Each dict has 'name' and 'content' (base64) or 'url'."),
     ] = None,
     custom_fields: Annotated[
-        dict[str, str] | None,
-        Field(description="Dictionary of custom fields to update (Name -> Value)"),
+        dict[str, str | list[str]] | None,
+        Field(description="Dictionary of custom fields to update (Name -> Value or list of values)"),
     ] = None,
     automated: Annotated[bool | None, Field(description="Set whether the test case is automated")] = None,
     expected_result: Annotated[str | None, Field(description="Global expected result for the test case")] = None,
@@ -55,7 +55,7 @@ async def update_test_case(  # noqa: C901
         tags: New list of tags.
         attachments: New list of global attachments. Each dict has ``name`` and
             either ``content`` (base64) or ``url``.
-        custom_fields: Custom field updates as a name-to-value mapping.
+        custom_fields: Custom field updates as a name-to-value (or list of values) mapping.
         automated: Whether the test case is automated.
         expected_result: Global expected result for the test case.
         status_id: ID of the test case status.

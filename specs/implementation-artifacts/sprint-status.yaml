@@ -66,8 +66,8 @@ development_status:
   3-4-runtime-authentication-override: done
   3-5-create-test-case-aggregate-missing-fields: ready-for-review
   3-6-get-custom-fields-with-values: ready-for-review
-  3-7-crud-test-layers: in-progress
-  3-8-manage-test-case-custom-fields: ready-for-dev
+  3-7-crud-test-layers: done
+  3-8-manage-test-case-custom-fields: ready-for-review
   3-9-test-layer-validation-in-create-test-case: ready-for-dev
   epic-3-retrospective: optional
 

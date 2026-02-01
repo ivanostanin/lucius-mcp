@@ -32,7 +32,6 @@ from .generated.api.shared_step_controller_api import SharedStepControllerApi
 from .generated.api.shared_step_scenario_controller_api import SharedStepScenarioControllerApi
 from .generated.api.test_case_attachment_controller_api import TestCaseAttachmentControllerApi
 from .generated.api.test_case_controller_api import TestCaseControllerApi
-from .generated.api.test_case_custom_field_controller_api import TestCaseCustomFieldControllerApi
 from .generated.api.test_case_overview_controller_api import TestCaseOverviewControllerApi
 from .generated.api.test_case_scenario_controller_api import TestCaseScenarioControllerApi
 from .generated.api.test_case_search_controller_api import TestCaseSearchControllerApi
@@ -65,6 +64,7 @@ from .generated.models.test_case_row_dto import TestCaseRowDto
 from .generated.models.test_case_scenario_dto import TestCaseScenarioDto
 from .generated.models.test_case_scenario_v2_dto import TestCaseScenarioV2Dto
 from .generated.models.test_case_tree_selection_dto import TestCaseTreeSelectionDto
+from .overridden.test_case_custom_fields_v2 import TestCaseCustomFieldV2ControllerApi
 
 
 # Subclasses to add missing fields to generated models
@@ -107,7 +107,7 @@ type ApiType = (
     | SharedStepScenarioControllerApi
     | TestCaseOverviewControllerApi
     | TestCaseSearchControllerApi
-    | TestCaseCustomFieldControllerApi
+    | TestCaseCustomFieldV2ControllerApi
     | CustomFieldControllerApi
     | CustomFieldProjectControllerApi
     | CustomFieldProjectControllerV2Api
@@ -210,7 +210,7 @@ class AllureClient:
         self._shared_step_scenario_api: SharedStepScenarioControllerApi | None = None
         self._overview_api: TestCaseOverviewControllerApi
         self._search_api: TestCaseSearchControllerApi | None = None
-        self._test_case_custom_field_api: TestCaseCustomFieldControllerApi | None = None
+        self._test_case_custom_field_api: TestCaseCustomFieldV2ControllerApi | None = None
         self._custom_field_api: CustomFieldControllerApi | None = None
         self._custom_field_project_api: CustomFieldProjectControllerApi | None = None
         self._custom_field_project_v2_api: CustomFieldProjectControllerV2Api | None = None
@@ -353,7 +353,7 @@ class AllureClient:
             self._shared_step_scenario_api = SharedStepScenarioControllerApi(self._api_client)
             self._overview_api = TestCaseOverviewControllerApi(self._api_client)
             self._search_api = TestCaseSearchControllerApi(self._api_client)
-            self._test_case_custom_field_api = TestCaseCustomFieldControllerApi(self._api_client)
+            self._test_case_custom_field_api = TestCaseCustomFieldV2ControllerApi(self._api_client)
             self._custom_field_api = CustomFieldControllerApi(self._api_client)
             self._custom_field_project_api = CustomFieldProjectControllerApi(self._api_client)
             self._custom_field_project_v2_api = CustomFieldProjectControllerV2Api(self._api_client)
@@ -476,7 +476,7 @@ class AllureClient:
     @overload
     async def _get_api(
         self, attr_name: Literal["_test_case_custom_field_api"], *, error_name: str | None = None
-    ) -> TestCaseCustomFieldControllerApi: ...
+    ) -> TestCaseCustomFieldV2ControllerApi: ...
 
     @overload
     async def _get_api(
@@ -1094,7 +1094,6 @@ class AllureClient:
             )
         )
         raw_data = self._extract_response_data(response)
-        # print(f"DEBUG Initial Raw Normalized Scenario: {raw_data}")
         return self._denormalize_to_v2_from_dict(raw_data)
 
     @staticmethod
@@ -1359,3 +1358,40 @@ class AllureClient:
         shared_step_api = await self._get_api("_shared_step_api")
         # Soft delete via archive
         await self._call_api(shared_step_api.archive(id=shared_step_id, _request_timeout=self._timeout))
+
+    async def get_test_case_custom_fields(
+        self, test_case_id: int, project_id: int
+    ) -> list[CustomFieldProjectWithValuesDto]:
+        """Fetch custom fields with values for a specific test case from dedicated endpoint.
+
+        Args:
+            test_case_id: Target test case ID.
+            project_id: Project ID context.
+
+        Returns:
+            List of custom fields with their assigned values.
+        """
+        api = await self._get_api("_test_case_custom_field_api")
+        coro = api.get_custom_fields_with_values3(
+            test_case_id=test_case_id, project_id=project_id, _request_timeout=self._timeout
+        )
+        ret = await self._call_api(coro)
+        return ret
+
+    async def update_test_case_custom_fields(
+        self, test_case_id: int, custom_fields: list[CustomFieldValueWithCfDto]
+    ) -> None:
+        """Update custom field values of a test case using dedicated endpoint.
+
+        Args:
+            test_case_id: Target test case ID.
+            custom_fields: List of custom fields with values to set/clear.
+        """
+        api = await self._get_api("_test_case_custom_field_api")
+        await self._call_api(
+            api.update_cfvs_of_test_case(
+                test_case_id=test_case_id,
+                custom_field_with_values_dto=custom_fields,
+                _request_timeout=self._timeout,
+            )
+        )

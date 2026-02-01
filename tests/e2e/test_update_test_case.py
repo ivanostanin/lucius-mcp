@@ -235,7 +235,19 @@ async def test_e2e_u4_update_custom_fields(
     cleanup_tracker.track_test_case(test_case_id)
 
     # Update custom fields
-    update_data = TestCaseUpdate(custom_fields={"Feature": "Onboarding Banner", "Component": "Chat"})
+    custom_fields = await service.get_custom_fields()
+    fields_with_values = [cf for cf in custom_fields if cf.get("values") and len(cf["values"]) > 0]
+    if len(fields_with_values) < 1:
+        pytest.skip(
+            f"Need at least 1 custom field with allowed values in project {project_id}. "
+            f"Configure custom fields in TestOps before running this test."
+        )
+
+    target_field = fields_with_values[0]
+    target_field_name = target_field["name"]
+    target_value = target_field["values"][0]
+
+    update_data = TestCaseUpdate(custom_fields={target_field_name: target_value})
     await service.update_test_case(test_case_id, update_data)
 
     # Verify custom fields updated
@@ -243,5 +255,4 @@ async def test_e2e_u4_update_custom_fields(
     custom_fields = getattr(fetched_case, "custom_fields", None)
     if custom_fields:
         cf_values = {cf.custom_field.name: cf.name for cf in custom_fields if cf.custom_field}
-        # At least one should be updated
-        assert cf_values.get("Feature") == "Onboarding Banner" or cf_values.get("Component") == "Chat"
+        assert cf_values.get(target_field_name) == target_value

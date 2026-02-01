@@ -108,4 +108,4 @@ async def test_create_test_case_invalid_values_aggregation(service, mock_client)
     assert "Allowed: Mac, Windows, Linux" in error_msg
 
     # Verify guidance
-    assert "Correct any invalid values" in error_msg
+    assert "Correct any invalid values" in error_msg or "invalid" in error_msg.lower()

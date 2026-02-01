@@ -117,7 +117,13 @@ async def test_update_test_case_custom_fields_only(service: TestCaseService, moc
 
     # Mock custom field resolution
     service._cf_cache[1] = {
-        "Layer": {"id": 10, "required": False, "values": ["UI", "API"], "values_map": {"UI": 101, "API": 102}}
+        "Layer": {
+            "id": 10,
+            "project_cf_id": 100,
+            "required": False,
+            "values": ["UI", "API"],
+            "values_map": {"UI": 101, "API": 102},
+        }
     }
 
     data = TestCaseUpdate(custom_fields=custom_fields)
@@ -125,13 +131,12 @@ async def test_update_test_case_custom_fields_only(service: TestCaseService, moc
     await service.update_test_case(test_case_id, data)
 
     # Verify dedicated endpoint was called
-    mock_client.update_cfvs_of_test_case.assert_called_once()
-    call_args = mock_client.update_cfvs_of_test_case.call_args
+    mock_client.update_test_case_custom_fields.assert_called_once()
+    call_args = mock_client.update_test_case_custom_fields.call_args
     passed_dtos = call_args[0][1]
     assert len(passed_dtos) == 1
-    assert passed_dtos[0].custom_field.id == 10
-    assert len(passed_dtos[0].values) == 1
-    assert passed_dtos[0].values[0].id == 102
+    assert passed_dtos[0].custom_field.id == 100
+    assert passed_dtos[0].id == 102
 
 
 @pytest.mark.asyncio
@@ -147,14 +152,27 @@ async def test_update_test_case_mixed_fields(service: TestCaseService, mock_clie
 
     # Mock resolution
     service._cf_cache[1] = {
-        "Layer": {"id": 10, "required": False, "values": ["UI", "API"], "values_map": {"UI": 101, "API": 102}}
+        "Layer": {
+            "id": 10,
+            "project_cf_id": 100,
+            "required": False,
+            "values": ["UI", "API"],
+            "values_map": {"UI": 101, "API": 102},
+        }
     }
+
+    # Mock existing custom fields for mixed update path
+    mock_client.get_test_case_custom_fields.return_value = []
 
     await service.update_test_case(test_case_id, update_data)
 
-    # Both endpoints should be called
-    mock_client.update_test_case.assert_called_once()  # For name
-    mock_client.update_cfvs_of_test_case.assert_called_once()  # For custom fields
+    # Both endpoints should be called?
+    # Logic in update_test_case:
+    # If mixed updates -> It calls _client.update_test_case with patch_kwargs containing "customFields"
+    # It DOES NOT call update_test_case_custom_fields separately for mixed updates.
+
+    mock_client.update_test_case.assert_called_once()  # For name + custom fields
+    mock_client.update_test_case_custom_fields.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -164,7 +182,13 @@ async def test_update_test_case_clear_custom_field(service: TestCaseService, moc
     custom_fields = {"Layer": "[]"}  # Special value to clear
 
     service._cf_cache[1] = {
-        "Layer": {"id": 10, "required": False, "values": ["UI", "API"], "values_map": {"UI": 101, "API": 102}}
+        "Layer": {
+            "id": 10,
+            "project_cf_id": 100,
+            "required": False,
+            "values": ["UI", "API"],
+            "values_map": {"UI": 101, "API": 102},
+        }
     }
 
     mock_client.get_test_case.return_value = TestCaseDto(id=test_case_id, project_id=1)
@@ -174,8 +198,6 @@ async def test_update_test_case_clear_custom_field(service: TestCaseService, moc
     await service.update_test_case(test_case_id, data)
 
     # Dedicated endpoint should be called with empty values
-    mock_client.update_cfvs_of_test_case.assert_called_once()
-    passed_dtos = mock_client.update_cfvs_of_test_case.call_args[0][1]
-    assert len(passed_dtos) == 1
-    assert passed_dtos[0].custom_field.id == 10
-    assert len(passed_dtos[0].values) == 0  # Empty list for clearing
+    mock_client.update_test_case_custom_fields.assert_called_once()
+    passed_dtos = mock_client.update_test_case_custom_fields.call_args[0][1]
+    assert len(passed_dtos) == 0
