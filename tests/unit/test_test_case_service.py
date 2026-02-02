@@ -17,6 +17,7 @@ from src.client.generated.models import (
     TestCaseDto,
     TestCasePatchV2Dto,
     TestCaseScenarioV2Dto,
+    TestLayerDto,
 )
 from src.services.attachment_service import AttachmentService
 from src.services.test_case_service import TestCaseService, TestCaseUpdate
@@ -174,11 +175,17 @@ async def test_create_test_case_with_custom_fields(service: TestCaseService, moc
         ),
     ]
 
+    mock_layer = TestLayerDto(id=7, name="Layer7")
+    mock_client._test_layer_api = Mock()
+    mock_client._test_layer_api.find_one8 = AsyncMock(return_value=mock_layer)
+
     result_mock = Mock(id=103)
     result_mock.name = name
     mock_client.create_test_case.return_value = result_mock
 
-    await service.create_test_case(name, custom_fields=custom_fields)
+    await service.create_test_case(name, custom_fields=custom_fields, test_layer_id=7)
+
+    assert mock_client._test_layer_api.find_one8.call_args.kwargs["id"] == 7
 
     # Verify resolution call
     mock_client.get_custom_fields_with_values.assert_called_once_with(1)
@@ -204,9 +211,12 @@ async def test_create_test_case_custom_field_not_found(service: TestCaseService,
     # Mock custom field resolution directly on the client
     mock_client.get_custom_fields_with_values.return_value = []
 
+    mock_client._test_layer_api = Mock()
+    mock_client._test_layer_api.find_one8 = AsyncMock(return_value=TestLayerDto(id=7, name="Layer7"))
+
     # Expect the new aggregated error format
     with pytest.raises(AllureValidationError, match="The following custom fields were not found"):
-        await service.create_test_case(name, custom_fields=custom_fields)
+        await service.create_test_case(name, custom_fields=custom_fields, test_layer_id=7)
 
 
 @pytest.mark.asyncio

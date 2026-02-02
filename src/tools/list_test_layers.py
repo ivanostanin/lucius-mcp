@@ -11,9 +11,6 @@ from src.services.test_layer_service import TestLayerService
 async def list_test_layers(
     page: Annotated[int, Field(description="Page number (0-based). Default is 0.")] = 0,
     size: Annotated[int, Field(description="Page size (max 100). Default is 100.")] = 100,
-    project_id: Annotated[
-        int | None, Field(description="Optional project ID override (defaults to client's project).")
-    ] = None,
 ) -> str:
     """List test layers to discover available test layer taxonomy.
 
@@ -23,12 +20,11 @@ async def list_test_layers(
     Args:
         page: Page number (0-based)
         size: Page size (max 100)
-        project_id: Optional project ID override
 
     Returns:
         List of test layers with their IDs and names
     """
-    async with AllureClient.from_env(project=project_id) as client:
+    async with AllureClient.from_env() as client:
         service = TestLayerService(client)
         layers = await service.list_test_layers(page=page, size=size)
 

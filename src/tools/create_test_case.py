@@ -35,6 +35,15 @@ async def create_test_case(
             "Example: {'Layer': 'UI', 'Component': 'Auth'}"
         ),
     ] = None,
+    test_layer_id: Annotated[
+        int | None,
+        Field(
+            description=(
+                "Optional test layer ID to assign (use list_test_layers to find IDs). "
+                "If provided, the layer must exist in the project."
+            )
+        ),
+    ] = None,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
 ) -> str:
     """Create a new test case in Allure TestOps.
@@ -51,6 +60,7 @@ async def create_test_case(
                                     'content_type': 'application/pdf'}]
         custom_fields: Dictionary of custom field names and their values.
                        Example: {'Layer': 'UI', 'Component': 'Auth'}
+        test_layer_id: Optional test layer ID to assign (must exist in the project).
         project_id: Optional override for the default Project ID.
 
     Returns:
@@ -62,15 +72,13 @@ async def create_test_case(
 
     async with AllureClient.from_env(project=project_id) as client:
         service = TestCaseService(client=client)
-        try:
-            result = await service.create_test_case(
-                name=name,
-                description=description,
-                steps=steps,
-                tags=tags,
-                attachments=attachments,
-                custom_fields=custom_fields,
-            )
-            return f"Created Test Case ID: {result.id} Name: {result.name}"
-        except Exception as e:
-            return f"Error creating test case: {e}"
+        result = await service.create_test_case(
+            name=name,
+            description=description,
+            steps=steps,
+            tags=tags,
+            attachments=attachments,
+            custom_fields=custom_fields,
+            test_layer_id=test_layer_id,
+        )
+        return f"Created Test Case ID: {result.id} Name: {result.name}"

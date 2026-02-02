@@ -67,8 +67,7 @@ async def test_update_tool_not_found_error(project_id: int):
     # Use a likely non-existent ID
     fake_id = 999999999
 
-    # The tool returns: f"Error: ..." or similar if wrapper catches it.
-    # update_test_case has no try/except, so it raises.
+    # The tool raises exceptions (no try/except in tools).
     # Therefore we expect an exception, not a return value.
 
     with pytest.raises(Exception) as excinfo:
@@ -81,16 +80,13 @@ async def test_update_tool_not_found_error(project_id: int):
 
 async def test_create_tool_validation_error(project_id: int):
     """Verify validation error output."""
-    # Create with missing name?
-    # The function signature types 'name' as str, but Python runtime allows None if called directly?
-    # No, type hints don't enforce runtime. But the wrapper might.
-    # Let's try to create with invalid project_id?
+    # Create with invalid project_id
 
-    result = await create_test_case(
-        project_id=-1,  # Invalid project ID
-        name="Invalid Project",
-    )
+    with pytest.raises(Exception) as excinfo:
+        await create_test_case(
+            project_id=-1,  # Invalid project ID
+            name="Invalid Project",
+        )
 
-    # create_test_case.py CATCHES exceptions and returns a string starting with "Error creating test case:"
-    assert result.startswith("Error creating test case:")
-    assert "404" in result or "Not Found" in result or "Project ID is required and must be positive" in result
+    error_msg = str(excinfo.value)
+    assert "Project ID is required" in error_msg or "must be positive" in error_msg
