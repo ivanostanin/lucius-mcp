@@ -9,7 +9,6 @@ def service(allure_client: AllureClient) -> SearchService:
     return SearchService(client=allure_client)
 
 
-@pytest.mark.asyncio
 async def test_aql_basic_operators(service: SearchService) -> None:
     """Test basic comparison operators (=, !=, ~=, >, <)."""
     # Equality
@@ -26,7 +25,6 @@ async def test_aql_basic_operators(service: SearchService) -> None:
     assert result.total >= 0
 
 
-@pytest.mark.asyncio
 async def test_aql_logical_operators(service: SearchService) -> None:
     """Test logical operators (and, or, not) and grouping."""
     # AND
@@ -42,7 +40,6 @@ async def test_aql_logical_operators(service: SearchService) -> None:
     assert result.total >= 0
 
 
-@pytest.mark.asyncio
 async def test_aql_list_operators(service: SearchService) -> None:
     """Test list operators (in, not in)."""
     # IN
@@ -54,7 +51,6 @@ async def test_aql_list_operators(service: SearchService) -> None:
     assert result.total >= 0
 
 
-@pytest.mark.asyncio
 async def test_aql_field_types(service: SearchService) -> None:
     """Test different field types (Boolean, Null, Dates)."""
     # Boolean (using 'muted' as a confirmed boolean field)
@@ -79,7 +75,6 @@ async def test_aql_field_types(service: SearchService) -> None:
     assert result.total >= 0
 
 
-@pytest.mark.asyncio
 async def test_aql_special_fields(service: SearchService) -> None:
     """Test specific complex fields like tags and custom fields."""
     # Tags

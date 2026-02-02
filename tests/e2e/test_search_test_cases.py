@@ -5,7 +5,6 @@ from src.services.search_service import SearchService
 from src.tools.search import _format_search_results
 
 
-@pytest.mark.asyncio
 async def test_search_test_cases_name_only(
     allure_client: AllureClient,
     project_id: int,
@@ -19,7 +18,6 @@ async def test_search_test_cases_name_only(
     assert "tags:" in text or "No test cases found" in text
 
 
-@pytest.mark.asyncio
 async def test_search_test_cases_tag_only(
     allure_client: AllureClient,
     project_id: int,
@@ -33,7 +31,6 @@ async def test_search_test_cases_tag_only(
     assert "tags:" in text or "No test cases found" in text
 
 
-@pytest.mark.asyncio
 async def test_search_test_cases_multiple_tags(
     allure_client: AllureClient,
     project_id: int,
@@ -47,7 +44,6 @@ async def test_search_test_cases_multiple_tags(
     assert "tags:" in text or "No test cases found" in text
 
 
-@pytest.mark.asyncio
 async def test_search_test_cases_combined_and_case_insensitive(
     allure_client: AllureClient,
     project_id: int,
@@ -61,7 +57,6 @@ async def test_search_test_cases_combined_and_case_insensitive(
     assert "tags:" in text or "No test cases found" in text
 
 
-@pytest.mark.asyncio
 async def test_search_test_cases_tag_case_sensitivity(
     allure_client: AllureClient,
     project_id: int,
@@ -88,7 +83,6 @@ async def test_search_test_cases_tag_case_sensitivity(
 # =============================================
 
 
-@pytest.mark.asyncio
 async def test_search_test_cases_aql_simple_query(
     allure_client: AllureClient,
     project_id: int,
@@ -102,7 +96,6 @@ async def test_search_test_cases_aql_simple_query(
     assert "Found" in text or "No test cases found" in text
 
 
-@pytest.mark.asyncio
 async def test_search_test_cases_aql_complex_query(
     allure_client: AllureClient,
     project_id: int,
@@ -123,7 +116,6 @@ async def test_search_test_cases_aql_complex_query(
     assert "tags:" in text or "No test cases found" in text
 
 
-@pytest.mark.asyncio
 async def test_search_test_cases_aql_invalid_syntax_returns_error(
     allure_client: AllureClient,
     project_id: int,
@@ -141,7 +133,6 @@ async def test_search_test_cases_aql_invalid_syntax_returns_error(
         )
 
 
-@pytest.mark.asyncio
 async def test_search_test_cases_aql_pagination_hints(
     allure_client: AllureClient,
     project_id: int,
@@ -162,7 +153,6 @@ async def test_search_test_cases_aql_pagination_hints(
         assert "page" in text.lower() or "Showing" in text
 
 
-@pytest.mark.asyncio
 async def test_search_test_cases_regression_simple_query_unchanged(
     allure_client: AllureClient,
     project_id: int,

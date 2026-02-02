@@ -10,6 +10,8 @@ from src.client import AllureClient
 from src.utils.auth import get_auth_context
 from tests.e2e.helpers.cleanup import CleanupTracker
 
+pytestmark = pytest.mark.asyncio(loop_scope="module")
+
 
 @pytest.fixture
 def project_id() -> int:

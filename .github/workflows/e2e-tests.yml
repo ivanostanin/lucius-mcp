@@ -31,7 +31,7 @@ jobs:
           ALLURE_ENDPOINT: ${{ vars.ALLURE_ENDPOINT }}
           ALLURE_API_TOKEN: ${{ secrets.ALLURE_API_TOKEN }}
           ALLURE_PROJECT_ID: ${{ vars.ALLURE_PROJECT_ID }}
-        run: uv run pytest tests/e2e/ -v --tb=short --alluredir=allure-results
+        run: uv run pytest tests/e2e/ -n auto --dist loadfile -v --tb=short --alluredir=allure-results
       
       - name: Generate Allure Report
         if: always()

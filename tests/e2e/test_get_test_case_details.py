@@ -8,7 +8,6 @@ from src.tools.search import _format_test_case_details
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 
-@pytest.mark.asyncio
 async def test_get_test_case_details_with_full_content(
     allure_client: AllureClient,
     project_id: int,
@@ -52,7 +51,6 @@ async def test_get_test_case_details_with_full_content(
     assert "e2e-test" in text
 
 
-@pytest.mark.asyncio
 async def test_get_test_case_details_not_found(
     allure_client: AllureClient,
 ) -> None:

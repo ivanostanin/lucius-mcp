@@ -12,7 +12,6 @@ from src.tools.get_custom_fields import get_custom_fields
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 
-@pytest.mark.asyncio
 async def test_e2e_get_all_custom_fields(
     project_id: int,
     allure_client: AllureClient,
@@ -45,7 +44,6 @@ async def test_e2e_get_all_custom_fields(
             print(f"Found field: {field['name']} (required={field['required']}, values={len(field['values'])})")
 
 
-@pytest.mark.asyncio
 async def test_e2e_get_custom_fields_with_filter(
     project_id: int,
     allure_client: AllureClient,
@@ -84,7 +82,6 @@ async def test_e2e_get_custom_fields_with_filter(
         print(f"Partial match '{partial_name}' found fields: {matching_names}")
 
 
-@pytest.mark.asyncio
 async def test_e2e_get_custom_fields_tool_output(
     project_id: int,
 ) -> None:
@@ -114,7 +111,6 @@ async def test_e2e_get_custom_fields_tool_output(
         print("No custom fields in project - output shows appropriate message")
 
 
-@pytest.mark.asyncio
 async def test_e2e_get_custom_fields_nonexistent_name(
     project_id: int,
     allure_client: AllureClient,
@@ -135,7 +131,6 @@ async def test_e2e_get_custom_fields_nonexistent_name(
     print(f"Not found message: {output}")
 
 
-@pytest.mark.asyncio
 async def test_e2e_get_custom_fields_with_values_constraints(
     project_id: int,
     allure_client: AllureClient,
@@ -173,7 +168,6 @@ async def test_e2e_get_custom_fields_with_values_constraints(
         assert all(len(v) > 0 for v in values), f"Values for '{field_name}' should not be empty"
 
 
-@pytest.mark.asyncio
 async def test_e2e_get_custom_fields_cache_efficiency(
     project_id: int,
     allure_client: AllureClient,
@@ -219,7 +213,6 @@ async def test_e2e_get_custom_fields_cache_efficiency(
         print("No fields with values to test cache integration with create_test_case")
 
 
-@pytest.mark.asyncio
 async def test_e2e_get_custom_fields_empty_project(
     allure_client: AllureClient,
 ) -> None:

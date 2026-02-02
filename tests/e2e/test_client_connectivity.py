@@ -19,7 +19,6 @@ def token() -> SecretStr:
     return SecretStr("test-api-token")
 
 
-@pytest.mark.asyncio
 @respx.mock
 async def test_client_connectivity_e2e(allure_client: AllureClient) -> None:
     """Verify that AllureClient can exchange token and maintain session."""
