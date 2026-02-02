@@ -11,7 +11,6 @@ from tests.e2e.helpers.cleanup import CleanupTracker
 
 
 @pytest.mark.test_id("story-2.3-e2e-link-unlink-shared-step")
-@pytest.mark.asyncio
 async def test_link_shared_step_flow(
     project_id: int,
     allure_client: AllureClient,

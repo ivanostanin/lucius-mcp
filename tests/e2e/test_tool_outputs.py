@@ -11,7 +11,6 @@ def run_name(test_run_id):
     return f"[{test_run_id}] Tool Output Test"
 
 
-@pytest.mark.asyncio
 async def test_create_tool_success_output(
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,
@@ -40,7 +39,6 @@ async def test_create_tool_success_output(
         pytest.fail(f"Could not parse ID from tool output: {result}")
 
 
-@pytest.mark.asyncio
 async def test_update_tool_success_output(
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,
@@ -64,7 +62,6 @@ async def test_update_tool_success_output(
     assert "Changes: description" in result
 
 
-@pytest.mark.asyncio
 async def test_update_tool_not_found_error(project_id: int):
     """Verify error output for non-existent ID."""
     # Use a likely non-existent ID
@@ -82,7 +79,6 @@ async def test_update_tool_not_found_error(project_id: int):
     assert "not found" in error_msg or "404" in error_msg
 
 
-@pytest.mark.asyncio
 async def test_create_tool_validation_error(project_id: int):
     """Verify validation error output."""
     # Create with missing name?

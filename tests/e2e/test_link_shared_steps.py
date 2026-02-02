@@ -1,21 +1,18 @@
 import os
 import re
-from typing import Any
-
-import pytest
 
 from src.client import AllureClient
 from src.tools.create_test_case import create_test_case
 from src.tools.link_shared_step import link_shared_step
 from src.tools.shared_steps import create_shared_step
 from src.tools.unlink_shared_step import unlink_shared_step
+from tests.e2e.helpers.cleanup import CleanupTracker
 
 
-@pytest.mark.asyncio
 async def test_link_unlink_shared_step_flow(
     project_id: int,
     allure_client: AllureClient,
-    cleanup_tracker: Any,
+    cleanup_tracker: CleanupTracker,
 ) -> None:
     """
     E2E Test: Link and Unlink Shared Step.

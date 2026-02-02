@@ -5,7 +5,6 @@ from src.services.test_case_service import TestCaseService
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 
-@pytest.mark.asyncio
 @pytest.mark.test_id("1.5-E2E-001")
 async def test_delete_test_case_e2e(
     allure_client: AllureClient,

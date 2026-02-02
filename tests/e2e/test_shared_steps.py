@@ -11,7 +11,6 @@ def get_unique_name(prefix="Shared Step"):
     return f"{prefix} {uuid.uuid4().hex[:8]}"
 
 
-@pytest.mark.asyncio
 async def test_shared_step_lifecycle_e2e(
     project_id,
     cleanup_tracker,
@@ -66,7 +65,6 @@ async def test_shared_step_lifecycle_e2e(
     # So top level steps count is 1.
 
 
-@pytest.mark.asyncio
 async def test_create_shared_step_with_attachment_e2e(
     project_id,
     cleanup_tracker,
@@ -99,7 +97,6 @@ async def test_create_shared_step_with_attachment_e2e(
 
 
 @pytest.mark.priority("P0")
-@pytest.mark.asyncio
 async def test_update_shared_step_success_e2e(
     project_id,
     cleanup_tracker,
@@ -133,7 +130,6 @@ async def test_update_shared_step_success_e2e(
 
 
 @pytest.mark.priority("P2")
-@pytest.mark.asyncio
 async def test_update_shared_step_idempotent_e2e(
     project_id,
     cleanup_tracker,
@@ -160,7 +156,6 @@ async def test_update_shared_step_idempotent_e2e(
 
 
 @pytest.mark.priority("P0")
-@pytest.mark.asyncio
 async def test_delete_shared_step_success_e2e(
     project_id,
     cleanup_tracker,
@@ -189,7 +184,6 @@ async def test_delete_shared_step_success_e2e(
 
 
 @pytest.mark.priority("P1")
-@pytest.mark.asyncio
 async def test_delete_shared_step_without_confirmation_e2e(
     project_id,
     cleanup_tracker,

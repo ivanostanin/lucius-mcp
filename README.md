@@ -185,6 +185,12 @@ E2E tests verify the integration with a real Allure TestOps instance. They are i
 uv run --env-file .env.test pytest tests/e2e/
 ```
 
+```bash
+# Run e2e tests in parallel mode
+uv run --env-file .env.test pytest tests/e2e/ -n auto --dist loadfile
+```
+
+
 **Troubleshooting E2E Failures:**
 
 *   **401 Unauthorized**: Check `ALLURE_API_TOKEN`. It might be expired.

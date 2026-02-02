@@ -109,7 +109,6 @@ async def run_server_http(port: int):
             process.kill()
 
 
-@pytest.mark.asyncio
 async def test_stdio_lifecycle():
     """
     Test MCP server lifecycle in STDIO mode.
@@ -141,7 +140,6 @@ async def test_stdio_lifecycle():
             assert "list_test_cases" in tool_names
 
 
-@pytest.mark.asyncio
 async def test_http_lifecycle(unused_port):
     """
     Test MCP server lifecycle in HTTP (Streamable) mode.
