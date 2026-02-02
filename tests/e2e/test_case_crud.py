@@ -17,7 +17,6 @@ def service(allure_client: AllureClient):
     return TestCaseService(client=allure_client)
 
 
-@pytest.mark.asyncio
 async def test_test_case_lifecycle(
     service: TestCaseService,
     allure_client: AllureClient,
@@ -86,7 +85,6 @@ async def test_test_case_lifecycle(
         pass
 
 
-@pytest.mark.asyncio
 async def test_update_idempotency(
     service: TestCaseService, cleanup_tracker: CleanupTracker, project_id: int, run_name: str
 ):
@@ -106,7 +104,6 @@ async def test_update_idempotency(
     assert update2.id == case.id
 
 
-@pytest.mark.asyncio
 async def test_create_with_full_metadata(
     service: TestCaseService, cleanup_tracker: CleanupTracker, project_id: int, run_name: str
 ):

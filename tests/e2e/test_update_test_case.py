@@ -1,11 +1,8 @@
-import pytest
-
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService, TestCaseUpdate
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 
-@pytest.mark.asyncio
 async def test_update_test_case_e2e(
     project_id: int,
     allure_client: AllureClient,
@@ -107,7 +104,6 @@ async def test_update_test_case_e2e(
     assert step_found, "Initial step not found in scenario after update"
 
 
-@pytest.mark.asyncio
 async def test_e2e_u1_update_core_fields(
     project_id: int,
     allure_client: AllureClient,
@@ -148,7 +144,6 @@ async def test_e2e_u1_update_core_fields(
     assert fetched_case.description == "**Updated** description with markdown"
 
 
-@pytest.mark.asyncio
 async def test_e2e_u2_update_status_workflow(
     project_id: int,
     allure_client: AllureClient,
@@ -177,7 +172,6 @@ async def test_e2e_u2_update_status_workflow(
     assert updated_case.automated == (not initial_automated)
 
 
-@pytest.mark.asyncio
 async def test_e2e_u3_update_tags(
     project_id: int,
     allure_client: AllureClient,
@@ -222,7 +216,6 @@ async def test_e2e_u3_update_tags(
     assert len(final_tag_names) == 0
 
 
-@pytest.mark.asyncio
 async def test_e2e_u4_update_custom_fields(
     project_id: int,
     allure_client: AllureClient,

@@ -1,7 +1,5 @@
 """E2E tests for test layer CRUD operations."""
 
-from typing import Any
-
 import pytest
 
 from src.client import AllureClient
@@ -16,13 +14,13 @@ from src.tools.test_layers import (
     update_test_layer,
     update_test_layer_schema,
 )
+from tests.e2e.helpers.cleanup import CleanupTracker
 
 
-@pytest.mark.asyncio
 async def test_e2e_test_layer_full_lifecycle(
     project_id: int,
     allure_client: AllureClient,
-    cleanup_tracker: Any,
+    cleanup_tracker: CleanupTracker,
 ) -> None:
     """
     E2E-TL-1: Test Layer Full Lifecycle.
@@ -62,11 +60,10 @@ async def test_e2e_test_layer_full_lifecycle(
     await service.delete_test_layer(layer_id=layer_id)  # Should not raise
 
 
-@pytest.mark.asyncio
 async def test_e2e_test_layer_schema_full_lifecycle(
     project_id: int,
     allure_client: AllureClient,
-    cleanup_tracker: Any,
+    cleanup_tracker: CleanupTracker,
 ) -> None:
     """
     E2E-TL-2: Test Layer Schema Full Lifecycle.
@@ -127,7 +124,6 @@ async def test_e2e_test_layer_schema_full_lifecycle(
         await service.delete_test_layer(layer_id=layer_id)
 
 
-@pytest.mark.asyncio
 async def test_e2e_list_test_layers_tool(
     project_id: int,
 ) -> None:
@@ -142,7 +138,6 @@ async def test_e2e_list_test_layers_tool(
     assert "test layer" in output.lower() or "no test layers found" in output.lower()
 
 
-@pytest.mark.asyncio
 async def test_e2e_create_and_delete_test_layer_tools(
     project_id: int,
     allure_client: AllureClient,
@@ -179,7 +174,6 @@ async def test_e2e_create_and_delete_test_layer_tools(
         assert "deleted successfully" in delete_output
 
 
-@pytest.mark.asyncio
 async def test_e2e_update_test_layer_tool(
     project_id: int,
     allure_client: AllureClient,
@@ -213,7 +207,6 @@ async def test_e2e_update_test_layer_tool(
         await service.delete_test_layer(layer_id=layer_id)
 
 
-@pytest.mark.asyncio
 async def test_e2e_test_layer_schema_tools(
     project_id: int,
     allure_client: AllureClient,
@@ -273,7 +266,6 @@ async def test_e2e_test_layer_schema_tools(
         await service.delete_test_layer(layer_id=layer_id)
 
 
-@pytest.mark.asyncio
 async def test_e2e_validation_errors(
     project_id: int,
     allure_client: AllureClient,
@@ -300,7 +292,6 @@ async def test_e2e_validation_errors(
         await service.create_test_layer_schema(project_id=-1, test_layer_id=1, key="test")
 
 
-@pytest.mark.asyncio
 async def test_e2e_multiple_schemas_same_project(
     project_id: int,
     allure_client: AllureClient,

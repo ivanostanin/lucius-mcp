@@ -12,7 +12,6 @@ from src.services.test_case_service import TestCaseService
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 
-@pytest.mark.asyncio
 async def test_e2e_all_missing_custom_fields_reported(
     project_id: int,
     allure_client: AllureClient,
@@ -54,7 +53,6 @@ async def test_e2e_all_missing_custom_fields_reported(
     assert "not found in project" in error_msg.lower() or "missing" in error_msg.lower()
 
 
-@pytest.mark.asyncio
 async def test_e2e_all_invalid_custom_field_values_reported(
     project_id: int,
     allure_client: AllureClient,
@@ -127,7 +125,6 @@ async def test_e2e_all_invalid_custom_field_values_reported(
     )
 
 
-@pytest.mark.asyncio
 async def test_e2e_mixed_missing_and_invalid_reported(
     project_id: int,
     allure_client: AllureClient,

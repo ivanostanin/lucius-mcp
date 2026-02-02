@@ -5,7 +5,6 @@ from src.client.exceptions import AllureValidationError
 from src.services.search_service import SearchService
 
 
-@pytest.mark.asyncio
 async def test_list_test_cases_paginates_and_formats(
     allure_client: AllureClient,
     project_id: int,
@@ -31,7 +30,6 @@ async def test_list_test_cases_paginates_and_formats(
         assert "Use page=" in text
 
 
-@pytest.mark.asyncio
 async def test_list_test_cases_filters_are_aql_compatible(
     allure_client: AllureClient,
     project_id: int,
@@ -58,7 +56,6 @@ async def test_list_test_cases_filters_are_aql_compatible(
             assert "login".lower() in tc.name.lower() or tc.tags or tc.status
 
 
-@pytest.mark.asyncio
 async def test_list_test_cases_handles_invalid_project(
     allure_client: AllureClient,
 ) -> None:

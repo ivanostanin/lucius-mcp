@@ -1,18 +1,13 @@
-from typing import Any
-
-import pytest
-
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService
 from src.tools.create_test_case import create_test_case
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 
-@pytest.mark.asyncio
 async def test_full_house_creation(
     project_id: int,
     allure_client: AllureClient,
-    cleanup_tracker: Any,
+    cleanup_tracker: CleanupTracker,
     pixel_b64: str,
 ) -> None:
     """
@@ -94,11 +89,10 @@ async def test_full_house_creation(
     assert attachment_found, "Global attachment 'evidence.png' not found in scenario"
 
 
-@pytest.mark.asyncio
 async def test_url_attachment_flow(
     project_id: int,
     allure_client: AllureClient,
-    cleanup_tracker: Any,
+    cleanup_tracker: CleanupTracker,
 ) -> None:
     """
     E2E-2: Test Case with URL Attachment.
@@ -149,7 +143,6 @@ async def test_url_attachment_flow(
     assert attachment_found, f"Attachment '{filename}' not found in scenario"
 
 
-@pytest.mark.asyncio
 async def test_e2e_3_custom_fields_creation(
     project_id: int,
     allure_client: AllureClient,
@@ -184,7 +177,6 @@ async def test_e2e_3_custom_fields_creation(
     assert "Priority" in cf_values or "Component" in cf_values  # At least one should be set
 
 
-@pytest.mark.asyncio
 async def test_e2e_4_minimal_creation(
     project_id: int,
     allure_client: AllureClient,
@@ -212,7 +204,6 @@ async def test_e2e_4_minimal_creation(
     assert fetched_case.description is None or fetched_case.description == ""
 
 
-@pytest.mark.asyncio
 async def test_e2e_5_step_level_attachments(
     project_id: int,
     allure_client: AllureClient,
@@ -261,7 +252,6 @@ async def test_e2e_5_step_level_attachments(
     assert found_attachment, "Step-level attachment not found in scenario"
 
 
-@pytest.mark.asyncio
 async def test_e2e_6_complex_step_hierarchy(
     project_id: int,
     allure_client: AllureClient,
@@ -298,7 +288,6 @@ async def test_e2e_6_complex_step_hierarchy(
     assert len(scenario.steps) >= 3, f"Expected at least 3 steps, got {len(scenario.steps)}"
 
 
-@pytest.mark.asyncio
 async def test_e2e_7_edge_cases(
     project_id: int,
     allure_client: AllureClient,
