@@ -1,3 +1,5 @@
+import pytest
+
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService, TestCaseUpdate
 from tests.e2e.helpers.cleanup import CleanupTracker

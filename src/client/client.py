@@ -959,7 +959,7 @@ class AllureClient:
     async def update_cfvs_of_test_case(
         self,
         test_case_id: int,
-        custom_fields: list[CustomFieldWithValuesDto],
+        custom_fields: list[CustomFieldValueWithCfDto],
     ) -> None:
         """Update custom field values for a test case.
 
@@ -1358,25 +1358,6 @@ class AllureClient:
         shared_step_api = await self._get_api("_shared_step_api")
         # Soft delete via archive
         await self._call_api(shared_step_api.archive(id=shared_step_id, _request_timeout=self._timeout))
-
-    async def get_test_case_custom_fields(
-        self, test_case_id: int, project_id: int
-    ) -> list[CustomFieldProjectWithValuesDto]:
-        """Fetch custom fields with values for a specific test case from dedicated endpoint.
-
-        Args:
-            test_case_id: Target test case ID.
-            project_id: Project ID context.
-
-        Returns:
-            List of custom fields with their assigned values.
-        """
-        api = await self._get_api("_test_case_custom_field_api")
-        coro = api.get_custom_fields_with_values3(
-            test_case_id=test_case_id, project_id=project_id, _request_timeout=self._timeout
-        )
-        ret = await self._call_api(coro)
-        return ret
 
     async def update_test_case_custom_fields(
         self, test_case_id: int, custom_fields: list[CustomFieldValueWithCfDto]

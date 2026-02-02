@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 
 from src.client import AllureClient
+from src.client.exceptions import AllureValidationError
 from src.client.generated.models import (
     CustomFieldDto,
     CustomFieldProjectDto,
@@ -121,10 +122,12 @@ async def test_update_test_case_custom_fields_only(service: TestCaseService, moc
             "id": 10,
             "project_cf_id": 100,
             "required": False,
+            "single_select": True,
             "values": ["UI", "API"],
             "values_map": {"UI": 101, "API": 102},
         }
     }
+    mock_client.get_test_case_custom_fields.return_value = []
 
     data = TestCaseUpdate(custom_fields=custom_fields)
 
@@ -156,6 +159,7 @@ async def test_update_test_case_mixed_fields(service: TestCaseService, mock_clie
             "id": 10,
             "project_cf_id": 100,
             "required": False,
+            "single_select": True,
             "values": ["UI", "API"],
             "values_map": {"UI": 101, "API": 102},
         }
@@ -186,18 +190,110 @@ async def test_update_test_case_clear_custom_field(service: TestCaseService, moc
             "id": 10,
             "project_cf_id": 100,
             "required": False,
+            "single_select": True,
             "values": ["UI", "API"],
             "values_map": {"UI": 101, "API": 102},
         }
     }
 
     mock_client.get_test_case.return_value = TestCaseDto(id=test_case_id, project_id=1)
+    mock_client.get_test_case_custom_fields.return_value = []
 
     data = TestCaseUpdate(custom_fields=custom_fields)
 
     await service.update_test_case(test_case_id, data)
 
-    # Dedicated endpoint should be called with empty values
+    # Dedicated endpoint should be called with clear sentinel
     mock_client.update_test_case_custom_fields.assert_called_once()
     passed_dtos = mock_client.update_test_case_custom_fields.call_args[0][1]
     assert len(passed_dtos) == 0
+
+
+@pytest.mark.asyncio
+async def test_update_test_case_single_select_multiple_values_error(
+    service: TestCaseService, mock_client: AsyncMock
+) -> None:
+    test_case_id = 123
+    custom_fields = {"Layer": ["UI", "API"]}
+
+    service._cf_cache[1] = {
+        "Layer": {
+            "id": 10,
+            "project_cf_id": 100,
+            "required": False,
+            "single_select": True,
+            "values": ["UI", "API"],
+            "values_map": {"UI": 101, "API": 102},
+        }
+    }
+
+    mock_client.get_test_case.return_value = TestCaseDto(id=test_case_id, project_id=1)
+    mock_client.get_test_case_custom_fields.return_value = []
+
+    data = TestCaseUpdate(custom_fields=custom_fields)
+
+    with pytest.raises(AllureValidationError) as exc:
+        await service.update_test_case(test_case_id, data)
+
+    assert "Single-select violations" in str(exc.value)
+
+
+@pytest.mark.asyncio
+async def test_update_test_case_required_field_clear_error(service: TestCaseService, mock_client: AsyncMock) -> None:
+    test_case_id = 123
+    custom_fields = {"Layer": []}
+
+    service._cf_cache[1] = {
+        "Layer": {
+            "id": 10,
+            "project_cf_id": 100,
+            "required": True,
+            "single_select": True,
+            "values": ["UI", "API"],
+            "values_map": {"UI": 101, "API": 102},
+        }
+    }
+
+    mock_client.get_test_case.return_value = TestCaseDto(id=test_case_id, project_id=1)
+    mock_client.get_test_case_custom_fields.return_value = []
+
+    data = TestCaseUpdate(custom_fields=custom_fields)
+
+    with pytest.raises(AllureValidationError) as exc:
+        await service.update_test_case(test_case_id, data)
+
+    message = str(exc.value)
+    assert "Required fields cannot be cleared" in message
+    assert "Allowed values" in message
+    assert "Layer: UI, API" in message
+
+
+@pytest.mark.asyncio
+async def test_update_test_case_custom_fields_idempotent(service: TestCaseService, mock_client: AsyncMock) -> None:
+    test_case_id = 123
+    custom_fields = {"Layer": "UI"}
+
+    service._cf_cache[1] = {
+        "Layer": {
+            "id": 10,
+            "project_cf_id": 100,
+            "required": False,
+            "single_select": True,
+            "values": ["UI", "API"],
+            "values_map": {"UI": 101, "API": 102},
+        }
+    }
+
+    mock_client.get_test_case.return_value = TestCaseDto(id=test_case_id, project_id=1)
+    mock_client.get_test_case_custom_fields.return_value = [
+        CustomFieldProjectWithValuesDto(
+            custom_field=CustomFieldProjectDto(custom_field=CustomFieldDto(id=1, name="Layer")),
+            values=[CustomFieldValueDto(name="UI")],
+        )
+    ]
+
+    data = TestCaseUpdate(custom_fields=custom_fields)
+
+    await service.update_test_case(test_case_id, data)
+
+    mock_client.update_test_case_custom_fields.assert_not_called()

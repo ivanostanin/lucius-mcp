@@ -278,6 +278,14 @@ From Allure TestOps OpenAPI spec:
 - Caching pattern proven effective for performance
 - `_get_resolved_custom_fields()` method is reusable and tested
 
+## Change Log
+
+- 2026-02-02: Documented senior review exception for Issue #2 (POST vs PATCH for CFV endpoint is as-designed).
+
+## Senior Developer Review (AI)
+
+- Issue #2 (POST vs PATCH for CFV endpoint): As-designed. The endpoint is intentionally POST per API contract; no change required.
+
 ## Dev Agent Record
 
 ### Agent Model Used
