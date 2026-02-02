@@ -1,6 +1,7 @@
 """Helper utilities for E2E test isolation and cleanup."""
 
 from src.client import AllureClient
+from src.services import TestLayerService
 
 
 class CleanupTracker:
@@ -33,6 +34,7 @@ class CleanupTracker:
         self._client = client
         self._test_cases: list[int] = []
         self._shared_steps: list[int] = []
+        self._test_layers: list[int] = []
 
     def track_test_case(self, test_case_id: int) -> None:
         """Track a test case for cleanup.
@@ -49,6 +51,14 @@ class CleanupTracker:
             step_id: ID of the shared step to track
         """
         self._shared_steps.append(step_id)
+
+    def track_test_layer(self, layer_id: int) -> None:
+        """Track a test layer for cleanup.
+
+        Args:
+            layer_id: ID of the shared step to track
+        """
+        self._test_layers.append(layer_id)
 
     async def cleanup_all(self) -> None:
         """Delete all tracked entities.
@@ -73,3 +83,10 @@ class CleanupTracker:
                 await self._client.delete_shared_step(step_id)
             except Exception as e:
                 logger.warning(f"Failed to cleanup shared step {step_id}: {e}")
+
+        layers_service = TestLayerService(self._client)
+        for layer_id in self._test_layers:
+            try:
+                await layers_service.delete_test_layer(layer_id=layer_id)
+            except Exception as e:
+                logger.warning(f"Failed to cleanup test layer {layer_id}: {e}")

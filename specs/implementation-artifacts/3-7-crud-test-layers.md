@@ -1,6 +1,6 @@
 # Story 3.7: CRUD test layers
 
-Status: done
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -96,16 +96,24 @@ No critical issues encountered during implementation.
 - Added idempotency support for update and delete operations
 - Error messages provide actionable guidance for AI agents
 - All tests passing (28/28)
-- **Known Issue**: AC #12 (test layer validation in create_test_case) not implemented - flagged for follow-up story
+- **Known Issue**: AC #12 (test layer validation in create_test_case) not implemented - flagged for follow-up story (now addressed)
+
+### Review Fixes (Code Review)
+
+- Implemented test layer validation for create_test_case via service and tool updates
+- Removed try/except from create_test_case tool to use global Agent Hint handler
+- Updated list_test_layers tool signature to match service behavior
+- Adjusted tests to reflect new tool/service behavior
 
 ### File List
 
 **Service Layer:**
 - `src/services/test_layer_service.py` - New TestLayerService with 8 CRUD methods
+- `src/services/test_case_service.py` - Updated to validate test_layer_id on create
 - `src/services/__init__.py` - Updated exports
 
 **Tools:**
-- `src/tools/list_test_layers.py` - New tool for listing test layers
+- `src/tools/list_test_layers.py` - Tool for listing test layers
 - `src/tools/create_test_layer.py` - New tool for creating test layers
 - `src/tools/update_test_layer.py` - New tool for updating test layers
 - `src/tools/delete_test_layer.py` - New tool for deleting test layers
@@ -115,6 +123,7 @@ No critical issues encountered during implementation.
 - `src/tools/delete_test_layer_schema.py` - New tool for deleting test layer schemas
 - `src/tools/test_layers.py` - New consolidation module for test layer tools
 - `src/tools/__init__.py` - Updated to export all test layer tools
+- `src/tools/create_test_case.py` - Updated to support test_layer_id and global error handling
 
 **Client Integration:**
 - `src/client/client.py` - Added test layer API initialization
@@ -122,7 +131,15 @@ No critical issues encountered during implementation.
 **Tests:**
 - `tests/unit/test_test_layer_service.py` - 18 unit tests for service methods
 - `tests/integration/test_test_layer_tools.py` - 10 integration tests for tool output formatting
-- `tests/e2e/test_test_layer_crud.py` - 8 E2E test scenarios against sandbox TestOps
+- `tests/integration/test_test_create_tool.py` - updated for test_layer_id handling
+- `tests/unit/test_test_case_service.py` - updated for test_layer_id validation
+- `tests/e2e/test_tool_outputs.py` - updated to expect raised validation errors
+- `tests/e2e/helpers/cleanup.py` - cleanup tracking adjustments
+- `tests/e2e/test_test_layer_crud.py` - updated tool signature usage; 8 E2E test scenarios against sandbox TestOps
+
+**Docs/Meta:**
+- `specs/implementation-artifacts/3-7-crud-test-layers.md` - review updates and file list sync
+- `specs/implementation-artifacts/sprint-status.yaml` - status synced to in-progress
 
 **Generated Client Files (via OpenAPI):**
 - `src/client/generated/api/test_layer_controller_api.py`

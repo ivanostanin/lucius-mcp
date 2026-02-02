@@ -1,7 +1,5 @@
 """E2E tests for test layer CRUD operations."""
 
-from typing import Any
-
 import pytest
 
 from src.client import AllureClient
@@ -16,13 +14,14 @@ from src.tools.test_layers import (
     update_test_layer,
     update_test_layer_schema,
 )
+from tests.e2e.helpers.cleanup import CleanupTracker
 
 
 @pytest.mark.asyncio
 async def test_e2e_test_layer_full_lifecycle(
     project_id: int,
     allure_client: AllureClient,
-    cleanup_tracker: Any,
+    cleanup_tracker: CleanupTracker,
 ) -> None:
     """
     E2E-TL-1: Test Layer Full Lifecycle.
@@ -35,6 +34,7 @@ async def test_e2e_test_layer_full_lifecycle(
     created_layer = await service.create_test_layer(name=layer_name)
 
     assert created_layer.id is not None
+    cleanup_tracker.track_test_layer(created_layer.id)
     assert created_layer.name == layer_name
     layer_id = created_layer.id
 
@@ -66,7 +66,7 @@ async def test_e2e_test_layer_full_lifecycle(
 async def test_e2e_test_layer_schema_full_lifecycle(
     project_id: int,
     allure_client: AllureClient,
-    cleanup_tracker: Any,
+    cleanup_tracker: CleanupTracker,
 ) -> None:
     """
     E2E-TL-2: Test Layer Schema Full Lifecycle.
@@ -79,6 +79,7 @@ async def test_e2e_test_layer_schema_full_lifecycle(
     created_layer = await service.create_test_layer(name=layer_name)
     layer_id = created_layer.id
     assert layer_id is not None
+    cleanup_tracker.track_test_layer(created_layer.id)
 
     try:
         # Step 2: Create a test layer schema
@@ -135,7 +136,7 @@ async def test_e2e_list_test_layers_tool(
     E2E-TL-3: List Test Layers Tool.
     Verify that the list_test_layers tool works against real API.
     """
-    output = await list_test_layers(page=0, size=10, project_id=project_id)
+    output = await list_test_layers(page=0, size=10)
 
     # Should return successful output
     assert isinstance(output, str)
@@ -183,6 +184,7 @@ async def test_e2e_create_and_delete_test_layer_tools(
 async def test_e2e_update_test_layer_tool(
     project_id: int,
     allure_client: AllureClient,
+    cleanup_tracker: CleanupTracker,
 ) -> None:
     """
     E2E-TL-5: Update Test Layer Tool.
@@ -195,6 +197,7 @@ async def test_e2e_update_test_layer_tool(
     created_layer = await service.create_test_layer(name=layer_name)
     layer_id = created_layer.id
     assert layer_id is not None
+    cleanup_tracker.track_test_layer(created_layer.id)
 
     try:
         # Update via tool
@@ -217,6 +220,7 @@ async def test_e2e_update_test_layer_tool(
 async def test_e2e_test_layer_schema_tools(
     project_id: int,
     allure_client: AllureClient,
+    cleanup_tracker: CleanupTracker,
 ) -> None:
     """
     E2E-TL-6: Test Layer Schema Tools.
@@ -229,6 +233,7 @@ async def test_e2e_test_layer_schema_tools(
     created_layer = await service.create_test_layer(name=layer_name)
     layer_id = created_layer.id
     assert layer_id is not None
+    cleanup_tracker.track_test_layer(created_layer.id)
 
     try:
         # Create schema via tool
