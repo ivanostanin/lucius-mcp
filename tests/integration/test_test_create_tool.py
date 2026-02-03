@@ -37,7 +37,13 @@ async def test_create_test_case_tool_success(mock_service: Mock, mock_client: Mo
     service_instance.create_test_case.return_value = Mock(id=777, name=name)
 
     result = await create_test_case(
-        project_id=project_id, name=name, description=description, steps=steps, tags=tags, custom_fields=custom_fields
+        project_id=project_id,
+        name=name,
+        description=description,
+        steps=steps,
+        tags=tags,
+        custom_fields=custom_fields,
+        test_layer_id=5,
     )
 
     assert "777" in result
@@ -56,3 +62,4 @@ async def test_create_test_case_tool_success(mock_service: Mock, mock_client: Mo
     assert actual_kwargs["name"] == name
     assert actual_kwargs["custom_fields"] == custom_fields
     assert actual_kwargs["steps"] == steps
+    assert actual_kwargs["test_layer_id"] == 5

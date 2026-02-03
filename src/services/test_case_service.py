@@ -90,6 +90,7 @@ class TestCaseService:
         tags: list[str] | None = None,
         attachments: list[dict[str, str]] | None = None,
         custom_fields: dict[str, str] | None = None,
+        test_layer_id: int | None = None,
     ) -> TestCaseOverviewDto:
         """Create a new test case.
 
@@ -100,6 +101,7 @@ class TestCaseService:
             tags: Optional list of tags.
             attachments: Optional list of test-case level attachments.
             custom_fields: Optional dictionary of custom fields (Name -> Value).
+            test_layer_id: Optional test layer ID to assign to the test case.
 
         Returns:
             The created test case overview.
@@ -115,6 +117,7 @@ class TestCaseService:
         self._validate_tags(tags)
         self._validate_attachments(attachments)
         self._validate_custom_fields(custom_fields)
+        self._validate_test_layer_id(test_layer_id)
 
         # 2. Resolve custom fields if provided
         resolved_custom_fields = []
@@ -160,7 +163,11 @@ class TestCaseService:
                 )
                 raise AllureValidationError(full_error_msg)
 
-        # 3. Create TestCaseCreateV2Dto with validation
+        # 3. Validate test layer reference if provided
+        if test_layer_id is not None:
+            await self._validate_test_layer_exists(test_layer_id)
+
+        # 4. Create TestCaseCreateV2Dto with validation
         tag_dtos = self._build_tag_dtos(tags)
         try:
             data = TestCaseCreateV2Dto(
@@ -169,19 +176,20 @@ class TestCaseService:
                 description=description,
                 tags=tag_dtos,
                 custom_fields=resolved_custom_fields,
+                test_layer_id=test_layer_id,
             )
         except PydanticValidationError as e:
             hint = generate_schema_hint(TestCaseCreateV2Dto)
             raise AllureValidationError(f"Invalid test case data: {e}", suggestions=[hint]) from e
 
-        # 4. Create the test case
+        # 5. Create the test case
         created_test_case = await self._client.create_test_case(data)
         test_case_id = created_test_case.id
 
         if test_case_id is None:
             raise AllureValidationError("Failed to get test case ID from created test case")
 
-        # 5. Add steps and attachments with rollback on failure
+        # 6. Add steps and attachments with rollback on failure
         try:
             # Add steps one by one via separate API calls
             last_step_id: int | None = None
@@ -735,6 +743,31 @@ class TestCaseService:
                 )
             if not key.strip():
                 raise AllureValidationError("Custom field key cannot be empty")
+
+    def _validate_test_layer_id(self, test_layer_id: int | None) -> None:
+        """Validate test layer ID format."""
+        if test_layer_id is None:
+            return
+        if not isinstance(test_layer_id, int) or test_layer_id <= 0:
+            raise AllureValidationError("Test layer ID must be a positive integer")
+
+    async def _validate_test_layer_exists(self, test_layer_id: int) -> None:
+        """Validate test layer exists for the current project."""
+        from src.services.test_layer_service import TestLayerService
+
+        service = TestLayerService(client=self._client)
+        try:
+            await service.get_test_layer(test_layer_id)
+        except AllureNotFoundError as e:
+            raise AllureValidationError(
+                f"Test layer ID {test_layer_id} does not exist in project {self._project_id}",
+                suggestions=["Use list_test_layers to find valid IDs", "Verify the project configuration"],
+            ) from e
+        except AllureAPIError as e:
+            raise AllureValidationError(
+                f"Unable to validate test layer ID {test_layer_id} for project {self._project_id}: {e}",
+                suggestions=["Use list_test_layers to find valid IDs", "Check API connectivity and permissions"],
+            ) from e
 
     # ==========================================
     # DTO Building Methods
