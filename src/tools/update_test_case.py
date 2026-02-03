@@ -1,9 +1,10 @@
-from typing import Annotated, Any
+from typing import Annotated
 
 from pydantic import Field
 
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService, TestCaseUpdate
+from src.utils.links import normalize_links
 
 
 async def update_test_case(  # noqa: C901
@@ -12,7 +13,7 @@ async def update_test_case(  # noqa: C901
     description: Annotated[str | None, Field(description="New description")] = None,
     precondition: Annotated[str | None, Field(description="New precondition")] = None,
     steps: Annotated[
-        list[dict[str, Any]] | None,
+        list[dict[str, object]] | None,
         Field(
             description=(
                 "New list of steps. Each step is a dict with 'action', 'expected', and optional 'attachments' list."
@@ -75,6 +76,7 @@ async def update_test_case(  # noqa: C901
 
     async with AllureClient.from_env(project=project_id) as client:
         service = TestCaseService(client=client)
+        current_case = await service.get_test_case(test_case_id)
         update_data = TestCaseUpdate(
             name=name,
             description=description,
@@ -94,31 +96,54 @@ async def update_test_case(  # noqa: C901
         updated_case = await service.update_test_case(test_case_id, update_data)
 
         # Build confirmation message
-        changes = []
-        if name:
+        changes: list[str] = []
+
+        if name is not None and name != getattr(current_case, "name", None):
             changes.append(f"name='{updated_case.name}'")
-        if description:
+        if description is not None and description != getattr(current_case, "description", None):
             changes.append("description")
-        if steps:
+        if steps is not None:
             changes.append("steps updated")
-        if tags:
-            changes.append("tags updated")
-        if attachments:
+
+        if tags is not None:
+            current_tags = current_case.tags if isinstance(current_case.tags, list) else []
+            current_tag_names: list[str] = []
+            for tag in current_tags:
+                tag_name = getattr(tag, "name", None)
+                if isinstance(tag_name, str):
+                    current_tag_names.append(tag_name)
+            current_tag_names.sort()
+            new_tag_names = sorted(tags)
+            if current_tag_names != new_tag_names:
+                changes.append("tags updated")
+
+        if attachments is not None:
             changes.append("attachments updated")
-        if custom_fields:
+        if custom_fields is not None:
             changes.append("custom fields updated")
-        if automated is not None:
+        if automated is not None and automated != getattr(current_case, "automated", None):
             changes.append(f"automated={updated_case.automated}")
-        if expected_result:
+        if expected_result is not None and expected_result != getattr(current_case, "expected_result", None):
             changes.append("expected result updated")
-        if status_id:
-            changes.append("status updated")
-        if test_layer_id:
-            changes.append("test layer updated")
-        if workflow_id:
-            changes.append("workflow updated")
-        if links:
-            changes.append("links updated")
+        if status_id is not None:
+            current_status = getattr(current_case, "status", None)
+            current_status_id = getattr(current_status, "id", None) if current_status else None
+            if status_id != current_status_id:
+                changes.append("status updated")
+        if test_layer_id is not None:
+            current_test_layer = getattr(current_case, "test_layer", None)
+            current_test_layer_id = getattr(current_test_layer, "id", None) if current_test_layer else None
+            if test_layer_id != current_test_layer_id:
+                changes.append("test layer updated")
+        if workflow_id is not None:
+            current_workflow = getattr(current_case, "workflow", None)
+            current_workflow_id = getattr(current_workflow, "id", None) if current_workflow else None
+            if workflow_id != current_workflow_id:
+                changes.append("workflow updated")
+        if links is not None:
+            current_links = current_case.links if isinstance(current_case.links, list) else []
+            if normalize_links(current_links) != normalize_links(links):
+                changes.append("links updated")
 
         summary = ", ".join(changes) if changes else "No changes made (idempotent)"
 
