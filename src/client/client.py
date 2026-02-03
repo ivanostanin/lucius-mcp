@@ -27,6 +27,8 @@ from .generated.api.custom_field_controller_api import CustomFieldControllerApi
 from .generated.api.custom_field_project_controller_api import CustomFieldProjectControllerApi
 from .generated.api.custom_field_project_controller_v2_api import CustomFieldProjectControllerV2Api
 from .generated.api.custom_field_value_project_controller_api import CustomFieldValueProjectControllerApi
+from .generated.api.launch_controller_api import LaunchControllerApi
+from .generated.api.launch_search_controller_api import LaunchSearchControllerApi
 from .generated.api.shared_step_attachment_controller_api import SharedStepAttachmentControllerApi
 from .generated.api.shared_step_controller_api import SharedStepControllerApi
 from .generated.api.shared_step_scenario_controller_api import SharedStepScenarioControllerApi
@@ -40,11 +42,17 @@ from .generated.api.test_layer_schema_controller_api import TestLayerSchemaContr
 from .generated.api_client import ApiClient
 from .generated.configuration import Configuration
 from .generated.exceptions import ApiException
+from .generated.models.aql_validate_response_dto import AqlValidateResponseDto
 from .generated.models.attachment_step_dto import AttachmentStepDto
 from .generated.models.body_step_dto import BodyStepDto
 from .generated.models.custom_field_project_with_values_dto import CustomFieldProjectWithValuesDto
 from .generated.models.custom_field_value_with_cf_dto import CustomFieldValueWithCfDto
 from .generated.models.custom_field_with_values_dto import CustomFieldWithValuesDto
+from .generated.models.find_all29200_response import FindAll29200Response
+from .generated.models.launch_create_dto import LaunchCreateDto
+from .generated.models.launch_dto import LaunchDto
+from .generated.models.page_launch_dto import PageLaunchDto
+from .generated.models.page_launch_preview_dto import PageLaunchPreviewDto
 from .generated.models.page_shared_step_dto import PageSharedStepDto
 from .generated.models.page_test_case_dto import PageTestCaseDto
 from .generated.models.scenario_step_create_dto import ScenarioStepCreateDto
@@ -114,6 +122,8 @@ type ApiType = (
     | CustomFieldValueProjectControllerApi
     | TestLayerControllerApi
     | TestLayerSchemaControllerApi
+    | LaunchControllerApi
+    | LaunchSearchControllerApi
 )
 
 type NormalizedScenarioDict = dict[str, object]
@@ -129,6 +139,11 @@ __all__ = [
     "BodyStepDtoWithSteps",
     "CustomFieldProjectWithValuesDto",
     "CustomFieldWithValuesDto",
+    "FindAll29200Response",
+    "LaunchCreateDto",
+    "LaunchDto",
+    "PageLaunchDto",
+    "PageLaunchPreviewDto",
     "PageSharedStepDto",
     "PageTestCaseDto",
     "ScenarioStepCreateDto",
@@ -217,6 +232,8 @@ class AllureClient:
         self._custom_field_value_project_api: CustomFieldValueProjectControllerApi | None = None
         self._test_layer_api: TestLayerControllerApi | None = None
         self._test_layer_schema_api: TestLayerSchemaControllerApi | None = None
+        self._launch_api: LaunchControllerApi | None = None
+        self._launch_search_api: LaunchSearchControllerApi | None = None
         self._is_entered = False
 
     @classmethod
@@ -360,6 +377,8 @@ class AllureClient:
             self._custom_field_value_project_api = CustomFieldValueProjectControllerApi(self._api_client)
             self._test_layer_api = TestLayerControllerApi(self._api_client)
             self._test_layer_schema_api = TestLayerSchemaControllerApi(self._api_client)
+            self._launch_api = LaunchControllerApi(self._api_client)
+            self._launch_search_api = LaunchSearchControllerApi(self._api_client)
 
     @property
     def api_client(self) -> ApiClient:
@@ -497,6 +516,16 @@ class AllureClient:
     async def _get_api(
         self, attr_name: Literal["_custom_field_value_project_api"], *, error_name: str | None = None
     ) -> CustomFieldValueProjectControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_launch_api"], *, error_name: str | None = None
+    ) -> LaunchControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_launch_search_api"], *, error_name: str | None = None
+    ) -> LaunchSearchControllerApi: ...
 
     async def _get_api(self, attr_name: str, *, error_name: str | None = None) -> ApiType:
         self._require_entered()
@@ -699,6 +728,164 @@ class AllureClient:
                 rql=rql,
                 page=page,
                 size=size,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    # ==========================================
+    # Launch operations
+    # ==========================================
+
+    async def create_launch(self, data: LaunchCreateDto) -> LaunchDto:
+        """Create a new launch in the specified project.
+
+        Args:
+            data: Launch definition (name, project_id, etc.).
+
+        Returns:
+            The created launch.
+
+        Raises:
+            AllureNotFoundError: If project doesn't exist.
+            AllureValidationError: If input data fails validation.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
+        """
+        api = await self._get_api("_launch_api")
+
+        if hasattr(data, "project_id") and not data.project_id:
+            data.project_id = self._project
+
+        return await self._call_api(api.create31(launch_create_dto=data, _request_timeout=self._timeout))
+
+    async def list_launches(
+        self,
+        project_id: int,
+        page: int = 0,
+        size: int = 20,
+        search: str | None = None,
+        filter_id: int | None = None,
+        sort: list[str] | None = None,
+    ) -> FindAll29200Response:
+        """List launches for a project.
+
+        Args:
+            project_id: Target project ID.
+            page: Zero-based page index.
+            size: Page size.
+            search: Optional name search.
+            filter_id: Optional filter ID.
+            sort: Optional sort criteria.
+
+        Returns:
+            Paginated launches or launch previews.
+
+        Raises:
+            AllureNotFoundError: If project doesn't exist.
+            AllureValidationError: If input data fails validation.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
+        """
+        api = await self._get_api("_launch_api", error_name="launch APIs")
+
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+        if not isinstance(page, int) or page < 0:
+            raise AllureValidationError("Page must be a non-negative integer")
+        if not isinstance(size, int) or size <= 0 or size > 100:
+            raise AllureValidationError("Size must be between 1 and 100")
+
+        return await self._call_api(
+            api.find_all29(
+                project_id=project_id,
+                search=search,
+                filter_id=filter_id,
+                page=page,
+                size=size,
+                sort=sort,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def search_launches_aql(
+        self,
+        project_id: int,
+        rql: str,
+        page: int = 0,
+        size: int = 20,
+        sort: list[str] | None = None,
+    ) -> PageLaunchDto:
+        """Search launches using raw AQL (Allure Query Language).
+
+        Args:
+            project_id: Target project ID.
+            rql: Raw AQL query string.
+            page: Zero-based page index.
+            size: Page size (max 100).
+            sort: Optional sort criteria (e.g., ["createdDate,DESC"]).
+
+        Returns:
+            Paginated launch results matching the AQL query.
+
+        Raises:
+            AllureValidationError: If AQL syntax is invalid or input fails validation.
+            AllureNotFoundError: If project doesn't exist.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
+        """
+        api = await self._get_api("_launch_search_api", error_name="launch search APIs")
+
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+        if not isinstance(rql, str) or not rql.strip():
+            raise AllureValidationError("AQL query must be a non-empty string")
+        if not isinstance(page, int) or page < 0:
+            raise AllureValidationError("Page must be a non-negative integer")
+        if not isinstance(size, int) or size <= 0 or size > 100:
+            raise AllureValidationError("Size must be between 1 and 100")
+
+        return await self._call_api(
+            api.search2(
+                project_id=project_id,
+                rql=rql,
+                page=page,
+                size=size,
+                sort=sort,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def validate_launch_query(
+        self,
+        project_id: int,
+        rql: str,
+    ) -> AqlValidateResponseDto:
+        """Validate an AQL query for launches without executing it.
+
+        Args:
+            project_id: Target project ID.
+            rql: Raw AQL query string to validate.
+
+        Returns:
+            Validation response with validity and count.
+
+        Raises:
+            AllureValidationError: If input fails basic validation.
+            AllureNotFoundError: If project doesn't exist.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
+        """
+        api = await self._get_api("_launch_search_api", error_name="launch search APIs")
+
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+        if not isinstance(rql, str) or not rql.strip():
+            raise AllureValidationError("AQL query must be a non-empty string")
+
+        return await self._call_api(
+            api.validate_query2(
+                project_id=project_id,
+                rql=rql,
                 _request_timeout=self._timeout,
             )
         )
