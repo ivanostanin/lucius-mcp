@@ -13,6 +13,9 @@ from src.client.generated.models import TestLayerDto
 from src.services.test_case_service import TestCaseService
 from src.services.test_layer_service import TestLayerService
 from src.tools.create_test_case import create_test_case
+from src.tools.update_test_case import update_test_case
+
+update_test_case_module = importlib.import_module("src.tools.update_test_case")
 
 create_test_case_module = importlib.import_module("src.tools.create_test_case")
 
@@ -157,6 +160,37 @@ async def test_create_test_case_tool_forwards_test_layers(monkeypatch):
         test_layer_id=10,
         test_layer_name="Layer10",
     )
+
+
+@pytest.mark.asyncio
+async def test_update_test_case_tool_summary_includes_test_layer(monkeypatch):
+    service = AsyncMock()
+    service.get_test_case.return_value = MagicMock(id=1, name="Test", test_layer=None)
+    service.update_test_case.return_value = MagicMock(id=1, name="Test")
+
+    class DummyClient:
+        async def __aenter__(self):
+            return MagicMock()
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+    monkeypatch.setattr(AllureClient, "from_env", MagicMock(return_value=DummyClient()))
+    monkeypatch.setattr(
+        update_test_case_module,
+        "TestCaseService",
+        MagicMock(return_value=service),
+    )
+
+    result = await update_test_case(
+        test_case_id=1,
+        test_layer_id=2,
+        project_id=1,
+    )
+
+    assert "test layer updated" in result
+    service.get_test_case.assert_called_once_with(1)
+    service.update_test_case.assert_called_once()
 
 
 @pytest.mark.asyncio

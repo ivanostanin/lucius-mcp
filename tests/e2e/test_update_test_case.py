@@ -173,6 +173,30 @@ async def test_e2e_u2_update_status_workflow(
     # Verify automated flag changed
     assert updated_case.automated == (not initial_automated)
 
+    test_layers = await service._test_layer_service.list_test_layers(page=0, size=100)
+    valid_layer_ids = [layer.id for layer in test_layers if layer.id is not None and layer.id > 0]
+    if not valid_layer_ids:
+        pytest.skip("No valid test layers available for update_test_case test.")
+
+    target_layer_id = valid_layer_ids[0]
+
+    update_layer_data = TestCaseUpdate(test_layer_id=target_layer_id)
+    updated_case = await service.update_test_case(test_case_id, update_layer_data)
+
+    assert updated_case.test_layer is not None
+    assert updated_case.test_layer.id == target_layer_id
+
+    update_same_layer = TestCaseUpdate(test_layer_id=target_layer_id)
+    updated_again = await service.update_test_case(test_case_id, update_same_layer)
+    assert updated_again.test_layer is not None
+    assert updated_again.test_layer.id == target_layer_id
+
+    invalid_layer_id = max(valid_layer_ids) + 100000
+    with pytest.raises(Exception) as excinfo:
+        await service.update_test_case(test_case_id, TestCaseUpdate(test_layer_id=invalid_layer_id))
+
+    assert "list_test_layers" in str(excinfo.value)
+
 
 async def test_e2e_u3_update_tags(
     project_id: int,

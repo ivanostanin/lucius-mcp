@@ -6,6 +6,7 @@ from pydantic import ValidationError as PydanticValidationError
 
 from src.client import AllureClient
 from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError
+from src.client.generated.exceptions import ApiException
 from src.client.generated.models.page_test_layer_dto import PageTestLayerDto
 from src.client.generated.models.page_test_layer_schema_dto import PageTestLayerSchemaDto
 from src.client.generated.models.test_layer_create_dto import TestLayerCreateDto
@@ -119,7 +120,8 @@ class TestLayerService:
 
         try:
             return await self._client._test_layer_api.find_one8(id=layer_id)
-        except AllureNotFoundError:
+        except ApiException as e:
+            self._client._handle_api_exception(e)
             raise
         except Exception as e:
             raise AllureAPIError(f"Failed to get test layer {layer_id}: {e}") from e
