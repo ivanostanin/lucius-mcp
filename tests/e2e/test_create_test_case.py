@@ -1,5 +1,9 @@
+import pytest
+
 from src.client import AllureClient
+from src.client.exceptions import AllureValidationError
 from src.services.test_case_service import TestCaseService
+from src.services.test_layer_service import TestLayerService
 from src.tools.create_test_case import create_test_case
 from tests.e2e.helpers.cleanup import CleanupTracker
 
@@ -314,3 +318,69 @@ async def test_e2e_7_edge_cases(
     # Verify it was created
     fetched_case = await service.get_test_case(test_case_id)
     assert fetched_case.id == test_case_id
+    assert fetched_case.name == case_name
+
+
+async def test_e2e_8_test_layer_assignment(
+    project_id: int,
+    allure_client: AllureClient,
+    cleanup_tracker: CleanupTracker,
+) -> None:
+    """
+    E2E-8: Test Layer Assignment.
+    Create a test layer, then assign by ID and by name.
+    """
+    layer_service = TestLayerService(client=allure_client)
+
+    layer_name = "E2E-Create-Case-Layer"
+    created_layer = await layer_service.create_test_layer(name=layer_name)
+    layer_id = created_layer.id
+    assert layer_id is not None
+    cleanup_tracker.track_test_layer(layer_id)
+
+    # Assign via test_layer_id
+    by_id_name = "E2E-Create-Case-With-Layer-ID"
+    created_by_id = await create_test_case(
+        name=by_id_name,
+        test_layer_id=layer_id,
+        project_id=project_id,
+    )
+    assert "Created Test Case ID:" in created_by_id
+
+    import re
+
+    match = re.search(r"ID: (\d+)", created_by_id)
+    assert match
+    test_case_id = int(match.group(1))
+    cleanup_tracker.track_test_case(test_case_id)
+
+    case_service = TestCaseService(client=allure_client)
+    fetched_by_id = await case_service.get_test_case(test_case_id)
+    assert fetched_by_id.test_layer is not None
+    assert fetched_by_id.test_layer.id == layer_id
+
+    # Assign via test_layer_name
+    by_name_name = "E2E-Create-Case-With-Layer-Name"
+    created_by_name = await create_test_case(
+        name=by_name_name,
+        test_layer_name=layer_name,
+        project_id=project_id,
+    )
+    assert "Created Test Case ID:" in created_by_name
+
+    match = re.search(r"ID: (\d+)", created_by_name)
+    assert match
+    test_case_id = int(match.group(1))
+    cleanup_tracker.track_test_case(test_case_id)
+
+    fetched_by_name = await case_service.get_test_case(test_case_id)
+    assert fetched_by_name.test_layer is not None
+    assert fetched_by_name.test_layer.id == layer_id
+
+    # Invalid name should fail
+    with pytest.raises(AllureValidationError):
+        await create_test_case(
+            name="E2E-Create-Case-Invalid-Layer",
+            test_layer_name="Missing-Layer",
+            project_id=project_id,
+        )

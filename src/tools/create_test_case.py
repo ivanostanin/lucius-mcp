@@ -1,6 +1,6 @@
 """Tool for creating Test Cases in Allure TestOps."""
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from pydantic import Field
 
@@ -12,7 +12,7 @@ async def create_test_case(
     name: Annotated[str, Field(description="The name of the test case.")],
     description: Annotated[str | None, Field(description="A markdown description of the test case.")] = None,
     steps: Annotated[
-        list[dict[str, Any]] | None,
+        list[dict[str, object]] | None,
         Field(
             description="List of steps. Each step must be a dict with 'action' and 'expected' keys. "
             "Example: [{'action': 'Login', 'expected': 'Dashboard visible'}]"
@@ -44,6 +44,15 @@ async def create_test_case(
             )
         ),
     ] = None,
+    test_layer_name: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Optional test layer name to assign (exact case-sensitive match). "
+                "Mutually exclusive with test_layer_id."
+            )
+        ),
+    ] = None,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
 ) -> str:
     """Create a new test case in Allure TestOps.
@@ -61,6 +70,7 @@ async def create_test_case(
         custom_fields: Dictionary of custom field names and their values (string or list of strings).
                        Example: {'Layer': 'UI', 'Components': ['Auth', 'DB']}
         test_layer_id: Optional test layer ID to assign (must exist in the project).
+        test_layer_name: Optional test layer name to assign (exact case-sensitive match).
         project_id: Optional override for the default Project ID.
 
     Returns:
@@ -80,5 +90,6 @@ async def create_test_case(
             attachments=attachments,
             custom_fields=custom_fields,
             test_layer_id=test_layer_id,
+            test_layer_name=test_layer_name,
         )
         return f"Created Test Case ID: {result.id} Name: {result.name}"

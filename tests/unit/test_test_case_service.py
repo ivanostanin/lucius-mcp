@@ -21,6 +21,7 @@ from src.client.generated.models import (
 )
 from src.services.attachment_service import AttachmentService
 from src.services.test_case_service import TestCaseService, TestCaseUpdate
+from src.services.test_layer_service import TestLayerService
 
 
 @pytest.fixture
@@ -37,10 +38,14 @@ def mock_attachment_service() -> AsyncMock:
 
 
 @pytest.fixture
-def service(mock_client: AsyncMock, mock_attachment_service: AsyncMock) -> TestCaseService:
+def service(
+    mock_client: AsyncMock,
+    mock_attachment_service: AsyncMock,
+) -> TestCaseService:
     return TestCaseService(
         client=mock_client,
         attachment_service=mock_attachment_service,
+        test_layer_service=AsyncMock(spec=TestLayerService),
     )
 
 
@@ -176,8 +181,7 @@ async def test_create_test_case_with_custom_fields(service: TestCaseService, moc
     ]
 
     mock_layer = TestLayerDto(id=7, name="Layer7")
-    mock_client._test_layer_api = Mock()
-    mock_client._test_layer_api.find_one8 = AsyncMock(return_value=mock_layer)
+    service._test_layer_service.get_test_layer.return_value = mock_layer
 
     result_mock = Mock(id=103)
     result_mock.name = name
@@ -185,7 +189,7 @@ async def test_create_test_case_with_custom_fields(service: TestCaseService, moc
 
     await service.create_test_case(name, custom_fields=custom_fields, test_layer_id=7)
 
-    assert mock_client._test_layer_api.find_one8.call_args.kwargs["id"] == 7
+    service._test_layer_service.get_test_layer.assert_called_once_with(7)
 
     # Verify resolution call
     mock_client.get_custom_fields_with_values.assert_called_once_with(1)
@@ -211,8 +215,7 @@ async def test_create_test_case_custom_field_not_found(service: TestCaseService,
     # Mock custom field resolution directly on the client
     mock_client.get_custom_fields_with_values.return_value = []
 
-    mock_client._test_layer_api = Mock()
-    mock_client._test_layer_api.find_one8 = AsyncMock(return_value=TestLayerDto(id=7, name="Layer7"))
+    service._test_layer_service.get_test_layer.return_value = TestLayerDto(id=7, name="Layer7")
 
     # Expect the new aggregated error format
     with pytest.raises(AllureValidationError, match="The following custom fields were not found"):
@@ -425,6 +428,98 @@ class TestCustomFieldsValidation:
         """Empty custom field key should raise validation error."""
         with pytest.raises(AllureValidationError, match="Custom field key cannot be empty"):
             await service.create_test_case("Test", custom_fields={"": "value"})
+
+
+class TestTestLayerValidation:
+    """Tests for test layer validation."""
+
+    @pytest.mark.asyncio
+    async def test_test_layer_id_and_name_mutually_exclusive(self, service: TestCaseService) -> None:
+        with pytest.raises(AllureValidationError, match="mutually exclusive"):
+            await service.create_test_case("Test", test_layer_id=1, test_layer_name="Layer")
+
+    @pytest.mark.asyncio
+    async def test_test_layer_id_valid(self, service: TestCaseService, mock_client: AsyncMock) -> None:
+        layer = TestLayerDto(id=9, name="Layer9")
+        service._test_layer_service.get_test_layer.return_value = layer
+        result_mock = Mock(id=105)
+        result_mock.name = "Test"
+        mock_client.create_test_case.return_value = result_mock
+
+        await service.create_test_case("Test", test_layer_id=9)
+
+        service._test_layer_service.get_test_layer.assert_called_once_with(9)
+        passed_dto = mock_client.create_test_case.call_args[0][0]
+        assert passed_dto.test_layer_id == 9
+
+    @pytest.mark.asyncio
+    async def test_test_layer_id_not_found(self, service: TestCaseService) -> None:
+        service._test_layer_service.get_test_layer.side_effect = AllureNotFoundError("missing")
+        service._test_layer_service.list_test_layers.return_value = [
+            TestLayerDto(id=1, name="Layer1"),
+            TestLayerDto(id=2, name="Layer2"),
+        ]
+
+        with pytest.raises(AllureValidationError, match="does not exist") as excinfo:
+            await service.create_test_case("Test", test_layer_id=123)
+
+        error_str = str(excinfo.value)
+        assert "Available test layers" in error_str
+        assert "Use list_test_layers" in error_str
+        service._test_layer_service.list_test_layers.assert_called_once_with(page=0, size=100)
+
+    @pytest.mark.asyncio
+    async def test_test_layer_name_valid(self, service: TestCaseService, mock_client: AsyncMock) -> None:
+        service._test_layer_service.list_test_layers.return_value = [
+            TestLayerDto(id=3, name="Layer3"),
+            TestLayerDto(id=4, name="Layer4"),
+        ]
+        result_mock = Mock(id=106)
+        result_mock.name = "Test"
+        mock_client.create_test_case.return_value = result_mock
+
+        await service.create_test_case("Test", test_layer_name="Layer4")
+
+        service._test_layer_service.list_test_layers.assert_called_once_with(page=0, size=100)
+        passed_dto = mock_client.create_test_case.call_args[0][0]
+        assert passed_dto.test_layer_id == 4
+
+    @pytest.mark.asyncio
+    async def test_test_layer_name_not_found(self, service: TestCaseService) -> None:
+        service._test_layer_service.list_test_layers.return_value = [
+            TestLayerDto(id=1, name="Layer1"),
+        ]
+
+        with pytest.raises(AllureValidationError, match="name 'Missing' not found") as excinfo:
+            await service.create_test_case("Test", test_layer_name="Missing")
+
+        error_str = str(excinfo.value)
+        assert "Available test layers" in error_str
+        assert "Use list_test_layers" in error_str
+
+    @pytest.mark.asyncio
+    async def test_test_layer_name_ambiguous(self, service: TestCaseService) -> None:
+        service._test_layer_service.list_test_layers.return_value = [
+            TestLayerDto(id=1, name="Layer"),
+            TestLayerDto(id=2, name="Layer"),
+        ]
+
+        with pytest.raises(AllureValidationError, match="Multiple test layers match") as excinfo:
+            await service.create_test_case("Test", test_layer_name="Layer")
+
+        error_str = str(excinfo.value)
+        assert "Use test_layer_id" in error_str
+
+    @pytest.mark.asyncio
+    async def test_test_layer_not_provided(self, service: TestCaseService, mock_client: AsyncMock) -> None:
+        result_mock = Mock(id=107)
+        result_mock.name = "Test"
+        mock_client.create_test_case.return_value = result_mock
+
+        await service.create_test_case("Test")
+
+        service._test_layer_service.get_test_layer.assert_not_called()
+        service._test_layer_service.list_test_layers.assert_not_called()
 
 
 @pytest.mark.asyncio

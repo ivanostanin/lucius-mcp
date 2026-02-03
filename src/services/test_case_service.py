@@ -20,6 +20,7 @@ from src.client.generated.models import (
     TestCaseCreateV2Dto,
     TestCaseDto,
     TestCaseOverviewDto,
+    TestLayerDto,
     TestTagDto,
 )
 from src.client.generated.models.attachment_step_dto import AttachmentStepDto
@@ -29,6 +30,7 @@ from src.client.generated.models.shared_step_step_dto import SharedStepStepDto
 from src.client.generated.models.test_case_patch_v2_dto import TestCasePatchV2Dto
 from src.client.generated.models.test_case_scenario_v2_dto import TestCaseScenarioV2Dto
 from src.services.attachment_service import AttachmentService
+from src.services.test_layer_service import TestLayerService
 from src.utils.schema_hint import generate_schema_hint
 
 # Maximum lengths based on API constraints
@@ -91,10 +93,12 @@ class TestCaseService:
         self,
         client: AllureClient,
         attachment_service: AttachmentService | None = None,
+        test_layer_service: TestLayerService | None = None,
     ) -> None:
         self._client = client
         self._project_id = client.get_project()
         self._attachment_service = attachment_service or AttachmentService(self._client)
+        self._test_layer_service = test_layer_service or TestLayerService(self._client)
         # {project_id: {name: {"id": int, "values": list[str]}}}
         self._cf_cache: dict[int, dict[str, ResolvedCustomFieldInfo]] = {}
 
@@ -107,6 +111,7 @@ class TestCaseService:
         attachments: list[dict[str, str]] | None = None,
         custom_fields: dict[str, str | list[str]] | None = None,
         test_layer_id: int | None = None,
+        test_layer_name: str | None = None,
     ) -> TestCaseOverviewDto:
         """Create a new test case.
 
@@ -118,6 +123,7 @@ class TestCaseService:
             attachments: Optional list of test-case level attachments.
             custom_fields: Optional dictionary of custom fields (Name -> Value).
             test_layer_id: Optional test layer ID to assign to the test case.
+            test_layer_name: Optional test layer name to assign to the test case.
 
         Returns:
             The created test case overview.
@@ -133,9 +139,14 @@ class TestCaseService:
         self._validate_tags(tags)
         self._validate_attachments(attachments)
         self._validate_custom_fields(custom_fields)
-        self._validate_test_layer_id(test_layer_id)
 
-        # 2. Resolve custom fields if provided
+        # 2. Resolve test layer if provided
+        resolved_test_layer_id = await self._validate_test_layer(
+            test_layer_id=test_layer_id,
+            test_layer_name=test_layer_name,
+        )
+
+        # 3. Resolve custom fields if provided
         resolved_custom_fields: list[CustomFieldValueWithCfDto] = []
         if custom_fields:
             project_cfs = await self._get_resolved_custom_fields(self._project_id)
@@ -191,10 +202,6 @@ class TestCaseService:
                 )
                 raise AllureValidationError(full_error_msg)
 
-        # 3. Validate test layer reference if provided
-        if test_layer_id is not None:
-            await self._validate_test_layer_exists(test_layer_id)
-
         # 4. Create TestCaseCreateV2Dto with validation
         tag_dtos = self._build_tag_dtos(tags)
         try:
@@ -204,7 +211,7 @@ class TestCaseService:
                 description=description,
                 tags=tag_dtos,
                 custom_fields=resolved_custom_fields,
-                test_layer_id=test_layer_id,
+                test_layer_id=resolved_test_layer_id,
             )
         except PydanticValidationError as e:
             hint = generate_schema_hint(TestCaseCreateV2Dto)
@@ -882,23 +889,78 @@ class TestCaseService:
         if not isinstance(test_layer_id, int) or test_layer_id <= 0:
             raise AllureValidationError("Test layer ID must be a positive integer")
 
-    async def _validate_test_layer_exists(self, test_layer_id: int) -> None:
-        """Validate test layer exists for the current project."""
-        from src.services.test_layer_service import TestLayerService
+    def _format_available_layers(self, layers: list[TestLayerDto]) -> str:
+        display_lines: list[str] = []
+        for layer in layers[:10]:
+            display_lines.append(f"ID: {layer.id}, Name: {layer.name}")
+        if not display_lines:
+            display_lines.append("(none)")
+        return "\n".join(display_lines)
 
-        service = TestLayerService(client=self._client)
-        try:
-            await service.get_test_layer(test_layer_id)
-        except AllureNotFoundError as e:
+    async def _validate_test_layer(
+        self,
+        *,
+        test_layer_id: int | None,
+        test_layer_name: str | None,
+    ) -> int | None:
+        if test_layer_id is not None and test_layer_name is not None:
             raise AllureValidationError(
-                f"Test layer ID {test_layer_id} does not exist in project {self._project_id}",
-                suggestions=["Use list_test_layers to find valid IDs", "Verify the project configuration"],
-            ) from e
-        except AllureAPIError as e:
-            raise AllureValidationError(
-                f"Unable to validate test layer ID {test_layer_id} for project {self._project_id}: {e}",
-                suggestions=["Use list_test_layers to find valid IDs", "Check API connectivity and permissions"],
-            ) from e
+                "Provide only one of test_layer_id or test_layer_name (they are mutually exclusive)."
+            )
+
+        if test_layer_id is not None:
+            self._validate_test_layer_id(test_layer_id)
+            try:
+                await self._test_layer_service.get_test_layer(test_layer_id)
+            except AllureNotFoundError as e:
+                layers = await self._test_layer_service.list_test_layers(page=0, size=100)
+                available_layers = self._format_available_layers(layers)
+                raise AllureValidationError(
+                    "\n".join(
+                        [
+                            f"Test layer ID {test_layer_id} does not exist in project {self._project_id}.",
+                            "Available test layers (first 10):",
+                            available_layers,
+                            "Use list_test_layers(page=..., size=...) to see more.",
+                        ]
+                    )
+                ) from e
+            except AllureAPIError as e:
+                raise AllureValidationError(
+                    f"Unable to validate test layer ID {test_layer_id} for project {self._project_id}: {e}",
+                    suggestions=["Use list_test_layers to find valid IDs", "Check API connectivity and permissions"],
+                ) from e
+            return test_layer_id
+
+        if test_layer_name is not None:
+            layers = await self._test_layer_service.list_test_layers(page=0, size=100)
+            matches = [layer for layer in layers if layer.name == test_layer_name]
+            if len(matches) == 0:
+                available_layers = self._format_available_layers(layers)
+                raise AllureValidationError(
+                    "\n".join(
+                        [
+                            f"Test layer name '{test_layer_name}' not found.",
+                            "Available test layers (first 10):",
+                            available_layers,
+                            "Use list_test_layers(page=..., size=...) to see more.",
+                        ]
+                    )
+                )
+            if len(matches) > 1:
+                match_lines = "\n".join([f"ID: {layer.id}, Name: {layer.name}" for layer in matches])
+                raise AllureValidationError(
+                    "\n".join(
+                        [
+                            f"Multiple test layers match name '{test_layer_name}'.",
+                            match_lines,
+                            "Use test_layer_id to disambiguate.",
+                        ]
+                    )
+                )
+            return matches[0].id
+
+        return None
 
     # ==========================================
     # DTO Building Methods

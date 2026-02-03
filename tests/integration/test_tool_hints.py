@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -8,6 +8,7 @@ from src.client import AllureClient
 # The tools are simple wrappers. Testing the Service validation logic (which we just updated)
 # is the most direct way to verify the hints.
 from src.services.test_case_service import TestCaseService
+from src.tools.create_test_case import create_test_case
 
 # We can test the Service methods directly by instantiating TestCaseService
 # and mocking the client. The validation logic is local and doesn't need API.
@@ -115,3 +116,57 @@ async def test_create_test_case_invalid_custom_fields_hint(service):
     error_str = str(excinfo.value)
     assert "Custom fields must be a dictionary" in error_str
     assert "Schema Hint" in error_str or (hasattr(excinfo.value, "suggestions") and excinfo.value.suggestions)
+
+
+@pytest.mark.asyncio
+async def test_create_test_case_tool_forwards_test_layers(monkeypatch):
+    service = AsyncMock()
+    service.create_test_case.return_value = MagicMock(id=1, name="Test")
+
+    class DummyClient:
+        async def __aenter__(self):
+            return MagicMock()
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+    monkeypatch.setattr(AllureClient, "from_env", MagicMock(return_value=DummyClient()))
+    monkeypatch.setattr("src.tools.create_test_case.TestCaseService", MagicMock(return_value=service))
+
+    result = await create_test_case(
+        name="Test",
+        test_layer_id=10,
+        test_layer_name="Layer10",
+        project_id=1,
+    )
+
+    assert "Created Test Case ID: 1" in result
+    service.create_test_case.assert_called_once_with(
+        name="Test",
+        description=None,
+        steps=None,
+        tags=None,
+        attachments=None,
+        custom_fields=None,
+        test_layer_id=10,
+        test_layer_name="Layer10",
+    )
+
+
+@pytest.mark.asyncio
+async def test_create_test_case_tool_propagates_errors(monkeypatch):
+    service = AsyncMock()
+    service.create_test_case.side_effect = ValueError("boom")
+
+    class DummyClient:
+        async def __aenter__(self):
+            return MagicMock()
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+    monkeypatch.setattr(AllureClient, "from_env", MagicMock(return_value=DummyClient()))
+    monkeypatch.setattr("src.tools.create_test_case.TestCaseService", MagicMock(return_value=service))
+
+    with pytest.raises(ValueError, match="boom"):
+        await create_test_case(name="Test")
