@@ -358,6 +358,12 @@ class TestCaseService:
             updated_case = await self.get_test_case(test_case_id)
             return updated_case if updated_case is not None else current_case
 
+        if data.test_layer_id is not None:
+            self._validate_test_layer_id(data.test_layer_id)
+            current_test_layer_id = current_case.test_layer.id if current_case.test_layer else None
+            if data.test_layer_id != current_test_layer_id:
+                await self._validate_test_layer_exists(data.test_layer_id, project_id)
+
         # 3. Handle Metadata Patches
         patch_kwargs, has_changes = await self._prepare_field_updates(current_case, data)
 
@@ -896,6 +902,30 @@ class TestCaseService:
         if not display_lines:
             display_lines.append("(none)")
         return "\n".join(display_lines)
+
+    async def _validate_test_layer_exists(self, test_layer_id: int, project_id: int) -> None:
+        try:
+            await self._test_layer_service.get_test_layer(test_layer_id)
+        except AllureNotFoundError as e:
+            layers = await self._test_layer_service.list_test_layers(page=0, size=100)
+            available_layers = self._format_available_layers(layers)
+            raise AllureValidationError(
+                "\n".join(
+                    [
+                        f"Warning: Test layer ID {test_layer_id} does not exist in project {project_id}.",
+                        "Test case update was not performed.",
+                        "Available test layers (first 10):",
+                        available_layers,
+                        "Use list_test_layers(page=..., size=...) to see more.",
+                        "To proceed without a test layer, omit test_layer_id.",
+                    ]
+                )
+            ) from e
+        except AllureAPIError as e:
+            raise AllureValidationError(
+                f"Unable to validate test layer ID {test_layer_id} for project {project_id}: {e}",
+                suggestions=["Use list_test_layers to find valid IDs", "Check API connectivity and permissions"],
+            ) from e
 
     async def _validate_test_layer(
         self,
