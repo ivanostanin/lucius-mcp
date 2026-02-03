@@ -464,8 +464,11 @@ class TestTestLayerValidation:
             await service.create_test_case("Test", test_layer_id=123)
 
         error_str = str(excinfo.value)
+        assert "Warning:" in error_str
+        assert "Test case creation was not performed" in error_str
         assert "Available test layers" in error_str
         assert "Use list_test_layers" in error_str
+        assert "omit test_layer_id/test_layer_name" in error_str
         service._test_layer_service.list_test_layers.assert_called_once_with(page=0, size=100)
 
     @pytest.mark.asyncio
@@ -494,8 +497,11 @@ class TestTestLayerValidation:
             await service.create_test_case("Test", test_layer_name="Missing")
 
         error_str = str(excinfo.value)
+        assert "Warning:" in error_str
+        assert "Test case creation was not performed" in error_str
         assert "Available test layers" in error_str
         assert "Use list_test_layers" in error_str
+        assert "omit test_layer_id/test_layer_name" in error_str
 
     @pytest.mark.asyncio
     async def test_test_layer_name_ambiguous(self, service: TestCaseService) -> None:
@@ -508,6 +514,8 @@ class TestTestLayerValidation:
             await service.create_test_case("Test", test_layer_name="Layer")
 
         error_str = str(excinfo.value)
+        assert "Warning:" in error_str
+        assert "Test case creation was not performed" in error_str
         assert "Use test_layer_id" in error_str
 
     @pytest.mark.asyncio

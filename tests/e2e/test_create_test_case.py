@@ -378,7 +378,7 @@ async def test_e2e_8_test_layer_assignment(
     assert fetched_by_name.test_layer.id == layer_id
 
     # Invalid name should fail
-    with pytest.raises(AllureValidationError):
+    with pytest.raises(AllureValidationError, match="Warning: Test layer name 'Missing-Layer' not found"):
         await create_test_case(
             name="E2E-Create-Case-Invalid-Layer",
             test_layer_name="Missing-Layer",

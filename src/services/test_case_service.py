@@ -918,10 +918,12 @@ class TestCaseService:
                 raise AllureValidationError(
                     "\n".join(
                         [
-                            f"Test layer ID {test_layer_id} does not exist in project {self._project_id}.",
+                            f"Warning: Test layer ID {test_layer_id} does not exist in project {self._project_id}.",
+                            "Test case creation was not performed.",
                             "Available test layers (first 10):",
                             available_layers,
                             "Use list_test_layers(page=..., size=...) to see more.",
+                            "To proceed without a test layer, omit test_layer_id/test_layer_name.",
                         ]
                     )
                 ) from e
@@ -940,10 +942,12 @@ class TestCaseService:
                 raise AllureValidationError(
                     "\n".join(
                         [
-                            f"Test layer name '{test_layer_name}' not found.",
+                            f"Warning: Test layer name '{test_layer_name}' not found.",
+                            "Test case creation was not performed.",
                             "Available test layers (first 10):",
                             available_layers,
                             "Use list_test_layers(page=..., size=...) to see more.",
+                            "To proceed without a test layer, omit test_layer_id/test_layer_name.",
                         ]
                     )
                 )
@@ -952,7 +956,8 @@ class TestCaseService:
                 raise AllureValidationError(
                     "\n".join(
                         [
-                            f"Multiple test layers match name '{test_layer_name}'.",
+                            f"Warning: Multiple test layers match name '{test_layer_name}'.",
+                            "Test case creation was not performed.",
                             match_lines,
                             "Use test_layer_id to disambiguate.",
                         ]

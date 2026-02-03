@@ -1,14 +1,20 @@
+import importlib
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from src.client import AllureClient
+from src.client.exceptions import AllureNotFoundError, AllureValidationError
+from src.client.generated.models import TestLayerDto
 
 # We need to test the TOOLS, or at least the Service which supports them.
 # The tools are simple wrappers. Testing the Service validation logic (which we just updated)
 # is the most direct way to verify the hints.
 from src.services.test_case_service import TestCaseService
+from src.services.test_layer_service import TestLayerService
 from src.tools.create_test_case import create_test_case
+
+create_test_case_module = importlib.import_module("src.tools.create_test_case")
 
 # We can test the Service methods directly by instantiating TestCaseService
 # and mocking the client. The validation logic is local and doesn't need API.
@@ -24,7 +30,7 @@ def mock_client():
 
 @pytest.fixture
 def service(mock_client):
-    return TestCaseService(client=mock_client)
+    return TestCaseService(client=mock_client, test_layer_service=AsyncMock(spec=TestLayerService))
 
 
 @pytest.mark.asyncio
@@ -131,7 +137,7 @@ async def test_create_test_case_tool_forwards_test_layers(monkeypatch):
             return None
 
     monkeypatch.setattr(AllureClient, "from_env", MagicMock(return_value=DummyClient()))
-    monkeypatch.setattr("src.tools.create_test_case.TestCaseService", MagicMock(return_value=service))
+    monkeypatch.setattr(create_test_case_module, "TestCaseService", MagicMock(return_value=service))
 
     result = await create_test_case(
         name="Test",
@@ -166,7 +172,62 @@ async def test_create_test_case_tool_propagates_errors(monkeypatch):
             return None
 
     monkeypatch.setattr(AllureClient, "from_env", MagicMock(return_value=DummyClient()))
-    monkeypatch.setattr("src.tools.create_test_case.TestCaseService", MagicMock(return_value=service))
+    monkeypatch.setattr(create_test_case_module, "TestCaseService", MagicMock(return_value=service))
 
     with pytest.raises(ValueError, match="boom"):
         await create_test_case(name="Test")
+
+
+@pytest.mark.asyncio
+async def test_create_test_case_invalid_test_layer_id_message(service: TestCaseService) -> None:
+    service._test_layer_service.get_test_layer.side_effect = AllureNotFoundError("missing")
+    service._test_layer_service.list_test_layers.return_value = [
+        TestLayerDto(id=1, name="Layer1"),
+        TestLayerDto(id=2, name="Layer2"),
+    ]
+
+    with pytest.raises(AllureValidationError) as excinfo:
+        await service.create_test_case(name="Test", test_layer_id=123)
+
+    error_str = str(excinfo.value)
+    assert "Warning:" in error_str
+    assert "Test layer ID 123 does not exist" in error_str
+    assert "Test case creation was not performed" in error_str
+    assert "Available test layers" in error_str
+    assert "Use list_test_layers" in error_str
+    assert "omit test_layer_id/test_layer_name" in error_str
+
+
+@pytest.mark.asyncio
+async def test_create_test_case_invalid_test_layer_name_message(service: TestCaseService) -> None:
+    service._test_layer_service.list_test_layers.return_value = [
+        TestLayerDto(id=1, name="Layer1"),
+    ]
+
+    with pytest.raises(AllureValidationError) as excinfo:
+        await service.create_test_case(name="Test", test_layer_name="Missing")
+
+    error_str = str(excinfo.value)
+    assert "Warning:" in error_str
+    assert "Test layer name 'Missing' not found" in error_str
+    assert "Test case creation was not performed" in error_str
+    assert "Available test layers" in error_str
+    assert "Use list_test_layers" in error_str
+    assert "omit test_layer_id/test_layer_name" in error_str
+
+
+@pytest.mark.asyncio
+async def test_create_test_case_ambiguous_test_layer_name_message(service: TestCaseService) -> None:
+    service._test_layer_service.list_test_layers.return_value = [
+        TestLayerDto(id=1, name="Layer"),
+        TestLayerDto(id=2, name="Layer"),
+    ]
+
+    with pytest.raises(AllureValidationError) as excinfo:
+        await service.create_test_case(name="Test", test_layer_name="Layer")
+
+    error_str = str(excinfo.value)
+    assert "Warning:" in error_str
+    assert "Multiple test layers match name 'Layer'" in error_str
+    assert "Test case creation was not performed" in error_str
+    assert "Use test_layer_id" in error_str
