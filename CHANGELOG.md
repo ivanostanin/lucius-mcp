@@ -1,5 +1,21 @@
 # Changelog
 
+## [v0.3.0] - 2026-02-03
+
+### Added
+- Launch management tools, including create and list launch operations.
+- New tool entries in manifests for expanded tool coverage.
+- Test layer support across test case CRUD and related tools.
+
+### Changed
+- Search test cases documentation and tests refined.
+- E2E test execution supports parallel mode.
+
+### Fixed
+- Custom fields handling in test case operations.
+- Test layer handling in tools and update_test_case support.
+- Tag casing is preserved in search_test_cases results.
+
 ## [v0.2.2] - 2026-01-30
 
 ### Fixed
