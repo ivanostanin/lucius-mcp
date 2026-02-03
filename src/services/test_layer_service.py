@@ -119,6 +119,8 @@ class TestLayerService:
 
         try:
             return await self._client._test_layer_api.find_one8(id=layer_id)
+        except AllureNotFoundError:
+            raise
         except Exception as e:
             raise AllureAPIError(f"Failed to get test layer {layer_id}: {e}") from e
 
