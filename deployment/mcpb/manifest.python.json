@@ -121,6 +121,14 @@
     {
       "name": "delete_test_layer_schema",
       "description": "Delete a test layer schema."
+    },
+    {
+      "name": "create_launch",
+      "description": "Create a new launch in Allure TestOps."
+    },
+    {
+      "name": "list_launches",
+      "description": "List launches in a project."
     }
   ],
   "user_config": {

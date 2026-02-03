@@ -13,6 +13,6 @@ async def test_create_and_list_launches(allure_client, project_id, test_run_id) 
     created = await service.create_launch(name=launch_name)
     assert created.id is not None
 
-    result = await service.list_launches(page=0, size=20, search=launch_name)
+    result = await service.list_launches(page=0, size=50, sort=["createdDate,DESC"])
     names = [getattr(item, "name", None) for item in result.items]
     assert launch_name in names

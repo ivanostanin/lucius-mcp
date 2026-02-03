@@ -64,6 +64,9 @@ async def test_list_launches_page_launch_dto(service: LaunchService, mock_client
 
     assert result.total == 1
     assert result.items[0].name == "L1"
+    assert result.page == 0
+    assert result.size == 20
+    assert result.total_pages == 1
 
 
 @pytest.mark.asyncio
@@ -78,6 +81,9 @@ async def test_list_launches_page_launch_preview_dto(service: LaunchService, moc
 
     assert result.total == 1
     assert result.items[0].name == "Preview"
+    assert result.page == 0
+    assert result.size == 20
+    assert result.total_pages == 1
 
 
 @pytest.mark.asyncio
@@ -89,6 +95,9 @@ async def test_search_launches_aql(service: LaunchService, mock_client: MagicMoc
 
     assert result.total == 1
     assert result.items[0].name == "AQL"
+    assert result.page == 0
+    assert result.size == 20
+    assert result.total_pages == 1
     mock_client.search_launches_aql.assert_called_once()
 
 

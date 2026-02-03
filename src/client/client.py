@@ -10,7 +10,7 @@ from collections.abc import Awaitable
 from typing import Literal, TypeVar, cast, overload
 
 import httpx
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
 
 from src.client.exceptions import TestCaseNotFoundError
 from src.utils.config import settings
@@ -264,7 +264,7 @@ class AllureClient:
         if not isinstance(settings.ALLURE_PROJECT_ID, int) or settings.ALLURE_PROJECT_ID <= 0:
             raise ValueError("ALLURE_PROJECT_ID must be a positive integer")
 
-        if project:
+        if project is not None:
             p = project
         else:
             p = settings.ALLURE_PROJECT_ID
@@ -795,17 +795,41 @@ class AllureClient:
         if not isinstance(size, int) or size <= 0 or size > 100:
             raise AllureValidationError("Size must be between 1 and 100")
 
-        return await self._call_api(
-            api.find_all29(
-                project_id=project_id,
-                search=search,
-                filter_id=filter_id,
-                page=page,
-                size=size,
-                sort=sort,
-                _request_timeout=self._timeout,
+        try:
+            return await self._call_api(
+                api.find_all29(
+                    project_id=project_id,
+                    search=search,
+                    filter_id=filter_id,
+                    page=page,
+                    size=size,
+                    sort=sort,
+                    _request_timeout=self._timeout,
+                )
             )
-        )
+        except ValueError:
+            response = await self._call_api_raw(
+                api.find_all29_without_preload_content(
+                    project_id=project_id,
+                    search=search,
+                    filter_id=filter_id,
+                    page=page,
+                    size=size,
+                    sort=sort,
+                    _request_timeout=self._timeout,
+                )
+            )
+            data = self._extract_response_data(response)
+            try:
+                page_data = PageLaunchDto.from_dict(data)
+                if page_data is None:
+                    raise AllureValidationError("Unexpected launch list response from API")
+                return FindAll29200Response(page_data)
+            except ValidationError as e:
+                preview_data = PageLaunchPreviewDto.from_dict(data)
+                if preview_data is None:
+                    raise AllureValidationError("Unexpected launch list response from API") from e
+                return FindAll29200Response(preview_data)
 
     async def search_launches_aql(
         self,

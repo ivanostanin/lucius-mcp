@@ -1,5 +1,6 @@
 """Service for managing Launches in Allure TestOps."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from pydantic import ValidationError as PydanticValidationError
@@ -25,7 +26,7 @@ type LaunchListItem = LaunchDto | LaunchPreviewDto
 class LaunchListResult:
     """Result of listing launches."""
 
-    items: list[LaunchListItem]
+    items: Sequence[LaunchListItem]
     total: int
     page: int
     size: int
@@ -67,11 +68,11 @@ class LaunchService:
         self._validate_links(links)
         self._validate_issues(issues)
 
-        issue_dtos = self._build_issue_dtos(issues)
-        link_dtos = self._build_link_dtos(links)
-        tag_dtos = self._build_tag_dtos(tags)
-
         try:
+            issue_dtos = self._build_issue_dtos(issues)
+            link_dtos = self._build_link_dtos(links)
+            tag_dtos = self._build_tag_dtos(tags)
+
             data = LaunchCreateDto(
                 name=name,
                 project_id=self._project_id,
@@ -126,9 +127,9 @@ class LaunchService:
         return LaunchListResult(
             items=items,
             total=page_data.total_elements or len(items),
-            page=page_data.number or 0,
-            size=page_data.size or 0,
-            total_pages=page_data.total_pages or 0,
+            page=page_data.number or page,
+            size=page_data.size or size,
+            total_pages=page_data.total_pages or 1,
         )
 
     async def search_launches_aql(
@@ -167,9 +168,9 @@ class LaunchService:
         return LaunchListResult(
             items=items,
             total=response.total_elements or len(items),
-            page=response.number or 0,
-            size=response.size or 0,
-            total_pages=response.total_pages or 0,
+            page=response.number or page,
+            size=response.size or size,
+            total_pages=response.total_pages or 1,
         )
 
     async def validate_launch_query(self, rql: str) -> tuple[bool, int | None]:
@@ -234,6 +235,8 @@ class LaunchService:
         for i, link in enumerate(links):
             if not isinstance(link, dict):
                 raise AllureValidationError(f"Link at index {i} must be a dictionary")
+            if not link:
+                raise AllureValidationError(f"Link at index {i} cannot be empty")
             url = link.get("url")
             if url is not None and not isinstance(url, str):
                 raise AllureValidationError(f"Link at index {i} 'url' must be a string")
@@ -253,6 +256,8 @@ class LaunchService:
         for i, issue in enumerate(issues):
             if not isinstance(issue, dict):
                 raise AllureValidationError(f"Issue at index {i} must be a dictionary")
+            if not issue:
+                raise AllureValidationError(f"Issue at index {i} cannot be empty")
 
     @staticmethod
     def _build_tag_dtos(tags: list[str] | None) -> list[LaunchTagDto] | None:
