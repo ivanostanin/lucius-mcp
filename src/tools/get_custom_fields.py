@@ -41,7 +41,8 @@ async def get_custom_fields(
     for cf in fields:
         field_name = cf["name"]
         required = "required" if cf["required"] else "optional"
-        values = ", ".join(cf["values"]) if cf["values"] else "Any text/No allowed values"
+        values_list = cf["values"]
+        values = ", ".join(values_list) if values_list else "Any text/No allowed values"
 
         lines.append(f"- {field_name} ({required}): {values}")
 

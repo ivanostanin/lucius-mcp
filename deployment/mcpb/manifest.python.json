@@ -67,6 +67,10 @@
       "description": "Get complete details of a specific test case."
     },
     {
+      "name": "get_test_case_custom_fields",
+      "description": "Retrieve custom field values for a specific test case."
+    },
+    {
       "name": "create_shared_step",
       "description": "Create a new reusable Shared Step."
     },
