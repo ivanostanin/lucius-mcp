@@ -29,10 +29,10 @@ async def create_test_case(
         ),
     ] = None,
     custom_fields: Annotated[
-        dict[str, str] | None,
+        dict[str, str | list[str]] | None,
         Field(
-            description="Dictionary of custom field names and their values."
-            "Example: {'Layer': 'UI', 'Component': 'Auth'}"
+            description="Dictionary of custom field names and their values (string or list of strings)."
+            "Example: {'Layer': 'UI', 'Components': ['Auth', 'DB']}"
         ),
     ] = None,
     test_layer_id: Annotated[
@@ -58,8 +58,8 @@ async def create_test_case(
                      Example Base64: [{'name': 's.png', 'content': '<base64>', 'content_type': 'image/png'}]
                      Example URL: [{'name': 'report.pdf', 'url': 'http://example.com/report.pdf',
                                     'content_type': 'application/pdf'}]
-        custom_fields: Dictionary of custom field names and their values.
-                       Example: {'Layer': 'UI', 'Component': 'Auth'}
+        custom_fields: Dictionary of custom field names and their values (string or list of strings).
+                       Example: {'Layer': 'UI', 'Components': ['Auth', 'DB']}
         test_layer_id: Optional test layer ID to assign (must exist in the project).
         project_id: Optional override for the default Project ID.
 
