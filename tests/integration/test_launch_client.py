@@ -73,6 +73,20 @@ async def test_client_list_launches_falls_back_on_oneof() -> None:
 
 
 @pytest.mark.asyncio
+async def test_client_get_launch_calls_api() -> None:
+    client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
+    client._is_entered = True
+    client._token_expires_at = time.time() + 3600
+    client._launch_api = MagicMock()
+    client._launch_api.find_one23 = AsyncMock(return_value=LaunchDto(id=2, name="Launch"))
+
+    result = await client.get_launch(launch_id=2)
+
+    assert result.id == 2
+    client._launch_api.find_one23.assert_called_once()
+
+
+@pytest.mark.asyncio
 async def test_client_search_launches_aql_calls_api() -> None:
     client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
     client._is_entered = True

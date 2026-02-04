@@ -6,6 +6,8 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.launch_service import LaunchListResult, LaunchService
+from src.utils.auth import get_auth_context
+from src.utils.config import settings
 
 
 async def create_launch(
@@ -88,6 +90,31 @@ async def list_launches(
     return _format_launch_list(result)
 
 
+async def get_launch(
+    launch_id: Annotated[int, Field(description="Launch ID (required).")],
+    project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+) -> str:
+    """Retrieve a specific launch and summarize its details.
+
+    Args:
+        launch_id: The unique ID of the launch.
+        project_id: Optional override for the default Project ID.
+
+    Returns:
+        LLM-friendly summary of the launch details.
+    """
+    auth_context = get_auth_context(project_id=project_id)
+    async with AllureClient(
+        base_url=settings.ALLURE_ENDPOINT,
+        token=auth_context.api_token,
+        project=auth_context.project_id or settings.ALLURE_PROJECT_ID,
+    ) as client:
+        service = LaunchService(client=client)
+        launch = await service.get_launch(launch_id)
+
+    return _format_launch_detail(launch)
+
+
 def _format_launch_list(result: LaunchListResult) -> str:
     if not result.items:
         return "No launches found in this project."
@@ -108,5 +135,40 @@ def _format_launch_list(result: LaunchListResult) -> str:
 
     if result.page < result.total_pages - 1:
         lines.append(f"\nUse page={result.page + 1} to see more results.")
+
+    return "\n".join(lines)
+
+
+def _format_launch_detail(launch: object) -> str:
+    launch_id = getattr(launch, "id", None)
+    name = getattr(launch, "name", None) or "(unnamed)"
+    closed = getattr(launch, "closed", None)
+    status = "closed" if closed else "open"
+
+    lines = ["Launch details:"]
+    lines.append(f"- ID: {launch_id if launch_id is not None else 'unknown'}")
+    lines.append(f"- Name: {name}")
+    lines.append(f"- Status: {status}")
+
+    field_labels = [
+        ("created_date", "Created"),
+        ("createdDate", "Created"),
+        ("last_modified_date", "Last modified"),
+        ("lastModifiedDate", "Last modified"),
+        ("project_id", "Project ID"),
+        ("projectId", "Project ID"),
+        ("autoclose", "Autoclose"),
+        ("external", "External"),
+    ]
+
+    seen_labels: set[str] = set()
+    for field_name, label in field_labels:
+        value = getattr(launch, field_name, None)
+        if value is None:
+            continue
+        if label in seen_labels:
+            continue
+        lines.append(f"- {label}: {value}")
+        seen_labels.add(label)
 
     return "\n".join(lines)
