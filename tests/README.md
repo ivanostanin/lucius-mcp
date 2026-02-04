@@ -3,13 +3,22 @@
 
 This directory contains the automated test suite for the Lucius MCP Server.
 
+## Manual MCP tool-call validation
+See `agentic-tool-calls-tests.md` for the manual MCP tool-call checklist. It requires you to set up the MCP connection to your agent manually before running those steps.
+This scenario can be used to perform end-to-end testing of the MCP server using your favorite agent.
+
 ## Structure
 
+- **agentic/**: Manual/agent-driven validation assets.
+- **e2e/**: End-to-end tests.
 - **unit/**: Isolated tests for individual components (logger, error handler, main logic).
 - **integration/**: Tests verifying interaction between components (FastMCP + Starlette).
+- **packaging/**: Packaging and distribution tests.
 - **support/**: Shared test infrastructure.
   - **fixtures/**: Pytest fixtures (logger capture, client, app refresh).
   - **factories/**: Data factories using Faker.
+- **conftest.py**: Global pytest fixtures.
+- **__init__.py**: Test package marker.
 
 ## Running Tests
 
