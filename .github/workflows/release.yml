@@ -12,6 +12,16 @@ jobs:
       version: ${{ steps.get_version.outputs.tag_version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for all branches and tags
+
+      - name: Verify tag is on main branch
+        run: |
+          # Check if the tagged commit is reachable from main
+          if ! git merge-base --is-ancestor ${{ github.sha }} origin/main; then
+            echo "ERROR: Tag must point to a commit on the main branch"
+            exit 1
+          fi
 
       - name: Extract version from tag
         id: get_version
