@@ -87,7 +87,7 @@ class CustomFieldValueService:
             raise AllureValidationError(f"Invalid custom field value data: {exc}", suggestions=[hint]) from exc
 
         try:
-            return await self._client.create_custom_field_value(resolved_project_id, dto)
+            created = await self._client.create_custom_field_value(resolved_project_id, dto)
         except AllureValidationError as exc:
             if exc.status_code in (400, 409, 422):
                 raise AllureValidationError(
@@ -112,7 +112,11 @@ class CustomFieldValueService:
                     ],
                 ) from exc
             raise
+        await self._test_case_service.refresh_resolved_custom_fields(resolved_project_id)
+        return created
 
+    # todo get name or id of cfv and resolve cvf id by name to rename or delete
+    # todo check if value is used in tc and require 'force' flag to rename or delete
     async def update_custom_field_value(
         self,
         *,
@@ -141,6 +145,7 @@ class CustomFieldValueService:
             raise AllureValidationError(f"Invalid custom field value patch data: {exc}", suggestions=[hint]) from exc
 
         await self._client.update_custom_field_value(resolved_project_id, cfv_id, dto)
+        await self._test_case_service.refresh_resolved_custom_fields(resolved_project_id)
 
     async def delete_custom_field_value(
         self,
@@ -164,6 +169,7 @@ class CustomFieldValueService:
 
         try:
             await self._client.delete_custom_field_value(resolved_project_id, cfv_id)
+            await self._test_case_service.refresh_resolved_custom_fields(resolved_project_id)
             return True
         except AllureNotFoundError:
             logger.debug("Custom field value %s already removed", cfv_id)

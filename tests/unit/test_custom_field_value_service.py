@@ -136,11 +136,13 @@ async def test_create_custom_field_value_success(service: CustomFieldValueServic
             },
         }
     )
+    service._test_case_service.refresh_resolved_custom_fields = AsyncMock()
 
     result = await service.create_custom_field_value(custom_field_name="Priority", name="Regression")
 
     assert result.id == 99
     mock_client.create_custom_field_value.assert_called_once()
+    service._test_case_service.refresh_resolved_custom_fields.assert_awaited_once_with(1)
 
 
 @pytest.mark.asyncio
@@ -179,10 +181,34 @@ async def test_update_custom_field_value_success(service: CustomFieldValueServic
             },
         }
     )
+    service._test_case_service.refresh_resolved_custom_fields = AsyncMock()
 
     await service.update_custom_field_value(custom_field_name="Priority", cfv_id=77, name="Updated")
 
     mock_client.update_custom_field_value.assert_called_once()
+    service._test_case_service.refresh_resolved_custom_fields.assert_awaited_once_with(1)
+
+
+@pytest.mark.asyncio
+async def test_delete_custom_field_value_success(service: CustomFieldValueService, mock_client: MagicMock) -> None:
+    service._get_resolved_custom_fields = AsyncMock(
+        return_value={
+            "Priority": {
+                "project_cf_id": 10,
+                "id": 5,
+                "required": False,
+                "single_select": True,
+                "values": [],
+                "values_map": {},
+            },
+        }
+    )
+    service._test_case_service.refresh_resolved_custom_fields = AsyncMock()
+
+    deleted = await service.delete_custom_field_value(custom_field_name="Priority", cfv_id=77)
+
+    assert deleted is True
+    service._test_case_service.refresh_resolved_custom_fields.assert_awaited_once_with(1)
 
 
 @pytest.mark.asyncio
@@ -199,8 +225,10 @@ async def test_delete_custom_field_value_idempotent(service: CustomFieldValueSer
             },
         }
     )
+    service._test_case_service.refresh_resolved_custom_fields = AsyncMock()
     mock_client.delete_custom_field_value.side_effect = AllureNotFoundError("Not found", 404, "{}")
 
     deleted = await service.delete_custom_field_value(custom_field_name="Priority", cfv_id=77)
 
     assert deleted is False
+    service._test_case_service.refresh_resolved_custom_fields.assert_not_awaited()

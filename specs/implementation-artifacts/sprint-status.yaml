@@ -71,7 +71,7 @@ development_status:
   3-9-test-layer-validation-in-create-test-case: done
   3-10-add-test-test_layers-handling-in-update_test_case-tool: done
   3-11-crud-custom-field-values: done
-  3-12-support-issue-links-in-test-cases: ready-for-dev
+  3-12-support-issue-links-in-test-cases: done
   epic-3-retrospective: optional
 
   # Epic 4: Production Operations (Phase 2 Priority)

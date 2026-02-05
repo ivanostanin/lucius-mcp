@@ -1,6 +1,6 @@
 # Story 3.11: CRUD for Custom Field Values
 
-Status: review
+Status: done
 
 <!-- Note: This story manages custom field VALUE options at the project level (e.g., adding "Smoke", "Regression" as allowed values for a "Test Type" field), independent of test case assignments. -->
 

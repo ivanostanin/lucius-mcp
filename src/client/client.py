@@ -26,6 +26,7 @@ from .exceptions import (
 from .generated.api.custom_field_controller_api import CustomFieldControllerApi
 from .generated.api.custom_field_project_controller_api import CustomFieldProjectControllerApi
 from .generated.api.custom_field_project_controller_v2_api import CustomFieldProjectControllerV2Api
+from .generated.api.custom_field_value_controller_api import CustomFieldValueControllerApi
 from .generated.api.custom_field_value_project_controller_api import CustomFieldValueProjectControllerApi
 from .generated.api.integration_controller_api import IntegrationControllerApi
 from .generated.api.launch_controller_api import LaunchControllerApi
@@ -138,6 +139,7 @@ type ApiType = (
     | CustomFieldControllerApi
     | CustomFieldProjectControllerApi
     | CustomFieldProjectControllerV2Api
+    | CustomFieldValueControllerApi
     | CustomFieldValueProjectControllerApi
     | TestLayerControllerApi
     | TestLayerSchemaControllerApi
@@ -251,6 +253,7 @@ class AllureClient:
         self._custom_field_api: CustomFieldControllerApi | None = None
         self._custom_field_project_api: CustomFieldProjectControllerApi | None = None
         self._custom_field_project_v2_api: CustomFieldProjectControllerV2Api | None = None
+        self._custom_field_value_api: CustomFieldValueControllerApi | None = None
         self._custom_field_value_project_api: CustomFieldValueProjectControllerApi | None = None
         self._test_layer_api: TestLayerControllerApi | None = None
         self._test_layer_schema_api: TestLayerSchemaControllerApi | None = None
@@ -397,6 +400,7 @@ class AllureClient:
             self._custom_field_api = CustomFieldControllerApi(self._api_client)
             self._custom_field_project_api = CustomFieldProjectControllerApi(self._api_client)
             self._custom_field_project_v2_api = CustomFieldProjectControllerV2Api(self._api_client)
+            self._custom_field_value_api = CustomFieldValueControllerApi(self._api_client)
             self._custom_field_value_project_api = CustomFieldValueProjectControllerApi(self._api_client)
             self._test_layer_api = TestLayerControllerApi(self._api_client)
             self._test_layer_schema_api = TestLayerSchemaControllerApi(self._api_client)
@@ -550,6 +554,11 @@ class AllureClient:
     async def _get_api(
         self, attr_name: Literal["_custom_field_project_v2_api"], *, error_name: str | None = None
     ) -> CustomFieldProjectControllerV2Api: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_custom_field_value_api"], *, error_name: str | None = None
+    ) -> CustomFieldValueControllerApi: ...
 
     @overload
     async def _get_api(
