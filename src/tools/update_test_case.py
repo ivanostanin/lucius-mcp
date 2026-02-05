@@ -39,6 +39,19 @@ async def update_test_case(  # noqa: C901
         list[dict[str, str]] | None,
         Field(description="New list of external links. Each dict has 'name', 'url', and optional 'type'."),
     ] = None,
+    # Issue Linking
+    issues: Annotated[
+        list[str] | None,
+        Field(description="List of issue keys to ADD (e.g. ['PROJ-123'])."),
+    ] = None,
+    remove_issues: Annotated[
+        list[str] | None,
+        Field(description="List of issue keys to REMOVE."),
+    ] = None,
+    clear_issues: Annotated[
+        bool | None,
+        Field(description="If True, remove ALL issues from the test case."),
+    ] = None,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
 ) -> str:
     """Update an existing test case in Allure TestOps.
@@ -94,6 +107,9 @@ async def update_test_case(  # noqa: C901
             test_layer_name=test_layer_name,
             workflow_id=workflow_id,
             links=links,
+            issues=issues,
+            remove_issues=remove_issues,
+            clear_issues=clear_issues,
         )
 
         updated_case = await service.update_test_case(test_case_id, update_data)
@@ -151,6 +167,13 @@ async def update_test_case(  # noqa: C901
             current_links = current_case.links if isinstance(current_case.links, list) else []
             if normalize_links(current_links) != normalize_links(links):
                 changes.append("links updated")
+
+        if issues:
+            changes.append(f"added {len(issues)} issues ({', '.join(issues)})")
+        if remove_issues:
+            changes.append(f"removed {len(remove_issues)} issues ({', '.join(remove_issues)})")
+        if clear_issues:
+            changes.append("cleared all issues")
 
         summary = ", ".join(changes) if changes else "No changes made (idempotent)"
 

@@ -27,6 +27,7 @@ from .generated.api.custom_field_controller_api import CustomFieldControllerApi
 from .generated.api.custom_field_project_controller_api import CustomFieldProjectControllerApi
 from .generated.api.custom_field_project_controller_v2_api import CustomFieldProjectControllerV2Api
 from .generated.api.custom_field_value_project_controller_api import CustomFieldValueProjectControllerApi
+from .generated.api.integration_controller_api import IntegrationControllerApi
 from .generated.api.launch_controller_api import LaunchControllerApi
 from .generated.api.launch_search_controller_api import LaunchSearchControllerApi
 from .generated.api.shared_step_attachment_controller_api import SharedStepAttachmentControllerApi
@@ -49,6 +50,8 @@ from .generated.models.custom_field_project_with_values_dto import CustomFieldPr
 from .generated.models.custom_field_value_with_cf_dto import CustomFieldValueWithCfDto
 from .generated.models.custom_field_with_values_dto import CustomFieldWithValuesDto
 from .generated.models.find_all29200_response import FindAll29200Response
+from .generated.models.integration_dto import IntegrationDto
+from .generated.models.issue_dto import IssueDto
 from .generated.models.launch_create_dto import LaunchCreateDto
 from .generated.models.launch_dto import LaunchDto
 from .generated.models.page_launch_dto import PageLaunchDto
@@ -78,9 +81,13 @@ from .overridden.test_case_custom_fields_v2 import TestCaseCustomFieldV2Controll
 
 # Subclasses to add missing fields to generated models
 class TestCaseDtoWithCF(TestCaseDto):
-    """Subclass to support custom_fields access."""
+    """Subclass to support custom_fields and issues access."""
 
     custom_fields: list[CustomFieldValueWithCfDto] | None = None
+    issues: list[IssueDto] | None = None
+
+
+TestCaseDtoWithCF.model_rebuild()
 
 
 class BodyStepDtoWithSteps(BodyStepDto):
@@ -133,6 +140,7 @@ type ApiType = (
     | TestLayerSchemaControllerApi
     | LaunchControllerApi
     | LaunchSearchControllerApi
+    | IntegrationControllerApi
 )
 
 type NormalizedScenarioDict = dict[str, object]
@@ -245,6 +253,7 @@ class AllureClient:
         self._test_layer_schema_api: TestLayerSchemaControllerApi | None = None
         self._launch_api: LaunchControllerApi | None = None
         self._launch_search_api: LaunchSearchControllerApi | None = None
+        self._integration_api: IntegrationControllerApi | None = None
         self._is_entered = False
 
     @classmethod
@@ -390,6 +399,7 @@ class AllureClient:
             self._test_layer_schema_api = TestLayerSchemaControllerApi(self._api_client)
             self._launch_api = LaunchControllerApi(self._api_client)
             self._launch_search_api = LaunchSearchControllerApi(self._api_client)
+            self._integration_api = IntegrationControllerApi(self._api_client)
 
     @property
     def api_client(self) -> ApiClient:
@@ -401,6 +411,21 @@ class AllureClient:
         if self._api_client is None:
             raise RuntimeError("AllureClient must be used as an async context manager")
         return self._api_client
+
+    async def get_integrations(self) -> list[IntegrationDto]:
+        """Fetch all integrations."""
+        # Ensure we have a valid client
+        if self._integration_api is None:
+            raise RuntimeError("AllureClient must be used as an async context manager")
+
+        try:
+            # Fetch first page with reasonable size
+            page = await self._integration_api.get_integrations(page=0, size=100)
+            return page.content or []
+        except Exception:
+            # Log warning or re-raise depending on strictness.
+            # For now return empty list to act as fallback.
+            return []
 
     async def __aenter__(self) -> AllureClient:
         """Initialize the client session within an async context.
@@ -1237,7 +1262,7 @@ class AllureClient:
             )
         )
 
-    async def get_test_case(self, test_case_id: int) -> TestCaseDto:
+    async def get_test_case(self, test_case_id: int) -> TestCaseDtoWithCF:
         """Retrieve a specific test case by its ID.
 
         Args:
@@ -1270,6 +1295,8 @@ class AllureClient:
                 )
                 if overview.custom_fields:
                     case.custom_fields = overview.custom_fields
+                if overview.issues:
+                    case.issues = overview.issues
             except Exception as e:
                 logger.warning(f"Failed to fetch overview for test case {test_case_id}: {e}")
 

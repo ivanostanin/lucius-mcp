@@ -107,6 +107,24 @@ Class | Method | HTTP request | Description
 *CustomFieldValueProjectControllerApi* | [**merge_custom_fields_to_existing_record**](src/client/generated/docs/CustomFieldValueProjectControllerApi.md#merge_custom_fields_to_existing_record) | **POST** /api/project/{projectId}/cfv/merge-to/{toCfvId} | Merge custom field values to existing record by id
 *CustomFieldValueProjectControllerApi* | [**merge_custom_fields_to_new_record**](src/client/generated/docs/CustomFieldValueProjectControllerApi.md#merge_custom_fields_to_new_record) | **POST** /api/project/{projectId}/cfv/merge | Merge custom field values to new record
 *CustomFieldValueProjectControllerApi* | [**patch23**](src/client/generated/docs/CustomFieldValueProjectControllerApi.md#patch23) | **PATCH** /api/project/{projectId}/cfv/{cfvId} | Patch specified custom field value, test results won&#39;t be affected
+*IntegrationControllerApi* | [**create37**](src/client/generated/docs/IntegrationControllerApi.md#create37) | **POST** /api/integration | 
+*IntegrationControllerApi* | [**create_project_integration**](src/client/generated/docs/IntegrationControllerApi.md#create_project_integration) | **POST** /api/integration/project | 
+*IntegrationControllerApi* | [**delete_by_id3**](src/client/generated/docs/IntegrationControllerApi.md#delete_by_id3) | **DELETE** /api/integration/{id} | 
+*IntegrationControllerApi* | [**delete_project_integration**](src/client/generated/docs/IntegrationControllerApi.md#delete_project_integration) | **DELETE** /api/integration/{integrationId}/project/{projectId} | 
+*IntegrationControllerApi* | [**find_one_by_id**](src/client/generated/docs/IntegrationControllerApi.md#find_one_by_id) | **GET** /api/integration/{id} | 
+*IntegrationControllerApi* | [**find_project_integration_by_id**](src/client/generated/docs/IntegrationControllerApi.md#find_project_integration_by_id) | **GET** /api/integration/{integrationId}/project/{projectId} | 
+*IntegrationControllerApi* | [**get_available_integrations**](src/client/generated/docs/IntegrationControllerApi.md#get_available_integrations) | **GET** /api/integration/available | 
+*IntegrationControllerApi* | [**get_global_fields**](src/client/generated/docs/IntegrationControllerApi.md#get_global_fields) | **GET** /api/integration/globalfields | 
+*IntegrationControllerApi* | [**get_integration_projects**](src/client/generated/docs/IntegrationControllerApi.md#get_integration_projects) | **GET** /api/integration/{id}/project | 
+*IntegrationControllerApi* | [**get_integrations**](src/client/generated/docs/IntegrationControllerApi.md#get_integrations) | **GET** /api/integration | 
+*IntegrationControllerApi* | [**get_project_available_integrations**](src/client/generated/docs/IntegrationControllerApi.md#get_project_available_integrations) | **GET** /api/integration/project/{projectId}/available | 
+*IntegrationControllerApi* | [**get_project_integration_fields**](src/client/generated/docs/IntegrationControllerApi.md#get_project_integration_fields) | **GET** /api/integration/projectfields | 
+*IntegrationControllerApi* | [**get_project_integrations**](src/client/generated/docs/IntegrationControllerApi.md#get_project_integrations) | **GET** /api/integration/project/{projectId} | 
+*IntegrationControllerApi* | [**patch34**](src/client/generated/docs/IntegrationControllerApi.md#patch34) | **PATCH** /api/integration/{id} | 
+*IntegrationControllerApi* | [**patch_project_integration**](src/client/generated/docs/IntegrationControllerApi.md#patch_project_integration) | **PATCH** /api/integration/{integrationId}/project/{projectId} | 
+*IntegrationControllerApi* | [**suggest15**](src/client/generated/docs/IntegrationControllerApi.md#suggest15) | **GET** /api/integration/suggest | Suggest integrations
+*IntegrationControllerApi* | [**validate1**](src/client/generated/docs/IntegrationControllerApi.md#validate1) | **POST** /api/integration/validate | 
+*IntegrationControllerApi* | [**validate2**](src/client/generated/docs/IntegrationControllerApi.md#validate2) | **POST** /api/integration/project/validate | 
 *LaunchControllerApi* | [**add_test_cases**](src/client/generated/docs/LaunchControllerApi.md#add_test_cases) | **POST** /api/launch/{id}/testcase/add | Add test cases to launch
 *LaunchControllerApi* | [**add_test_plan**](src/client/generated/docs/LaunchControllerApi.md#add_test_plan) | **POST** /api/launch/{id}/testplan/add | Add test plan to launch
 *LaunchControllerApi* | [**apply_defect_matchers**](src/client/generated/docs/LaunchControllerApi.md#apply_defect_matchers) | **POST** /api/launch/{id}/defect/apply | Apply defect matchers to launch
