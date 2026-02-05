@@ -1,5 +1,3 @@
-from typing import Any
-
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService, TestCaseUpdate
 from tests.e2e.helpers.cleanup import CleanupTracker
@@ -30,7 +28,7 @@ async def test_e2e_u5_update_steps(
     assert len(initial_scenario.steps) >= 1
 
     # Update with new complex steps
-    new_steps: list[dict[str, Any]] = [
+    new_steps: list[dict[str, object]] = [
         {"action": "New Step 1", "expected": "Result 1"},
         {
             "action": "New Step 2",

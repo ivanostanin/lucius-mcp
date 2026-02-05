@@ -1,4 +1,4 @@
-from typing import Annotated, Any
+from typing import Annotated
 
 from pydantic import Field
 
@@ -9,7 +9,7 @@ from src.services.shared_step_service import SharedStepService
 async def create_shared_step(
     name: Annotated[str, Field(description='The name of the shared step (e.g., "Login as Admin").')],
     steps: Annotated[
-        list[dict[str, Any]] | None,
+        list[dict[str, object]] | None,
         Field(
             description="Optional list of steps. Each step is a dictionary with:"
             ' - action (str): The step description (e.g., "Enter username").'

@@ -1,6 +1,6 @@
 import base64
 import logging
-from typing import Any
+from typing import cast
 
 from pydantic import ValidationError as PydanticValidationError
 
@@ -8,6 +8,7 @@ from src.client import (
     AllureClient,
     PageSharedStepDto,
     ScenarioStepCreateDto,
+    ScenarioStepPatchDto,
     SharedStepAttachmentRowDto,
     SharedStepDto,
 )
@@ -37,7 +38,7 @@ class SharedStepService:
     async def create_shared_step(
         self,
         name: str,
-        steps: list[dict[str, Any]] | None = None,
+        steps: list[dict[str, object]] | None = None,
     ) -> SharedStepDto:
         """Create a new shared step with optional steps.
 
@@ -205,7 +206,7 @@ class SharedStepService:
     async def _add_steps(
         self,
         shared_step_id: int,
-        steps: list[dict[str, Any]],
+        steps: list[dict[str, object]],
         parent_step_id: int | None = None,
     ) -> int | None:
         """Recursively add steps to a shared step."""
@@ -214,7 +215,7 @@ class SharedStepService:
         for s in steps:
             action = str(s.get("action", ""))
             expected = str(s.get("expected", ""))
-            step_attachments: list[dict[str, str]] = s.get("attachments", [])
+            step_attachments = cast(list[dict[str, str]], s.get("attachments", []))
 
             current_parent_id: int | None = parent_step_id
 
@@ -226,12 +227,19 @@ class SharedStepService:
                 response = await self._client.create_shared_step_scenario_step(step_dto)
                 current_parent_id = response.created_step_id
 
-                # 2. Expected Result (child of action)
-                if expected:
-                    expected_dto = self._build_scenario_step_dto(
-                        shared_step_id=shared_step_id, body=expected, parent_id=current_parent_id
+                # 2. Expected Result (patch action step)
+                if expected and current_parent_id is not None:
+                    await self._client.patch_shared_step_scenario_step(
+                        step_id=current_parent_id,
+                        patch=ScenarioStepPatchDto(body=action, expected_result=expected),
                     )
-                    await self._client.create_shared_step_scenario_step(expected_dto)
+                    await self._client.create_shared_step_scenario_step(
+                        self._build_scenario_step_dto(
+                            shared_step_id=shared_step_id,
+                            body=expected,
+                            parent_id=current_parent_id,
+                        )
+                    )
 
                 # 3. Attachments (children of action)
                 if step_attachments:
@@ -317,7 +325,7 @@ class SharedStepService:
         if len(name) > MAX_NAME_LENGTH:
             raise AllureValidationError(f"Name too long (max {MAX_NAME_LENGTH})")
 
-    def _validate_steps(self, steps: list[dict[str, Any]] | None) -> None:
+    def _validate_steps(self, steps: list[dict[str, object]] | None) -> None:
         if steps is None:
             return
         if not isinstance(steps, list):
