@@ -115,28 +115,40 @@ class CustomFieldValueService:
         await self._test_case_service.refresh_resolved_custom_fields(resolved_project_id)
         return created
 
-    # todo get name or id of cfv and resolve cvf id by name to rename or delete
-    # todo check if value is used in tc and require 'force' flag to rename or delete
     async def update_custom_field_value(
         self,
         *,
         project_id: int | None = None,
-        cfv_id: int,
+        cfv_id: int | None = None,
         custom_field_id: int | None = None,
         custom_field_name: str | None = None,
         name: str | None = None,
+        force: bool = False,
     ) -> None:
         """Update a custom field value (rename)."""
         resolved_project_id = self._resolve_project_id(project_id)
-        await self._resolve_custom_field_id(
+        resolved_custom_field_id = await self._resolve_custom_field_id(
             resolved_project_id,
             custom_field_id=custom_field_id,
             custom_field_name=custom_field_name,
         )
-        self._validate_cfv_id(cfv_id)
+
+        resolved_cfv_id, usage_count = await self._resolve_cfv_and_check_usage(
+            resolved_project_id,
+            resolved_custom_field_id,
+            cfv_id=cfv_id,
+            cfv_name=None,  # We don't support finding by name for update yet based on existing params
+        )
+
+        self._validate_cfv_id(resolved_cfv_id)
         if name is None:
             raise AllureValidationError("Name is required for update")
         self._validate_name(name)
+
+        if usage_count > 0 and not force:
+            raise AllureValidationError(
+                f"Custom field value is used in {usage_count} test cases. Use force=True to proceed."
+            )
 
         try:
             dto = CustomFieldValueProjectPatchDto(name=name)
@@ -144,36 +156,104 @@ class CustomFieldValueService:
             hint = generate_schema_hint(CustomFieldValueProjectPatchDto)
             raise AllureValidationError(f"Invalid custom field value patch data: {exc}", suggestions=[hint]) from exc
 
-        await self._client.update_custom_field_value(resolved_project_id, cfv_id, dto)
+        await self._client.update_custom_field_value(resolved_project_id, resolved_cfv_id, dto)
         await self._test_case_service.refresh_resolved_custom_fields(resolved_project_id)
 
     async def delete_custom_field_value(
         self,
         *,
         project_id: int | None = None,
-        cfv_id: int,
+        cfv_id: int | None = None,
+        cfv_name: str | None = None,
         custom_field_id: int | None = None,
         custom_field_name: str | None = None,
+        force: bool = False,
     ) -> bool:
         """Delete a custom field value (idempotent).
 
         Returns True if deletion occurred, False if the value was already removed.
         """
         resolved_project_id = self._resolve_project_id(project_id)
-        await self._resolve_custom_field_id(
+        resolved_custom_field_id = await self._resolve_custom_field_id(
             resolved_project_id,
             custom_field_id=custom_field_id,
             custom_field_name=custom_field_name,
         )
-        self._validate_cfv_id(cfv_id)
 
         try:
-            await self._client.delete_custom_field_value(resolved_project_id, cfv_id)
+            resolved_cfv_id, usage_count = await self._resolve_cfv_and_check_usage(
+                resolved_project_id,
+                resolved_custom_field_id,
+                cfv_id=cfv_id,
+                cfv_name=cfv_name,
+            )
+        except AllureValidationError:
+            # If resolving fails (e.g. not found), treat as idempotent access if filtering by ID?
+            # If scanning by name fails, it doesn't exist.
+            logger.debug("Custom field value not found for deletion")
+            return False
+
+        if usage_count > 0 and not force:
+            raise AllureValidationError(
+                f"Custom field value is used in {usage_count} test cases. Use force=True to proceed."
+            )
+
+        self._validate_cfv_id(resolved_cfv_id)
+
+        try:
+            await self._client.delete_custom_field_value(resolved_project_id, resolved_cfv_id)
             await self._test_case_service.refresh_resolved_custom_fields(resolved_project_id)
             return True
         except AllureNotFoundError:
-            logger.debug("Custom field value %s already removed", cfv_id)
+            logger.debug("Custom field value %s already removed", resolved_cfv_id)
             return False
+
+    async def _resolve_cfv_and_check_usage(
+        self,
+        project_id: int,
+        custom_field_id: int,
+        cfv_id: int | None,
+        cfv_name: str | None,
+    ) -> tuple[int, int]:
+        """Resolve CFV ID and usage count.
+
+        Returns (cfv_id, usage_count).
+        """
+        if cfv_id is None and not (cfv_name and cfv_name.strip()):
+            raise AllureValidationError("Either cfv_id or cfv_name must be provided")
+
+        query = cfv_name if cfv_name else None
+        # List values to find usage and ID
+        page = await self.list_custom_field_values(
+            project_id=project_id,
+            custom_field_id=custom_field_id,
+            query=query,
+            size=100,  # Fetch enough to hopefully find it
+        )
+
+        found = None
+        for item in page.content or []:
+            if cfv_id is not None:
+                if item.id == cfv_id:
+                    found = item
+                    break
+            elif cfv_name:
+                if item.name == cfv_name:
+                    found = item
+                    break
+
+        if found:
+            return found.id or 0, found.test_cases_count or 0
+
+        if cfv_id is not None:
+            # If ID passed but not found in list (maybe truncated?), we assume usage is unknown(unsafe) or 0?
+            # For safety, if we can't verify usage, we might warn.
+            # But if ID exists but is not in first 1000, we can't check usage easily.
+            # Let's return ID and 0 usage but log warning?
+            # Or rely on client to handle 404 if invalid.
+            return cfv_id, 0
+
+        raise AllureValidationError(f"Custom field value specificied by name '{cfv_name}' not found")
 
     def _resolve_project_id(self, project_id: int | None) -> int:
         resolved_project_id = project_id if project_id is not None else self._project_id

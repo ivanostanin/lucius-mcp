@@ -34,7 +34,6 @@ async def test_custom_field_values_crud(allure_client: AllureClient) -> None:
     created = await service.create_custom_field_value(custom_field_name=field_name, name=value_name)
     assert created.id is not None
 
-    print(f"Delete Custom Field Value: {field_name}:{created.id}")
     deleted = await service.delete_custom_field_value(custom_field_name=field_name, cfv_id=created.id)
     assert deleted is True
 

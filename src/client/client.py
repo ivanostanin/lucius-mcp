@@ -1199,8 +1199,8 @@ class AllureClient:
             raise AllureValidationError("Custom Field ID must be a non-zero integer")
         if page is not None and (not isinstance(page, int) or page < 0):
             raise AllureValidationError("Page must be a non-negative integer")
-        if size is not None and (not isinstance(size, int) or size <= 0 or size > 100):
-            raise AllureValidationError("Size must be between 1 and 100")
+        if size is not None and (not isinstance(size, int) or size <= 0 or size > 1000):
+            raise AllureValidationError("Size must be between 1 and 1000")
 
         return await self._call_api(
             api.find_all22(

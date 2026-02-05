@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from src.client import AllureClient
-from src.client.exceptions import AllureNotFoundError, AllureValidationError
+from src.client.exceptions import AllureValidationError
 from src.client.generated.models.custom_field_value_with_cf_dto import CustomFieldValueWithCfDto
 from src.client.generated.models.custom_field_value_with_tc_count_dto import CustomFieldValueWithTcCountDto
 from src.client.generated.models.page_custom_field_value_with_tc_count_dto import PageCustomFieldValueWithTcCountDto
@@ -168,19 +168,19 @@ async def test_create_custom_field_value_duplicate_name(
 
 
 @pytest.mark.asyncio
-async def test_update_custom_field_value_success(service: CustomFieldValueService, mock_client: MagicMock) -> None:
+async def test_update_custom_field_value_success_no_usage(
+    service: CustomFieldValueService, mock_client: MagicMock
+) -> None:
     service._get_resolved_custom_fields = AsyncMock(
         return_value={
-            "Priority": {
-                "project_cf_id": 10,
-                "id": 5,
-                "required": False,
-                "single_select": True,
-                "values": [],
-                "values_map": {},
-            },
+            "Priority": {"project_cf_id": 10, "id": 5},
         }
     )
+    # Mock finding the value with 0 usage
+    page = PageCustomFieldValueWithTcCountDto(
+        content=[CustomFieldValueWithTcCountDto(id=77, name="Old", test_cases_count=0)], total_elements=1
+    )
+    mock_client.list_custom_field_values.return_value = page
     service._test_case_service.refresh_resolved_custom_fields = AsyncMock()
 
     await service.update_custom_field_value(custom_field_name="Priority", cfv_id=77, name="Updated")
@@ -190,45 +190,110 @@ async def test_update_custom_field_value_success(service: CustomFieldValueServic
 
 
 @pytest.mark.asyncio
-async def test_delete_custom_field_value_success(service: CustomFieldValueService, mock_client: MagicMock) -> None:
+async def test_update_custom_field_value_fails_with_usage(
+    service: CustomFieldValueService, mock_client: MagicMock
+) -> None:
     service._get_resolved_custom_fields = AsyncMock(
         return_value={
-            "Priority": {
-                "project_cf_id": 10,
-                "id": 5,
-                "required": False,
-                "single_select": True,
-                "values": [],
-                "values_map": {},
-            },
+            "Priority": {"project_cf_id": 10, "id": 5},
         }
     )
+    # Mock finding the value with usage
+    page = PageCustomFieldValueWithTcCountDto(
+        content=[CustomFieldValueWithTcCountDto(id=77, name="Old", test_cases_count=5)], total_elements=1
+    )
+    mock_client.list_custom_field_values.return_value = page
+
+    with pytest.raises(AllureValidationError, match="used in 5 test cases"):
+        await service.update_custom_field_value(custom_field_name="Priority", cfv_id=77, name="Updated")
+
+    mock_client.update_custom_field_value.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_update_custom_field_value_success_with_force(
+    service: CustomFieldValueService, mock_client: MagicMock
+) -> None:
+    service._get_resolved_custom_fields = AsyncMock(
+        return_value={
+            "Priority": {"project_cf_id": 10, "id": 5},
+        }
+    )
+    # Mock finding the value with usage
+    page = PageCustomFieldValueWithTcCountDto(
+        content=[CustomFieldValueWithTcCountDto(id=77, name="Old", test_cases_count=5)], total_elements=1
+    )
+    mock_client.list_custom_field_values.return_value = page
     service._test_case_service.refresh_resolved_custom_fields = AsyncMock()
 
-    deleted = await service.delete_custom_field_value(custom_field_name="Priority", cfv_id=77)
+    await service.update_custom_field_value(custom_field_name="Priority", cfv_id=77, name="Updated", force=True)
+
+    mock_client.update_custom_field_value.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_delete_custom_field_value_by_name_success(
+    service: CustomFieldValueService, mock_client: MagicMock
+) -> None:
+    service._get_resolved_custom_fields = AsyncMock(
+        return_value={
+            "Priority": {"project_cf_id": 10, "id": 5},
+        }
+    )
+    # Mock finding the value by name
+    page = PageCustomFieldValueWithTcCountDto(
+        content=[CustomFieldValueWithTcCountDto(id=55, name="Target", test_cases_count=0)], total_elements=1
+    )
+    mock_client.list_custom_field_values.return_value = page
+    service._test_case_service.refresh_resolved_custom_fields = AsyncMock()
+
+    deleted = await service.delete_custom_field_value(custom_field_name="Priority", cfv_name="Target")
 
     assert deleted is True
+    mock_client.delete_custom_field_value.assert_called_once_with(1, 55)
     service._test_case_service.refresh_resolved_custom_fields.assert_awaited_once_with(1)
+
+    # Verify list called with query="Target"
+    call_args = mock_client.list_custom_field_values.call_args
+    assert call_args.kwargs["query"] == "Target"
+
+
+@pytest.mark.asyncio
+async def test_delete_custom_field_value_fails_with_usage(
+    service: CustomFieldValueService, mock_client: MagicMock
+) -> None:
+    service._get_resolved_custom_fields = AsyncMock(
+        return_value={
+            "Priority": {"project_cf_id": 10, "id": 5},
+        }
+    )
+    # Mock finding the value with usage
+    page = PageCustomFieldValueWithTcCountDto(
+        content=[CustomFieldValueWithTcCountDto(id=55, name="Target", test_cases_count=2)], total_elements=1
+    )
+    mock_client.list_custom_field_values.return_value = page
+
+    with pytest.raises(AllureValidationError, match="used in 2 test cases"):
+        await service.delete_custom_field_value(custom_field_name="Priority", cfv_name="Target")
+
+    mock_client.delete_custom_field_value.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_delete_custom_field_value_idempotent(service: CustomFieldValueService, mock_client: MagicMock) -> None:
     service._get_resolved_custom_fields = AsyncMock(
         return_value={
-            "Priority": {
-                "project_cf_id": 10,
-                "id": 5,
-                "required": False,
-                "single_select": True,
-                "values": [],
-                "values_map": {},
-            },
+            "Priority": {"project_cf_id": 10, "id": 5},
         }
     )
     service._test_case_service.refresh_resolved_custom_fields = AsyncMock()
-    mock_client.delete_custom_field_value.side_effect = AllureNotFoundError("Not found", 404, "{}")
 
-    deleted = await service.delete_custom_field_value(custom_field_name="Priority", cfv_id=77)
+    # Mock NOT finding the value when resolving usage logic calls list
+    page = PageCustomFieldValueWithTcCountDto(content=[], total_elements=0)
+    mock_client.list_custom_field_values.return_value = page
+
+    deleted = await service.delete_custom_field_value(custom_field_name="Priority", cfv_name="Missing")
 
     assert deleted is False
+    mock_client.delete_custom_field_value.assert_not_called()
     service._test_case_service.refresh_resolved_custom_fields.assert_not_awaited()
