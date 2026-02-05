@@ -28,4 +28,4 @@ async def delete_test_layer(
     if deleted:
         return f"✅ Test layer {layer_id} deleted successfully!"
     else:
-        return f"[INFO] Test layer {layer_id} was already deleted or doesn't exist - no action taken."
+        return f"ℹ️ Test layer {layer_id} was already deleted or doesn't exist."  # noqa: RUF001

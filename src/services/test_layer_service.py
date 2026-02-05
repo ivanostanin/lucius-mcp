@@ -123,6 +123,8 @@ class TestLayerService:
         except ApiException as e:
             self._client._handle_api_exception(e)
             raise
+        except (AllureNotFoundError, AllureValidationError, AllureAPIError):
+            raise
         except Exception as e:
             raise AllureAPIError(f"Failed to get test layer {layer_id}: {e}") from e
 
@@ -192,6 +194,8 @@ class TestLayerService:
             raise AllureAPIError("Test Layer API is not initialized")
 
         try:
+            # Check existence first for accurate feedback
+            await self.get_test_layer(layer_id)
             await self._client._test_layer_api.delete9(id=layer_id)
             return True
         except AllureNotFoundError:
@@ -300,6 +304,11 @@ class TestLayerService:
 
         try:
             return await self._client._test_layer_schema_api.find_one7(id=schema_id)
+        except ApiException as e:
+            self._client._handle_api_exception(e)
+            raise
+        except (AllureNotFoundError, AllureValidationError, AllureAPIError):
+            raise
         except Exception as e:
             raise AllureAPIError(f"Failed to get test layer schema {schema_id}: {e}") from e
 
@@ -385,6 +394,8 @@ class TestLayerService:
             raise AllureAPIError("Test Layer Schema API is not initialized")
 
         try:
+            # Check existence first for accurate feedback
+            await self.get_test_layer_schema(schema_id)
             await self._client._test_layer_schema_api.delete8(id=schema_id)
             return True
         except AllureNotFoundError:

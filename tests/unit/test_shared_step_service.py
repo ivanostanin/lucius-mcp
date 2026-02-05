@@ -213,10 +213,15 @@ async def test_delete_shared_step_success(service, mock_client):
     Test deleting a shared step successfully.
     ID: 2.2-UNIT-004
     """
+    mock_client.get_shared_step = AsyncMock(
+        return_value=SharedStepDto(id=100, name="Test Step", project_id=1, steps_count=3)
+    )
     mock_client.delete_shared_step = AsyncMock()
 
-    await service.delete_shared_step(step_id=100)
+    result = await service.delete_shared_step(step_id=100)
 
+    assert result is True
+    mock_client.get_shared_step.assert_called_once_with(100)
     mock_client.delete_shared_step.assert_called_once_with(100)
 
 
@@ -229,14 +234,13 @@ async def test_delete_shared_step_idempotent(service, mock_client):
     """
     from src.client.exceptions import AllureNotFoundError
 
-    # First call succeeds
+    # Mock get_shared_step to fail (already deleted)
+    mock_client.get_shared_step = AsyncMock(side_effect=AllureNotFoundError("Not found", 404, "{}"))
     mock_client.delete_shared_step = AsyncMock()
 
-    await service.delete_shared_step(step_id=100)
-    mock_client.delete_shared_step.assert_called_once()
+    # Should not raise, just return False
+    result = await service.delete_shared_step(step_id=100)
 
-    # Second call with already-deleted step - should handle gracefully
-    mock_client.delete_shared_step = AsyncMock(side_effect=AllureNotFoundError("Not found", 404, "{}"))
-
-    # Should not raise, just return gracefully
-    await service.delete_shared_step(step_id=100)
+    assert result is False
+    mock_client.get_shared_step.assert_called_once_with(100)
+    mock_client.delete_shared_step.assert_not_called()

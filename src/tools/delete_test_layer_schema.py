@@ -28,4 +28,4 @@ async def delete_test_layer_schema(
     if deleted:
         return f"✅ Test layer schema {schema_id} deleted successfully!"
     else:
-        return f"[INFO] Test layer schema {schema_id} was already deleted or doesn't exist - no action taken."
+        return f"ℹ️ Test layer schema {schema_id} was already deleted or doesn't exist."  # noqa RUF001

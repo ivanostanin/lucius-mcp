@@ -12,7 +12,7 @@ from src.client import (
     SharedStepAttachmentRowDto,
     SharedStepDto,
 )
-from src.client.exceptions import AllureAPIError, AllureValidationError
+from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError
 from src.services.attachment_service import AttachmentService
 from src.utils.schema_hint import generate_schema_hint
 
@@ -126,7 +126,12 @@ class SharedStepService:
             AllureNotFoundError: If shared step doesn't exist.
             AllureAPIError: If the server returns an error.
         """
-        return await self._client.get_shared_step(step_id)
+        try:
+            return await self._client.get_shared_step(step_id)
+        except (AllureNotFoundError, AllureValidationError, AllureAPIError):
+            raise
+        except Exception as e:
+            raise AllureAPIError(f"Failed to get shared step {step_id}: {e}") from e
 
     async def update_shared_step(
         self,
@@ -177,27 +182,31 @@ class SharedStepService:
         updated = await self._client.update_shared_step(step_id, patch_data)
         return updated, True
 
-    async def delete_shared_step(self, step_id: int) -> None:
+    async def delete_shared_step(self, step_id: int) -> bool:
         """Delete (archive) a shared step with idempotent behavior.
 
         Args:
             step_id: The shared step ID to delete.
+
+        Returns:
+            True if deleted, False if already deleted/not found.
 
         Raises:
             AllureAPIError: If the API request fails (other than 404).
 
         Note:
             This operation is idempotent following Story 1.5 pattern.
-            If already deleted (404), returns gracefully.
+            If already deleted (404), returns False.
         """
-        from src.client.exceptions import AllureNotFoundError
-
         try:
+            # Check existence first for accurate feedback
+            await self.get_shared_step(step_id)
             await self._client.delete_shared_step(step_id)
+            return True
         except AllureNotFoundError:
             # Idempotent: if already deleted, this is fine
             logger.debug(f"Shared step {step_id} already deleted or not found")
-            pass
+            return False
 
     # ==========================================
     # Helper Methods

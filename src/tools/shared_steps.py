@@ -164,6 +164,9 @@ async def delete_shared_step(
 
     async with AllureClient.from_env(project=project_id) as client:
         service = SharedStepService(client=client)
-        await service.delete_shared_step(step_id=step_id)
+        deleted = await service.delete_shared_step(step_id=step_id)
 
-        return f"🗑️  Archived Shared Step {step_id}\n\nThe shared step has been successfully archived."
+        if deleted:
+            return f"✅ Archived Shared Step {step_id}\n\nThe shared step has been successfully archived."
+        else:
+            return f"ℹ️ Shared Step {step_id} was already archived or doesn't exist."  # noqa: RUF001
