@@ -24,6 +24,7 @@ __all__ = [
     "CustomFieldSchemaControllerApi",
     "CustomFieldValueControllerApi",
     "CustomFieldValueProjectControllerApi",
+    "IntegrationControllerApi",
     "LaunchControllerApi",
     "LaunchSearchControllerApi",
     "ProjectControllerApi",
@@ -742,6 +743,7 @@ from src.client.generated.api.custom_field_project_controller_v2_api import Cust
 from src.client.generated.api.custom_field_schema_controller_api import CustomFieldSchemaControllerApi as CustomFieldSchemaControllerApi
 from src.client.generated.api.custom_field_value_controller_api import CustomFieldValueControllerApi as CustomFieldValueControllerApi
 from src.client.generated.api.custom_field_value_project_controller_api import CustomFieldValueProjectControllerApi as CustomFieldValueProjectControllerApi
+from src.client.generated.api.integration_controller_api import IntegrationControllerApi as IntegrationControllerApi
 from src.client.generated.api.launch_controller_api import LaunchControllerApi as LaunchControllerApi
 from src.client.generated.api.launch_search_controller_api import LaunchSearchControllerApi as LaunchSearchControllerApi
 from src.client.generated.api.project_controller_api import ProjectControllerApi as ProjectControllerApi

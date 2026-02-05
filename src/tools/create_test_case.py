@@ -53,6 +53,11 @@ async def create_test_case(
             )
         ),
     ] = None,
+    # Issues
+    issues: Annotated[
+        list[str] | None,
+        Field(description="Optional list of issue keys to link (e.g., ['PROJ-123'])."),
+    ] = None,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
 ) -> str:
     """Create a new test case in Allure TestOps.
@@ -91,5 +96,9 @@ async def create_test_case(
             custom_fields=custom_fields,
             test_layer_id=test_layer_id,
             test_layer_name=test_layer_name,
+            issues=issues,
         )
-        return f"Created Test Case ID: {result.id} Name: {result.name}"
+        msg = f"Created Test Case ID: {result.id} Name: {result.name}"
+        if issues:
+            msg += f" with {len(issues)} linked issues: {', '.join(issues)}"
+        return msg

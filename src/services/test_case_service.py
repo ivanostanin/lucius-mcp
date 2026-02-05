@@ -1,4 +1,5 @@
 import logging
+import re
 from dataclasses import dataclass
 from typing import TypedDict, cast
 
@@ -9,6 +10,7 @@ from src.client import (
     AttachmentStepDtoWithName,
     ScenarioStepPatchDto,
     StepWithExpected,
+    TestCaseDtoWithCF,
 )
 from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError
 from src.client.generated.models import (
@@ -16,11 +18,14 @@ from src.client.generated.models import (
     CustomFieldValueDto,
     CustomFieldValueWithCfDto,
     ExternalLinkDto,
+    IssueDto,
     ScenarioStepCreateDto,
     SharedStepScenarioDtoStepsInner,
+    TestCaseBulkIssueDto,
     TestCaseCreateV2Dto,
     TestCaseDto,
     TestCaseOverviewDto,
+    TestCaseTreeSelectionDto,
     TestLayerDto,
     TestTagDto,
 )
@@ -76,6 +81,9 @@ class TestCaseUpdate:
     test_layer_name: str | None = None
     workflow_id: int | None = None
     links: list[dict[str, str]] | None = None
+    issues: list[str] | None = None
+    remove_issues: list[str] | None = None
+    clear_issues: bool | None = None
 
 
 @dataclass
@@ -114,6 +122,7 @@ class TestCaseService:
         custom_fields: dict[str, str | list[str]] | None = None,
         test_layer_id: int | None = None,
         test_layer_name: str | None = None,
+        issues: list[str] | None = None,
     ) -> TestCaseOverviewDto:
         """Create a new test case.
 
@@ -126,6 +135,7 @@ class TestCaseService:
             custom_fields: Optional dictionary of custom fields (Name -> Value).
             test_layer_id: Optional test layer ID to assign to the test case.
             test_layer_name: Optional test layer name to assign to the test case.
+            issues: Optional list of issue keys to link (e.g., 'PROJ-123').
 
         Returns:
             The created test case overview.
@@ -234,6 +244,10 @@ class TestCaseService:
 
             # Add global attachments (appended at end of steps)
             await self._add_global_attachments(test_case_id, attachments, last_step_id)
+
+            # Add issue links
+            if issues:
+                await self.add_issues_to_test_case(test_case_id, issues)
         except Exception as e:
             # Rollback: delete the partially created test case
             try:
@@ -250,7 +264,7 @@ class TestCaseService:
 
         return created_test_case
 
-    async def get_test_case(self, test_case_id: int) -> TestCaseDto:
+    async def get_test_case(self, test_case_id: int) -> TestCaseDtoWithCF:
         """Retrieve a test case by ID.
 
         Args:
@@ -347,6 +361,9 @@ class TestCaseService:
                 data.test_layer_id is not None,
                 data.workflow_id is not None,
                 data.links is not None,
+                data.issues is not None,
+                data.remove_issues is not None,
+                data.clear_issues is not None,
             ]
         )
         has_scenario_changes = data.steps is not None or data.attachments is not None
@@ -360,7 +377,22 @@ class TestCaseService:
             updated_case = await self.get_test_case(test_case_id)
             return updated_case if updated_case is not None else current_case
 
-        # 3. Handle Metadata Patches
+        # 3. Handle Issue Linking Operations (Remove/Clear first, then Add)
+        if data.clear_issues:
+            # Check existing issues first
+            current_full = await self.get_test_case(test_case_id)
+            if current_full and current_full.issues:
+                existing_keys = [i.name for i in current_full.issues if i.name]
+                if existing_keys:
+                    await self.remove_issues_from_test_case(test_case_id, existing_keys)
+
+        if data.remove_issues:
+            await self.remove_issues_from_test_case(test_case_id, data.remove_issues)
+
+        if data.issues:
+            await self.add_issues_to_test_case(test_case_id, data.issues)
+
+        # 4. Handle Metadata Patches
         patch_kwargs, has_changes = await self._prepare_field_updates(current_case, data)
 
         if data.test_layer_id is not None or data.test_layer_name is not None:
@@ -389,7 +421,7 @@ class TestCaseService:
                 patch_kwargs["test_layer_id"] = resolved_layer_id
                 has_changes = True
 
-        # 4. Handle Custom Fields in mixed update (replacement)
+        # 5. Handle Custom Fields in mixed update (replacement)
         if data.custom_fields is not None:
             # For mixed updates via patch13, we need to provide the FULL list of custom fields
             # since the API replaces them. We merge current + updates.
@@ -444,7 +476,7 @@ class TestCaseService:
                 patch_kwargs["customFields"] = final_cfs
                 has_changes = True
 
-        # 5. Handle Scenario
+        # 6. Handle Scenario
         scenario_dto_v2 = await self._prepare_scenario_update(test_case_id, data)
         if scenario_dto_v2:
             has_changes = True
@@ -452,7 +484,7 @@ class TestCaseService:
         if not has_changes:
             return current_case
 
-        # 6. Apply Update
+        # 7. Apply Update
         try:
             patch_data = TestCasePatchV2Dto(**patch_kwargs)
             await self._client.update_test_case(test_case_id, patch_data)
@@ -460,7 +492,7 @@ class TestCaseService:
             hint = generate_schema_hint(TestCasePatchV2Dto)
             raise AllureValidationError(f"Invalid update data: {e}", suggestions=[hint]) from e
 
-        # 7. Apply Scenario Re-creation
+        # 8. Apply Scenario Re-creation
         if scenario_dto_v2 and scenario_dto_v2.steps is not None:
             await self._recreate_scenario(test_case_id, scenario_dto_v2.steps)
 
@@ -593,6 +625,123 @@ class TestCaseService:
                 await self._client.delete_scenario_step(step_id)
 
         return await self.get_test_case(test_case_id)
+
+    async def add_issues_to_test_case(self, test_case_id: int, issues: list[str]) -> None:
+        """Add issue links to a test case.
+
+        Args:
+            test_case_id: The test case ID.
+            issues: List of issue keys (e.g. "PROJ-123").
+        """
+        if not issues:
+            return
+
+        # 1. Resolve integrations and build IssueDtos
+        issue_dtos = await self._build_issue_dtos(issues)
+
+        # 2. Build selection
+        selection = TestCaseTreeSelectionDto(project_id=self._project_id, leafs_include=[test_case_id])
+
+        # 3. Call Bulk API
+        from src.client.generated.api.test_case_bulk_controller_api import TestCaseBulkControllerApi
+
+        bulk_api = TestCaseBulkControllerApi(self._client.api_client)
+
+        bulk_dto = TestCaseBulkIssueDto(issues=issue_dtos, selection=selection)
+        await bulk_api.issue_add1(bulk_dto)
+
+    async def remove_issues_from_test_case(self, test_case_id: int, issues: list[str]) -> None:
+        """Remove issue links from a test case.
+
+        Args:
+            test_case_id: The test case ID.
+            issues: List of issue keys to remove.
+        """
+        if not issues:
+            return
+
+        # 1. Fetch current issues to get their IDs
+        current_case = await self.get_test_case(test_case_id)
+        if not current_case.issues:
+            return
+
+        # 2. Find IDs of issues to remove
+        issues_to_remove_ids = []
+        issues_set = set(issues)
+
+        for issue in current_case.issues:
+            if issue.name and issue.name in issues_set and issue.id:
+                issues_to_remove_ids.append(issue.id)
+
+        if not issues_to_remove_ids:
+            return
+
+        # 3. Call Bulk API with IDs
+        selection = TestCaseTreeSelectionDto(project_id=self._project_id, leafs_include=[test_case_id])
+
+        from src.client.generated.api.test_case_bulk_controller_api import TestCaseBulkControllerApi
+        from src.client.generated.models.test_case_bulk_entity_ids_dto import TestCaseBulkEntityIdsDto
+
+        bulk_api = TestCaseBulkControllerApi(self._client.api_client)
+
+        bulk_dto = TestCaseBulkEntityIdsDto(ids=issues_to_remove_ids, selection=selection)
+        await bulk_api.issue_remove1(bulk_dto)
+
+    MAX_ISSUE_KEY_LENGTH = 50
+    ISSUE_KEY_PATTERN = re.compile(r"^[A-Z0-9]+-\d+$", re.IGNORECASE)
+
+    async def _build_issue_dtos(self, issues: list[str]) -> list[IssueDto]:
+        """Convert issue keys to IssueDto objects with resolved integration IDs.
+
+        Validation:
+        - Checks issue key format (e.g., PROJ-123).
+        - Resolves integration ID (defaults to first available if multiple).
+        """
+        if not issues:
+            return []
+
+        # 1. Validate Issue Keys
+        invalid_keys = []
+        for key in issues:
+            if not key or len(key) > self.MAX_ISSUE_KEY_LENGTH:
+                invalid_keys.append(f"{key} (too long)")
+            elif not self.ISSUE_KEY_PATTERN.match(key):
+                invalid_keys.append(f"{key} (invalid format, expected PROJECT-123)")
+
+        if invalid_keys:
+            raise AllureValidationError(
+                "Invalid issue keys provided:\n"
+                + "\n".join(f"- {k}" for k in invalid_keys)
+                + "\n\nHint: Issue keys must follow the format 'PROJECT-123' (alphanumeric prefix, hyphen, number)."
+            )
+
+        # 2. Get Integration context
+        integrations = await self._client.get_integrations()
+        target_integration_id = None
+
+        if not integrations:
+            logger.warning("No integrations configuration found in project. Issue links may be inactive.")
+        elif len(integrations) == 1:
+            target_integration_id = integrations[0].id
+        else:
+            # Multiple integrations found
+            # We default to the first one but log a warning as we cannot determine intent from key alone
+            target_integration_id = integrations[0].id
+            integration_names = [i.name for i in integrations if i.name]
+            logger.warning(
+                f"Multiple integrations found ({', '.join(integration_names)}). "
+                f"Defaulting to '{integrations[0].name}' for issue linking."
+            )
+
+        # 3. Build DTOs
+        dtos = []
+        for key in issues:
+            dto = IssueDto(name=key.upper())  # Normalize to uppercase
+            if target_integration_id:
+                dto.integration_id = target_integration_id
+            dtos.append(dto)
+
+        return dtos
 
     async def _prepare_field_updates(  # noqa: C901
         self, current_case: TestCaseDto, data: TestCaseUpdate

@@ -35,6 +35,7 @@ KEEP_TAGS = {
     # Test Layer Management
     "test-layer-controller",
     "test-layer-schema-controller",
+    "integration-controller",
 }
 
 

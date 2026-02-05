@@ -112,6 +112,7 @@ python_classes = [
     "TestTagsValidation",
     "TestAttachmentsValidation",
     "TestCustomFieldsValidation",
+    "TestIssueLinking",
 ]
 
 markers = [

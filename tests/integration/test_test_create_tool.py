@@ -63,3 +63,25 @@ async def test_create_test_case_tool_success(mock_service: Mock, mock_client: Mo
     assert actual_kwargs["custom_fields"] == custom_fields
     assert actual_kwargs["steps"] == steps
     assert actual_kwargs["test_layer_id"] == 5
+
+
+@pytest.mark.asyncio
+async def test_create_test_case_tool_with_issues(mock_service: Mock, mock_client: Mock) -> None:
+    """Verify tool creates service and calls create_test_case with issues."""
+    name = "Tool Test Issues"
+    issues = ["PROJ-123"]
+
+    service_instance = mock_service.return_value
+    service_instance.create_test_case = AsyncMock()
+    service_instance.create_test_case.return_value = Mock(id=778, name=name)
+
+    result = await create_test_case(
+        name=name,
+        issues=issues,
+    )
+
+    assert "778" in result
+    service_instance.create_test_case.assert_called_once()
+    actual_kwargs = service_instance.create_test_case.call_args.kwargs
+    assert actual_kwargs["name"] == name
+    assert actual_kwargs["issues"] == issues
