@@ -154,20 +154,28 @@ async def test_update_test_layer_idempotent(service, mock_client):
 @pytest.mark.asyncio
 async def test_delete_test_layer_success(service, mock_client):
     """Test deleting a test layer."""
+    layer = TestLayerDto(id=7, name="API")
+    mock_client._test_layer_api.find_one8.return_value = layer
     mock_client._test_layer_api.delete9.return_value = None
 
-    await service.delete_test_layer(layer_id=7)
+    result = await service.delete_test_layer(layer_id=7)
 
+    assert result is True
+    mock_client._test_layer_api.find_one8.assert_called_once_with(id=7)
     mock_client._test_layer_api.delete9.assert_called_once_with(id=7)
 
 
 @pytest.mark.asyncio
 async def test_delete_test_layer_idempotent(service, mock_client):
     """Test delete is idempotent - handles already deleted layer gracefully."""
-    mock_client._test_layer_api.delete9.side_effect = AllureNotFoundError("Not found", 404, "{}")
+    mock_client._test_layer_api.find_one8.side_effect = AllureNotFoundError("Not found", 404, "{}")
 
-    # Should not raise, just return gracefully
-    await service.delete_test_layer(layer_id=7)
+    # Should not raise, just return False
+    result = await service.delete_test_layer(layer_id=7)
+
+    assert result is False
+    mock_client._test_layer_api.find_one8.assert_called_once_with(id=7)
+    mock_client._test_layer_api.delete9.assert_not_called()
 
 
 # ==========================================
@@ -290,17 +298,25 @@ async def test_update_test_layer_schema_idempotent(service, mock_client):
 @pytest.mark.asyncio
 async def test_delete_test_layer_schema_success(service, mock_client):
     """Test deleting a test layer schema."""
+    schema = TestLayerSchemaDto(id=40, key="layer", project_id=1, test_layer=TestLayerDto(id=10, name="Unit"))
+    mock_client._test_layer_schema_api.find_one7.return_value = schema
     mock_client._test_layer_schema_api.delete8.return_value = None
 
-    await service.delete_test_layer_schema(schema_id=40)
+    result = await service.delete_test_layer_schema(schema_id=40)
 
+    assert result is True
+    mock_client._test_layer_schema_api.find_one7.assert_called_once_with(id=40)
     mock_client._test_layer_schema_api.delete8.assert_called_once_with(id=40)
 
 
 @pytest.mark.asyncio
 async def test_delete_test_layer_schema_idempotent(service, mock_client):
     """Test delete is idempotent - handles already deleted schema gracefully."""
-    mock_client._test_layer_schema_api.delete8.side_effect = AllureNotFoundError("Not found", 404, "{}")
+    mock_client._test_layer_schema_api.find_one7.side_effect = AllureNotFoundError("Not found", 404, "{}")
 
-    # Should not raise, just return gracefully
-    await service.delete_test_layer_schema(schema_id=40)
+    # Should not raise, just return False
+    result = await service.delete_test_layer_schema(schema_id=40)
+
+    assert result is False
+    mock_client._test_layer_schema_api.find_one7.assert_called_once_with(id=40)
+    mock_client._test_layer_schema_api.delete8.assert_not_called()
