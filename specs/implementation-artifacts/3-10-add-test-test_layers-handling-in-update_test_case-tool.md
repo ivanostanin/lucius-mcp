@@ -1,6 +1,6 @@
 # Story 3.10: Add test layer handling in update_test_case tool
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

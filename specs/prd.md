@@ -178,7 +178,7 @@ He tries to make his agent create a test case with a missing required field. The
 *   **Token Exchange:** API tokens (`ALLURE_TOKEN`) are exchanged for JWT Bearer tokens via the `/api/uaa/oauth/token` endpoint at client initialization.
 *   **Automatic Renewal:** JWT tokens (default TTL: 1 hour) are automatically refreshed 60 seconds before expiry to ensure uninterrupted operation.
 *   **Primary:** Environment Variables (`ALLURE_ENDPOINT`, `ALLURE_TOKEN`) for zero-config startup.
-*   **Traversable:** Optional `token` and `project_id` arguments in every tool to allow agents to switch contexts dynamically if authorized.
+*   **Traversable:** Optional `project_id` arguments in every tool to allow agents to switch contexts dynamically if authorized.
 
 ### Data Schemas & Formatting
 
@@ -258,7 +258,7 @@ He tries to make his agent create a test case with a missing required field. The
 ### Security & Context
 
 *   **FR13:** Agents can authenticate operations using Environment Variables by default.
-*   **FR14:** Agents can override authentication context (Token, Project ID) via tool arguments at runtime.
+*   **FR14:** Agents can override authentication context (Project ID) via tool arguments at runtime.
 *   **FR15:** The system validates all inputs against strict schemas before sending to upstream API.
 *   **FR16:** The system provides descriptive error hints when validation fails (e.g., "Missing field X").
 

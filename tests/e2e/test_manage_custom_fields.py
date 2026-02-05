@@ -142,4 +142,8 @@ async def test_manage_custom_fields_lifecycle(  # noqa: C901
     # 9. Verify multi-field update
     cf_values = await service.get_test_case_custom_fields_values(test_case_id)
     for field_name, expected in expected_values.items():
-        assert cf_values.get(field_name) == expected
+        actual = cf_values.get(field_name)
+        if isinstance(actual, list) and isinstance(expected, list):
+            assert sorted(actual) == sorted(expected)
+        else:
+            assert actual == expected

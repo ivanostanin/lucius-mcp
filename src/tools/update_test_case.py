@@ -33,6 +33,7 @@ async def update_test_case(  # noqa: C901
     expected_result: Annotated[str | None, Field(description="Global expected result for the test case")] = None,
     status_id: Annotated[int | None, Field(description="ID of the test case status")] = None,
     test_layer_id: Annotated[int | None, Field(description="ID of the test layer")] = None,
+    test_layer_name: Annotated[str | None, Field(description="Name of the test layer")] = None,
     workflow_id: Annotated[int | None, Field(description="ID of the workflow")] = None,
     links: Annotated[
         list[dict[str, str]] | None,
@@ -61,6 +62,7 @@ async def update_test_case(  # noqa: C901
         expected_result: Global expected result for the test case.
         status_id: ID of the test case status.
         test_layer_id: ID of the test layer.
+        test_layer_name: Name of the test layer.
         workflow_id: ID of the workflow.
         links: New list of external links. Each dict has ``name``, ``url``,
             and optional ``type``.
@@ -89,6 +91,7 @@ async def update_test_case(  # noqa: C901
             expected_result=expected_result,
             status_id=status_id,
             test_layer_id=test_layer_id,
+            test_layer_name=test_layer_name,
             workflow_id=workflow_id,
             links=links,
         )
@@ -130,10 +133,14 @@ async def update_test_case(  # noqa: C901
             current_status_id = getattr(current_status, "id", None) if current_status else None
             if status_id != current_status_id:
                 changes.append("status updated")
-        if test_layer_id is not None:
+        if test_layer_id is not None or test_layer_name is not None:
             current_test_layer = getattr(current_case, "test_layer", None)
             current_test_layer_id = getattr(current_test_layer, "id", None) if current_test_layer else None
-            if test_layer_id != current_test_layer_id:
+
+            updated_test_layer = getattr(updated_case, "test_layer", None)
+            updated_test_layer_id = getattr(updated_test_layer, "id", None) if updated_test_layer else None
+
+            if updated_test_layer_id != current_test_layer_id:
                 changes.append("test layer updated")
         if workflow_id is not None:
             current_workflow = getattr(current_case, "workflow", None)

@@ -198,6 +198,37 @@ async def test_e2e_u2_update_status_workflow(
     assert "list_test_layers" in str(excinfo.value)
 
 
+async def test_e2e_u2_update_test_layer_by_name(
+    project_id: int,
+    allure_client: AllureClient,
+    cleanup_tracker: CleanupTracker,
+) -> None:
+    """
+    E2E: Update test layer by name.
+    """
+    service = TestCaseService(client=allure_client)
+
+    # Create initial test case
+    created_case = await service.create_test_case(name="E2E Layer Name Update Test")
+    test_case_id = created_case.id
+    assert test_case_id is not None
+    cleanup_tracker.track_test_case(test_case_id)
+
+    test_layers = await service._test_layer_service.list_test_layers(page=0, size=100)
+    valid_layers = [layer for layer in test_layers if layer.id is not None and layer.id > 0 and layer.name]
+    if not valid_layers:
+        pytest.skip("No valid test layers available for update_test_case test.")
+
+    target_layer = valid_layers[0]
+
+    update_layer_data = TestCaseUpdate(test_layer_name=target_layer.name)
+    updated_case = await service.update_test_case(test_case_id, update_layer_data)
+
+    assert updated_case.test_layer is not None
+    assert updated_case.test_layer.id == target_layer.id
+    assert updated_case.test_layer.name == target_layer.name
+
+
 async def test_e2e_u3_update_tags(
     project_id: int,
     allure_client: AllureClient,
