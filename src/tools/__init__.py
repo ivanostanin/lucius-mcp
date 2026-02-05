@@ -1,11 +1,14 @@
 from collections.abc import Awaitable, Callable
 
+from src.tools.create_custom_field_value import create_custom_field_value
 from src.tools.create_test_case import create_test_case
+from src.tools.delete_custom_field_value import delete_custom_field_value
 from src.tools.delete_test_case import delete_test_case
 from src.tools.get_custom_fields import get_custom_fields
 from src.tools.get_test_case_custom_fields import get_test_case_custom_fields
 from src.tools.launches import create_launch, list_launches
 from src.tools.link_shared_step import link_shared_step
+from src.tools.list_custom_field_values import list_custom_field_values
 from src.tools.search import get_test_case_details, list_test_cases, search_test_cases
 from src.tools.shared_steps import create_shared_step, delete_shared_step, list_shared_steps, update_shared_step
 from src.tools.test_layers import (
@@ -19,14 +22,17 @@ from src.tools.test_layers import (
     update_test_layer_schema,
 )
 from src.tools.unlink_shared_step import unlink_shared_step
+from src.tools.update_custom_field_value import update_custom_field_value
 from src.tools.update_test_case import update_test_case
 
 __all__ = [
+    "create_custom_field_value",
     "create_launch",
     "create_shared_step",
     "create_test_case",
     "create_test_layer",
     "create_test_layer_schema",
+    "delete_custom_field_value",
     "delete_shared_step",
     "delete_test_case",
     "delete_test_layer",
@@ -35,6 +41,7 @@ __all__ = [
     "get_test_case_custom_fields",
     "get_test_case_details",
     "link_shared_step",
+    "list_custom_field_values",
     "list_launches",
     "list_shared_steps",
     "list_test_cases",
@@ -42,6 +49,7 @@ __all__ = [
     "list_test_layers",
     "search_test_cases",
     "unlink_shared_step",
+    "update_custom_field_value",
     "update_shared_step",
     "update_test_case",
     "update_test_layer",
@@ -57,6 +65,10 @@ all_tools: list[ToolFn] = [
     delete_test_case,
     list_test_cases,
     get_custom_fields,
+    list_custom_field_values,
+    create_custom_field_value,
+    update_custom_field_value,
+    delete_custom_field_value,
     get_test_case_custom_fields,
     search_test_cases,
     create_launch,
