@@ -7,6 +7,8 @@ import pytest
 from pydantic import SecretStr
 
 from src.client import AllureClient
+from src.client.exceptions import AllureNotFoundError
+from src.client.generated.exceptions import ApiException
 from src.client.generated.models.aql_validate_response_dto import AqlValidateResponseDto
 from src.client.generated.models.find_all29200_response import FindAll29200Response
 from src.client.generated.models.launch_create_dto import LaunchCreateDto
@@ -70,6 +72,32 @@ async def test_client_list_launches_falls_back_on_oneof() -> None:
     assert isinstance(result.actual_instance, (PageLaunchDto, PageLaunchPreviewDto))
     client._launch_api.find_all29.assert_called_once()
     client._launch_api.find_all29_without_preload_content.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_client_get_launch_calls_api() -> None:
+    client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
+    client._is_entered = True
+    client._token_expires_at = time.time() + 3600
+    client._launch_api = MagicMock()
+    client._launch_api.find_one23 = AsyncMock(return_value=LaunchDto(id=2, name="Launch"))
+
+    result = await client.get_launch(launch_id=2)
+
+    assert result.id == 2
+    client._launch_api.find_one23.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_client_get_launch_not_found_raises() -> None:
+    client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
+    client._is_entered = True
+    client._token_expires_at = time.time() + 3600
+    client._launch_api = MagicMock()
+    client._launch_api.find_one23 = AsyncMock(side_effect=ApiException(status=404, reason="Not Found", body="{}"))
+
+    with pytest.raises(AllureNotFoundError, match="Resource not found"):
+        await client.get_launch(launch_id=404)
 
 
 @pytest.mark.asyncio

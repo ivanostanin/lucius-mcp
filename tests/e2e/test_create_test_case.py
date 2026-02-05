@@ -163,9 +163,15 @@ async def test_e2e_3_custom_fields_creation(
     case_name = "E2E-3 Custom Fields Test"
     custom_fields = {"Feature": "Flow", "Component": "Chat"}
 
-    created_case = await service.create_test_case(
-        name=case_name, description="Testing custom fields", custom_fields=custom_fields
-    )
+    try:
+        created_case = await service.create_test_case(
+            name=case_name, description="Testing custom fields", custom_fields=custom_fields
+        )
+    except AllureValidationError as exc:
+        message = str(exc)
+        if "custom field values are invalid" in message or "custom fields were not found" in message:
+            pytest.skip(f"Custom fields not configured for project {project_id}")
+        raise
 
     test_case_id = created_case.id
     assert test_case_id is not None

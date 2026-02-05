@@ -842,6 +842,28 @@ class AllureClient:
                     raise AllureValidationError("Unexpected launch list response from API") from e
                 return FindAll29200Response(preview_data)
 
+    async def get_launch(self, launch_id: int) -> LaunchDto:
+        """Retrieve a specific launch by its ID.
+
+        Args:
+            launch_id: The unique ID of the launch.
+
+        Returns:
+            The launch data.
+
+        Raises:
+            AllureNotFoundError: If launch doesn't exist.
+            AllureValidationError: If input is invalid.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
+        """
+        api = await self._get_api("_launch_api", error_name="launch APIs")
+
+        if not isinstance(launch_id, int) or launch_id <= 0:
+            raise AllureValidationError("Launch ID must be a positive integer")
+
+        return await self._call_api(api.find_one23(id=launch_id, _request_timeout=self._timeout))
+
     async def search_launches_aql(
         self,
         project_id: int,

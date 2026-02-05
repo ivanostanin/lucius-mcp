@@ -42,6 +42,28 @@ class TestCaseNotFoundError(ResourceNotFoundError):
         )
 
 
+class LaunchNotFoundError(ResourceNotFoundError):
+    """Resource not found for a specific launch."""
+
+    def __init__(
+        self,
+        launch_id: int,
+        status_code: int | None = None,
+        response_body: str | None = None,
+    ) -> None:
+        suggestions = [
+            "Verify the launch ID",
+            "Use list_launches to find valid IDs",
+            "Check access to the project containing this launch",
+        ]
+        super().__init__(
+            message=f"Launch ID {launch_id} not found",
+            status_code=status_code,
+            response_body=response_body,
+            suggestions=suggestions,
+        )
+
+
 class AllureAuthError(AuthenticationError):
     """Authentication failed (401/403)."""
 
@@ -57,5 +79,6 @@ __all__ = [
     "AllureNotFoundError",
     "AllureRateLimitError",
     "AllureValidationError",
+    "LaunchNotFoundError",
     "TestCaseNotFoundError",
 ]

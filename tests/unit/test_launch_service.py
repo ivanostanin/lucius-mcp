@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from src.client import AllureClient
-from src.client.exceptions import AllureValidationError
+from src.client.exceptions import AllureNotFoundError, AllureValidationError, LaunchNotFoundError
 from src.client.generated.models.find_all29200_response import FindAll29200Response
 from src.client.generated.models.launch_dto import LaunchDto
 from src.client.generated.models.launch_preview_dto import LaunchPreviewDto
@@ -22,6 +22,7 @@ def mock_client() -> MagicMock:
     client.list_launches = AsyncMock()
     client.search_launches_aql = AsyncMock()
     client.validate_launch_query = AsyncMock(return_value=(True, 0))
+    client.get_launch = AsyncMock()
     return client
 
 
@@ -106,3 +107,28 @@ async def test_list_launches_invalid_project_id(service: LaunchService) -> None:
     service._project_id = 0
     with pytest.raises(AllureValidationError, match="Project ID is required"):
         await service.list_launches()
+
+
+@pytest.mark.asyncio
+async def test_get_launch_valid(service: LaunchService, mock_client: MagicMock) -> None:
+    launch = LaunchDto(id=12, name="Launch")
+    mock_client.get_launch.return_value = launch
+
+    result = await service.get_launch(12)
+
+    assert result.id == 12
+    mock_client.get_launch.assert_called_once_with(12)
+
+
+@pytest.mark.asyncio
+async def test_get_launch_invalid_id(service: LaunchService) -> None:
+    with pytest.raises(AllureValidationError, match="Launch ID must be a positive integer"):
+        await service.get_launch(0)
+
+
+@pytest.mark.asyncio
+async def test_get_launch_not_found_maps_error(service: LaunchService, mock_client: MagicMock) -> None:
+    mock_client.get_launch.side_effect = AllureNotFoundError("Not found", status_code=404, response_body="{}")
+
+    with pytest.raises(LaunchNotFoundError, match="Launch ID 99 not found"):
+        await service.get_launch(99)

@@ -87,7 +87,7 @@ development_status:
   # Epic 5: Execution Management (Phase 2)
   epic-5: in-progress
   5-1-create-and-list-launches: done
-  5-2-get-launch-details: ready-for-dev
+  5-2-get-launch-details: done
   5-3-delete-launch: ready-for-dev
   5-4-close-finalize-and-reopen-launch: ready-for-dev
   epic-5-retrospective: optional

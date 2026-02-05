@@ -1,6 +1,6 @@
 # Story 5.2: Get Launch Details
 
-Status: ready-for-dev
+Status: done
 
 ## Dev Agent Guardrails
 
@@ -25,29 +25,29 @@ so that I can inspect its status, test results, and execution context.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Define Launch Detail Tool** (AC: #1, #2)
-  - [ ] 1.1: Add `get_launch` tool in `src/tools/launches.py` following existing launch tool patterns
-  - [ ] 1.2: Add LLM-optimized docstring with args for Launch ID and optional auth override
-  - [ ] 1.3: Keep tool thin (validate args, call service, format response)
+- [x] **Task 1: Define Launch Detail Tool** (AC: #1, #2)
+  - [x] 1.1: Add `get_launch` tool in `src/tools/launches.py` following existing launch tool patterns
+  - [x] 1.2: Add LLM-optimized docstring with args for Launch ID and optional auth override
+  - [x] 1.3: Keep tool thin (validate args, call service, format response)
 
-- [ ] **Task 2: Implement Launch Detail Service** (AC: #1, #2)
-  - [ ] 2.1: Add `get_launch()` to `src/services/launch_service.py`
-  - [ ] 2.2: Validate Launch ID input and raise `AllureValidationError` for invalid IDs
-  - [ ] 2.3: Return structured data for tool formatting (no MCP-specific text)
+- [x] **Task 2: Implement Launch Detail Service** (AC: #1, #2)
+  - [x] 2.1: Add `get_launch()` to `src/services/launch_service.py`
+  - [x] 2.2: Validate Launch ID input and raise `AllureValidationError` for invalid IDs
+  - [x] 2.3: Return structured data for tool formatting (no MCP-specific text)
 
-- [ ] **Task 3: Extend AllureClient** (AC: #1, #2)
-  - [ ] 3.1: Add `get_launch()` request to `src/client/client.py`
-  - [ ] 3.2: Map response to generated Pydantic models or compatible DTOs
+- [x] **Task 3: Extend AllureClient** (AC: #1, #2)
+  - [x] 3.1: Add `get_launch()` request to `src/client/client.py`
+  - [x] 3.2: Map response to generated Pydantic models or compatible DTOs
 
-- [ ] **Task 4: Error Handling & Agent Hints** (AC: #2)
-  - [ ] 4.1: Ensure not-found/invalid IDs raise `ResourceNotFoundError` or `AllureAPIError`
-  - [ ] 4.2: Confirm global error handler formats clear Agent Hints
+- [x] **Task 4: Error Handling & Agent Hints** (AC: #2)
+  - [x] 4.1: Ensure not-found/invalid IDs raise `ResourceNotFoundError` or `AllureAPIError`
+  - [x] 4.2: Confirm global error handler formats clear Agent Hints
 
-- [ ] **Task 5: Tests** (AC: #1, #2)
-  - [ ] 5.1: Unit tests for `LaunchService.get_launch()` validation and mapping
-  - [ ] 5.2: Integration tests for client request/response mapping
-  - [ ] 5.3: Tool output tests for LLM-friendly formatting
-  - [ ] 5.4: E2E test for get-launch flow (skip when sandbox credentials missing)
+- [x] **Task 5: Tests** (AC: #1, #2)
+  - [x] 5.1: Unit tests for `LaunchService.get_launch()` validation and mapping
+  - [x] 5.2: Integration tests for client request/response mapping
+  - [x] 5.3: Tool output tests for LLM-friendly formatting
+  - [x] 5.4: E2E test for get-launch flow (skip when sandbox credentials missing)
 
 ## Dev Notes
 
@@ -132,13 +132,24 @@ gpt-5.2-codex
 
 ### Debug Log References
 
-- N/A
+- Tests: unit/integration (launch service/tools/client) and e2e launches
 
 ### Completion Notes List
 
-- Ultimate context engine analysis completed - comprehensive developer guide created.
+- Implemented get_launch across client/service/tool, added launch detail formatter, and kept tool thin.
+- Added unit/integration/e2e coverage for get_launch.
+- Tests run: `uv run --env-file .env.test pytest tests/unit/test_launch_service.py tests/unit/test_launch_tools.py tests/integration/test_launch_client.py tests/integration/test_launch_tools.py` and `uv run --env-file .env.test pytest tests/e2e/test_launches.py`.
+- Added launch-specific not-found error mapping, expanded launch detail summary with start/end and summary fields, and added not-found test coverage.
 
 ### File List
 
 - specs/implementation-artifacts/5-2-get-launch-details.md
-- specs/implementation-artifacts/sprint-status.yaml
+- src/client/client.py
+- src/client/exceptions.py
+- src/services/launch_service.py
+- src/tools/launches.py
+- tests/unit/test_launch_service.py
+- tests/unit/test_launch_tools.py
+- tests/integration/test_launch_client.py
+- tests/integration/test_launch_tools.py
+- tests/e2e/test_launches.py

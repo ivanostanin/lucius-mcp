@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pydantic import ValidationError as PydanticValidationError
 
 from src.client import AllureClient, FindAll29200Response, LaunchCreateDto, LaunchDto
-from src.client.exceptions import AllureValidationError
+from src.client.exceptions import AllureNotFoundError, AllureValidationError, LaunchNotFoundError
 from src.client.generated.models.aql_validate_response_dto import AqlValidateResponseDto
 from src.client.generated.models.external_link_dto import ExternalLinkDto
 from src.client.generated.models.issue_dto import IssueDto
@@ -173,6 +173,27 @@ class LaunchService:
             total_pages=response.total_pages or 1,
         )
 
+    async def get_launch(self, launch_id: int) -> LaunchDto:
+        """Retrieve a specific launch by its ID.
+
+        Args:
+            launch_id: The unique ID of the launch.
+
+        Returns:
+            The launch data.
+        """
+        self._validate_project_id(self._project_id)
+        self._validate_launch_id(launch_id)
+
+        try:
+            return await self._client.get_launch(launch_id)
+        except AllureNotFoundError as exc:
+            raise LaunchNotFoundError(
+                launch_id=launch_id,
+                status_code=exc.status_code,
+                response_body=exc.response_body,
+            ) from exc
+
     async def validate_launch_query(self, rql: str) -> tuple[bool, int | None]:
         """Validate an AQL query for launches."""
         if not isinstance(rql, str) or not rql.strip():
@@ -202,6 +223,13 @@ class LaunchService:
             raise AllureValidationError("Page must be a non-negative integer")
         if not isinstance(size, int) or size <= 0 or size > 100:
             raise AllureValidationError("Size must be between 1 and 100")
+
+    @staticmethod
+    def _validate_launch_id(launch_id: int) -> None:
+        if not isinstance(launch_id, int):
+            raise AllureValidationError(f"Launch ID must be an integer, got {type(launch_id).__name__}")
+        if launch_id <= 0:
+            raise AllureValidationError("Launch ID must be a positive integer")
 
     @staticmethod
     def _validate_name(name: str) -> None:
