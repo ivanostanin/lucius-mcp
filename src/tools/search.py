@@ -122,12 +122,12 @@ async def search_test_cases(
     Examples:
         search_test_cases(query="login")
         → "Found 5 test cases matching 'login':
-           - [TC-1] User Login Flow (tags: smoke, auth)
-           - [TC-2] Admin Login Test (tags: admin)"
+           - [#1] User Login Flow (tags: smoke, auth)
+           - [#2] Admin Login Test (tags: admin)"
 
         search_test_cases(aql='status="failed" and tag="regression"')
         → "Found 12 test cases matching 'status=\"failed\" and tag=\"regression\"':
-           - [TC-5] Critical Path Test ..."
+           - [#5] Critical Path Test ..."
     """
     # Validate that at least one search parameter is provided
     if not aql and not query:
