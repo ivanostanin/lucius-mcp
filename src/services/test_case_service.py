@@ -73,6 +73,7 @@ class TestCaseUpdate:
     expected_result: str | None = None
     status_id: int | None = None
     test_layer_id: int | None = None
+    test_layer_name: str | None = None
     workflow_id: int | None = None
     links: list[dict[str, str]] | None = None
 
@@ -359,14 +360,34 @@ class TestCaseService:
             updated_case = await self.get_test_case(test_case_id)
             return updated_case if updated_case is not None else current_case
 
-        if data.test_layer_id is not None:
-            self._validate_test_layer_id(data.test_layer_id)
-            current_test_layer_id = current_case.test_layer.id if current_case.test_layer else None
-            if data.test_layer_id != current_test_layer_id:
-                await self._validate_test_layer_exists(data.test_layer_id, project_id)
-
         # 3. Handle Metadata Patches
         patch_kwargs, has_changes = await self._prepare_field_updates(current_case, data)
+
+        if data.test_layer_id is not None or data.test_layer_name is not None:
+            current_test_layer_id = current_case.test_layer.id if current_case.test_layer else None
+            resolved_layer_id = None
+            skip_validation = False
+
+            if data.test_layer_id is not None and data.test_layer_name is None:
+                if data.test_layer_id == current_test_layer_id:
+                    skip_validation = True
+                    resolved_layer_id = data.test_layer_id
+
+            if not skip_validation:
+                # Resolve the ID using the validation helper
+                # Note: _validate_test_layer handles mutual exclusivity check
+                resolved_layer_id = await self._validate_test_layer(
+                    test_layer_id=data.test_layer_id,
+                    test_layer_name=data.test_layer_name,
+                )
+
+            current_test_layer_id = current_case.test_layer.id if current_case.test_layer else None
+
+            # Only update if the resolved ID is different (and not None)
+            if resolved_layer_id is not None and resolved_layer_id != current_test_layer_id:
+                # Add to patch_kwargs which is now initialized
+                patch_kwargs["test_layer_id"] = resolved_layer_id
+                has_changes = True
 
         # 4. Handle Custom Fields in mixed update (replacement)
         if data.custom_fields is not None:
@@ -606,11 +627,8 @@ class TestCaseService:
                 patch_kwargs["status_id"] = data.status_id
                 has_changes = True
 
-        if data.test_layer_id is not None:
-            current_test_layer_id = current_case.test_layer.id if current_case.test_layer else None
-            if data.test_layer_id != current_test_layer_id:
-                patch_kwargs["test_layer_id"] = data.test_layer_id
-                has_changes = True
+        # test_layer_id is handled centrally in update_test_case logic due to name resolution complexity
+        # and validation requirements. We skip it here to avoid duplication.
 
         if data.workflow_id is not None:
             current_workflow_id = current_case.workflow.id if current_case.workflow else None
@@ -891,8 +909,8 @@ class TestCaseService:
         """Validate test layer ID format."""
         if test_layer_id is None:
             return
-        if not isinstance(test_layer_id, int) or test_layer_id <= 0:
-            raise AllureValidationError("Test layer ID must be a positive integer")
+        if not isinstance(test_layer_id, int) or test_layer_id < 0:
+            raise AllureValidationError("Test layer ID must be a positive integer or 0 (to unset)")
 
     def _format_available_layers(self, layers: list[TestLayerDto]) -> str:
         display_lines: list[str] = []
@@ -939,6 +957,9 @@ class TestCaseService:
 
         if test_layer_id is not None:
             self._validate_test_layer_id(test_layer_id)
+            if test_layer_id == 0:
+                return 0
+
             try:
                 await self._test_layer_service.get_test_layer(test_layer_id)
             except AllureNotFoundError as e:
