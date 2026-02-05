@@ -10,7 +10,7 @@ from collections.abc import Awaitable
 from typing import Literal, TypeVar, cast, overload
 
 import httpx
-from pydantic import SecretStr, ValidationError
+from pydantic import Field, SecretStr, ValidationError
 
 from src.client.exceptions import TestCaseNotFoundError
 from src.utils.config import settings
@@ -57,6 +57,7 @@ from .generated.models.page_shared_step_dto import PageSharedStepDto
 from .generated.models.page_test_case_dto import PageTestCaseDto
 from .generated.models.scenario_step_create_dto import ScenarioStepCreateDto
 from .generated.models.scenario_step_created_response_dto import ScenarioStepCreatedResponseDto
+from .generated.models.scenario_step_patch_dto import ScenarioStepPatchDto
 from .generated.models.shared_step_attachment_row_dto import SharedStepAttachmentRowDto
 from .generated.models.shared_step_create_dto import SharedStepCreateDto
 from .generated.models.shared_step_dto import SharedStepDto
@@ -85,6 +86,14 @@ class TestCaseDtoWithCF(TestCaseDto):
 class BodyStepDtoWithSteps(BodyStepDto):
     """Subclass to support nested steps and id."""
 
+    steps: list[SharedStepScenarioDtoStepsInner] | None = None
+    id: int | None = None
+
+
+class StepWithExpected(BodyStepDto):
+    """Subclass to support expected results and nested steps."""
+
+    expected_result: str | None = Field(default=None, alias="expectedResult")
     steps: list[SharedStepScenarioDtoStepsInner] | None = None
     id: int | None = None
 
@@ -148,12 +157,14 @@ __all__ = [
     "PageTestCaseDto",
     "ScenarioStepCreateDto",
     "ScenarioStepCreatedResponseDto",
+    "ScenarioStepPatchDto",
     "SharedStepAttachmentRowDto",
     "SharedStepCreateDto",
     "SharedStepDto",
     "SharedStepPatchDto",
     "SharedStepScenarioDtoStepsInner",
     "SharedStepStepDtoWithId",
+    "StepWithExpected",
     "TestCaseAttachmentRowDto",
     "TestCaseCreateV2Dto",
     "TestCaseDto",
@@ -1377,13 +1388,14 @@ class AllureClient:
                     child_ids = step_def.get("children") or []
                     child_steps = build_steps(child_ids) if child_ids else None
 
-                    # Build BodyStepDtoWithSteps
+                    # Build StepWithExpected
                     steps_list.append(
                         SharedStepScenarioDtoStepsInner(
-                            actual_instance=BodyStepDtoWithSteps.model_construct(
+                            actual_instance=StepWithExpected.model_construct(
                                 type="BodyStepDto",
                                 body=body,
                                 body_json=None,  # Skip complex rich-text
+                                expected_result=step_def.get("expectedResult"),
                                 steps=child_steps,
                                 id=sid,
                             )
@@ -1481,6 +1493,38 @@ class AllureClient:
             raise AllureValidationError("shared_step_id is required for shared step scenario steps")
 
         return await self._create_scenario_step_via_api(shared_step_scenario_api, step)
+
+    async def patch_test_case_scenario_step(
+        self,
+        step_id: int,
+        patch: ScenarioStepPatchDto,
+    ) -> None:
+        """Patch a specific scenario step within a test case."""
+        scenario_api = await self._get_api("_scenario_api")
+        await self._call_api_raw(
+            scenario_api.patch_by_id_without_preload_content(
+                id=step_id,
+                scenario_step_patch_dto=patch,
+                with_expected_result=False,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def patch_shared_step_scenario_step(
+        self,
+        step_id: int,
+        patch: ScenarioStepPatchDto,
+    ) -> None:
+        """Patch a specific scenario step within a shared step."""
+        shared_step_scenario_api = await self._get_api("_shared_step_scenario_api")
+        await self._call_api_raw(
+            shared_step_scenario_api.patch_by_id1_without_preload_content(
+                id=step_id,
+                scenario_step_patch_dto=patch,
+                with_expected_result=False,
+                _request_timeout=self._timeout,
+            )
+        )
 
     async def upload_shared_step_attachment(
         self,

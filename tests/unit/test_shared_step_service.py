@@ -17,6 +17,7 @@ def mock_client():
     client = MagicMock(spec=AllureClient)
     client.create_shared_step = AsyncMock()
     client.create_shared_step_scenario_step = AsyncMock()
+    client.patch_shared_step_scenario_step = AsyncMock()
     client.list_shared_steps = AsyncMock()
     client.upload_shared_step_attachment = AsyncMock()
     client.get_project.return_value = 1
@@ -64,10 +65,18 @@ async def test_create_shared_step_success(service, mock_client):
 
     # Check step creation calls
     assert mock_client.create_shared_step_scenario_step.call_count == 3
+    mock_client.patch_shared_step_scenario_step.assert_called_once()
+
     # 1. Action
     action_call = mock_client.create_shared_step_scenario_step.call_args_list[0]
     assert action_call[0][0].body == "Do something"
     assert action_call[0][0].shared_step_id == 100
+
+    # Patch expected result on action step
+    patch_call = mock_client.patch_shared_step_scenario_step.call_args
+    assert patch_call.kwargs["step_id"] == 201
+    assert patch_call.kwargs["patch"].body == "Do something"
+    assert patch_call.kwargs["patch"].expected_result == "Something happens"
 
     # 2. Expected
     expected_call = mock_client.create_shared_step_scenario_step.call_args_list[1]

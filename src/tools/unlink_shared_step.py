@@ -1,6 +1,6 @@
 """Tool for unlinking Shared Steps from Test Cases."""
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from pydantic import Field
 
@@ -9,13 +9,14 @@ from src.client.generated.models.shared_step_step_dto import SharedStepStepDto
 from src.services.test_case_service import TestCaseService
 
 
-def _format_steps(scenario: Any) -> str:
+def _format_steps(scenario: object) -> str:
     """Format steps for display."""
-    if not scenario or not scenario.steps:
+    steps = getattr(scenario, "steps", None)
+    if not isinstance(steps, list) or not steps:
         return "No steps."
 
     output = []
-    for i, step in enumerate(scenario.steps):
+    for i, step in enumerate(steps):
         if step.actual_instance and isinstance(step.actual_instance, SharedStepStepDto):
             output.append(f"{i + 1}. [Shared Step] ID: {step.actual_instance.shared_step_id}")
         else:

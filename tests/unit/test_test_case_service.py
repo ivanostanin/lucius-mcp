@@ -98,8 +98,9 @@ async def test_create_test_case_with_steps(
     passed_dto = mock_client.create_test_case.call_args[0][0]
     assert passed_dto.project_id == project_id
 
-    # Steps added via separate API calls (1 action + 1 expected = 2 calls)
+    # Steps added via separate API calls (action + expected child)
     assert mock_client.create_scenario_step.call_count == 2
+    mock_client.patch_test_case_scenario_step.assert_called_once()
 
     # First call: action step
     first_call = mock_client.create_scenario_step.call_args_list[0]
@@ -107,11 +108,11 @@ async def test_create_test_case_with_steps(
     assert first_call.kwargs["step"].body == "A"
     assert first_call.kwargs["after_id"] is None  # First step
 
-    # Second call: expected step (child of action)
-    second_call = mock_client.create_scenario_step.call_args_list[1]
-    assert second_call.kwargs["test_case_id"] == 101
-    assert second_call.kwargs["step"].body == "B"
-    assert second_call.kwargs["step"].parent_id == 1000  # Parent is the action step
+    # Patch expected result on action step
+    patch_call = mock_client.patch_test_case_scenario_step.call_args
+    assert patch_call.kwargs["step_id"] == 1000
+    assert patch_call.kwargs["patch"].body == "A"
+    assert patch_call.kwargs["patch"].expected_result == "B"
 
 
 @pytest.mark.asyncio
@@ -246,25 +247,31 @@ async def test_create_test_case_with_step_attachments(
     test_case_id = 104
     mock_attachment_service.upload_attachment.assert_called_once_with(test_case_id, step_att)
 
-    # Expect: Action -> Expected -> Attachment (3 separate create_scenario_step calls)
+    # Expect: Action -> Expected -> Attachment (3 create_scenario_step calls) + patch expected
     assert mock_client.create_scenario_step.call_count == 3
+    mock_client.patch_test_case_scenario_step.assert_called_once()
 
-    # Verify the order and nesting: action, expected (child), attachment (child)
+    # Verify the order and nesting: action, attachment (child)
     calls = mock_client.create_scenario_step.call_args_list
 
     # 1. Action
     assert calls[0].kwargs["step"].body == "Act"
     assert calls[0].kwargs["step"].parent_id is None
 
+    # Patch expected result on action step
+    patch_call = mock_client.patch_test_case_scenario_step.call_args
+    assert patch_call.kwargs["step_id"] == 1000
+    assert patch_call.kwargs["patch"].body == "Act"
+    assert patch_call.kwargs["patch"].expected_result == "Exp"
+
     # 2. Expected (child of Action)
     assert calls[1].kwargs["step"].body == "Exp"
     assert calls[1].kwargs["step"].parent_id == 1000
-    assert calls[1].kwargs["after_id"] is None
 
-    # 3. Attachment (child of Action, after Expected)
+    # 3. Attachment (child of Action)
     assert calls[2].kwargs["step"].attachment_id == 888
     assert calls[2].kwargs["step"].parent_id == 1000
-    assert calls[2].kwargs["after_id"] == 1000
+    assert calls[2].kwargs["after_id"] is None
 
 
 # ==========================================

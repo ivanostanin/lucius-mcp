@@ -56,7 +56,7 @@ This project uses `uv` for dependency management.
       --env ALLURE_PROJECT_ID=123 \
       --env ALLURE_API_TOKEN=your_token \
       --env MCP_MODE=stdio \
-      -- uvx --from lucius-mcp start
+      -- uvx --from lucius-mcp --refresh start
     ```
 
 ### Running via Claude Desktop (One-Click Install)
@@ -239,6 +239,6 @@ uv run mypy --strict src/
 1. Bump version in `pyproject.toml`.
 2. Run `uv sync --all-extras` to update dependencies.
 3. Write release notes in `CHANGELOG.md`.
-4. Commit changes.
-5. Create a tag with the new version.
-6. Push commits and tags.
+4. Commit changes and push them to `main` via PR.
+5. Create a tag for the new version on `main`.
+6. Push tag.

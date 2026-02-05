@@ -7,7 +7,8 @@ from pydantic import ValidationError as PydanticValidationError
 from src.client import (
     AllureClient,
     AttachmentStepDtoWithName,
-    BodyStepDtoWithSteps,
+    ScenarioStepPatchDto,
+    StepWithExpected,
 )
 from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError
 from src.client.generated.models import (
@@ -721,13 +722,6 @@ class TestCaseService:
 
             children: list[SharedStepScenarioDtoStepsInner] = []
 
-            if expected:
-                children.append(
-                    SharedStepScenarioDtoStepsInner(
-                        actual_instance=ExpectedBodyStepDto(type="ExpectedBodyStepDto", body=expected)
-                    )
-                )
-
             if step_attachments and isinstance(step_attachments, list):
                 for sa in step_attachments:
                     if isinstance(sa, dict):
@@ -748,7 +742,12 @@ class TestCaseService:
 
             dtos.append(
                 SharedStepScenarioDtoStepsInner(
-                    actual_instance=BodyStepDtoWithSteps(type="BodyStepDto", body=action, steps=children)
+                    actual_instance=StepWithExpected(
+                        type="BodyStepDto",
+                        body=action,
+                        expected_result=expected or None,
+                        steps=children,
+                    )
                 )
             )
         return dtos
@@ -1277,19 +1276,21 @@ class TestCaseService:
                 current_parent_id = response.created_step_id
                 last_step_id = current_parent_id
 
-                # If there's an expected result, create it as a child step under the action
-                if expected:
-                    expected_step_dto = self._build_scenario_step_dto(
-                        test_case_id=test_case_id,
-                        body=expected,
-                        parent_id=current_parent_id,
+                # If there's an expected result, patch the action step
+                if expected and current_parent_id is not None:
+                    await self._client.patch_test_case_scenario_step(
+                        step_id=current_parent_id,
+                        patch=ScenarioStepPatchDto(body=action, expected_result=expected),
                     )
-                    expected_response = await self._client.create_scenario_step(
+                    await self._client.create_scenario_step(
                         test_case_id=test_case_id,
-                        step=expected_step_dto,
-                        after_id=None,  # First child
+                        step=self._build_scenario_step_dto(
+                            test_case_id=test_case_id,
+                            body=expected,
+                            parent_id=current_parent_id,
+                        ),
+                        after_id=None,
                     )
-                    last_child_id = expected_response.created_step_id
 
                 # Step Attachments (added as children of the action step)
                 if step_attachments and isinstance(step_attachments, list):
@@ -1376,6 +1377,22 @@ class TestCaseService:
             resp = await self._client.create_scenario_step(test_case_id=test_case_id, step=step_dto, after_id=after_id)
             created_id = resp.created_step_id
 
+            expected_result = getattr(instance, "expected_result", None)
+            if expected_result and created_id is not None:
+                await self._client.patch_test_case_scenario_step(
+                    step_id=created_id,
+                    patch=ScenarioStepPatchDto(body=instance.body, expected_result=expected_result),
+                )
+                await self._client.create_scenario_step(
+                    test_case_id=test_case_id,
+                    step=self._build_scenario_step_dto(
+                        test_case_id=test_case_id,
+                        body=expected_result,
+                        parent_id=created_id,
+                    ),
+                    after_id=None,
+                )
+
             # Add children (steps may not be a defined field in generated DTO,
             # but we set it via model_construct)
             child_steps = getattr(instance, "steps", None)
@@ -1394,6 +1411,13 @@ class TestCaseService:
         elif isinstance(instance, AttachmentStepDto):
             step_dto = self._build_scenario_step_dto(
                 test_case_id=test_case_id, attachment_id=instance.attachment_id, parent_id=parent_id
+            )
+            resp = await self._client.create_scenario_step(test_case_id=test_case_id, step=step_dto, after_id=after_id)
+            created_id = resp.created_step_id
+
+        elif isinstance(instance, SharedStepStepDto):
+            step_dto = self._build_scenario_step_dto(
+                test_case_id=test_case_id, shared_step_id=instance.shared_step_id, parent_id=parent_id
             )
             resp = await self._client.create_scenario_step(test_case_id=test_case_id, step=step_dto, after_id=after_id)
             created_id = resp.created_step_id
