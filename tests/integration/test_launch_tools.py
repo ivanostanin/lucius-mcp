@@ -69,7 +69,17 @@ async def test_get_launch_tool_output() -> None:
 
                 with patch("src.tools.launches.LaunchService") as mock_service_cls:
                     mock_service = mock_service_cls.return_value
-                    mock_launch = type("LaunchDto", (), {"id": 12, "name": "Launch 12", "closed": True})
+                    mock_launch = type(
+                        "LaunchDto",
+                        (),
+                        {
+                            "id": 12,
+                            "name": "Launch 12",
+                            "closed": True,
+                            "created_date": 100,
+                            "last_modified_date": 200,
+                        },
+                    )
                     mock_service.get_launch = AsyncMock(return_value=mock_launch)
 
                     output = await get_launch(launch_id=12)
@@ -77,3 +87,5 @@ async def test_get_launch_tool_output() -> None:
                     assert "Launch details" in output
                     assert "ID: 12" in output
                     assert "Status: closed" in output
+                    assert "Started: 100" in output
+                    assert "Ended: 200" in output

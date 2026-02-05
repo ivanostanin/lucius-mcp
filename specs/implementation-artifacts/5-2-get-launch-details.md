@@ -1,6 +1,6 @@
 # Story 5.2: Get Launch Details
 
-Status: review
+Status: done
 
 ## Dev Agent Guardrails
 
@@ -139,11 +139,13 @@ gpt-5.2-codex
 - Implemented get_launch across client/service/tool, added launch detail formatter, and kept tool thin.
 - Added unit/integration/e2e coverage for get_launch.
 - Tests run: `uv run --env-file .env.test pytest tests/unit/test_launch_service.py tests/unit/test_launch_tools.py tests/integration/test_launch_client.py tests/integration/test_launch_tools.py` and `uv run --env-file .env.test pytest tests/e2e/test_launches.py`.
+- Added launch-specific not-found error mapping, expanded launch detail summary with start/end and summary fields, and added not-found test coverage.
 
 ### File List
 
 - specs/implementation-artifacts/5-2-get-launch-details.md
 - src/client/client.py
+- src/client/exceptions.py
 - src/services/launch_service.py
 - src/tools/launches.py
 - tests/unit/test_launch_service.py

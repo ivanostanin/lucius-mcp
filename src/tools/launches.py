@@ -104,10 +104,14 @@ async def get_launch(
         LLM-friendly summary of the launch details.
     """
     auth_context = get_auth_context(project_id=project_id)
+    project = auth_context.project_id or settings.ALLURE_PROJECT_ID
+    if project is None:
+        raise ValueError("Project ID is required to retrieve launch details")
+
     async with AllureClient(
         base_url=settings.ALLURE_ENDPOINT,
         token=auth_context.api_token,
-        project=auth_context.project_id or settings.ALLURE_PROJECT_ID,
+        project=project,
     ) as client:
         service = LaunchService(client=client)
         launch = await service.get_launch(launch_id)
@@ -150,15 +154,23 @@ def _format_launch_detail(launch: object) -> str:
     lines.append(f"- Name: {name}")
     lines.append(f"- Status: {status}")
 
+    started_at = getattr(launch, "created_date", None) or getattr(launch, "createdDate", None)
+    ended_at = getattr(launch, "last_modified_date", None) or getattr(launch, "lastModifiedDate", None)
+
+    if started_at is not None:
+        lines.append(f"- Started: {started_at}")
+    if ended_at is not None:
+        lines.append(f"- Ended: {ended_at}")
+
     field_labels = [
-        ("created_date", "Created"),
-        ("createdDate", "Created"),
-        ("last_modified_date", "Last modified"),
-        ("lastModifiedDate", "Last modified"),
         ("project_id", "Project ID"),
         ("projectId", "Project ID"),
         ("autoclose", "Autoclose"),
         ("external", "External"),
+        ("known_defects_count", "Known defects"),
+        ("knownDefectsCount", "Known defects"),
+        ("new_defects_count", "New defects"),
+        ("newDefectsCount", "New defects"),
     ]
 
     seen_labels: set[str] = set()
@@ -170,5 +182,17 @@ def _format_launch_detail(launch: object) -> str:
             continue
         lines.append(f"- {label}: {value}")
         seen_labels.add(label)
+
+    statistic = getattr(launch, "statistic", None)
+    if statistic:
+        summary_parts: list[str] = []
+        for item in statistic:
+            status_label = getattr(item, "status", None)
+            count = getattr(item, "count", None)
+            if status_label is None or count is None:
+                continue
+            summary_parts.append(f"{status_label!s}={count}")
+        if summary_parts:
+            lines.append(f"- Summary: {', '.join(summary_parts)}")
 
     return "\n".join(lines)

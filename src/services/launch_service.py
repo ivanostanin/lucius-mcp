@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pydantic import ValidationError as PydanticValidationError
 
 from src.client import AllureClient, FindAll29200Response, LaunchCreateDto, LaunchDto
-from src.client.exceptions import AllureValidationError
+from src.client.exceptions import AllureNotFoundError, AllureValidationError, LaunchNotFoundError
 from src.client.generated.models.aql_validate_response_dto import AqlValidateResponseDto
 from src.client.generated.models.external_link_dto import ExternalLinkDto
 from src.client.generated.models.issue_dto import IssueDto
@@ -185,7 +185,14 @@ class LaunchService:
         self._validate_project_id(self._project_id)
         self._validate_launch_id(launch_id)
 
-        return await self._client.get_launch(launch_id)
+        try:
+            return await self._client.get_launch(launch_id)
+        except AllureNotFoundError as exc:
+            raise LaunchNotFoundError(
+                launch_id=launch_id,
+                status_code=exc.status_code,
+                response_body=exc.response_body,
+            ) from exc
 
     async def validate_launch_query(self, rql: str) -> tuple[bool, int | None]:
         """Validate an AQL query for launches."""

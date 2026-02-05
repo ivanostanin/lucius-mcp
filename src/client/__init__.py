@@ -32,6 +32,7 @@ from .exceptions import (
     AllureNotFoundError,
     AllureRateLimitError,
     AllureValidationError,
+    LaunchNotFoundError,
     TestCaseNotFoundError,
 )
 
@@ -47,6 +48,7 @@ __all__ = [
     "FindAll29200Response",
     "LaunchCreateDto",
     "LaunchDto",
+    "LaunchNotFoundError",
     "PageLaunchDto",
     "PageLaunchPreviewDto",
     "PageSharedStepDto",

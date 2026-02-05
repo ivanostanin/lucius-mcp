@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from src.client import AllureClient
-from src.client.exceptions import AllureValidationError
+from src.client.exceptions import AllureNotFoundError, AllureValidationError, LaunchNotFoundError
 from src.client.generated.models.find_all29200_response import FindAll29200Response
 from src.client.generated.models.launch_dto import LaunchDto
 from src.client.generated.models.launch_preview_dto import LaunchPreviewDto
@@ -124,3 +124,11 @@ async def test_get_launch_valid(service: LaunchService, mock_client: MagicMock) 
 async def test_get_launch_invalid_id(service: LaunchService) -> None:
     with pytest.raises(AllureValidationError, match="Launch ID must be a positive integer"):
         await service.get_launch(0)
+
+
+@pytest.mark.asyncio
+async def test_get_launch_not_found_maps_error(service: LaunchService, mock_client: MagicMock) -> None:
+    mock_client.get_launch.side_effect = AllureNotFoundError("Not found", status_code=404, response_body="{}")
+
+    with pytest.raises(LaunchNotFoundError, match="Launch ID 99 not found"):
+        await service.get_launch(99)
