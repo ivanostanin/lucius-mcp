@@ -9,6 +9,7 @@ from src.tools.get_test_case_custom_fields import get_test_case_custom_fields
 from src.tools.launches import create_launch, get_launch, list_launches
 from src.tools.link_shared_step import link_shared_step
 from src.tools.list_custom_field_values import list_custom_field_values
+from src.tools.list_integrations import list_integrations
 from src.tools.search import get_test_case_details, list_test_cases, search_test_cases
 from src.tools.shared_steps import create_shared_step, delete_shared_step, list_shared_steps, update_shared_step
 from src.tools.test_layers import (
@@ -43,6 +44,7 @@ __all__ = [
     "get_test_case_details",
     "link_shared_step",
     "list_custom_field_values",
+    "list_integrations",
     "list_launches",
     "list_shared_steps",
     "list_test_cases",
@@ -75,6 +77,8 @@ all_tools: list[ToolFn] = [
     create_launch,
     get_launch,
     list_launches,
+    # Integration Tools
+    list_integrations,
     create_shared_step,
     list_shared_steps,
     update_shared_step,

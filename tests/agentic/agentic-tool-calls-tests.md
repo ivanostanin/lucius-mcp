@@ -62,6 +62,7 @@ From `src/tools/__init__.py:24-79`:
 - `link_shared_step`, `unlink_shared_step`
 - `list_test_layers`, `create_test_layer`, `update_test_layer`, `delete_test_layer`
 - `list_test_layer_schemas`, `create_test_layer_schema`, `update_test_layer_schema`, `delete_test_layer_schema`
+- `list_integrations`
 
 ## Execution plan
 
@@ -215,15 +216,18 @@ From `src/tools/__init__.py:24-79`:
      - Expectation: List DOES NOT contain `id: VALUE_ID`.
 
 #### 9. Issue Linking
-- **Scenario source**: `specs/implementation-artifacts/3-12-support-issue-links-in-test-cases.md`
-- **Goal**: Verify adding, removing, clearing, and validating issue links.
+- **Scenario source**: `specs/implementation-artifacts/3-12-support-issue-links-in-test-cases.md`, `specs/implementation-artifacts/3-13-integration-filtering-for-issue-links.md`
+- **Goal**: Verify adding, removing, clearing, and validating issue links with integration filtering.
 - **Steps**:
-  1. **Create with Issue**: `create_test_case(name="[Agent] TC with Issue", issues=["PROJ-123"])`
+  1. **Discover Integrations**: `list_integrations()`
+     - Expectation: List of available integrations with `id` and `name`.
+     - Action: Capture a valid `id` as `INT_ID` or `name` as `INT_NAME`.
+  2. **Create with Issue**: `create_test_case(name="[Agent] TC with Issue", issues=["PROJ-123"], integration_id=INT_ID)`
      - Expectation: Output contains `"Linked 1 issues"`.
      - Action: Capture `id` as `TC_ISSUE_ID`.
-  2. **Verify Link**: `get_test_case_details(test_case_id=TC_ISSUE_ID)`
+  3. **Verify Link**: `get_test_case_details(test_case_id=TC_ISSUE_ID)`
      - Expectation: `issues` list contains `PROJ-123`.
-  3. **Add Issue**: `update_test_case(test_case_id=TC_ISSUE_ID, issues=["PROJ-456"])`
+  4. **Add Issue (by name)**: `update_test_case(test_case_id=TC_ISSUE_ID, issues=["PROJ-456"], integration_name=INT_NAME)`
      - Expectation: Output contains `"Added 1 issues"`.
   4. **Verify Addition**: `get_test_case_details(test_case_id=TC_ISSUE_ID)`
      - Expectation: `issues` list contains BOTH `PROJ-123` and `PROJ-456`.
@@ -271,7 +275,7 @@ From `src/tools/__init__.py:24-79`:
 - **Test layers**: 6 covers `list_test_layers`, `create_test_layer`, `update_test_layer`, `delete_test_layer`, `list_test_layer_schemas`, `create_test_layer_schema`, `update_test_layer_schema`, `delete_test_layer_schema`.
 - **Launches**: 7 covers `create_launch`, `list_launches`, `get_launch`.
 - **Custom Field Values**: 8 covers `create_custom_field_value`, `list_custom_field_values`, `update_custom_field_value`, `delete_custom_field_value`.
-- **Issue Linking**: 9 covers `issues` parameter in `create_test_case` and `update_test_case` (add, remove, clear).
+- **Issue Linking & Integrations**: 9 covers `list_integrations` and `issues` parameter in `create_test_case` and `update_test_case` (add, remove, clear, explicit integration selection).
 
 ## Notes / constraints
 - Some E2E checks use service-level assertions (scenario DTOs). Manual validation relies on tool outputs + `get_test_case_details` as the closest proxy.
