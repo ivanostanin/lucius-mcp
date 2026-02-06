@@ -1426,8 +1426,8 @@ class AllureClient:
             AllureAPIError: If the API request fails.
         """
         scenario_api = await self._get_api("_scenario_api")
-        await self._call_api(
-            scenario_api.delete_by_id1(
+        await self._call_api_raw(
+            scenario_api.delete_by_id1_without_preload_content(
                 id=step_id,
                 _request_timeout=self._timeout,
             )
