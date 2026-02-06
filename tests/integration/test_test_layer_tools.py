@@ -89,7 +89,7 @@ async def test_update_test_layer_changed() -> None:
             updated_layer = type("TestLayerDto", (), {"id": 5, "name": "New Name"})
             mock_service.update_test_layer = AsyncMock(return_value=(updated_layer, True))
 
-            output = await update_test_layer(layer_id=5, name="New Name")
+            output = await update_test_layer(layer_id=5, name="New Name", confirm=True)
 
             assert "✅ Test layer 5 updated successfully!" in output
             assert "New name: New Name" in output
@@ -107,7 +107,7 @@ async def test_update_test_layer_no_change() -> None:
             unchanged_layer = type("TestLayerDto", (), {"id": 5, "name": "Same Name"})
             mock_service.update_test_layer = AsyncMock(return_value=(unchanged_layer, False))
 
-            output = await update_test_layer(layer_id=5, name="Same Name")
+            output = await update_test_layer(layer_id=5, name="Same Name", confirm=True)
 
             assert "[INFO]" in output
             assert "no changes made" in output
@@ -124,7 +124,7 @@ async def test_delete_test_layer_output() -> None:
             mock_service = mock_service_cls.return_value
             mock_service.delete_test_layer = AsyncMock()
 
-            output = await delete_test_layer(layer_id=7)
+            output = await delete_test_layer(layer_id=7, confirm=True)
 
             assert "✅ Test layer 7 deleted successfully!" in output
 
@@ -194,7 +194,7 @@ async def test_update_test_layer_schema_changed() -> None:
             )
             mock_service.update_test_layer_schema = AsyncMock(return_value=(updated_schema, True))
 
-            output = await update_test_layer_schema(schema_id=30, key="new_key")
+            output = await update_test_layer_schema(schema_id=30, key="new_key", confirm=True)
 
             assert "✅ Test layer schema 30 updated successfully!" in output
             assert "Key: new_key" in output
@@ -211,6 +211,6 @@ async def test_delete_test_layer_schema_output() -> None:
             mock_service = mock_service_cls.return_value
             mock_service.delete_test_layer_schema = AsyncMock()
 
-            output = await delete_test_layer_schema(schema_id=40)
+            output = await delete_test_layer_schema(schema_id=40, confirm=True)
 
             assert "✅ Test layer schema 40 deleted successfully!" in output

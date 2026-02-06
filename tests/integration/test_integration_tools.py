@@ -106,7 +106,7 @@ async def test_update_test_case_tool_passes_integration_params(monkeypatch):
     monkeypatch.setattr(AllureClient, "from_env", Mock(return_value=DummyClient()))
     monkeypatch.setattr(update_test_case_module, "TestCaseService", Mock(return_value=service))
 
-    await update_test_case(test_case_id=123, issues=["PROJ-456"], integration_name="Jira")
+    await update_test_case(test_case_id=123, issues=["PROJ-456"], integration_name="Jira", confirm=True)
 
     service.update_test_case.assert_called_once()
     data = service.update_test_case.call_args[0][1]

@@ -55,7 +55,7 @@ async def test_update_tool_success_output(
     cleanup_tracker.track_test_case(created.id)
 
     # Test Update Tool
-    result = await update_test_case(test_case_id=created.id, description="New Desc")
+    result = await update_test_case(test_case_id=created.id, description="New Desc", confirm=True)
 
     # Check format: "Test Case <id> updated successfully. Changes: description"
     assert f"Test Case {created.id} updated successfully" in result
@@ -71,7 +71,7 @@ async def test_update_tool_not_found_error(project_id: int):
     # Therefore we expect an exception, not a return value.
 
     with pytest.raises(Exception) as excinfo:
-        await update_test_case(test_case_id=fake_id, description="Should fail")
+        await update_test_case(test_case_id=fake_id, description="Should fail", confirm=True)
 
     # Use string conversion of exception to check message
     error_msg = str(excinfo.value)

@@ -149,7 +149,9 @@ async def test_e2e_create_and_delete_test_layer_tools(
     Verify create and delete tools work together.
     """
     # Create via tool
-    layer_name = "E2E-Tool-Layer"
+    import uuid
+
+    layer_name = f"E2E-Tool-Layer-{uuid.uuid4().hex[:8]}"
     create_output = await create_test_layer(name=layer_name, project_id=project_id)
 
     assert "✅" in create_output
@@ -171,7 +173,7 @@ async def test_e2e_create_and_delete_test_layer_tools(
 
     finally:
         # Delete via tool
-        delete_output = await delete_test_layer(layer_id=layer_id, project_id=project_id)
+        delete_output = await delete_test_layer(layer_id=layer_id, project_id=project_id, confirm=True)
         assert "✅" in delete_output
         assert "deleted successfully" in delete_output
 
@@ -197,7 +199,7 @@ async def test_e2e_update_test_layer_tool(
     try:
         # Update via tool
         new_name = "E2E-Update-Layer-Modified"
-        update_output = await update_test_layer(layer_id=layer_id, name=new_name, project_id=project_id)
+        update_output = await update_test_layer(layer_id=layer_id, name=new_name, project_id=project_id, confirm=True)
 
         assert "✅" in update_output or "[INFO]" in update_output
         assert str(layer_id) in update_output
@@ -259,11 +261,12 @@ async def test_e2e_test_layer_schema_tools(
             schema_id=schema_id,
             key=new_key,
             project_id=project_id,
+            confirm=True,
         )
         assert "✅" in update_output or "[INFO]" in update_output
 
         # Delete schema via tool
-        delete_output = await delete_test_layer_schema(schema_id=schema_id, project_id=project_id)
+        delete_output = await delete_test_layer_schema(schema_id=schema_id, project_id=project_id, confirm=True)
         assert "✅" in delete_output
         assert "deleted successfully" in delete_output
 

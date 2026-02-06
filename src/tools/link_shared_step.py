@@ -19,16 +19,9 @@ def _format_steps(scenario: object) -> str:
     for i, step in enumerate(steps):
         # Handle Shared Step
         if step.actual_instance and isinstance(step.actual_instance, SharedStepStepDto):
-            # Ideally we would have the name, but DTO might only have ID if not enriched.
-            # SharedStepStepDto has 'sharedStepId'.
-            # Does it have 'name'? The scenarios steps in 'get_test_case_scenario'
-            # might not have name enriched unless we fetched it or denormalized it.
-            # The _denormalize_to_v2_from_dict doesn't currently inject name.
-            # For now, just show ID.
             output.append(f"{i + 1}. [Shared Step] ID: {step.actual_instance.shared_step_id}")
         else:
             # Inline step
-            # We assume it has some description or body
             body = "Step"
             if hasattr(step.actual_instance, "body"):
                 body = step.actual_instance.body or "Step"
@@ -49,8 +42,10 @@ async def link_shared_step(
         ),
     ] = None,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    confirm: Annotated[bool, Field(description="Must be set to True to proceed with linking. Safety measure.")] = False,
 ) -> str:
     """Link a shared step to a test case.
+    ⚠️ CAUTION: Destructive.
 
     Adds a reference to the shared step in the test case's step list.
     The shared step's actions will expand at execution time.
@@ -65,6 +60,8 @@ async def link_shared_step(
             - None = Append to end (default)
             - N = Insert after step N (so it becomes the (N+1)th step)
         project_id: Optional override for the default Project ID.
+        confirm: Must be set to True to proceed with linking.
+            This is a safety measure to prevent accidental linking.
 
     Returns:
         Confirmation with updated step list preview.
@@ -73,9 +70,17 @@ async def link_shared_step(
         link_shared_step(
             test_case_id=12345,
             shared_step_id=789,  # "Login as Admin"
-            position=0  # Insert at beginning
+            position=0,
+            confirm=True
         )
     """
+    if not confirm:
+        return (
+            "⚠️ Linking requires confirmation.\n\n"
+            "This will add a shared step to the test case scenario. "
+            f"Please call again with confirm=True to proceed with linking "
+            f"shared step {shared_step_id} to test case {test_case_id}."
+        )
 
     async with AllureClient.from_env(project=project_id) as client:
         service = TestCaseService(client=client)

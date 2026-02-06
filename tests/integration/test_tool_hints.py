@@ -189,6 +189,7 @@ async def test_update_test_case_tool_summary_includes_test_layer(monkeypatch):
         test_case_id=1,
         test_layer_id=2,
         project_id=1,
+        confirm=True,
     )
 
     assert "test layer updated" in result

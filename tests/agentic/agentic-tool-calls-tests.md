@@ -97,17 +97,17 @@ From `src/tools/__init__.py:24-79`:
 - **Goal**: Verify bulk and nested updates across various fields.
 - **Prerequisite**: Create a test case and capture as `TC_UPDATE_ID`.
 - **Steps**:
-  1. **Core Fields**: `update_test_case(test_case_id=TC_UPDATE_ID, name="[Agent] Renamed", precondition="Pre-data", expected_result="Final data")`
+  1. **Core Fields**: `update_test_case(test_case_id=TC_UPDATE_ID, name="[Agent] Renamed", precondition="Pre-data", expected_result="Final data", confirm=true)`
      - Expectation: Changes reported for `name`, `precondition`, `expected_result`.
-  2. **Tags**: `update_test_case(test_case_id=TC_UPDATE_ID, tags=["agent-qa", "smoke"])`
+  2. **Tags**: `update_test_case(test_case_id=TC_UPDATE_ID, tags=["agent-qa", "smoke"], confirm=true)`
      - Expectation: Changes reported for `tags`.
-  3. **Nested Steps**: `update_test_case(test_case_id=TC_UPDATE_ID, steps=[{"action":"Parent","steps":[{"action":"Child"}]}])`
+  3. **Nested Steps**: `update_test_case(test_case_id=TC_UPDATE_ID, steps=[{"action":"Parent","steps":[{"action":"Child"}]}], confirm=true)`
      - Expectation: Steps updated successfully.
-  4. **Attachment**: `update_test_case(test_case_id=TC_UPDATE_ID, attachments=[{"name":"pixel.png","content":pixel_b64,"content_type":"image/png"}])`
+  4. **Attachment**: `update_test_case(test_case_id=TC_UPDATE_ID, attachments=[{"name":"pixel.png","content":pixel_b64,"content_type":"image/png"}], confirm=true)`
      - Expectation: Attachment reported in changes.
-  5. **Custom Fields**: Use `get_custom_fields` to find a valid field/value, then: `update_test_case(test_case_id=TC_UPDATE_ID, custom_fields={"Priority":"High"})`
+  5. **Custom Fields**: Use `get_custom_fields` to find a valid field/value, then: `update_test_case(test_case_id=TC_UPDATE_ID, custom_fields={"Priority":"High"}, confirm=true)`
      - Expectation: Custom field update confirmed.
-  6. **Automated Flag**: `update_test_case(test_case_id=TC_UPDATE_ID, automated=true)`
+  6. **Automated Flag**: `update_test_case(test_case_id=TC_UPDATE_ID, automated=true, confirm=true)`
      - Expectation: `automated` updated.
   7. **Verify All**: `get_test_case_details(test_case_id=TC_UPDATE_ID)`
      - Expectation: Inspect output to ensure all above fields match.
@@ -150,13 +150,13 @@ From `src/tools/__init__.py:24-79`:
      - Action: Capture `id` as `SS_ID`.
   2. **Verify Shared**: `list_shared_steps(search="[Agent]")`
      - Expectation: List contains `SS_ID`.
-  3. **Update Shared**: `update_shared_step(step_id=SS_ID, name="[Agent] Shared Auth Updated")`
+  3. **Update Shared**: `update_shared_step(step_id=SS_ID, name="[Agent] Shared Auth Updated", confirm=true)`
      - Expectation: Confirmation of name change.
-  4. **Link to TC**: `link_shared_step(test_case_id=TC_CORE_ID, shared_step_id=SS_ID)`
+  4. **Link to TC**: `link_shared_step(test_case_id=TC_CORE_ID, shared_step_id=SS_ID, confirm=true)`
      - Expectation: Success message with updated steps preview.
   5. **Verify Link**: `get_test_case_details(test_case_id=TC_CORE_ID)`
      - Expectation: Details show the shared step reference.
-  6. **Unlink**: `unlink_shared_step(test_case_id=TC_CORE_ID, shared_step_id=SS_ID)`
+  6. **Unlink**: `unlink_shared_step(test_case_id=TC_CORE_ID, shared_step_id=SS_ID, confirm=true)`
      - Expectation: Confirmation of removal.
   7. **Delete Shared**: `delete_shared_step(step_id=SS_ID, confirm=true)`
      - Expectation: Success message.
@@ -169,16 +169,16 @@ From `src/tools/__init__.py:24-79`:
   2. **Create Layer**: `create_test_layer(name="[Agent] Layer")`
      - Expectation: Confirmation message with ID.
      - Action: Capture `id` as `LAYER_ID`.
-  3. **Update Layer**: `update_test_layer(layer_id=LAYER_ID, name="[Agent] Layer Renamed")`
+  3. **Update Layer**: `update_test_layer(layer_id=LAYER_ID, name="[Agent] Layer Renamed", confirm=true)`
      - Expectation: Confirmation of update.
   4. **Create Schema**: `create_test_layer_schema(key="agent_key", test_layer_id=LAYER_ID, project_id=<PROJECT_ID>)`
      - Expectation: Confirmation message with ID.
      - Action: Capture `id` as `SCHEMA_ID`.
   5. **Verify Schema**: `list_test_layer_schemas(project_id=<PROJECT_ID>)`
      - Expectation: List contains `SCHEMA_ID` mapping to `LAYER_ID`.
-  6. **Delete Schema**: `delete_test_layer_schema(schema_id=SCHEMA_ID)`
+  6. **Delete Schema**: `delete_test_layer_schema(schema_id=SCHEMA_ID, confirm=true)`
      - Expectation: Success message.
-  7. **Delete Layer**: `delete_test_layer(layer_id=LAYER_ID)`
+  7. **Delete Layer**: `delete_test_layer(layer_id=LAYER_ID, confirm=true)`
      - Expectation: Success message.
 
 #### 7. Launches
@@ -206,11 +206,11 @@ From `src/tools/__init__.py:24-79`:
      - Action: Capture `id` as `VALUE_ID`.
   3. **Verify Creation**: `list_custom_field_values(project_id=<PROJECT_ID>, custom_field_id=<CF_ID>)`
      - Expectation: List contains an item with `id: VALUE_ID` and `name: "[Agent] Value"`.
-  4. **Update**: `update_custom_field_value(cfv_id=VALUE_ID, name="[Agent] Value Updated")`
+  4. **Update**: `update_custom_field_value(cfv_id=VALUE_ID, name="[Agent] Value Updated", confirm=true)`
      - Expectation: Output contains `"updated successfully"`.
   5. **Verify Update**: `list_custom_field_values(project_id=<PROJECT_ID>, custom_field_id=<CF_ID>)`
      - Expectation: List item with `id: VALUE_ID` has `name: "[Agent] Value Updated"`.
-  6. **Delete**: `delete_custom_field_value(project_id=<PROJECT_ID>, id=VALUE_ID)`
+  6. **Delete**: `delete_custom_field_value(project_id=<PROJECT_ID>, cfv_id=VALUE_ID, confirm=true)`
      - Expectation: Output contains `"deleted successfully"`.
   7. **Verify Deletion**: `list_custom_field_values(project_id=<PROJECT_ID>, custom_field_id=<CF_ID>)`
      - Expectation: List DOES NOT contain `id: VALUE_ID`.
@@ -227,15 +227,15 @@ From `src/tools/__init__.py:24-79`:
      - Action: Capture `id` as `TC_ISSUE_ID`.
   3. **Verify Link**: `get_test_case_details(test_case_id=TC_ISSUE_ID)`
      - Expectation: `issues` list contains `PROJ-123`.
-  4. **Add Issue (by name)**: `update_test_case(test_case_id=TC_ISSUE_ID, issues=["PROJ-456"], integration_name=INT_NAME)`
+  4. **Add Issue (by name)**: `update_test_case(test_case_id=TC_ISSUE_ID, issues=["PROJ-456"], integration_name=INT_NAME, confirm=true)`
      - Expectation: Output contains `"Added 1 issues"`.
   4. **Verify Addition**: `get_test_case_details(test_case_id=TC_ISSUE_ID)`
      - Expectation: `issues` list contains BOTH `PROJ-123` and `PROJ-456`.
-  5. **Remove Issue**: `update_test_case(test_case_id=TC_ISSUE_ID, remove_issues=["PROJ-123"])`
+  5. **Remove Issue**: `update_test_case(test_case_id=TC_ISSUE_ID, remove_issues=["PROJ-123"], confirm=true)`
      - Expectation: Output contains `"Removed 1 issues"`.
   6. **Verify Removal**: `get_test_case_details(test_case_id=TC_ISSUE_ID)`
      - Expectation: `issues` list contains `PROJ-456` but NOT `PROJ-123`.
-  7. **Clear Issues**: `update_test_case(test_case_id=TC_ISSUE_ID, clear_issues=True)`
+  7. **Clear Issues**: `update_test_case(test_case_id=TC_ISSUE_ID, clear_issues=True, confirm=true)`
      - Expectation: Output contains `"Cleared all issues"`.
   8. **Verify Clear**: `get_test_case_details(test_case_id=TC_ISSUE_ID)`
      - Expectation: `issues` list is empty.

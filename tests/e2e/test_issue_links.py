@@ -74,7 +74,7 @@ async def test_e2e_issue_lifecycle(
     assert any(i.name == issue_key for i in tc.issues), f"Issue {issue_key} not found in {tc.issues}"
 
     # 3. Remove issue via update
-    await update_test_case(test_case_id=test_case_id, remove_issues=[issue_key])
+    await update_test_case(test_case_id=test_case_id, remove_issues=[issue_key], confirm=True)
 
     # 4. Verify removal
     tc = await service.get_test_case(test_case_id)
@@ -82,14 +82,16 @@ async def test_e2e_issue_lifecycle(
     assert issue_key not in current_issues, "Issue should be removed"
 
     # 5. Add issue via update with integration_name
-    await update_test_case(test_case_id=test_case_id, issues=[issue_key], integration_name=integration_name)
+    await update_test_case(
+        test_case_id=test_case_id, issues=[issue_key], integration_name=integration_name, confirm=True
+    )
 
     # 6. Verify addition
     tc = await service.get_test_case(test_case_id)
     assert any(i.name == issue_key for i in (tc.issues or [])), "Issue should be re-added"
 
     # 7. Clear issues
-    await update_test_case(test_case_id=test_case_id, clear_issues=True)
+    await update_test_case(test_case_id=test_case_id, clear_issues=True, confirm=True)
     tc = await service.get_test_case(test_case_id)
     assert not tc.issues, "Issues should be cleared"
 

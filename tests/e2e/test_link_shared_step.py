@@ -69,6 +69,7 @@ async def test_link_shared_step_flow(
         test_case_id=test_case_id,
         shared_step_id=shared_step_id,
         position=None,  # Append
+        confirm=True,
     )
 
     assert "Linked Shared Step" in link_result
@@ -91,6 +92,7 @@ async def test_link_shared_step_flow(
     unlink_result = await unlink_shared_step(
         test_case_id=test_case_id,
         shared_step_id=shared_step_id,
+        confirm=True,
     )
 
     assert "Unlinked Shared Step" in unlink_result
