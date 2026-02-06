@@ -100,7 +100,9 @@ async def test_manage_custom_fields_lifecycle(  # noqa: C901
         custom_fields_update = {target_cf: target_value_1}
         print(f"DEBUG: Update Custom Fields using Tool: {custom_fields_update}")
 
-        await update_test_case(test_case_id=test_case_id, custom_fields=custom_fields_update, project_id=project_id)
+        await update_test_case(
+            test_case_id=test_case_id, custom_fields=custom_fields_update, project_id=project_id, confirm=True
+        )
 
         # 3. Verify Value using Service
         cf_values = await service.get_test_case_custom_fields_values(test_case_id)
@@ -109,7 +111,7 @@ async def test_manage_custom_fields_lifecycle(  # noqa: C901
 
         # 4. Change Value
         await update_test_case(
-            test_case_id=test_case_id, custom_fields={target_cf: target_value_2}, project_id=project_id
+            test_case_id=test_case_id, custom_fields={target_cf: target_value_2}, project_id=project_id, confirm=True
         )
 
         # 5. Verify Change using Service
@@ -120,7 +122,9 @@ async def test_manage_custom_fields_lifecycle(  # noqa: C901
             )
 
         # 6. Clear Value
-        await update_test_case(test_case_id=test_case_id, custom_fields={target_cf: ""}, project_id=project_id)
+        await update_test_case(
+            test_case_id=test_case_id, custom_fields={target_cf: ""}, project_id=project_id, confirm=True
+        )
 
         # 7. Verify Cleared using Service
         cf_values = await service.get_test_case_custom_fields_values(test_case_id)
@@ -134,7 +138,9 @@ async def test_manage_custom_fields_lifecycle(  # noqa: C901
             # Reset target_cf to val1 AND set multiselect entries
             update_payload = {target_cf: target_value_1, multiselect_cf: multiselect_vals}
 
-            await update_test_case(test_case_id=test_case_id, custom_fields=update_payload, project_id=project_id)
+            await update_test_case(
+                test_case_id=test_case_id, custom_fields=update_payload, project_id=project_id, confirm=True
+            )
 
             # 9. Verify Multi-field Update
             cf_values = await service.get_test_case_custom_fields_values(test_case_id)

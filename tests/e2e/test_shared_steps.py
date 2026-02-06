@@ -117,7 +117,7 @@ async def test_update_shared_step_success_e2e(
 
     # 2. Update the name
     new_name = get_unique_name("Updated Name")
-    update_output = await update_shared_step(step_id=shared_step_id, name=new_name)
+    update_output = await update_shared_step(step_id=shared_step_id, name=new_name, confirm=True)
 
     assert "Updated Shared Step" in update_output
     assert new_name in update_output
@@ -149,7 +149,7 @@ async def test_update_shared_step_idempotent_e2e(
     cleanup_tracker.track_shared_step(shared_step_id)
 
     # 2. Update with same name (should be no-op)
-    update_output = await update_shared_step(step_id=shared_step_id, name=name)
+    update_output = await update_shared_step(step_id=shared_step_id, name=name, confirm=True)
 
     assert "No changes needed" in update_output
     assert "already matches" in update_output
@@ -205,5 +205,5 @@ async def test_delete_shared_step_without_confirmation_e2e(
     # 2. Try delete without confirm
     delete_output = await delete_shared_step(step_id=shared_step_id, confirm=False)
 
-    assert "Delete confirmation required" in delete_output
+    assert "⚠️ Deletion requires confirmation" in delete_output
     assert "confirm=True" in delete_output

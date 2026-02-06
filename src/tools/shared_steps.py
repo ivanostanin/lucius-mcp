@@ -86,9 +86,11 @@ async def update_shared_step(
     step_id: Annotated[int, Field(description="The shared step ID to update (required).")],
     name: Annotated[str | None, Field(description="New name for the shared step (optional).")] = None,
     description: Annotated[str | None, Field(description="New description (optional).")] = None,
+    confirm: Annotated[bool, Field(description="Must be set to True to proceed with update. Safety measure.")] = False,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
 ) -> str:
     """Update an existing shared step.
+    ⚠️ CAUTION: Destructive.
 
     ⚠️ IMPORTANT: Changes propagate to ALL test cases using this shared step.
 
@@ -100,6 +102,8 @@ async def update_shared_step(
             Found via list_shared_steps or in the Allure URL.
         name: New name for the shared step (optional).
         description: New description (optional).
+        confirm: Must be set to True to proceed with update.
+            This is a safety measure to prevent accidental updates.
         project_id: Optional override for the default Project ID.
 
     Returns:
@@ -108,9 +112,16 @@ async def update_shared_step(
     Example:
         update_shared_step(
             step_id=789,
-            name="Login as Admin (Updated)"
+            name="Login as Admin (Updated)",
+            confirm=True
         )
     """
+    if not confirm:
+        return (
+            "⚠️ Update requires confirmation.\n\n"
+            "Changes propagate to ALL test cases using this shared step. "
+            f"Please call again with confirm=True to proceed with updating shared step {step_id}."
+        )
 
     async with AllureClient.from_env(project=project_id) as client:
         service = SharedStepService(client=client)
@@ -136,6 +147,7 @@ async def delete_shared_step(
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
 ) -> str:
     """Delete a shared step from the library.
+    ⚠️ CAUTION: Destructive.
 
     ⚠️ CAUTION: If this shared step is used by test cases, deleting it
     will break those references.
@@ -157,9 +169,9 @@ async def delete_shared_step(
     """
     if not confirm:
         return (
-            "⚠️ Delete confirmation required\n\n"
-            "To delete this shared step, set confirm=True.\n\n"
-            "WARNING: Deleting a shared step used by test cases will break those references."
+            "⚠️ Deletion requires confirmation.\n\n"
+            "Deleting a shared step used by test cases will be breaking those references. "
+            f"Please call again with confirm=True to proceed with archiving shared step {step_id}."
         )
 
     async with AllureClient.from_env(project=project_id) as client:

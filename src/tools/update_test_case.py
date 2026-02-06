@@ -71,8 +71,10 @@ async def update_test_case(  # noqa: C901
         ),
     ] = None,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    confirm: Annotated[bool, Field(description="Must be set to True to proceed with update. Safety measure.")] = False,
 ) -> str:
     """Update an existing test case in Allure TestOps.
+    ⚠️ CAUTION: Destructive.
 
     Performs a partial update: only supplied fields are sent to the API. When
     provided, ``steps`` replace all existing steps, and ``attachments`` replace
@@ -97,9 +99,14 @@ async def update_test_case(  # noqa: C901
         workflow_id: ID of the workflow.
         links: New list of external links. Each dict has ``name``, ``url``,
             and optional ``type``.
+        issues: List of issue keys to ADD (e.g. ['PROJ-123']).
+        remove_issues: List of issue keys to REMOVE.
+        clear_issues: If True, remove ALL issues from the test case.
+        integration_id: Optional integration ID for issue linking.
+        integration_name: Optional integration name for issue linking.
         project_id: Optional override for the default Project ID.
-        integration_id: Optional integration ID for issue linking (use list_integrations to find IDs).
-        integration_name: Optional integration name for issue linking (exact case-sensitive match).
+        confirm: Must be set to True to proceed with update.
+            This is a safety measure to prevent accidental updates.
 
     Returns:
         A confirmation message summarizing the update.
@@ -108,6 +115,12 @@ async def update_test_case(  # noqa: C901
         AuthenticationError: If no API token available from environment or
             arguments.
     """
+    if not confirm:
+        return (
+            "⚠️ Update requires confirmation.\n\n"
+            "This will modify test case properties and may overwrite existing data. "
+            f"Please call again with confirm=True to proceed with updating test case {test_case_id}."
+        )
 
     async with AllureClient.from_env(project=project_id) as client:
         service = TestCaseService(client=client)

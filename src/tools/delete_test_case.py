@@ -16,6 +16,7 @@ async def delete_test_case(
     project_id: Annotated[int | None, Field(description="Optional Allure TestOps project ID override.")] = None,
 ) -> str:
     """Archive an obsolete test case.
+    ⚠️ CAUTION: Destructive.
 
     This performs a SOFT DELETE (archive). The test case can typically
     be recovered from the Allure UI if needed.
@@ -24,11 +25,11 @@ async def delete_test_case(
     Historical data and launch associations may be affected.
 
     Args:
-        test_case_id: The Allure test case ID to archive (required).
+        test_case_id: The Allure test case ID to archive.
             Found in the URL: /testcase/12345 -> test_case_id=12345
         confirm: Must be set to True to proceed with deletion.
             This is a safety measure to prevent accidental deletions.
-        project_id: Optional override for the default Project ID.
+        project_id: Optional Allure TestOps project ID override.
 
     Returns:
         Confirmation message with the archived test case details.
@@ -36,8 +37,8 @@ async def delete_test_case(
     if not confirm:
         return (
             "⚠️ Deletion requires confirmation.\n\n"
-            "Please call again with confirm=True to proceed with archiving "
-            f"test case {test_case_id}."
+            "Archiving test cases removes them from active views. "
+            f"Please call again with confirm=True to proceed with archiving test case {test_case_id}."
         )
 
     async with AllureClient.from_env(project=project_id) as client:

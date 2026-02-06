@@ -31,8 +31,12 @@ async def unlink_shared_step(
     test_case_id: Annotated[int, Field(description="The test case to modify.")],
     shared_step_id: Annotated[int, Field(description="The shared step to unlink.")],
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    confirm: Annotated[
+        bool, Field(description="Must be set to True to proceed with unlinking. Safety measure.")
+    ] = False,
 ) -> str:
     """Remove a shared step reference from a test case.
+    ⚠️ CAUTION: Destructive.
 
     Removes the link to the shared step. The test case will no longer
     include those steps at execution time.
@@ -41,6 +45,8 @@ async def unlink_shared_step(
         test_case_id: The test case to modify.
         shared_step_id: The shared step to unlink.
         project_id: Optional override for the default Project ID.
+        confirm: Must be set to True to proceed with unlinking.
+            This is a safety measure to prevent accidental unlinking.
 
     Returns:
         Confirmation with updated step list.
@@ -49,8 +55,15 @@ async def unlink_shared_step(
     remains in the library and other test cases are unaffected.
 
     Example:
-        unlink_shared_step(test_case_id=12345, shared_step_id=789)
+        unlink_shared_step(test_case_id=12345, shared_step_id=789, confirm=True)
     """
+    if not confirm:
+        return (
+            "⚠️ Unlinking requires confirmation.\n\n"
+            "This will remove a shared step from the test case scenario. "
+            f"Please call again with confirm=True to proceed with unlinking "
+            f"shared step {shared_step_id} from test case {test_case_id}."
+        )
 
     async with AllureClient.from_env(project=project_id) as client:
         service = TestCaseService(client=client)

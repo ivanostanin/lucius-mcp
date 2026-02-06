@@ -11,16 +11,29 @@ from src.services.test_layer_service import TestLayerService
 async def delete_test_layer(
     layer_id: Annotated[int, Field(description="ID of the test layer to delete.")],
     project_id: Annotated[int | None, Field(description="Allure TestOps project ID.")] = None,
+    confirm: Annotated[
+        bool, Field(description="Must be set to True to proceed with deletion. Safety measure.")
+    ] = False,
 ) -> str:
     """Delete a test layer from Allure TestOps.
+    ⚠️ CAUTION: Destructive.
 
     Args:
-        layer_id: ID of the test layer to delete
-        project_id: Optional project ID override
+        layer_id: ID of the test layer to delete.
+        project_id: Optional Allure TestOps project ID override.
+        confirm: Must be set to True to proceed with deletion.
+            This is a safety measure to prevent accidental deletions.
 
     Returns:
-        Confirmation message
+        Confirmation message.
     """
+    if not confirm:
+        return (
+            "⚠️ Deletion requires confirmation.\n\n"
+            "Deleting a test layer may affect test case categorization. "
+            f"Please call again with confirm=True to proceed with deleting test layer {layer_id}."
+        )
+
     async with AllureClient.from_env(project=project_id) as client:
         service = TestLayerService(client)
         deleted = await service.delete_test_layer(layer_id=layer_id)

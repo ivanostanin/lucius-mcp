@@ -36,8 +36,9 @@ async def test_delete_test_case_tool_confirmation_required(mock_service: Mock, m
     result = await delete_test_case(test_case_id=test_case_id, confirm=False)
 
     # THEN: Returns warning message requiring confirmation
-    assert "requires confirmation" in result
+    assert "Deletion requires confirmation" in result
     assert "confirm=True" in result
+    assert "Archiving test cases removes them" in result
     assert str(test_case_id) in result
 
     # AND: Service is never instantiated (safety check prevented execution)

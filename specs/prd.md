@@ -261,6 +261,7 @@ He tries to make his agent create a test case with a missing required field. The
 *   **FR14:** Agents can override authentication context (Project ID) via tool arguments at runtime.
 *   **FR15:** The system validates all inputs against strict schemas before sending to upstream API.
 *   **FR16:** The system provides descriptive error hints when validation fails (e.g., "Missing field X").
+*   **FR17:** All automated agents and tools using destructive functions (update, delete, link, unlink) MUST include `confirm=True` to proceed with modifications.
 
 ## Non-Functional Requirements
 
@@ -291,3 +292,4 @@ He tries to make his agent create a test case with a missing required field. The
     *   `mcp_tool_usage_count` (labeled by tool name)
     *   `mcp_tool_error_count` (labeled by error type)
     *   `mcp_tool_latency_ms` (histogram)
+*   **NFR16:** All new and changed tools must be covered by manual validation scenarios in `tests/agentic/agentic-tool-calls-tests.md`.
