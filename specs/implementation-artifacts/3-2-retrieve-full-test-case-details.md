@@ -1,6 +1,6 @@
 # Story 3.2: Retrieve Full Test Case Details
 
-Status: review
+Status: done
 
 ## Story
 

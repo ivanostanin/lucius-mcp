@@ -91,6 +91,22 @@
       "description": "List all custom fields available in a project."
     },
     {
+      "name": "list_custom_field_values",
+      "description": "List available values for a custom field."
+    },
+    {
+      "name": "create_custom_field_value",
+      "description": "Create a new custom field value option."
+    },
+    {
+      "name": "update_custom_field_value",
+      "description": "Update an existing custom field value."
+    },
+    {
+      "name": "delete_custom_field_value",
+      "description": "Delete a custom field value."
+    },
+    {
       "name": "list_test_layers",
       "description": "List test layers to discover available test layer taxonomy."
     },

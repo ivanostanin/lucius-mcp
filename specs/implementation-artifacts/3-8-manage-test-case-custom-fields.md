@@ -1,6 +1,6 @@
 # Story 3.8: Manage Test Case Custom Fields
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: This story builds on Story 3.6 (get_custom_fields) to provide full custom field lifecycle management -->
 

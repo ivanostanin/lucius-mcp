@@ -1,6 +1,9 @@
+import uuid
+
 import pytest
 
 from src.client import AllureClient
+from src.services.custom_field_value_service import CustomFieldValueService
 from src.services.test_case_service import TestCaseService
 from src.tools.update_test_case import update_test_case
 from tests.e2e.helpers.cleanup import CleanupTracker
@@ -14,136 +17,157 @@ async def test_manage_custom_fields_lifecycle(  # noqa: C901
 ) -> None:
     """
     E2E Test for Managing Custom Fields.
-    1. Create Test Case
-    2. Update Custom Fields (add value)
-    3. Verify Value
-    4. Update Custom Fields (change value)
-    5. Verify Change
-    6. Clear Custom Field
-    7. Verify Cleared
-    8. Update Multiple Custom Fields
-    9. Verify Multi-field Update
+
+    1. Discover target CF (single and optional multiselect).
+    2. Dynamically create ephemeral values for target CFs (single & multi).
+    3. Create Test Case with initial custom field values.
+    4. Verify Value (creation).
+    5. Update Custom Fields (change value).
+    6. Verify Change.
+    7. Clear Custom Field (set to empty).
+    8. Verify Cleared.
+    9. Update Multiple Custom Fields (Multiselect support).
+    10. Verify Multi-field Update (reset single, set multi).
+    11. Cleanup ephemeral values.
     """
     service = TestCaseService(client=allure_client)
+    cf_value_service = CustomFieldValueService(client=allure_client)
 
     # 1. Discover available custom fields to use for testing
     project_cfs = await allure_client.get_custom_fields_with_values(project_id)
     target_cf = None
-    target_id = -999
-    target_value_1 = None
-    target_value_2 = None
-    # Find a suitable CF: Not required (to avoid setup issues), has at least 2 values
+    multiselect_cf = None
+
+    # Find a suitable CF: Not required (to avoid setup issues)
     for cf in project_cfs:
         if cf.custom_field:
             p_cf = cf.custom_field
-            g_cf = p_cf.custom_field
-            print(f"DISCOVERED CF: {p_cf.name}")
-            print(f"  Project CF ID: {p_cf.id}")
-            print(f"  Global CF ID: {g_cf.id if g_cf else 'None'}")
-            print(f"  Values Count: {len(cf.values or [])}")
-            if not p_cf.required and cf.values and len(cf.values) >= 2:
-                if not target_cf or (p_cf.id > 0 and target_id < 0):
+            if not p_cf.required and p_cf.id > 0:
+                if not target_cf:
                     target_cf = p_cf.name
-                    target_id = p_cf.id
-                    target_value_1 = cf.values[0].name
-                    target_value_2 = cf.values[1].name
-                    print(f"  => SELECTED as target: {target_cf} (ID: {target_id})")
+
+                # Check for multiselect candidate
+                if not multiselect_cf:
+                    # Check if single_select is explicitly False
+                    is_single = p_cf.single_select
+                    if is_single is False:
+                        multiselect_cf = p_cf.name
+
+                if target_cf and multiselect_cf:
+                    break
 
     if not target_cf:
-        pytest.skip("No suitable custom field found in project (need optional field with >= 2 values)")
+        pytest.skip("No suitable custom field found in project")
 
-    # 2. Create Test Case WITH Custom Fields
-    case_name = "E2E Custom Fields Management"
-    custom_fields_init = {target_cf: target_value_1}
-    created_case = await service.create_test_case(name=case_name, custom_fields=custom_fields_init)
+    # Dynamic Value Creation for Single Select
+    unique_suffix = uuid.uuid4().hex[:8]
+    val1_name = f"e2e-val1-{unique_suffix}"
+    val2_name = f"e2e-val2-{unique_suffix}"
 
-    test_case_id = created_case.id
-    assert test_case_id is not None
-    cleanup_tracker.track_test_case(test_case_id)
+    ephemeral_values = {target_cf: [val1_name, val2_name]}
 
-    print(f"Using Custom Field: {target_cf} with values {target_value_1}, {target_value_2}")
-    print(f"DEBUG: Created Case Automated Status: {created_case.automated}")
+    print(f"Creating ephemeral values for CF '{target_cf}': {val1_name}, {val2_name}")
+    await cf_value_service.create_custom_field_value(custom_field_name=target_cf, name=val1_name)
+    await cf_value_service.create_custom_field_value(custom_field_name=target_cf, name=val2_name)
 
-    # DEBUG: See what the server says about current custom fields
-    existing_dtos = await allure_client.get_test_case_custom_fields(test_case_id, project_id)
-    print(f"DEBUG: Created Test Case: {created_case.id}")
-    print("DEBUG: Existing Custom Fields on Test Case:")
-    for d in existing_dtos:
-        print(f"CF: {d.custom_field.name} (ID: {d.custom_field.id})")
-        print(f"  Nested CF ID: {d.custom_field.custom_field.id if d.custom_field.custom_field else 'None'}")
-        print(f"  Values: {[v.name for v in d.values or []]}")
-        print(f"  Raw DTO: {d.model_dump()}")
+    # Dynamic Value Creation for Multi Select (if found)
+    multiselect_vals = []
+    if multiselect_cf:
+        ms_val1 = f"e2e-ms1-{unique_suffix}"
+        ms_val2 = f"e2e-ms2-{unique_suffix}"
+        print(f"Creating ephemeral values for Multiselect CF '{multiselect_cf}': {ms_val1}, {ms_val2}")
+        await cf_value_service.create_custom_field_value(custom_field_name=multiselect_cf, name=ms_val1)
+        await cf_value_service.create_custom_field_value(custom_field_name=multiselect_cf, name=ms_val2)
+        ephemeral_values[multiselect_cf] = [ms_val1, ms_val2]
+        multiselect_vals = [ms_val1, ms_val2]
 
-    # 2. Update Custom Fields using Standard Tool (Patched)
-    custom_fields_update = {target_cf: target_value_1}
-    print(f"DEBUG: Update Custom Fields using Tool: {custom_fields_update}")
+    target_value_1 = val1_name
+    target_value_2 = val2_name
 
-    await update_test_case(test_case_id=test_case_id, custom_fields=custom_fields_update, project_id=project_id)
+    try:
+        # 2. Create Test Case WITH Custom Fields
+        case_name = "E2E Custom Fields Management"
+        custom_fields_init = {target_cf: target_value_1}
+        created_case = await service.create_test_case(name=case_name, custom_fields=custom_fields_init)
 
-    # 3. Verify Value using Service (since tool returns formatted string)
-    cf_values = await service.get_test_case_custom_fields_values(test_case_id)
-    assert cf_values.get(target_cf) == target_value_1
+        test_case_id = created_case.id
+        assert test_case_id is not None
+        cleanup_tracker.track_test_case(test_case_id)
 
-    # 4. Change Value
-    await update_test_case(test_case_id=test_case_id, custom_fields={target_cf: target_value_2}, project_id=project_id)
+        print(f"Using Custom Field: {target_cf} with values {target_value_1}, {target_value_2}")
 
-    # 5. Verify Change using Service
-    cf_values = await service.get_test_case_custom_fields_values(test_case_id)
-    assert cf_values.get(target_cf) == target_value_2
+        # 2. Update Custom Fields using Standard Tool (Patched)
+        custom_fields_update = {target_cf: target_value_1}
+        print(f"DEBUG: Update Custom Fields using Tool: {custom_fields_update}")
 
-    # 6. Clear Value
-    await update_test_case(test_case_id=test_case_id, custom_fields={target_cf: ""}, project_id=project_id)
+        await update_test_case(test_case_id=test_case_id, custom_fields=custom_fields_update, project_id=project_id)
 
-    # 7. Verify Cleared using Service
-    cf_values = await service.get_test_case_custom_fields_values(test_case_id)
-    val = cf_values.get(target_cf)
-    # If key is missing or is empty list/string, it's considered cleared
-    assert val is None or val == [] or val == ""
-    # 8. Update multiple custom fields with proper assertions
-    optional_fields = []
-    for cf in project_cfs:
-        if not cf.custom_field or not cf.custom_field.custom_field:
-            continue
-        project_cf = cf.custom_field
-        global_cf = project_cf.custom_field
-        if project_cf.required or not global_cf.name:
-            continue
-        values = [v.name for v in (cf.values or []) if v.name]
-        if not values:
-            continue
-        single_select = getattr(global_cf, "single_select", True)
-        if single_select is None:
-            single_select = True
-        optional_fields.append({"name": global_cf.name, "values": values, "single_select": single_select})
+        # 3. Verify Value using Service
+        cf_values = await service.get_test_case_custom_fields_values(test_case_id)
+        if cf_values.get(target_cf) != target_value_1:
+            pytest.fail(f"Custom field value mismatch. Expected {target_value_1}, got {cf_values.get(target_cf)}")
 
-    update_payload: dict[str, str | list[str]] = {target_cf: target_value_2}
-    expected_values: dict[str, str | list[str]] = {target_cf: target_value_2}
+        # 4. Change Value
+        await update_test_case(
+            test_case_id=test_case_id, custom_fields={target_cf: target_value_2}, project_id=project_id
+        )
 
-    for cf in optional_fields:
-        if cf["name"] in update_payload:
-            continue
-        if cf["single_select"] is False and len(cf["values"]) >= 2:
-            update_payload[cf["name"]] = [cf["values"][0], cf["values"][1]]
-            expected_values[cf["name"]] = [cf["values"][0], cf["values"][1]]
-            break
+        # 5. Verify Change using Service
+        cf_values = await service.get_test_case_custom_fields_values(test_case_id)
+        if cf_values.get(target_cf) != target_value_2:
+            pytest.fail(
+                f"Custom field value change mismatch. Expected {target_value_2}, got {cf_values.get(target_cf)}"
+            )
 
-    for cf in optional_fields:
-        if cf["name"] in update_payload:
-            continue
-        update_payload[cf["name"]] = cf["values"][0]
-        expected_values[cf["name"]] = cf["values"][0]
-        break
+        # 6. Clear Value
+        await update_test_case(test_case_id=test_case_id, custom_fields={target_cf: ""}, project_id=project_id)
 
-    if len(update_payload) < 2:
-        pytest.skip("No additional optional custom fields with values available for multi-field update")
+        # 7. Verify Cleared using Service
+        cf_values = await service.get_test_case_custom_fields_values(test_case_id)
+        val = cf_values.get(target_cf)
+        if not (val is None or val == [] or val == ""):
+            pytest.fail(f"Custom field value should be cleared. Got: {val}")
 
-    await update_test_case(test_case_id=test_case_id, custom_fields=update_payload, project_id=project_id)
+        # 8. Update Multiple Custom Fields (Multiselect)
+        if multiselect_cf:
+            print(f"Testing Multiselect CF: {multiselect_cf} with values {multiselect_vals}")
+            # Reset target_cf to val1 AND set multiselect entries
+            update_payload = {target_cf: target_value_1, multiselect_cf: multiselect_vals}
 
-    # 9. Verify multi-field update
-    cf_values = await service.get_test_case_custom_fields_values(test_case_id)
-    for field_name, expected in expected_values.items():
-        actual = cf_values.get(field_name)
-        if isinstance(actual, list) and isinstance(expected, list):
-            assert sorted(actual) == sorted(expected)
+            await update_test_case(test_case_id=test_case_id, custom_fields=update_payload, project_id=project_id)
+
+            # 9. Verify Multi-field Update
+            cf_values = await service.get_test_case_custom_fields_values(test_case_id)
+
+            # Check single select reset
+            if cf_values.get(target_cf) != target_value_1:
+                pytest.fail(
+                    f"Failed to reset single select CF. Expected {target_value_1}, got {cf_values.get(target_cf)}"
+                )
+
+            # Check multiselect
+            actual_ms = cf_values.get(multiselect_cf)
+            if not isinstance(actual_ms, list):
+                actual_ms = [actual_ms] if actual_ms else []
+
+            # Sort for comparison
+            if sorted(actual_ms) != sorted(multiselect_vals):
+                pytest.fail(
+                    f"Multiselect mismatch. Expected sorted {sorted(multiselect_vals)}, got sorted {sorted(actual_ms)}"
+                )
         else:
-            assert actual == expected
+            print("Skipping Multiselect test (no suitable CF found)")
+
+    finally:
+        # Cleanup Custom Field Values
+        print("Cleaning up ephemeral custom field values...")
+        for cf_name, created_names in ephemeral_values.items():
+            try:
+                page = await cf_value_service.list_custom_field_values(custom_field_name=cf_name, size=1000)
+                if page and page.content:
+                    for v in page.content:
+                        if v.name in created_names:
+                            print(f"Deleting CF Value {v.name} (ID: {v.id})")
+                            await cf_value_service.delete_custom_field_value(custom_field_name=cf_name, cfv_id=v.id)
+            except Exception as e:
+                print(f"Error during cleanup of CF values for '{cf_name}': {e}")

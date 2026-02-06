@@ -1,6 +1,6 @@
 # Story 3.12: Support Issue Links in Test Cases
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: This story extends create_test_case and update_test_case tools to support Jira/GitHub issue linking -->
 

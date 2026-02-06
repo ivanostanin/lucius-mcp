@@ -1,9 +1,17 @@
 """Service layer modules for lucius-mcp."""
 
 from .attachment_service import AttachmentService
+from .custom_field_value_service import CustomFieldValueService
 from .search_service import SearchService
 from .shared_step_service import SharedStepService
 from .test_case_service import TestCaseService
 from .test_layer_service import TestLayerService
 
-__all__ = ["AttachmentService", "SearchService", "SharedStepService", "TestCaseService", "TestLayerService"]
+__all__ = [
+    "AttachmentService",
+    "CustomFieldValueService",
+    "SearchService",
+    "SharedStepService",
+    "TestCaseService",
+    "TestLayerService",
+]

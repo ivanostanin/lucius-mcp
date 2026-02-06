@@ -1,6 +1,6 @@
 # Story 3.9: Test Layer Validation in create_test_case
 
-Status: in-progress
+Status: done
 
 <!-- Note: This story addresses AC #12 from Story 3.7 which was deferred during implementation -->
 

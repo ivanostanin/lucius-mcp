@@ -1188,7 +1188,15 @@ class TestCaseService:
         """Get or fetch custom field name-to-info mapping for a project."""
         if project_id in self._cf_cache:
             return self._cf_cache[project_id]
+        return await self._fetch_resolved_custom_fields(project_id)
 
+    async def refresh_resolved_custom_fields(self, project_id: int) -> dict[str, ResolvedCustomFieldInfo]:
+        """Refresh cached custom field name-to-info mapping for a project."""
+        if project_id in self._cf_cache:
+            del self._cf_cache[project_id]
+        return await self._fetch_resolved_custom_fields(project_id)
+
+    async def _fetch_resolved_custom_fields(self, project_id: int) -> dict[str, ResolvedCustomFieldInfo]:
         # Use the client wrapper method for consistent error handling and response processing
         cfs = await self._client.get_custom_fields_with_values(project_id)
         logger.debug("Fetched %d custom fields for project %d", len(cfs), project_id)

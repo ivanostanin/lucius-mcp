@@ -26,6 +26,7 @@ from .exceptions import (
 from .generated.api.custom_field_controller_api import CustomFieldControllerApi
 from .generated.api.custom_field_project_controller_api import CustomFieldProjectControllerApi
 from .generated.api.custom_field_project_controller_v2_api import CustomFieldProjectControllerV2Api
+from .generated.api.custom_field_value_controller_api import CustomFieldValueControllerApi
 from .generated.api.custom_field_value_project_controller_api import CustomFieldValueProjectControllerApi
 from .generated.api.integration_controller_api import IntegrationControllerApi
 from .generated.api.launch_controller_api import LaunchControllerApi
@@ -47,6 +48,8 @@ from .generated.models.aql_validate_response_dto import AqlValidateResponseDto
 from .generated.models.attachment_step_dto import AttachmentStepDto
 from .generated.models.body_step_dto import BodyStepDto
 from .generated.models.custom_field_project_with_values_dto import CustomFieldProjectWithValuesDto
+from .generated.models.custom_field_value_project_create_dto import CustomFieldValueProjectCreateDto
+from .generated.models.custom_field_value_project_patch_dto import CustomFieldValueProjectPatchDto
 from .generated.models.custom_field_value_with_cf_dto import CustomFieldValueWithCfDto
 from .generated.models.custom_field_with_values_dto import CustomFieldWithValuesDto
 from .generated.models.find_all29200_response import FindAll29200Response
@@ -54,6 +57,7 @@ from .generated.models.integration_dto import IntegrationDto
 from .generated.models.issue_dto import IssueDto
 from .generated.models.launch_create_dto import LaunchCreateDto
 from .generated.models.launch_dto import LaunchDto
+from .generated.models.page_custom_field_value_with_tc_count_dto import PageCustomFieldValueWithTcCountDto
 from .generated.models.page_launch_dto import PageLaunchDto
 from .generated.models.page_launch_preview_dto import PageLaunchPreviewDto
 from .generated.models.page_shared_step_dto import PageSharedStepDto
@@ -135,6 +139,7 @@ type ApiType = (
     | CustomFieldControllerApi
     | CustomFieldProjectControllerApi
     | CustomFieldProjectControllerV2Api
+    | CustomFieldValueControllerApi
     | CustomFieldValueProjectControllerApi
     | TestLayerControllerApi
     | TestLayerSchemaControllerApi
@@ -248,6 +253,7 @@ class AllureClient:
         self._custom_field_api: CustomFieldControllerApi | None = None
         self._custom_field_project_api: CustomFieldProjectControllerApi | None = None
         self._custom_field_project_v2_api: CustomFieldProjectControllerV2Api | None = None
+        self._custom_field_value_api: CustomFieldValueControllerApi | None = None
         self._custom_field_value_project_api: CustomFieldValueProjectControllerApi | None = None
         self._test_layer_api: TestLayerControllerApi | None = None
         self._test_layer_schema_api: TestLayerSchemaControllerApi | None = None
@@ -394,6 +400,7 @@ class AllureClient:
             self._custom_field_api = CustomFieldControllerApi(self._api_client)
             self._custom_field_project_api = CustomFieldProjectControllerApi(self._api_client)
             self._custom_field_project_v2_api = CustomFieldProjectControllerV2Api(self._api_client)
+            self._custom_field_value_api = CustomFieldValueControllerApi(self._api_client)
             self._custom_field_value_project_api = CustomFieldValueProjectControllerApi(self._api_client)
             self._test_layer_api = TestLayerControllerApi(self._api_client)
             self._test_layer_schema_api = TestLayerSchemaControllerApi(self._api_client)
@@ -547,6 +554,11 @@ class AllureClient:
     async def _get_api(
         self, attr_name: Literal["_custom_field_project_v2_api"], *, error_name: str | None = None
     ) -> CustomFieldProjectControllerV2Api: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_custom_field_value_api"], *, error_name: str | None = None
+    ) -> CustomFieldValueControllerApi: ...
 
     @overload
     async def _get_api(
@@ -1144,6 +1156,165 @@ class AllureClient:
             step,
             after_id=after_id,
             with_expected_result=with_expected_result,
+        )
+
+    async def list_custom_field_values(
+        self,
+        project_id: int,
+        custom_field_id: int,
+        *,
+        query: str | None = None,
+        var_global: bool | None = None,
+        test_case_search: str | None = None,
+        page: int | None = None,
+        size: int | None = None,
+        sort: list[str] | None = None,
+    ) -> PageCustomFieldValueWithTcCountDto:
+        """List custom field values for a project field.
+
+        Args:
+            project_id: Target project ID.
+            custom_field_id: Target custom field ID (project-scoped).
+            query: Optional search query.
+            var_global: Optional global flag filter.
+            test_case_search: Optional test case search filter.
+            page: Zero-based page index.
+            size: Page size.
+            sort: Optional sort criteria.
+
+        Returns:
+            Paginated custom field values with test case counts.
+
+        Raises:
+            AllureNotFoundError: If project or custom field doesn't exist.
+            AllureValidationError: If input data fails validation.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
+        """
+        api = await self._get_api("_custom_field_value_project_api")
+
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+        if not isinstance(custom_field_id, int) or custom_field_id == 0:
+            raise AllureValidationError("Custom Field ID must be a non-zero integer")
+        if page is not None and (not isinstance(page, int) or page < 0):
+            raise AllureValidationError("Page must be a non-negative integer")
+        if size is not None and (not isinstance(size, int) or size <= 0 or size > 1000):
+            raise AllureValidationError("Size must be between 1 and 1000")
+
+        return await self._call_api(
+            api.find_all22(
+                project_id=project_id,
+                custom_field_id=custom_field_id,
+                query=query,
+                var_global=var_global,
+                test_case_search=test_case_search,
+                page=page,
+                size=size,
+                sort=sort,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def create_custom_field_value(
+        self, project_id: int, data: CustomFieldValueProjectCreateDto
+    ) -> CustomFieldValueWithCfDto:
+        """Create a custom field value in a project.
+
+        Args:
+            project_id: Target project ID.
+            data: Custom field value payload.
+
+        Returns:
+            The created custom field value DTO.
+
+        Raises:
+            AllureNotFoundError: If project doesn't exist.
+            AllureValidationError: If input data fails validation.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
+        """
+        api = await self._get_api("_custom_field_value_project_api")
+
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+
+        try:
+            return await self._call_api(
+                api.create26(
+                    project_id=project_id,
+                    custom_field_value_project_create_dto=data,
+                    _request_timeout=self._timeout,
+                )
+            )
+        except AllureAPIError as exc:
+            if exc.status_code == 409:
+                raise AllureValidationError(
+                    "Duplicate custom field value name.",
+                    status_code=exc.status_code,
+                    response_body=exc.response_body,
+                    suggestions=["Use a unique custom field value name"],
+                ) from exc
+            raise
+
+    async def update_custom_field_value(
+        self, project_id: int, cfv_id: int, data: CustomFieldValueProjectPatchDto
+    ) -> None:
+        """Update a custom field value in a project.
+
+        Args:
+            project_id: Target project ID.
+            cfv_id: Target custom field value ID.
+            data: Patch payload for the custom field value.
+
+        Raises:
+            AllureNotFoundError: If project or value doesn't exist.
+            AllureValidationError: If input data fails validation.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
+        """
+        api = await self._get_api("_custom_field_value_project_api")
+
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+        if not isinstance(cfv_id, int) or cfv_id <= 0:
+            raise AllureValidationError("Custom Field Value ID must be a positive integer")
+
+        await self._call_api(
+            api.patch23(
+                project_id=project_id,
+                cfv_id=cfv_id,
+                custom_field_value_project_patch_dto=data,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def delete_custom_field_value(self, project_id: int, cfv_id: int) -> None:
+        """Delete a custom field value in a project.
+
+        Args:
+            project_id: Target project ID.
+            cfv_id: Target custom field value ID.
+
+        Raises:
+            AllureNotFoundError: If project or value doesn't exist.
+            AllureValidationError: If input data fails validation.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
+        """
+        api = await self._get_api("_custom_field_value_project_api")
+
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+        if not isinstance(cfv_id, int) or cfv_id <= 0:
+            raise AllureValidationError("Custom Field Value ID must be a positive integer")
+
+        await self._call_api(
+            api.delete47(
+                project_id=project_id,
+                id=cfv_id,
+                _request_timeout=self._timeout,
+            )
         )
 
     async def get_custom_fields_with_values(self, project_id: int) -> list[CustomFieldProjectWithValuesDto]:

@@ -59,7 +59,7 @@ development_status:
   epic-2-retrospective: optional
 
   # Epic 3: Search & Contextual Access (MVP)
-  epic-3: in-progress
+  epic-3: done
   3-1-list-test-cases-by-project: done
   3-2-retrieve-full-test-case-details: done
   3-3-search-test-cases-by-name-or-tag: done
@@ -70,8 +70,8 @@ development_status:
   3-8-manage-test-case-custom-fields: done
   3-9-test-layer-validation-in-create-test-case: done
   3-10-add-test-test_layers-handling-in-update_test_case-tool: done
-  3-11-crud-custom-field-values: ready-for-dev
-  3-12-support-issue-links-in-test-cases: ready-for-dev
+  3-11-crud-custom-field-values: done
+  3-12-support-issue-links-in-test-cases: done
   epic-3-retrospective: optional
 
   # Epic 4: Production Operations (Phase 2 Priority)
