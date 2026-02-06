@@ -25,22 +25,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python Environment
         uses: ./.github/actions/python-setup
         with:
           python-version: ${{ inputs.python-version }}
-      
+
       - name: Run ruff linting
         if: ${{ inputs.run-lint }}
         run: uv run ruff check .
-      
+
       - name: Run mypy type checking
         if: ${{ inputs.run-typecheck }}
         run: uv run mypy src
-      
+
       - name: Run unit and integration tests
         if: ${{ inputs.run-tests }}
         run: |
           echo "CI=true" > .env.test
-          uv run --env-file .env.test pytest tests/unit/ tests/integration/ -v
+          uv run --env-file .env.test pytest tests/unit/ tests/integration/ tests/docs/ -v
