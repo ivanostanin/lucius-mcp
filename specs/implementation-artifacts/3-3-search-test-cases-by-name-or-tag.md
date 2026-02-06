@@ -1,6 +1,6 @@
 # Story 3.3: Search Test Cases by Name or Tag
 
-Status: in-progress
+Status: done
 
 ## Story
 

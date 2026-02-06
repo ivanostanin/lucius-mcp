@@ -1,6 +1,6 @@
 # Story 3.1: List Test Cases by Project
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
