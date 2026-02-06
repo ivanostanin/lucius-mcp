@@ -84,6 +84,8 @@ class TestCaseUpdate:
     issues: list[str] | None = None
     remove_issues: list[str] | None = None
     clear_issues: bool | None = None
+    integration_id: int | None = None
+    integration_name: str | None = None
 
 
 @dataclass
@@ -123,6 +125,8 @@ class TestCaseService:
         test_layer_id: int | None = None,
         test_layer_name: str | None = None,
         issues: list[str] | None = None,
+        integration_id: int | None = None,
+        integration_name: str | None = None,
     ) -> TestCaseOverviewDto:
         """Create a new test case.
 
@@ -136,6 +140,8 @@ class TestCaseService:
             test_layer_id: Optional test layer ID to assign to the test case.
             test_layer_name: Optional test layer name to assign to the test case.
             issues: Optional list of issue keys to link (e.g., 'PROJ-123').
+            integration_id: Optional integration ID for issue linking (required when multiple exist).
+            integration_name: Optional integration name for issue linking (mutually exclusive with integration_id).
 
         Returns:
             The created test case overview.
@@ -247,7 +253,12 @@ class TestCaseService:
 
             # Add issue links
             if issues:
-                await self.add_issues_to_test_case(test_case_id, issues)
+                await self.add_issues_to_test_case(
+                    test_case_id,
+                    issues,
+                    integration_id=integration_id,
+                    integration_name=integration_name,
+                )
         except Exception as e:
             # Rollback: delete the partially created test case
             try:
@@ -377,12 +388,10 @@ class TestCaseService:
             updated_case = await self.get_test_case(test_case_id)
             return updated_case if updated_case is not None else current_case
 
-        # 3. Handle Issue Linking Operations (Remove/Clear first, then Add)
         if data.clear_issues:
-            # Check existing issues first
-            current_full = await self.get_test_case(test_case_id)
-            if current_full and current_full.issues:
-                existing_keys = [i.name for i in current_full.issues if i.name]
+            # Use current_case fetched at step 1 instead of re-fetching
+            if current_case and current_case.issues:
+                existing_keys = [i.name for i in current_case.issues if i.name]
                 if existing_keys:
                     await self.remove_issues_from_test_case(test_case_id, existing_keys)
 
@@ -390,7 +399,12 @@ class TestCaseService:
             await self.remove_issues_from_test_case(test_case_id, data.remove_issues)
 
         if data.issues:
-            await self.add_issues_to_test_case(test_case_id, data.issues)
+            await self.add_issues_to_test_case(
+                test_case_id,
+                data.issues,
+                integration_id=data.integration_id,
+                integration_name=data.integration_name,
+            )
 
         # 4. Handle Metadata Patches
         patch_kwargs, has_changes = await self._prepare_field_updates(current_case, data)
@@ -626,18 +640,38 @@ class TestCaseService:
 
         return await self.get_test_case(test_case_id)
 
-    async def add_issues_to_test_case(self, test_case_id: int, issues: list[str]) -> None:
+    async def add_issues_to_test_case(
+        self,
+        test_case_id: int,
+        issues: list[str],
+        integration_id: int | None = None,
+        integration_name: str | None = None,
+    ) -> None:
         """Add issue links to a test case.
 
         Args:
             test_case_id: The test case ID.
             issues: List of issue keys (e.g. "PROJ-123").
+            integration_id: Optional integration ID (required when multiple exist).
+            integration_name: Optional integration name (mutually exclusive with integration_id).
         """
         if not issues:
             return
 
         # 1. Resolve integrations and build IssueDtos
-        issue_dtos = await self._build_issue_dtos(issues)
+        issue_dtos = await self._build_issue_dtos(
+            issues,
+            integration_id=integration_id,
+            integration_name=integration_name,
+        )
+
+        # Idempotency Filter: Only link issues not already present
+        current_case = await self.get_test_case(test_case_id)
+        existing_names = {i.name.upper() for i in (current_case.issues or []) if i.name}
+        issue_dtos = [io for io in issue_dtos if io.name not in existing_names]
+
+        if not issue_dtos:
+            return
 
         # 2. Build selection
         selection = TestCaseTreeSelectionDto(project_id=self._project_id, leafs_include=[test_case_id])
@@ -690,12 +724,19 @@ class TestCaseService:
     MAX_ISSUE_KEY_LENGTH = 50
     ISSUE_KEY_PATTERN = re.compile(r"^[A-Z0-9]+-\d+$", re.IGNORECASE)
 
-    async def _build_issue_dtos(self, issues: list[str]) -> list[IssueDto]:
+    async def _build_issue_dtos(
+        self,
+        issues: list[str],
+        integration_id: int | None = None,
+        integration_name: str | None = None,
+    ) -> list[IssueDto]:
         """Convert issue keys to IssueDto objects with resolved integration IDs.
 
         Validation:
         - Checks issue key format (e.g., PROJ-123).
-        - Resolves integration ID (defaults to first available if multiple).
+        - Resolves integration ID using IntegrationService.
+        - AC#6: Auto-selects when only one integration exists.
+        - AC#7: Errors when multiple integrations exist and none specified.
         """
         if not issues:
             return []
@@ -715,30 +756,19 @@ class TestCaseService:
                 + "\n\nHint: Issue keys must follow the format 'PROJECT-123' (alphanumeric prefix, hyphen, number)."
             )
 
-        # 2. Get Integration context
-        integrations = await self._client.get_integrations()
-        target_integration_id = None
+        # 2. Resolve Integration using IntegrationService
+        from src.services.integration_service import IntegrationService
 
-        if not integrations:
-            logger.warning("No integrations configuration found in project. Issue links may be inactive.")
-        elif len(integrations) == 1:
-            target_integration_id = integrations[0].id
-        else:
-            # Multiple integrations found
-            # We default to the first one but log a warning as we cannot determine intent from key alone
-            target_integration_id = integrations[0].id
-            integration_names = [i.name for i in integrations if i.name]
-            logger.warning(
-                f"Multiple integrations found ({', '.join(integration_names)}). "
-                f"Defaulting to '{integrations[0].name}' for issue linking."
-            )
+        integration_service = IntegrationService(self._client)
+        target_integration_id = await integration_service.resolve_integration_for_issues(
+            integration_id=integration_id,
+            integration_name=integration_name,
+        )
 
         # 3. Build DTOs
         dtos = []
         for key in issues:
-            dto = IssueDto(name=key.upper())  # Normalize to uppercase
-            if target_integration_id:
-                dto.integration_id = target_integration_id
+            dto = IssueDto(name=key.upper(), integration_id=target_integration_id)  # Normalize to uppercase
             dtos.append(dto)
 
         return dtos

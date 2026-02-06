@@ -149,6 +149,10 @@
     {
       "name": "get_launch",
       "description": "Get complete details of a specific launch."
+    },
+    {
+      "name": "list_integrations",
+      "description": "List available integrations in Allure TestOps."
     }
   ],
   "user_config": {

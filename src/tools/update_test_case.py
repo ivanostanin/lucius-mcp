@@ -52,6 +52,24 @@ async def update_test_case(  # noqa: C901
         bool | None,
         Field(description="If True, remove ALL issues from the test case."),
     ] = None,
+    integration_id: Annotated[
+        int | None,
+        Field(
+            description=(
+                "Optional integration ID for issue linking (use list_integrations to find IDs). "
+                "Required when multiple integrations exist and adding issues. Mutually exclusive with integration_name."
+            )
+        ),
+    ] = None,
+    integration_name: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Optional integration name for issue linking (exact case-sensitive match). "
+                "Required when multiple integrations exist and adding issues. Mutually exclusive with integration_id."
+            )
+        ),
+    ] = None,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
 ) -> str:
     """Update an existing test case in Allure TestOps.
@@ -80,6 +98,8 @@ async def update_test_case(  # noqa: C901
         links: New list of external links. Each dict has ``name``, ``url``,
             and optional ``type``.
         project_id: Optional override for the default Project ID.
+        integration_id: Optional integration ID for issue linking (use list_integrations to find IDs).
+        integration_name: Optional integration name for issue linking (exact case-sensitive match).
 
     Returns:
         A confirmation message summarizing the update.
@@ -110,6 +130,8 @@ async def update_test_case(  # noqa: C901
             issues=issues,
             remove_issues=remove_issues,
             clear_issues=clear_issues,
+            integration_id=integration_id,
+            integration_name=integration_name,
         )
 
         updated_case = await service.update_test_case(test_case_id, update_data)

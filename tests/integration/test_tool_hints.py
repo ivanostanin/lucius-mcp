@@ -160,6 +160,8 @@ async def test_create_test_case_tool_forwards_test_layers(monkeypatch):
         test_layer_id=10,
         test_layer_name="Layer10",
         issues=None,
+        integration_id=None,
+        integration_name=None,
     )
 
 

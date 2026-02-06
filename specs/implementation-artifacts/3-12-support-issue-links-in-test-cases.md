@@ -272,10 +272,29 @@ Issues in Allure TestOps are linked via external integrations (Jira, GitHub Issu
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+gemini-2.0-flash-exp
 
 ### Debug Log References
 
+- Logic implemented in `TestCaseService`
+- Bulk API calls for issue linking/unlinking
+- Integration resolution via `IntegrationService`
+
 ### Completion Notes List
 
+- [x] Bulk issue operations (add, remove)
+- [x] Integration resolution (auto-select single, require explicit choice for multiple)
+- [x] Issue key validation (regex: `^[A-Z0-9]+-\d+$`)
+- [x] Full CRUD support in `update_test_case` (add, remove, clear)
+- [x] Tool output formatting for both create and update
+
 ### File List
+
+- [`src/services/test_case_service.py`](file:///Users/anmaro/Code/personal/github.com/lucius-mcp/src/services/test_case_service.py)
+- [`src/services/integration_service.py`](file:///Users/anmaro/Code/personal/github.com/lucius-mcp/src/services/integration_service.py)
+- [`src/tools/create_test_case.py`](file:///Users/anmaro/Code/personal/github.com/lucius-mcp/src/tools/create_test_case.py)
+- [`src/tools/update_test_case.py`](file:///Users/anmaro/Code/personal/github.com/lucius-mcp/src/tools/update_test_case.py)
+- [`tests/unit/test_test_case_service_issue_linking.py`](file:///Users/anmaro/Code/personal/github.com/lucius-mcp/tests/unit/test_test_case_service_issue_linking.py)
+- [`tests/unit/test_integration_service.py`](file:///Users/anmaro/Code/personal/github.com/lucius-mcp/tests/unit/test_integration_service.py)
+- [`tests/e2e/test_issue_links.py`](file:///Users/anmaro/Code/personal/github.com/lucius-mcp/tests/e2e/test_issue_links.py)
+- [`tests/integration/test_integration_tools.py`](file:///Users/anmaro/Code/personal/github.com/lucius-mcp/tests/integration/test_integration_tools.py)

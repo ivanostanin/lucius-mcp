@@ -37,20 +37,27 @@ async def test_e2e_issue_lifecycle(
     5. Add issue via update.
     6. Verify issue added.
     """
-    # Check if we have integrations
+    # Discover integrations
+    from src.tools.list_integrations import list_integrations
+
+    list_output = await list_integrations(project_id=project_id)
+    assert "**Available Integrations**" in list_output
+
     integrations = await allure_client.get_integrations()
     if not integrations:
         pytest.skip("No integrations configured in the environment. Skipping issue link E2E.")
 
+    # Select the first integration for default tests
+    target_integration = integrations[0]
+    integration_id = target_integration.id
+    integration_name = target_integration.name
+
     # We assume 'TEST-123' is a valid format or acceptable dummy.
-    # If the system validates against real Jira, this might fail.
-    # But for E2E in a sandbox, we hope for loose validation or mock.
-    # If strictly valid key needed, we'd need env var.
     issue_key = "TEST-123"
 
-    # 1. Create with issue
+    # 1. Create with issue (pass integration_id if multiple exist, though for single it's auto-selected)
     name = "E2E Issue Link Validation"
-    result = await create_test_case(name=name, issues=[issue_key], project_id=project_id)
+    result = await create_test_case(name=name, issues=[issue_key], project_id=project_id, integration_id=integration_id)
 
     assert "Created Test Case ID:" in result
     import re
@@ -74,8 +81,8 @@ async def test_e2e_issue_lifecycle(
     current_issues = [i.name for i in (tc.issues or [])]
     assert issue_key not in current_issues, "Issue should be removed"
 
-    # 5. Add issue via update
-    await update_test_case(test_case_id=test_case_id, issues=[issue_key])
+    # 5. Add issue via update with integration_name
+    await update_test_case(test_case_id=test_case_id, issues=[issue_key], integration_name=integration_name)
 
     # 6. Verify addition
     tc = await service.get_test_case(test_case_id)
@@ -85,3 +92,25 @@ async def test_e2e_issue_lifecycle(
     await update_test_case(test_case_id=test_case_id, clear_issues=True)
     tc = await service.get_test_case(test_case_id)
     assert not tc.issues, "Issues should be cleared"
+
+
+@pytest.mark.asyncio
+async def test_e2e_invalid_issue_key_error(
+    project_id: int,
+    allure_client: AllureClient,
+) -> None:
+    """
+    E2E Error Handling:
+    - Attempt to create TC with invalid issue key.
+    - Verify AllureValidationError with hint is returned.
+    """
+    from src.client.exceptions import AllureValidationError
+
+    invalid_key = "INVALID_KEY_FORMAT"
+
+    with pytest.raises(AllureValidationError) as exc:
+        await create_test_case(name="Invalid Issue E2E", issues=[invalid_key], project_id=project_id)
+
+    assert "Invalid issue keys provided" in str(exc.value)
+    assert "PROJECT-123" in str(exc.value)
+    assert "Hint:" in str(exc.value)

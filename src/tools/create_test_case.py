@@ -53,10 +53,27 @@ async def create_test_case(
             )
         ),
     ] = None,
-    # Issues
     issues: Annotated[
         list[str] | None,
         Field(description="Optional list of issue keys to link (e.g., ['PROJ-123'])."),
+    ] = None,
+    integration_id: Annotated[
+        int | None,
+        Field(
+            description=(
+                "Optional integration ID for issue linking (use list_integrations to find IDs). "
+                "Required when multiple integrations exist. Mutually exclusive with integration_name."
+            )
+        ),
+    ] = None,
+    integration_name: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Optional integration name for issue linking (exact case-sensitive match). "
+                "Required when multiple integrations exist. Mutually exclusive with integration_id."
+            )
+        ),
     ] = None,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
 ) -> str:
@@ -74,8 +91,10 @@ async def create_test_case(
                                     'content_type': 'application/pdf'}]
         custom_fields: Dictionary of custom field names and their values (string or list of strings).
                        Example: {'Layer': 'UI', 'Components': ['Auth', 'DB']}
-        test_layer_id: Optional test layer ID to assign (must exist in the project).
         test_layer_name: Optional test layer name to assign (exact case-sensitive match).
+        issues: Optional list of issue keys to link (e.g., ['PROJ-123']).
+        integration_id: Optional integration ID for issue linking (required when multiple integrations exist).
+        integration_name: Optional integration name for issue linking (mutually exclusive with integration_id).
         project_id: Optional override for the default Project ID.
 
     Returns:
@@ -97,6 +116,8 @@ async def create_test_case(
             test_layer_id=test_layer_id,
             test_layer_name=test_layer_name,
             issues=issues,
+            integration_id=integration_id,
+            integration_name=integration_name,
         )
         msg = f"Created Test Case ID: {result.id} Name: {result.name}"
         if issues:
