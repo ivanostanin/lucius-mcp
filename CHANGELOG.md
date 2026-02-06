@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [v0.4.0] - 2026-02-06
+
 ### Added
 - CRUD support for project-level custom field values (#18).
 - Issue linking and unlinking support for test cases (Story 3-12) (#17).
