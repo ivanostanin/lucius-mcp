@@ -8,6 +8,18 @@ Validate **manual tool calls for every MCP tool** using scenarios derived from `
 - Validate only transport that is available for installed MCP server.
 - Manual tool calls only; automated E2E tests are out of scope.
 
+## Agentic Execution Protocol
+To ensure robust end-to-end validation, any AI agent executing this plan MUST follow these rules:
+
+1.  **Strict QA Persona**: Adopt a persona of a meticulous QA Engineer. Do not assume success; verify it explicitly.
+2.  **Explicit Verification**: After every "Write" operation (create/update/delete), you MUST perform a "Read" operation (list/get) to verify the state change, even if the tool reports success.
+3.  **Data Isolation**: Use unique identifiers for test data (e.g., prefixes like `[Agent-QA]`) to avoid collisions with production or other test data.
+4.  **State Management**: Capture IDs returned by tools into variables (e.g., `TC_ID`, `LAUNCH_ID`) and reuse them in subsequent steps.
+5.  **Output Parsing**: Compare actual tool outputs against the "Expectation" strings provided in scenarios. Report any semantic or structural deviations.
+6.  **Cleanup**: You are responsible for cleaning up all created entities (tests, layers, shared steps, launches) at the end of the session, even if some steps fail.
+7.  **Deterministic Reports**: Produce a final markdown table summarizing Pass/Fail status for every scenario.
+8.  **Transparency & Suspicion**: You MUST explicitly record and report all tool failures, retry attempts, and "suspicions" (behavior that is technically successful but appears inconsistent or unusual). Do not hide troubleshooting steps; document them as learning points for the server's robustness.
+
 ## References (repo)
 - Tool registry (canonical list): `src/tools/__init__.py:3-79`
 - Server entry & transports: `src/main.py:81-90`
@@ -44,7 +56,8 @@ Validate **manual tool calls for every MCP tool** using scenarios derived from `
 From `src/tools/__init__.py:24-79`:
 - `create_test_case`, `get_test_case_details`, `update_test_case`, `delete_test_case`, `list_test_cases`, `search_test_cases`
 - `get_custom_fields`, `get_test_case_custom_fields`
-- `create_launch`, `list_launches`
+- `create_custom_field_value`, `list_custom_field_values`, `update_custom_field_value`, `delete_custom_field_value`
+- `create_launch`, `list_launches`, `get_launch`
 - `create_shared_step`, `list_shared_steps`, `update_shared_step`, `delete_shared_step`
 - `link_shared_step`, `unlink_shared_step`
 - `list_test_layers`, `create_test_layer`, `update_test_layer`, `delete_test_layer`
@@ -60,95 +73,180 @@ From `src/tools/__init__.py:24-79`:
 > Deletion calls MUST be run in parallel.
 > Strictly execute all calls, and verify the expected output explicitly. Document any deviation from the expected result in the report.
 
-#### A. Test case core CRUD + output formatting
-- **Scenario sources**: `test_tool_outputs.py:14-92`, `test_case_crud.py:20-83`, `test_delete_test_case.py:8-44`
-- Calls:
-  1. `create_test_case` with `name`, `description`, `steps=[{"action":"Step 1","expected":"Result 1"}]`.
-     - Expect: `Created Test Case ID: <id> Name: <name>` (`create_test_case.py:83-95`).
-  2. `get_test_case_details(TEST_CASE_ID)` → expect formatted details, including steps and tags if present (`search.py:162-235`).
-  3. `update_test_case(TEST_CASE_ID, description="Updated description")`.
-     - Expect: `Test Case <id> updated successfully. Changes: description` (`update_test_case.py:96-150`).
-  4. `delete_test_case(TEST_CASE_ID, confirm=False)` → expect confirmation prompt (`delete_test_case.py:36-41`).
-  5. `delete_test_case(TEST_CASE_ID, confirm=True)` → expect archived message (`delete_test_case.py:50-53`).
-  6. Call delete again (idempotent) → expect “already archived” message (`delete_test_case.py:50-52`).
+#### 1. Test case core CRUD + output formatting
+- **Goal**: Verify basic test case lifecycle and response formatting.
+- **Steps**:
+  1. **Create**: `create_test_case(name="[Agent] Core CRUD", description="Initial description", steps=[{"action":"Step 1","expected":"Result 1"}])`
+     - Expectation: Output contains `"Created Test Case ID"`.
+     - Action: Capture `id` as `TC_CORE_ID`.
+  2. **Read Details**: `get_test_case_details(test_case_id=TC_CORE_ID)`
+     - Expectation: Output contains `"Step 1"` and `"Result 1"`.
+  3. **Update Description**: `update_test_case(test_case_id=TC_CORE_ID, description="Updated via tool")`
+     - Expectation: Output contains `"Changes: description"`.
+  4. **Verify Update**: `get_test_case_details(test_case_id=TC_CORE_ID)`
+     - Expectation: Description is `"Updated via tool"`.
+  5. **Delete (No Confirm)**: `delete_test_case(test_case_id=TC_CORE_ID, confirm=false)`
+     - Expectation: Output contains a confirmation prompt or warning.
+  6. **Delete (Confirm)**: `delete_test_case(test_case_id=TC_CORE_ID, confirm=true)`
+     - Expectation: Output contains `"successfully archived"`.
+  7. **Delete (Idempotent)**: `delete_test_case(test_case_id=TC_CORE_ID, confirm=true)`
+     - Expectation: Output contains `"already archived"`.
 
-#### B. Test case update scenarios (fields, tags, steps, attachments, links)
-- **Scenario sources**: `test_update_test_case.py:8-108`, `test_update_test_case_extended.py:109-266`
-- Calls:
-  - **Core fields**: `update_test_case` with `name`, `description`, `precondition`, `expected_result`.
-  - **Tags**: set `tags=["tag1","tag2"]`, then `tags=[]` to clear.
-  - **Steps**: `steps=[{"action":"New Step 1","expected":"Result 1"}, {"action":"New Step 2"}]`.
-  - **Nested steps**: `steps=[{"action":"Parent","steps":[{"action":"Child 1"},{"action":"Child 2","steps":[{"action":"Grandchild"}]}]}]`.
-  - **Global attachments**: `attachments=[{"name":"a1.png","content":pixel_b64,"content_type":"image/png"}]`.
-  - **Links**: `links=[{"name":"JIRA-123","url":"https://jira.example.com/JIRA-123","type":"issue"}]`.
-  - **Custom fields**: `custom_fields={"<FieldName>":"<AllowedValue>"}` (use `get_custom_fields` first).
-  - **Test layer**: `test_layer_id=<ID>` (use `list_test_layers` first).
-  - **Automated flag**: `automated=true` or `false`.
-- Verify changes via `get_test_case_details` and `list_test_cases` output where possible.
+#### 2. Test case update scenarios (fields, tags, steps, attachments, links)
+- **Goal**: Verify bulk and nested updates across various fields.
+- **Prerequisite**: Create a test case and capture as `TC_UPDATE_ID`.
+- **Steps**:
+  1. **Core Fields**: `update_test_case(test_case_id=TC_UPDATE_ID, name="[Agent] Renamed", precondition="Pre-data", expected_result="Final data")`
+     - Expectation: Changes reported for `name`, `precondition`, `expected_result`.
+  2. **Tags**: `update_test_case(test_case_id=TC_UPDATE_ID, tags=["agent-qa", "smoke"])`
+     - Expectation: Changes reported for `tags`.
+  3. **Nested Steps**: `update_test_case(test_case_id=TC_UPDATE_ID, steps=[{"action":"Parent","steps":[{"action":"Child"}]}])`
+     - Expectation: Steps updated successfully.
+  4. **Attachment**: `update_test_case(test_case_id=TC_UPDATE_ID, attachments=[{"name":"pixel.png","content":pixel_b64,"content_type":"image/png"}])`
+     - Expectation: Attachment reported in changes.
+  5. **Custom Fields**: Use `get_custom_fields` to find a valid field/value, then: `update_test_case(test_case_id=TC_UPDATE_ID, custom_fields={"Priority":"High"})`
+     - Expectation: Custom field update confirmed.
+  6. **Automated Flag**: `update_test_case(test_case_id=TC_UPDATE_ID, automated=true)`
+     - Expectation: `automated` updated.
+  7. **Verify All**: `get_test_case_details(test_case_id=TC_UPDATE_ID)`
+     - Expectation: Inspect output to ensure all above fields match.
 
-#### C. List & search test cases
-- **Scenario sources**: `test_list_test_cases.py:8-70`, `test_search_test_cases.py:8-170`, `test_search_test_cases_aql.py:12-88`
-- Calls:
-  - `list_test_cases(page=0,size=1)` → expect “Found … (page 1 of …)” + `status` + `tags` (`search.py:192-207`).
-  - `list_test_cases(name_filter="login", tags=["smoke"], status="Draft")` → expect valid output (even if empty).
-  - `search_test_cases(query="login")` → expect “Found …” or “No test cases found” with tags.
-  - `search_test_cases(query="tag:smoke tag:regression")` → same pattern.
-  - `search_test_cases(aql='name ~= "test"')` → expect valid output.
-  - `search_test_cases(aql='name ~= "login" or name ~= "test"')` → expect valid output.
-  - **Invalid AQL**: `search_test_cases(aql="this is not valid aql %%% syntax")` → expect validation error.
-  - **No query**: `search_test_cases()` → expect validation error (`search.py:133-147`).
+#### 3. List & search test cases
+- **Goal**: Verify discovery and filtering logic.
+- **Steps**:
+  1. **List Pagination**: `list_test_cases(page=0, size=5)`
+     - Expectation: Output contains `"Found X test cases (page 1 of Y)"`.
+  2. **Search Name**: `search_test_cases(query="[Agent]")`
+     - Expectation: List contains test cases created in prior steps.
+  3. **Search Tag**: `search_test_cases(query="tag:agent-qa")`
+     - Expectation: List contains test cases with that tag.
+  4. **AQL Search**: `search_test_cases(aql='status="Draft" and automated=true')`
+     - Expectation: Returns filtered list.
+  5. **Invalid AQL**: `search_test_cases(aql="not valid syntax!!!")`
+     - Expectation: Output contains a clear syntax error message.
+  6. **Empty Query**: `search_test_cases(query="")`
+     - Expectation: Output contains validation error for empty search.
 
-#### D. Custom fields discovery + validation errors
-- **Scenario sources**: `test_get_custom_fields.py:15-235`, `test_custom_field_validation_e2e.py:15-196`
-- Calls:
-  1. `get_custom_fields()` → list fields with required/allowed values.
-  2. `get_custom_fields(name="<partial>")` → filtered list or “No custom fields found”.
-  3. **Invalid field names**: `create_test_case(name="Invalid CF", custom_fields={"MissingField1":"Value1","MissingField2":"Value2"})` → expect aggregated missing-field error.
-  4. **Invalid values**: use `get_custom_fields` to find fields with allowed values, then call `create_test_case` with invalid values → expect error mentioning allowed values.
-  5. **Mixed missing + invalid**: include both missing field names and invalid values in one call; expect aggregated guidance.
-  6. `get_test_case_custom_fields(TEST_CASE_ID)` → verify set custom fields (or “none”).
+#### 4. Custom fields discovery + validation errors
+- **Goal**: Verify custom field enumeration and error aggregation.
+- **Steps**:
+  1. **Enumerate All**: `get_custom_fields()`
+     - Expectation: Returns bulleted list of all project custom fields with allowed values.
+  2. **Filter Fields**: `get_custom_fields(name="Prior")`
+     - Expectation: Returns only fields matching the string.
+  3. **Invalid Field Error**: `create_test_case(name="Invalid CF TC", custom_fields={"NonExistentField":"SomeValue"})`
+     - Expectation: Error message lists `"NonExistentField"` and suggests existing fields.
+  4. **Invalid Value Error**: `create_test_case(name="Invalid Val TC", custom_fields={"Priority":"Extra-High"})`
+     - Expectation: Error message lists `"Extra-High"` as invalid and shows allowed values.
+  5. **Mixed Error**: Call `create_test_case` with one invalid field AND one valid field with an invalid value.
+     - Expectation: Error output aggregates BOTH issues.
 
-#### E. Shared steps lifecycle + link/unlink
-- **Scenario sources**: `test_shared_steps.py:14-210`, `test_link_shared_step.py:13-108`, `test_link_shared_steps.py:12-86`
-- Calls:
-  1. `create_shared_step(name, steps=[{"action":"Do something","expected":"Something happens"}])` → capture `SHARED_STEP_ID`.
-  2. `list_shared_steps(search=<name>)` → verify `[ID: SHARED_STEP_ID]` appears.
-  3. `update_shared_step(step_id=SHARED_STEP_ID, name="Updated Name")` → expect updated message.
-  4. `update_shared_step(step_id=SHARED_STEP_ID, name="Updated Name")` again → expect “No changes needed”.
-  5. `delete_shared_step(step_id=SHARED_STEP_ID, confirm=False)` → expect confirmation warning.
-  6. `delete_shared_step(step_id=SHARED_STEP_ID, confirm=True)` → expect archived confirmation.
-  7. **Attachment**: create a shared step with `steps=[{"action":"Check image","attachments":[{"name":"pixel.png","content":pixel_b64}]}]`.
-  8. **Link/unlink**:
-     - Create a test case → `TEST_CASE_ID`.
-     - `link_shared_step(test_case_id=TEST_CASE_ID, shared_step_id=SHARED_STEP_ID)` → expect success and updated steps preview.
-     - `unlink_shared_step(test_case_id=TEST_CASE_ID, shared_step_id=SHARED_STEP_ID)` → expect remaining steps preview without shared step.
+#### 5. Shared steps lifecycle + link/unlink
+- **Goal**: Verify shared steps management and their association with test cases.
+- **Steps**:
+  1. **Create Shared**: `create_shared_step(name="[Agent] Shared Auth", steps=[{"action":"Login","expected":"Dashboard"}])`
+     - Expectation: Output contains `"Created Shared Step ID"`.
+     - Action: Capture `id` as `SS_ID`.
+  2. **Verify Shared**: `list_shared_steps(search="[Agent]")`
+     - Expectation: List contains `SS_ID`.
+  3. **Update Shared**: `update_shared_step(step_id=SS_ID, name="[Agent] Shared Auth Updated")`
+     - Expectation: Confirmation of name change.
+  4. **Link to TC**: `link_shared_step(test_case_id=TC_CORE_ID, shared_step_id=SS_ID)`
+     - Expectation: Success message with updated steps preview.
+  5. **Verify Link**: `get_test_case_details(test_case_id=TC_CORE_ID)`
+     - Expectation: Details show the shared step reference.
+  6. **Unlink**: `unlink_shared_step(test_case_id=TC_CORE_ID, shared_step_id=SS_ID)`
+     - Expectation: Confirmation of removal.
+  7. **Delete Shared**: `delete_shared_step(step_id=SS_ID, confirm=true)`
+     - Expectation: Success message.
 
-#### F. Test layers + schemas
-- **Scenario source**: `test_test_layer_crud.py:20-352`
-- Calls:
-  1. `list_test_layers()` → expect list or “No test layers found”.
-  2. `create_test_layer(name="E2E-Tool-Layer")` → capture `LAYER_ID`.
-  3. `update_test_layer(layer_id=LAYER_ID, name="E2E-Tool-Layer-Updated")` → expect updated or info message.
-  4. `delete_test_layer(layer_id=LAYER_ID)` → expect deletion message; call again for idempotent check.
-  5. `create_test_layer_schema(key="e2e_schema", test_layer_id=<LAYER_ID>, project_id=<PROJECT_ID>)` → capture `SCHEMA_ID`.
-  6. `list_test_layer_schemas(project_id=<PROJECT_ID>)` → expect `SCHEMA_ID` present.
-  7. `update_test_layer_schema(schema_id=SCHEMA_ID, key="e2e_schema_updated")` → expect updated or info message.
-  8. `delete_test_layer_schema(schema_id=SCHEMA_ID)` → expect deletion message; call again for idempotent check.
-  9. **Multiple schemas**: create two layers + two schemas, list to confirm both, then delete both schemas and layers.
+#### 6. Test layers + schemas
+- **Goal**: Verify taxonomy management via layers and custom field mapping.
+- **Steps**:
+  1. **List Initial**: `list_test_layers()`
+     - Expectation: List of layers provided.
+  2. **Create Layer**: `create_test_layer(name="[Agent] Layer")`
+     - Expectation: Confirmation message with ID.
+     - Action: Capture `id` as `LAYER_ID`.
+  3. **Update Layer**: `update_test_layer(layer_id=LAYER_ID, name="[Agent] Layer Renamed")`
+     - Expectation: Confirmation of update.
+  4. **Create Schema**: `create_test_layer_schema(key="agent_key", test_layer_id=LAYER_ID, project_id=<PROJECT_ID>)`
+     - Expectation: Confirmation message with ID.
+     - Action: Capture `id` as `SCHEMA_ID`.
+  5. **Verify Schema**: `list_test_layer_schemas(project_id=<PROJECT_ID>)`
+     - Expectation: List contains `SCHEMA_ID` mapping to `LAYER_ID`.
+  6. **Delete Schema**: `delete_test_layer_schema(schema_id=SCHEMA_ID)`
+     - Expectation: Success message.
+  7. **Delete Layer**: `delete_test_layer(layer_id=LAYER_ID)`
+     - Expectation: Success message.
 
-#### G. Launches
-- **Scenario source**: tool coverage (no E2E file)
-- Calls:
-  1. `create_launch(name="[manual-...] Launch", tags=["manual"], external=false)` → capture `LAUNCH_ID`.
-  2. `list_launches(search="[manual-...]")` → verify launch appears.
+#### 7. Launches
+- **Scenario source**: tool coverage
+- **Goal**: Validate launch creation, listing, and detail retrieval.
+- **Steps**:
+  1. **Create**: `create_launch(name="[Agent] Launch", tags=["agent-test"], external=false)`
+     - Expectation: Output contains `Created Launch ID`.
+     - Action: Capture `id` as `LAUNCH_ID`.
+  2. **List**: `list_launches(search="[Agent]")`
+     - Expectation: List contains launch with `id: LAUNCH_ID` and `name: "[Agent] Launch"`.
+  3. **Get Details**: `get_launch(launch_id=LAUNCH_ID)`
+     - Expectation: Output contains strict keys: `id`, `name`, `status`, `created_date`.
+     - Verification: `id` matches `LAUNCH_ID`.
+
+#### 8. Custom Field Values Lifecycle
+- **Scenario source**: `specs/implementation-artifacts/3-11-crud-custom-field-values.md`
+- **Goal**: Verify project-level custom field value management.
+- **Prerequisite**: Use `get_custom_fields` to find a valid `CF_ID` (or create a temporary custom field if none exist).
+- **Steps**:
+  1. **List Initial**: `list_custom_field_values(project_id=<PROJECT_ID>, custom_field_id=<CF_ID>)`
+     - Expectation: Returns a list (empty or populated).
+  2. **Create**: `create_custom_field_value(project_id=<PROJECT_ID>, custom_field_id=<CF_ID>, name="[Agent] Value")`
+     - Expectation: Output contains `"Created Custom Field Value"`.
+     - Action: Capture `id` as `VALUE_ID`.
+  3. **Verify Creation**: `list_custom_field_values(project_id=<PROJECT_ID>, custom_field_id=<CF_ID>)`
+     - Expectation: List contains an item with `id: VALUE_ID` and `name: "[Agent] Value"`.
+  4. **Update**: `update_custom_field_value(cfv_id=VALUE_ID, name="[Agent] Value Updated")`
+     - Expectation: Output contains `"updated successfully"`.
+  5. **Verify Update**: `list_custom_field_values(project_id=<PROJECT_ID>, custom_field_id=<CF_ID>)`
+     - Expectation: List item with `id: VALUE_ID` has `name: "[Agent] Value Updated"`.
+  6. **Delete**: `delete_custom_field_value(project_id=<PROJECT_ID>, id=VALUE_ID)`
+     - Expectation: Output contains `"deleted successfully"`.
+  7. **Verify Deletion**: `list_custom_field_values(project_id=<PROJECT_ID>, custom_field_id=<CF_ID>)`
+     - Expectation: List DOES NOT contain `id: VALUE_ID`.
+
+#### 9. Issue Linking
+- **Scenario source**: `specs/implementation-artifacts/3-12-support-issue-links-in-test-cases.md`
+- **Goal**: Verify adding, removing, clearing, and validating issue links.
+- **Steps**:
+  1. **Create with Issue**: `create_test_case(name="[Agent] TC with Issue", issues=["PROJ-123"])`
+     - Expectation: Output contains `"Linked 1 issues"`.
+     - Action: Capture `id` as `TC_ISSUE_ID`.
+  2. **Verify Link**: `get_test_case_details(test_case_id=TC_ISSUE_ID)`
+     - Expectation: `issues` list contains `PROJ-123`.
+  3. **Add Issue**: `update_test_case(test_case_id=TC_ISSUE_ID, issues=["PROJ-456"])`
+     - Expectation: Output contains `"Added 1 issues"`.
+  4. **Verify Addition**: `get_test_case_details(test_case_id=TC_ISSUE_ID)`
+     - Expectation: `issues` list contains BOTH `PROJ-123` and `PROJ-456`.
+  5. **Remove Issue**: `update_test_case(test_case_id=TC_ISSUE_ID, remove_issues=["PROJ-123"])`
+     - Expectation: Output contains `"Removed 1 issues"`.
+  6. **Verify Removal**: `get_test_case_details(test_case_id=TC_ISSUE_ID)`
+     - Expectation: `issues` list contains `PROJ-456` but NOT `PROJ-123`.
+  7. **Clear Issues**: `update_test_case(test_case_id=TC_ISSUE_ID, clear_issues=True)`
+     - Expectation: Output contains `"Cleared all issues"`.
+  8. **Verify Clear**: `get_test_case_details(test_case_id=TC_ISSUE_ID)`
+     - Expectation: `issues` list is empty.
+  9. **Negative Test**: `create_test_case(name="Invalid Issue", issues=["INVALID_FORMAT"])`
+     - Expectation: Error message containing `"Invalid issue key format"`.
 
 ## Report
 - After all checks are complete, produce a final test report.
 - The report must list **every performed check** with a strict result: **Pass / Fail / Skipped**.
+- **Failures & Retries**: Every tool failure MUST be logged with the exact error message. If you attempted a retry (e.g., corrected AQL syntax), document the initial failure and the successful retry explicitly.
+- **Suspicions**: Document any behavior that was successful but suspicious (e.g., a "negative test" that should have failed but passed due to loose pattern matching).
 - For each check include the key output (message text or IDs) that justifies the result.
 - Explicitly call out any deviations from expected output and link them to the failing check.
 - Show the report to the user **after all checks** are finished.
-- List all failed checks at the end of the report.
+- List all failed checks and unresolved suspicions at the end of the report.
 
 ## Cleanup
 - Delete all test entities created during the test run. This is mandatory. Spawn sub-agents to make the process faster.
@@ -167,11 +265,13 @@ From `src/tools/__init__.py:24-79`:
 - Launches: formatted list with pagination (`launches.py:91-112`).
 
 ## Coverage matrix (tool → scenario module)
-- **Test cases**: A–E cover `create_test_case`, `get_test_case_details`, `update_test_case`, `delete_test_case`, `list_test_cases`, `search_test_cases`, `get_test_case_custom_fields`.
-- **Custom fields**: E covers `get_custom_fields`.
-- **Shared steps**: F covers `create_shared_step`, `list_shared_steps`, `update_shared_step`, `delete_shared_step`, `link_shared_step`, `unlink_shared_step`.
-- **Test layers**: G covers `list_test_layers`, `create_test_layer`, `update_test_layer`, `delete_test_layer`, `list_test_layer_schemas`, `create_test_layer_schema`, `update_test_layer_schema`, `delete_test_layer_schema`.
-- **Launches**: H covers `create_launch`, `list_launches`.
+- **Test cases**: 1-3 cover `create_test_case`, `get_test_case_details`, `update_test_case`, `delete_test_case`, `list_test_cases`, `search_test_cases`, `get_test_case_custom_fields`.
+- **Custom fields**: 4 covers `get_custom_fields`.
+- **Shared steps**: 5 covers `create_shared_step`, `list_shared_steps`, `update_shared_step`, `delete_shared_step`, `link_shared_step`, `unlink_shared_step`.
+- **Test layers**: 6 covers `list_test_layers`, `create_test_layer`, `update_test_layer`, `delete_test_layer`, `list_test_layer_schemas`, `create_test_layer_schema`, `update_test_layer_schema`, `delete_test_layer_schema`.
+- **Launches**: 7 covers `create_launch`, `list_launches`, `get_launch`.
+- **Custom Field Values**: 8 covers `create_custom_field_value`, `list_custom_field_values`, `update_custom_field_value`, `delete_custom_field_value`.
+- **Issue Linking**: 9 covers `issues` parameter in `create_test_case` and `update_test_case` (add, remove, clear).
 
 ## Notes / constraints
 - Some E2E checks use service-level assertions (scenario DTOs). Manual validation relies on tool outputs + `get_test_case_details` as the closest proxy.
