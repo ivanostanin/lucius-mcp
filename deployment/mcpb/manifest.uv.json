@@ -144,6 +144,10 @@
     {
       "name": "list_launches",
       "description": "List launches in a project."
+    },
+    {
+      "name": "get_launch",
+      "description": "Get complete details of a specific launch."
     }
   ],
   "user_config": {
