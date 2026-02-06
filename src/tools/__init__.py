@@ -6,7 +6,7 @@ from src.tools.delete_custom_field_value import delete_custom_field_value
 from src.tools.delete_test_case import delete_test_case
 from src.tools.get_custom_fields import get_custom_fields
 from src.tools.get_test_case_custom_fields import get_test_case_custom_fields
-from src.tools.launches import create_launch, list_launches
+from src.tools.launches import create_launch, get_launch, list_launches
 from src.tools.link_shared_step import link_shared_step
 from src.tools.list_custom_field_values import list_custom_field_values
 from src.tools.search import get_test_case_details, list_test_cases, search_test_cases
@@ -38,6 +38,7 @@ __all__ = [
     "delete_test_layer",
     "delete_test_layer_schema",
     "get_custom_fields",
+    "get_launch",
     "get_test_case_custom_fields",
     "get_test_case_details",
     "link_shared_step",
@@ -72,6 +73,7 @@ all_tools: list[ToolFn] = [
     get_test_case_custom_fields,
     search_test_cases,
     create_launch,
+    get_launch,
     list_launches,
     create_shared_step,
     list_shared_steps,
