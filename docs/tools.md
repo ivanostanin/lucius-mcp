@@ -1,0 +1,59 @@
+# Tool Reference
+
+Lucius provides a suite of MCP tools categorized by feature area. All tools are optimized for AI agents and return "
+Agent Hints" on failure.
+
+## 📁 Test Case Management
+
+| Tool                          | Description                                                 | Key Parameters                  |
+|:------------------------------|:------------------------------------------------------------|:--------------------------------|
+| `create_test_case`            | Create a new test case with steps, tags, and custom fields. | `name`, `steps`, `tags`         |
+| `update_test_case`            | Idempotently update an existing test case.                  | `test_case_id`, `name`, `steps` |
+| `delete_test_case`            | Soft-delete (archive) a test case.                          | `test_case_id`, `confirm`       |
+| `get_test_case_details`       | Retrieve complete details including steps and attachments.  | `test_case_id`                  |
+| `get_test_case_custom_fields` | Retrieve only custom field values for a test case.          | `test_case_id`                  |
+
+## 🔍 Search & Discovery
+
+| Tool                | Description                                            | Key Parameters                |
+|:--------------------|:-------------------------------------------------------|:------------------------------|
+| `list_test_cases`   | List test cases in a project with pagination.          | `page`, `size`, `name_filter` |
+| `search_test_cases` | Advanced search using simple query or AQL.             | `query`, `aql`                |
+| `get_custom_fields` | List available custom fields and their allowed values. | `name` (filter)               |
+| `list_integrations` | List configured issue trackers (Jira, GitHub).         | `project_id`                  |
+
+## 🔄 Shared Steps
+
+| Tool                 | Description                                   | Key Parameters                   |
+|:---------------------|:----------------------------------------------|:---------------------------------|
+| `create_shared_step` | Create a reusable sequence of steps.          | `name`, `steps`                  |
+| `list_shared_steps`  | Find existing shared steps.                   | `search`, `page`                 |
+| `update_shared_step` | Update an existing shared step library entry. | `step_id`, `name`                |
+| `delete_shared_step` | Soft-delete (archive) a shared step.          | `step_id`, `confirm`             |
+| `link_shared_step`   | Reference a shared step within a test case.   | `test_case_id`, `shared_step_id` |
+| `unlink_shared_step` | Remove a shared step reference.               | `test_case_id`, `shared_step_id` |
+
+## 🏷️ Test Layers & Custom Fields
+
+| Tool                        | Description                                      | Key Parameters            |
+|:----------------------------|:-------------------------------------------------|:--------------------------|
+| `list_test_layers`          | List available test layers (Unit, E2E, etc.).    | N/A                       |
+| `create_test_layer`         | Define a new taxonomy layer.                     | `name`                    |
+| `update_test_layer`         | Update an existing test layer name.              | `layer_id`, `name`        |
+| `delete_test_layer`         | Remove a test layer.                             | `layer_id`, `confirm`     |
+| `list_test_layer_schemas`   | List automatic layer mapping schemas.            | N/A                       |
+| `create_test_layer_schema`  | Create a new layer mapping schema.               | `key`, `test_layer_id`    |
+| `update_test_layer_schema`  | Update an existing schema.                       | `schema_id`, `key`        |
+| `delete_test_layer_schema`  | Remove a schema.                                 | `schema_id`, `confirm`    |
+| `list_custom_field_values`  | List allowed values for a specific custom field. | `custom_field_id`         |
+| `create_custom_field_value` | Add a new option to a custom field.              | `name`, `custom_field_id` |
+| `update_custom_field_value` | Update an existing custom field value name.      | `cfv_id`, `name`          |
+| `delete_custom_field_value` | Remove a custom field value option.              | `cfv_id`, `confirm`       |
+
+## 🚀 Launch Management
+
+| Tool            | Description                                        | Key Parameters |
+|:----------------|:---------------------------------------------------|:---------------|
+| `create_launch` | Create a new test execution launch.                | `name`, `tags` |
+| `list_launches` | View recent launches and their status.             | `page`, `size` |
+| `get_launch`    | Get detailed stats and defect counts for a launch. | `launch_id`    |
