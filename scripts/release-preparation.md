@@ -18,6 +18,10 @@ uv run pytest tests/packaging
 
 ## 🚀 Release Steps
 
+### 0. Prepare Environment
+- Checkout the `main` branch.
+- Create a release branch from `main` with name `release/v0.x.x`.
+
 ### 1. Version Bump
 - Update the `version` field in `pyproject.toml`.
 - Follow Semantic Versioning (SemVer) principles.
@@ -34,7 +38,8 @@ uv sync --all-extras
 
 ### 4. Commit and Pull Request
 - Commit changes with a descriptive message (e.g., `chore: prepare release v0.x.x`).
-- Push to a release branch and create a PR to `main`.
+- Push to a release branch
+- (Manually) Create a PR to `main`.
 - Wait for CI/CD checks to pass on the PR.
 
 ### 5. Tagging (Manual/Triggered)

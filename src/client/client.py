@@ -12,7 +12,6 @@ from typing import Literal, TypeVar, cast, overload
 import httpx
 from pydantic import Field, SecretStr, ValidationError
 
-from src.client.exceptions import TestCaseNotFoundError
 from src.utils.config import settings
 from src.utils.logger import get_logger
 
@@ -22,6 +21,7 @@ from .exceptions import (
     AllureNotFoundError,
     AllureRateLimitError,
     AllureValidationError,
+    TestCaseNotFoundError,
 )
 from .generated.api.custom_field_controller_api import CustomFieldControllerApi
 from .generated.api.custom_field_project_controller_api import CustomFieldProjectControllerApi
@@ -48,6 +48,7 @@ from .generated.models.aql_validate_response_dto import AqlValidateResponseDto
 from .generated.models.attachment_step_dto import AttachmentStepDto
 from .generated.models.body_step_dto import BodyStepDto
 from .generated.models.custom_field_project_with_values_dto import CustomFieldProjectWithValuesDto
+from .generated.models.custom_field_value_dto import CustomFieldValueDto
 from .generated.models.custom_field_value_project_create_dto import CustomFieldValueProjectCreateDto
 from .generated.models.custom_field_value_project_patch_dto import CustomFieldValueProjectPatchDto
 from .generated.models.custom_field_value_with_cf_dto import CustomFieldValueWithCfDto
@@ -82,6 +83,12 @@ from .generated.models.test_case_row_dto import TestCaseRowDto
 from .generated.models.test_case_scenario_dto import TestCaseScenarioDto
 from .generated.models.test_case_scenario_v2_dto import TestCaseScenarioV2Dto
 from .generated.models.test_case_tree_selection_dto import TestCaseTreeSelectionDto
+
+# Shared step attachments with entity field
+from .generated.models.test_fixture_result_attachment_row_dto import (
+    TestFixtureResultAttachmentRowDto,
+)
+from .generated.models.test_result_attachment_row_dto import TestResultAttachmentRowDto
 from .overridden.test_case_custom_fields_v2 import TestCaseCustomFieldV2ControllerApi
 
 
@@ -609,6 +616,32 @@ class AllureClient:
         raise ApiException(status=response.status_code, reason=response.reason_phrase, body=response.text)
 
     @staticmethod
+    def _patch_attachment_with_discriminator(attachment_dict: dict[str, object]) -> dict[str, object]:
+        """Patch the attachment dict to ensure discriminator works.
+
+        This handles cases where the 'entity' field might be 'TestCaseAttachmentRowDto'
+        instead of 'test_case', etc.
+        """
+        entity = attachment_dict.get("entity")
+        if not entity or not isinstance(entity, str):
+            return attachment_dict
+
+        # Map DTO class names to internal discriminator values
+        mapping = {
+            "TestCaseAttachmentRowDto": "test_case",
+            "TestFixtureResultAttachmentRowDto": "test_fixture_result",
+            "TestResultAttachmentRowDto": "test_result",
+            "SharedStepAttachmentRowDto": "shared_step",
+        }
+
+        if entity in mapping:
+            patched = dict(attachment_dict)
+            patched["entity"] = mapping[entity]
+            return patched
+
+        return attachment_dict
+
+    @staticmethod
     def _parse_attachment_with_discriminator(
         attachment_dict: dict[str, object],
     ) -> NormalizedScenarioDtoAttachmentsValue:
@@ -617,11 +650,8 @@ class AllureClient:
         This works around the oneOf deserialization issue where all three attachment
         types match because they share the same base fields.
         """
-        from src.client.generated.models.test_case_attachment_row_dto import TestCaseAttachmentRowDto
-        from src.client.generated.models.test_fixture_result_attachment_row_dto import (
-            TestFixtureResultAttachmentRowDto,
-        )
-        from src.client.generated.models.test_result_attachment_row_dto import TestResultAttachmentRowDto
+        # Patch the dict before extraction to handle DTO class names in entity field
+        attachment_dict = AllureClient._patch_attachment_with_discriminator(attachment_dict)
 
         entity = attachment_dict.get("entity")
 
@@ -647,9 +677,6 @@ class AllureClient:
         elif entity == "test_result":
             instance = TestResultAttachmentRowDto.from_dict(attachment_dict)
         elif entity == "shared_step":
-            # Shared step attachments with entity field
-            from src.client.generated.models.shared_step_attachment_row_dto import SharedStepAttachmentRowDto
-
             # SharedStepAttachmentRowDto needs different handling - it's not part of the oneOf union
             # This shouldn't actually happen in practice
             instance = SharedStepAttachmentRowDto.from_dict(attachment_dict)
@@ -1431,8 +1458,6 @@ class AllureClient:
         page = await self._call_api(v2_api.find_by_project1(project_id=project_id))
 
         results: list[CustomFieldProjectWithValuesDto] = []
-
-        from src.client.generated.models.custom_field_value_dto import CustomFieldValueDto
 
         for cf_proj in page.content or []:
             if not cf_proj.custom_field or cf_proj.custom_field.id is None:

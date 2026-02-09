@@ -91,6 +91,7 @@ async def create_test_case(
                                     'content_type': 'application/pdf'}]
         custom_fields: Dictionary of custom field names and their values (string or list of strings).
                        Example: {'Layer': 'UI', 'Components': ['Auth', 'DB']}
+        test_layer_id: Optional test layer ID to assign (use list_test_layers to find IDs).
         test_layer_name: Optional test layer name to assign (exact case-sensitive match).
         issues: Optional list of issue keys to link (e.g., ['PROJ-123']).
         integration_id: Optional integration ID for issue linking (required when multiple integrations exist).
