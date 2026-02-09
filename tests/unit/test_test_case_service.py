@@ -52,7 +52,16 @@ def service(
 @pytest.fixture
 def mock_step_response() -> ScenarioStepCreatedResponseDto:
     """Mock response for create_scenario_step calls."""
-    return ScenarioStepCreatedResponseDto(created_step_id=1000, scenario=None)
+    # Return a response that mimics the real API: providing scenario data to find expectedResultId
+    from src.client.generated.models.normalized_scenario_dto import NormalizedScenarioDto
+    from src.client.generated.models.normalized_scenario_step_dto import NormalizedScenarioStepDto
+
+    return ScenarioStepCreatedResponseDto(
+        created_step_id=1000,
+        scenario=NormalizedScenarioDto(
+            scenarioSteps={"1000": NormalizedScenarioStepDto(id=1000, expected_result_id=2000)}
+        ),
+    )
 
 
 @pytest.mark.asyncio
@@ -100,19 +109,20 @@ async def test_create_test_case_with_steps(
 
     # Steps added via separate API calls (action + expected child)
     assert mock_client.create_scenario_step.call_count == 2
-    mock_client.patch_test_case_scenario_step.assert_called_once()
+    mock_client.patch_test_case_scenario_step.assert_not_called()
 
     # First call: action step
     first_call = mock_client.create_scenario_step.call_args_list[0]
     assert first_call.kwargs["test_case_id"] == 101
     assert first_call.kwargs["step"].body == "A"
     assert first_call.kwargs["after_id"] is None  # First step
+    assert first_call.kwargs["with_expected_result"] is True
 
-    # Patch expected result on action step
-    patch_call = mock_client.patch_test_case_scenario_step.call_args
-    assert patch_call.kwargs["step_id"] == 1000
-    assert patch_call.kwargs["patch"].body == "A"
-    assert patch_call.kwargs["patch"].expected_result == "B"
+    # Second call: expected result text as child of the expectedResultId (2000)
+    second_call = mock_client.create_scenario_step.call_args_list[1]
+    assert second_call.kwargs["test_case_id"] == 101
+    assert second_call.kwargs["step"].body == "B"
+    assert second_call.kwargs["step"].parent_id == 2000
 
 
 @pytest.mark.asyncio
@@ -247,28 +257,25 @@ async def test_create_test_case_with_step_attachments(
     test_case_id = 104
     mock_attachment_service.upload_attachment.assert_called_once_with(test_case_id, step_att)
 
-    # Expect: Action -> Expected -> Attachment (3 create_scenario_step calls) + patch expected
+    # Expect: Action -> Expected -> Attachment (3 create_scenario_step calls)
+    # The order in _add_steps is: Action (create) -> Check Expected and create child
+    # -> Check Attachments and create child
     assert mock_client.create_scenario_step.call_count == 3
-    mock_client.patch_test_case_scenario_step.assert_called_once()
+    mock_client.patch_test_case_scenario_step.assert_not_called()
 
-    # Verify the order and nesting: action, attachment (child)
+    # Verify the order and nesting
     calls = mock_client.create_scenario_step.call_args_list
 
     # 1. Action
     assert calls[0].kwargs["step"].body == "Act"
     assert calls[0].kwargs["step"].parent_id is None
+    assert calls[0].kwargs["with_expected_result"] is True
 
-    # Patch expected result on action step
-    patch_call = mock_client.patch_test_case_scenario_step.call_args
-    assert patch_call.kwargs["step_id"] == 1000
-    assert patch_call.kwargs["patch"].body == "Act"
-    assert patch_call.kwargs["patch"].expected_result == "Exp"
-
-    # 2. Expected (child of Action)
+    # 2. Expected (child of expectedResultId=2000 from mock)
     assert calls[1].kwargs["step"].body == "Exp"
-    assert calls[1].kwargs["step"].parent_id == 1000
+    assert calls[1].kwargs["step"].parent_id == 2000
 
-    # 3. Attachment (child of Action)
+    # 3. Attachment (child of Action=1000)
     assert calls[2].kwargs["step"].attachment_id == 888
     assert calls[2].kwargs["step"].parent_id == 1000
     assert calls[2].kwargs["after_id"] is None
