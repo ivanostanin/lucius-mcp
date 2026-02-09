@@ -8,7 +8,6 @@ from pydantic import ValidationError as PydanticValidationError
 from src.client import (
     AllureClient,
     AttachmentStepDtoWithName,
-    ScenarioStepPatchDto,
     StepWithExpected,
     TestCaseDtoWithCF,
 )
@@ -1480,25 +1479,34 @@ class TestCaseService:
                     test_case_id=test_case_id,
                     step=step_dto,
                     after_id=last_step_id,
+                    with_expected_result=bool(expected),
                 )
                 current_parent_id = response.created_step_id
                 last_step_id = current_parent_id
 
-                # If there's an expected result, patch the action step
-                if expected and current_parent_id is not None:
-                    await self._client.patch_test_case_scenario_step(
-                        step_id=current_parent_id,
-                        patch=ScenarioStepPatchDto(body=action, expected_result=expected),
-                    )
-                    await self._client.create_scenario_step(
-                        test_case_id=test_case_id,
-                        step=self._build_scenario_step_dto(
+                # If expected result logic matches HAR:
+                # 1. We called create with withExpectedResult=True
+                # 2. We get response with scenario mapping
+                # 3. We find expectedResultId for our step
+                # 4. We add the expected result text as a child of that expectedResultId
+                if (
+                    expected
+                    and current_parent_id is not None
+                    and response.scenario
+                    and response.scenario.scenario_steps
+                ):
+                    # Find our step in the scenario to get expectedResultId
+                    step_info = response.scenario.scenario_steps.get(str(current_parent_id))
+                    if step_info and step_info.expected_result_id:
+                        await self._client.create_scenario_step(
                             test_case_id=test_case_id,
-                            body=expected,
-                            parent_id=current_parent_id,
-                        ),
-                        after_id=None,
-                    )
+                            step=self._build_scenario_step_dto(
+                                test_case_id=test_case_id,
+                                body=expected,
+                                parent_id=step_info.expected_result_id,
+                            ),
+                            after_id=None,
+                        )
 
                 # Step Attachments (added as children of the action step)
                 if step_attachments and isinstance(step_attachments, list):
@@ -1581,25 +1589,28 @@ class TestCaseService:
 
         # Determine step type and create
         if isinstance(instance, BodyStepDto):
+            expected_result = getattr(instance, "expected_result", None)
             step_dto = self._build_scenario_step_dto(test_case_id=test_case_id, body=instance.body, parent_id=parent_id)
-            resp = await self._client.create_scenario_step(test_case_id=test_case_id, step=step_dto, after_id=after_id)
+            resp = await self._client.create_scenario_step(
+                test_case_id=test_case_id,
+                step=step_dto,
+                after_id=after_id,
+                with_expected_result=bool(expected_result),
+            )
             created_id = resp.created_step_id
 
-            expected_result = getattr(instance, "expected_result", None)
-            if expected_result and created_id is not None:
-                await self._client.patch_test_case_scenario_step(
-                    step_id=created_id,
-                    patch=ScenarioStepPatchDto(body=instance.body, expected_result=expected_result),
-                )
-                await self._client.create_scenario_step(
-                    test_case_id=test_case_id,
-                    step=self._build_scenario_step_dto(
+            if expected_result and created_id is not None and resp.scenario and resp.scenario.scenario_steps:
+                step_info = resp.scenario.scenario_steps.get(str(created_id))
+                if step_info and step_info.expected_result_id:
+                    await self._client.create_scenario_step(
                         test_case_id=test_case_id,
-                        body=expected_result,
-                        parent_id=created_id,
-                    ),
-                    after_id=None,
-                )
+                        step=self._build_scenario_step_dto(
+                            test_case_id=test_case_id,
+                            body=expected_result,
+                            parent_id=step_info.expected_result_id,
+                        ),
+                        after_id=None,
+                    )
 
             # Add children (steps may not be a defined field in generated DTO,
             # but we set it via model_construct)

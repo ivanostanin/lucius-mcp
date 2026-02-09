@@ -43,7 +43,7 @@ async def test_manage_custom_fields_lifecycle(  # noqa: C901
         if cf.custom_field:
             p_cf = cf.custom_field
             if not p_cf.required and p_cf.id > 0:
-                if not target_cf:
+                if not target_cf and p_cf.single_select:
                     target_cf = p_cf.name
 
                 # Check for multiselect candidate
@@ -174,6 +174,8 @@ async def test_manage_custom_fields_lifecycle(  # noqa: C901
                     for v in page.content:
                         if v.name in created_names:
                             print(f"Deleting CF Value {v.name} (ID: {v.id})")
-                            await cf_value_service.delete_custom_field_value(custom_field_name=cf_name, cfv_id=v.id)
+                            await cf_value_service.delete_custom_field_value(
+                                custom_field_name=cf_name, cfv_id=v.id, force=True
+                            )
             except Exception as e:
                 print(f"Error during cleanup of CF values for '{cf_name}': {e}")

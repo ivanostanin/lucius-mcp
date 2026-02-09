@@ -57,6 +57,8 @@ from .generated.models.integration_dto import IntegrationDto
 from .generated.models.issue_dto import IssueDto
 from .generated.models.launch_create_dto import LaunchCreateDto
 from .generated.models.launch_dto import LaunchDto
+from .generated.models.normalized_scenario_dto import NormalizedScenarioDto
+from .generated.models.normalized_scenario_dto_attachments_value import NormalizedScenarioDtoAttachmentsValue
 from .generated.models.page_custom_field_value_with_tc_count_dto import PageCustomFieldValueWithTcCountDto
 from .generated.models.page_launch_dto import PageLaunchDto
 from .generated.models.page_launch_preview_dto import PageLaunchPreviewDto
@@ -606,6 +608,86 @@ class AllureClient:
             return data
         raise ApiException(status=response.status_code, reason=response.reason_phrase, body=response.text)
 
+    @staticmethod
+    def _parse_attachment_with_discriminator(
+        attachment_dict: dict[str, object],
+    ) -> NormalizedScenarioDtoAttachmentsValue:
+        """Parse attachment using entity field as discriminator.
+
+        This works around the oneOf deserialization issue where all three attachment
+        types match because they share the same base fields.
+        """
+        from src.client.generated.models.test_case_attachment_row_dto import TestCaseAttachmentRowDto
+        from src.client.generated.models.test_fixture_result_attachment_row_dto import (
+            TestFixtureResultAttachmentRowDto,
+        )
+        from src.client.generated.models.test_result_attachment_row_dto import TestResultAttachmentRowDto
+
+        entity = attachment_dict.get("entity")
+
+        # SharedStepAttachmentRowDto doesn't have entity field, ID is direct instead of being in dict
+        # If no entity field, this is likely not a normalized attachment value, skip wrapping
+        if entity is None:
+            # Fall back to default parsing (will likely fail but provides error detail)
+            return NormalizedScenarioDtoAttachmentsValue.from_dict(attachment_dict)
+
+        # Type for instance must cover all possible attachment types
+        instance: (
+            TestCaseAttachmentRowDto
+            | TestFixtureResultAttachmentRowDto
+            | TestResultAttachmentRowDto
+            | SharedStepAttachmentRowDto
+            | None
+        ) = None
+
+        if entity == "test_case":
+            instance = TestCaseAttachmentRowDto.from_dict(attachment_dict)
+        elif entity == "test_fixture_result":
+            instance = TestFixtureResultAttachmentRowDto.from_dict(attachment_dict)
+        elif entity == "test_result":
+            instance = TestResultAttachmentRowDto.from_dict(attachment_dict)
+        elif entity == "shared_step":
+            # Shared step attachments with entity field
+            from src.client.generated.models.shared_step_attachment_row_dto import SharedStepAttachmentRowDto
+
+            # SharedStepAttachmentRowDto needs different handling - it's not part of the oneOf union
+            # This shouldn't actually happen in practice
+            instance = SharedStepAttachmentRowDto.from_dict(attachment_dict)
+        else:
+            # Fall back to default parsing (will likely fail but provides better error)
+            return NormalizedScenarioDtoAttachmentsValue.from_dict(attachment_dict)
+
+        if instance is None:
+            raise AllureAPIError(f"Failed to parse attachment with entity={entity}")
+
+        return NormalizedScenarioDtoAttachmentsValue(actual_instance=instance)
+
+    @staticmethod
+    def _parse_normalized_scenario_dto(data: dict[str, object]) -> NormalizedScenarioDto:
+        """Custom parser for NormalizedScenarioDto that handles attachment oneOf correctly."""
+        # Parse attachments using discriminator
+        attachments_dict = data.get("attachments", {})
+        if isinstance(attachments_dict, dict):
+            parsed_attachments = {
+                key: AllureClient._parse_attachment_with_discriminator(value) for key, value in attachments_dict.items()
+            }
+        else:
+            parsed_attachments = {}
+
+        # ⚠️ NOTE: We skip sharedStepAttachments because SharedStepAttachmentRowDto
+        # doesn't use NormalizedScenarioDtoAttachmentsValue wrapper - it has a different structure
+        # The OpenAPI schema is incorrect here - sharedStepAttachments should use SharedStepAttachmentRowDto directly
+        # We remove it from the data dict to avoid validation errors
+
+        # Create a modified data dict with parsed attachments
+        modified_data = dict(data)
+        modified_data["attachments"] = parsed_attachments
+        # Remove sharedStepAttachments to bypass the invalid schema validation
+        modified_data.pop("sharedStepAttachments", None)
+
+        # Use model_validate, which will use our pre-parsed attachment objects
+        return NormalizedScenarioDto.model_validate(modified_data)
+
     async def _create_scenario_step_via_api(
         self,
         api: TestCaseScenarioControllerApi | SharedStepScenarioControllerApi,
@@ -631,11 +713,15 @@ class AllureClient:
                 )
             )
         data = self._extract_response_data(response)
-        raw_created_step_id = data.get("createdStepId")
-        created_step_id = raw_created_step_id if isinstance(raw_created_step_id, int) else None
-        return ScenarioStepCreatedResponseDto.model_construct(
-            created_step_id=created_step_id,
-        )
+
+        # Custom deserialization to fix oneOf attachment issue
+        if "scenario" in data and isinstance(data["scenario"], dict):
+            data["scenario"] = self._parse_normalized_scenario_dto(data["scenario"])
+
+        result = ScenarioStepCreatedResponseDto.model_validate(data)
+        if result is None:
+            raise AllureAPIError("Invalid response from scenario step creation")
+        return result
 
     @overload
     async def _upload_attachment_via_api(
@@ -1539,7 +1625,7 @@ class AllureClient:
         return self._denormalize_to_v2_from_dict(raw_data)
 
     @staticmethod
-    def _denormalize_to_v2_from_dict(raw: dict[str, object]) -> TestCaseScenarioV2Dto:
+    def _denormalize_to_v2_from_dict(raw: dict[str, object]) -> TestCaseScenarioV2Dto:  # noqa: C901
         """Convert a raw NormalizedScenarioDto dict into a TestCaseScenarioV2Dto tree.
 
         This bypasses the generated from_dict which has broken oneOf deserialization.
@@ -1558,7 +1644,7 @@ class AllureClient:
         attachments_map = attachments_raw if isinstance(attachments_raw, dict) else {}
 
         # Recursive helper to build steps
-        def build_steps(step_ids: list[int]) -> list[SharedStepScenarioDtoStepsInner]:
+        def build_steps(step_ids: list[int]) -> list[SharedStepScenarioDtoStepsInner]:  # noqa: C901
             steps_list: list[SharedStepScenarioDtoStepsInner] = []
             if not step_ids:
                 return steps_list
@@ -1608,6 +1694,36 @@ class AllureClient:
                     child_ids = step_def.get("children") or []
                     child_steps = build_steps(child_ids) if child_ids else None
 
+                    # Handle expected results
+                    # Expected results can be stored in two ways:
+                    # 1. Directly in the step as "expectedResult"
+                    # 2. As a reference via "expectedResultId" pointing to a container with children
+                    expected_result = step_def.get("expectedResult")
+                    expected_result_id = step_def.get("expectedResultId")
+
+                    if expected_result_id and not expected_result:
+                        # Look up the expected result container
+                        expected_result_container = scenario_steps.get(str(expected_result_id))
+                        if expected_result_container:
+                            # The container itself might have the text
+                            expected_result = expected_result_container.get("body")
+
+                            # Or it might have children with the actual expected result text
+                            if not expected_result or expected_result == "Expected Result":
+                                # "Expected Result" is often a placeholder, check children
+                                expected_children_ids = expected_result_container.get("children") or []
+                                if expected_children_ids:
+                                    # Collect text from all expected result children
+                                    expected_texts = []
+                                    for exp_child_id in expected_children_ids:
+                                        exp_child = scenario_steps.get(str(exp_child_id))
+                                        if exp_child:
+                                            exp_text = exp_child.get("body")
+                                            if exp_text:
+                                                expected_texts.append(exp_text)
+                                    if expected_texts:
+                                        expected_result = "\n".join(expected_texts)
+
                     # Build StepWithExpected
                     steps_list.append(
                         SharedStepScenarioDtoStepsInner(
@@ -1615,7 +1731,7 @@ class AllureClient:
                                 type="BodyStepDto",
                                 body=body,
                                 body_json=None,  # Skip complex rich-text
-                                expected_result=step_def.get("expectedResult"),
+                                expected_result=expected_result,
                                 steps=child_steps,
                                 id=sid,
                             )
