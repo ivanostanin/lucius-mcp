@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [v0.4.1] - 2026-02-09
+
+### Added
+- Pull request template for standardized contributions (#29).
+- Security policy documentation (SECURITY.md) (#28).
+- GitHub issue templates for bug reports and feature requests (#27).
+- Code of conduct documentation (CODE_OF_CONDUCT.md) (#26).
+
+### Fixed
+- Test case step creation now correctly uses step with expected result instead of sub-steps for expected results (#30).
+
 ## [v0.4.0] - 2026-02-06
 
 ### Added
