@@ -11,7 +11,7 @@ from src.client.generated.models.launch_dto import LaunchDto
 from src.client.generated.models.launch_preview_dto import LaunchPreviewDto
 from src.client.generated.models.page_launch_dto import PageLaunchDto
 from src.client.generated.models.page_launch_preview_dto import PageLaunchPreviewDto
-from src.services.launch_service import LaunchService
+from src.services.launch_service import LaunchDeleteResult, LaunchService
 
 
 @pytest.fixture
@@ -23,6 +23,7 @@ def mock_client() -> MagicMock:
     client.search_launches_aql = AsyncMock()
     client.validate_launch_query = AsyncMock(return_value=(True, 0))
     client.get_launch = AsyncMock()
+    client.delete_launch = AsyncMock()
     client.close_launch = AsyncMock()
     client.reopen_launch = AsyncMock()
     return client
@@ -134,6 +135,38 @@ async def test_get_launch_not_found_maps_error(service: LaunchService, mock_clie
 
     with pytest.raises(LaunchNotFoundError, match="Launch ID 99 not found"):
         await service.get_launch(99)
+
+
+@pytest.mark.asyncio
+async def test_delete_launch_success(service: LaunchService, mock_client: MagicMock) -> None:
+    launch = LaunchDto(id=88, name="To Delete")
+    mock_client.get_launch.return_value = launch
+
+    result = await service.delete_launch(88)
+
+    assert isinstance(result, LaunchDeleteResult)
+    assert result.launch_id == 88
+    assert result.status == "archived"
+    assert result.name == "To Delete"
+    mock_client.delete_launch.assert_called_once_with(88)
+
+
+@pytest.mark.asyncio
+async def test_delete_launch_invalid_id(service: LaunchService) -> None:
+    with pytest.raises(AllureValidationError, match="Launch ID must be a positive integer"):
+        await service.delete_launch(0)
+
+
+@pytest.mark.asyncio
+async def test_delete_launch_already_deleted(service: LaunchService, mock_client: MagicMock) -> None:
+    mock_client.get_launch.side_effect = AllureNotFoundError("Not found", status_code=404, response_body="{}")
+
+    result = await service.delete_launch(99)
+
+    assert result.launch_id == 99
+    assert result.status == "already_deleted"
+    assert "already archived" in result.message
+    mock_client.delete_launch.assert_not_called()
 
 
 @pytest.mark.asyncio

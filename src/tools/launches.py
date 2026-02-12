@@ -5,7 +5,7 @@ from typing import Annotated
 from pydantic import Field
 
 from src.client import AllureClient
-from src.services.launch_service import LaunchListResult, LaunchService
+from src.services.launch_service import LaunchDeleteResult, LaunchListResult, LaunchService
 from src.utils.auth import get_auth_context
 from src.utils.config import settings
 
@@ -117,6 +117,36 @@ async def get_launch(
         launch = await service.get_launch(launch_id)
 
     return _format_launch_detail(launch)
+
+
+async def delete_launch(
+    launch_id: Annotated[int, Field(description="Launch ID to delete/archive (required).")],
+    project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+) -> str:
+    """Delete/archive a launch by ID.
+    ⚠️ CAUTION: Destructive.
+
+    Args:
+        launch_id: The unique ID of the launch to archive.
+        project_id: Optional override for the default Project ID.
+
+    Returns:
+        Confirmation message with launch ID and idempotent status.
+    """
+    auth_context = get_auth_context(project_id=project_id)
+    project = auth_context.project_id or settings.ALLURE_PROJECT_ID
+    if project is None:
+        raise ValueError("Project ID is required to delete launch")
+
+    async with AllureClient(
+        base_url=settings.ALLURE_ENDPOINT,
+        token=auth_context.api_token,
+        project=project,
+    ) as client:
+        service = LaunchService(client=client)
+        result = await service.delete_launch(launch_id)
+
+    return _format_launch_delete(result)
 
 
 async def close_launch(
@@ -276,3 +306,11 @@ def _append_statistic_lines(lines: list[str], launch: object) -> None:
 
     if summary_parts:
         lines.append(f"- Summary: {', '.join(summary_parts)}")
+
+
+def _format_launch_delete(result: LaunchDeleteResult) -> str:
+    if result.status == "already_deleted":
+        return f"ℹ️ Launch {result.launch_id} was already archived or doesn't exist."  # noqa: RUF001
+
+    name_part = f": '{result.name}'" if result.name else ""
+    return f"✅ Archived Launch {result.launch_id}{name_part}"

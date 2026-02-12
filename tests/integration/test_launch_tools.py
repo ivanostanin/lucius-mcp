@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from src.tools.launches import close_launch, create_launch, get_launch, list_launches, reopen_launch
+from src.tools.launches import close_launch, create_launch, delete_launch, get_launch, list_launches, reopen_launch
 
 
 @pytest.mark.asyncio
@@ -90,6 +90,67 @@ async def test_get_launch_tool_output() -> None:
                     assert "Status: closed" in output
                     assert "Started: 100" in output
                     assert "Ended: 200" in output
+
+
+@pytest.mark.asyncio
+async def test_delete_launch_tool_output_archived() -> None:
+    with patch("src.tools.launches.get_auth_context") as mock_auth_context:
+        mock_auth_context.return_value = type("AuthContext", (), {"api_token": "token", "project_id": 1})
+        with patch(
+            "src.tools.launches.settings",
+            type("Settings", (), {"ALLURE_ENDPOINT": "https://example.com", "ALLURE_PROJECT_ID": 1}),
+        ):
+            with patch("src.tools.launches.AllureClient") as mock_client_cls:
+                mock_client = AsyncMock()
+                mock_client_cls.return_value.__aenter__.return_value = mock_client
+
+                with patch("src.tools.launches.LaunchService") as mock_service_cls:
+                    mock_service = mock_service_cls.return_value
+                    mock_result = type(
+                        "LaunchDeleteResult",
+                        (),
+                        {"launch_id": 55, "status": "archived", "name": "Launch 55", "message": "Archived"},
+                    )
+                    mock_service.delete_launch = AsyncMock(return_value=mock_result)
+
+                    output = await delete_launch(launch_id=55)
+
+                    assert "Archived Launch 55" in output
+                    assert "Launch 55" in output
+                    mock_service.delete_launch.assert_called_once_with(55)
+
+
+@pytest.mark.asyncio
+async def test_delete_launch_tool_output_already_deleted() -> None:
+    with patch("src.tools.launches.get_auth_context") as mock_auth_context:
+        mock_auth_context.return_value = type("AuthContext", (), {"api_token": "token", "project_id": 1})
+        with patch(
+            "src.tools.launches.settings",
+            type("Settings", (), {"ALLURE_ENDPOINT": "https://example.com", "ALLURE_PROJECT_ID": 1}),
+        ):
+            with patch("src.tools.launches.AllureClient") as mock_client_cls:
+                mock_client = AsyncMock()
+                mock_client_cls.return_value.__aenter__.return_value = mock_client
+
+                with patch("src.tools.launches.LaunchService") as mock_service_cls:
+                    mock_service = mock_service_cls.return_value
+                    mock_result = type(
+                        "LaunchDeleteResult",
+                        (),
+                        {
+                            "launch_id": 56,
+                            "status": "already_deleted",
+                            "name": None,
+                            "message": "Already archived",
+                        },
+                    )
+                    mock_service.delete_launch = AsyncMock(return_value=mock_result)
+
+                    output = await delete_launch(launch_id=56)
+
+                    assert "Launch 56" in output
+                    assert "already archived or doesn't exist" in output
+                    mock_service.delete_launch.assert_called_once_with(56)
 
 
 @pytest.mark.asyncio

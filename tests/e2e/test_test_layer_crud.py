@@ -1,5 +1,7 @@
 """E2E tests for test layer CRUD operations."""
 
+import os
+
 import pytest
 
 from src.client import AllureClient
@@ -225,7 +227,7 @@ async def test_e2e_test_layer_schema_tools(
     service = TestLayerService(client=allure_client)
 
     # Create a test layer first
-    layer_name = "E2E-Schema-Tools-Layer"
+    layer_name = f"E2E-Schema-Tools-Layer {os.urandom(4).hex()}"
     created_layer = await service.create_test_layer(name=layer_name)
     layer_id = created_layer.id
     assert layer_id is not None

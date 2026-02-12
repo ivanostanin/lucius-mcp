@@ -13,26 +13,42 @@ from src.utils.error import AllureAPIError
 async def test_create_close_reopen_launch_lifecycle(allure_client, project_id, test_run_id) -> None:
     service = LaunchService(client=allure_client)
     launch_name = f"[{test_run_id}] E2E Launch"
+    cleanup_launch_id: int | None = None
 
-    created = await service.create_launch(name=launch_name)
-    assert created.id is not None
+    try:
+        created = await service.create_launch(name=launch_name)
+        assert created.id is not None
+        cleanup_launch_id = created.id
 
-    result = await service.list_launches(page=0, size=50, sort=["createdDate,DESC"])
-    names = [getattr(item, "name", None) for item in result.items]
-    assert launch_name in names
+        created_id = created.id
+        retrieved = await service.get_launch(created_id)
+        assert retrieved.id == created_id
+        assert retrieved.closed is not True
 
-    created_id = created.id
-    retrieved = await service.get_launch(created_id)
-    assert retrieved.id == created_id
-    assert retrieved.closed is not True
+        closed = await service.close_launch(created_id)
+        assert closed.id == created_id
+        assert closed.closed is True
 
-    closed = await service.close_launch(created_id)
-    assert closed.id == created_id
-    assert closed.closed is True
+        reopened = await service.reopen_launch(created_id)
+        assert reopened.id == created_id
+        assert reopened.closed is not True
 
-    reopened = await service.reopen_launch(created_id)
-    assert reopened.id == created_id
-    assert reopened.closed is not True
+        result = await service.list_launches(page=0, size=50, sort=["createdDate,DESC"])
+        names = [getattr(item, "name", None) for item in result.items]
+        assert launch_name in names
+
+        deleted = await service.delete_launch(created.id)
+        assert deleted.launch_id == created.id
+        assert deleted.status == "archived"
+
+        deleted_again = await service.delete_launch(created.id)
+        assert deleted_again.launch_id == created.id
+        assert deleted_again.status == "already_deleted"
+
+        cleanup_launch_id = None
+    finally:
+        if cleanup_launch_id is not None:
+            await service.delete_launch(cleanup_launch_id)
 
 
 # todo: revise this once launch_upload_controller is in
