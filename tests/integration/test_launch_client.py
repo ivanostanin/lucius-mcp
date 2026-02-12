@@ -13,8 +13,10 @@ from src.client.generated.models.aql_validate_response_dto import AqlValidateRes
 from src.client.generated.models.find_all29200_response import FindAll29200Response
 from src.client.generated.models.launch_create_dto import LaunchCreateDto
 from src.client.generated.models.launch_dto import LaunchDto
+from src.client.generated.models.launch_upload_response_dto import LaunchUploadResponseDto
 from src.client.generated.models.page_launch_dto import PageLaunchDto
 from src.client.generated.models.page_launch_preview_dto import PageLaunchPreviewDto
+from src.client.generated.rest import RESTResponse
 
 
 @pytest.mark.asyncio
@@ -106,11 +108,14 @@ async def test_client_close_launch_calls_api() -> None:
     client._is_entered = True
     client._token_expires_at = time.time() + 3600
     client._launch_api = MagicMock()
-    client._launch_api.close = AsyncMock(return_value=None)
+    response = MagicMock()
+    response.status_code = 204
+    client._launch_api.close_with_http_info = AsyncMock(return_value=response)
 
-    await client.close_launch(launch_id=3)
+    status_code = await client.close_launch(launch_id=3)
 
-    client._launch_api.close.assert_called_once_with(id=3, _request_timeout=client._timeout)
+    assert status_code == 204
+    client._launch_api.close_with_http_info.assert_called_once_with(id=3, _request_timeout=client._timeout)
 
 
 @pytest.mark.asyncio
@@ -146,6 +151,42 @@ async def test_client_reopen_launch_invalid_id_raises() -> None:
 
     with pytest.raises(AllureValidationError, match="Launch ID must be a positive integer"):
         await client.reopen_launch(launch_id=0)
+
+
+@pytest.mark.asyncio
+async def test_client_upload_results_to_launch_uses_multipart_endpoint() -> None:
+    client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
+    client._is_entered = True
+    client._token_expires_at = time.time() + 3600
+
+    api_client = MagicMock()
+
+    def _param_serialize_side_effect(*args, **kwargs):
+        path = kwargs.get("resource_path")
+        return ("POST", f"https://example.com{path}", {}, None, [])
+
+    api_client.param_serialize.side_effect = _param_serialize_side_effect
+
+    httpx_response = MagicMock()
+    httpx_response.status_code = 202
+    httpx_response.reason_phrase = "Accepted"
+    httpx_response.text = '{"launchId": 9, "filesCount": 1}'
+    httpx_response.json.return_value = {"launchId": 9, "filesCount": 1}
+
+    rest_response = RESTResponse(httpx_response)
+    client._api_client = api_client
+    api_client.call_api = AsyncMock(return_value=rest_response)
+
+    result = await client.upload_results_to_launch(launch_id=9, files=[("results.json", b"{}")])
+
+    assert isinstance(result, LaunchUploadResponseDto)
+    assert result.launch_id == 9
+    assert result.files_count == 1
+
+    _, kwargs = api_client.param_serialize.call_args
+    assert kwargs["resource_path"] == "/api/launch/9/upload/file"
+    assert kwargs["header_params"]["Content-Type"] == "multipart/form-data"
+    assert kwargs["files"] == {"file": [("results.json", b"{}")]}
 
 
 @pytest.mark.asyncio

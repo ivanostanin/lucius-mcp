@@ -6,7 +6,7 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
-from src.utils.error import ResourceNotFoundError, agent_hint_handler
+from src.utils.error import AllureAPIError, ResourceNotFoundError, agent_hint_handler
 
 
 # Define a Dummy Model for validation testing
@@ -75,6 +75,26 @@ def test_resource_not_found_error(client):
     assert "❌ Error: Item 999 not found" in text
     assert "Suggestions:" in text
     assert "- Try ID 1" in text
+
+
+def test_allure_error_preserves_explicit_status_code():
+    async def conflict_endpoint(_: Request):
+        raise AllureAPIError(
+            "Invalid transition",
+            status_code=409,
+            suggestions=["Close/reopen must follow lifecycle state"],
+        )
+
+    app = Starlette(
+        routes=[Route("/conflict", conflict_endpoint, methods=["GET"])],
+        exception_handlers={Exception: agent_hint_handler},
+    )
+    c = TestClient(app, raise_server_exceptions=False)
+
+    response = c.get("/conflict")
+
+    assert response.status_code == 409
+    assert "Invalid transition" in response.text
 
 
 def test_malformed_json(client):

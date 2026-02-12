@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.client import AllureClient
+from src.client import AllureClient, LaunchUploadResponseDto
 from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError, LaunchNotFoundError
 from src.client.generated.models.find_all29200_response import FindAll29200Response
 from src.client.generated.models.launch_dto import LaunchDto
@@ -138,15 +138,31 @@ async def test_get_launch_not_found_maps_error(service: LaunchService, mock_clie
 
 @pytest.mark.asyncio
 async def test_close_launch_valid(service: LaunchService, mock_client: MagicMock) -> None:
+    open_launch = LaunchDto(id=15, name="Launch 15", closed=False)
     closed_launch = LaunchDto(id=15, name="Launch 15", closed=True)
-    mock_client.get_launch.return_value = closed_launch
+    mock_client.get_launch.side_effect = [open_launch, closed_launch]
 
     result = await service.close_launch(15)
 
     assert result.id == 15
     assert result.closed is True
+    assert getattr(result, "close_report_generation", None) == "scheduled"
     mock_client.close_launch.assert_called_once_with(15)
-    mock_client.get_launch.assert_called_once_with(15)
+    assert mock_client.get_launch.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_close_launch_when_already_closed_marks_report_state(
+    service: LaunchService,
+    mock_client: MagicMock,
+) -> None:
+    already_closed = LaunchDto(id=18, name="Launch 18", closed=True)
+    mock_client.get_launch.side_effect = [already_closed, already_closed]
+
+    result = await service.close_launch(18)
+
+    assert result.closed is True
+    assert getattr(result, "close_report_generation", None) == "already-closed"
 
 
 @pytest.mark.asyncio
@@ -191,6 +207,14 @@ async def test_reopen_launch_valid(service: LaunchService, mock_client: MagicMoc
 
 
 @pytest.mark.asyncio
+async def test_reopen_launch_unexpectedly_closed_raises(service: LaunchService, mock_client: MagicMock) -> None:
+    mock_client.get_launch.return_value = LaunchDto(id=17, name="Launch 17", closed=True)
+
+    with pytest.raises(AllureAPIError, match="was not reopened by API"):
+        await service.reopen_launch(17)
+
+
+@pytest.mark.asyncio
 async def test_reopen_launch_invalid_id(service: LaunchService) -> None:
     with pytest.raises(AllureValidationError, match="Launch ID must be a positive integer"):
         await service.reopen_launch(0)
@@ -216,3 +240,21 @@ async def test_reopen_launch_invalid_transition_bubbles_api_error(
 
     with pytest.raises(AllureAPIError, match="already open"):
         await service.reopen_launch(21)
+
+
+@pytest.mark.asyncio
+async def test_upload_results_to_launch_calls_client(service: LaunchService, mock_client: MagicMock) -> None:
+    upload_response = LaunchUploadResponseDto(launch_id=22, files_count=2)
+    mock_client.upload_results_to_launch = AsyncMock(return_value=upload_response)
+
+    result = await service.upload_results_to_launch(launch_id=22, files=[("a.json", b"{}")])
+
+    assert result.launch_id == 22
+    assert result.files_count == 2
+    mock_client.upload_results_to_launch.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_upload_results_to_launch_requires_files(service: LaunchService) -> None:
+    with pytest.raises(AllureValidationError, match="files must be a non-empty list"):
+        await service.upload_results_to_launch(launch_id=22, files=[])

@@ -160,13 +160,16 @@ def _find_models_for_hint(exc: PydanticValidationError, request: Request) -> lis
 
 
 def _handle_allure_error(exc: AllureAPIError) -> PlainTextResponse:
-    status_code = 500
-    if isinstance(exc, ResourceNotFoundError):
-        status_code = 404
-    elif isinstance(exc, ValidationError):
-        status_code = 400
-    elif isinstance(exc, AuthenticationError):
-        status_code = 401
+    if exc.status_code is not None:
+        status_code = exc.status_code
+    else:
+        status_code = 500
+        if isinstance(exc, ResourceNotFoundError):
+            status_code = 404
+        elif isinstance(exc, ValidationError):
+            status_code = 400
+        elif isinstance(exc, AuthenticationError):
+            status_code = 401
 
     content = f"❌ Error: {exc.message}\n\n"
     if exc.suggestions:
