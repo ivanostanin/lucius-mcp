@@ -2,6 +2,7 @@
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Literal
 
 from pydantic import ValidationError as PydanticValidationError
 
@@ -32,6 +33,16 @@ class LaunchListResult:
     page: int
     size: int
     total_pages: int
+
+
+@dataclass
+class LaunchDeleteResult:
+    """Result of a launch delete operation."""
+
+    launch_id: int
+    status: Literal["archived", "already_deleted"]
+    message: str
+    name: str | None = None
 
 
 class LaunchService:
@@ -270,6 +281,29 @@ class LaunchService:
             return status
 
         return "scheduled"
+
+    async def delete_launch(self, launch_id: int) -> LaunchDeleteResult:
+        """Delete/archive a launch by ID with idempotent behavior."""
+        self._validate_project_id(self._project_id)
+        self._validate_launch_id(launch_id)
+
+        try:
+            launch = await self.get_launch(launch_id)
+        except LaunchNotFoundError:
+            return LaunchDeleteResult(
+                launch_id=launch_id,
+                status="already_deleted",
+                message=f"Launch {launch_id} was already archived or doesn't exist.",
+            )
+
+        await self._client.delete_launch(launch_id)
+
+        return LaunchDeleteResult(
+            launch_id=launch_id,
+            status="archived",
+            name=launch.name,
+            message=f"Launch {launch_id} has been archived.",
+        )
 
     async def validate_launch_query(self, rql: str) -> tuple[bool, int | None]:
         """Validate an AQL query for launches."""

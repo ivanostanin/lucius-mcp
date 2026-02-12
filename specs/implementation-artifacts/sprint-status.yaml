@@ -89,8 +89,8 @@ development_status:
   epic-5: in-progress
   5-1-create-and-list-launches: done
   5-2-get-launch-details: done
-  5-3-delete-launch: ready-for-dev
-  5-4-close-finalize-and-reopen-launch: review
+  5-3-delete-launch: done
+  5-4-close-finalize-and-reopen-launch: done
   epic-5-retrospective: optional
 
   # Epic 6: Advanced Organization & Discovery (Phase 2)

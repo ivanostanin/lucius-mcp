@@ -1150,6 +1150,25 @@ class AllureClient:
 
         raise AllureAPIError("Launch upload failed")
 
+    async def delete_launch(self, launch_id: int) -> None:
+        """Delete a specific launch by its ID.
+
+        Args:
+            launch_id: The unique ID of the launch.
+
+        Raises:
+            AllureNotFoundError: If launch doesn't exist.
+            AllureValidationError: If input is invalid.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
+        """
+        api = await self._get_api("_launch_api", error_name="launch APIs")
+
+        if not isinstance(launch_id, int) or launch_id <= 0:
+            raise AllureValidationError("Launch ID must be a positive integer")
+
+        await self._call_api(api.delete27(id=launch_id, _request_timeout=self._timeout))
+
     async def search_launches_aql(
         self,
         project_id: int,

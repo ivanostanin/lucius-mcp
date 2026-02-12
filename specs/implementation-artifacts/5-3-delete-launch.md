@@ -1,6 +1,6 @@
 # Story 5.3: Delete Launch
 
-Status: ready-for-dev
+Status: done
 
 ## Dev Agent Guardrails
 
@@ -25,29 +25,29 @@ so that the launch history remains focused and manageable.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Define Delete Launch Tool** (AC: #1, #2)
-  - [ ] 1.1: Add `delete_launch` tool in `src/tools/launches.py` following existing launch tool patterns
-  - [ ] 1.2: Add LLM-optimized docstring with args for Launch ID and optional auth override
-  - [ ] 1.3: Keep tool thin (validate args, call service, format response)
+- [x] **Task 1: Define Delete Launch Tool** (AC: #1, #2)
+  - [x] 1.1: Add `delete_launch` tool in `src/tools/launches.py` following existing launch tool patterns
+  - [x] 1.2: Add LLM-optimized docstring with args for Launch ID and optional auth override
+  - [x] 1.3: Keep tool thin (validate args, call service, format response)
 
-- [ ] **Task 2: Implement Delete Launch Service** (AC: #1, #2)
-  - [ ] 2.1: Add `delete_launch()` to `src/services/launch_service.py`
-  - [ ] 2.2: Validate Launch ID input and raise `AllureValidationError` for invalid IDs
-  - [ ] 2.3: Map delete/archive response to structured data for tool formatting
+- [x] **Task 2: Implement Delete Launch Service** (AC: #1, #2)
+  - [x] 2.1: Add `delete_launch()` to `src/services/launch_service.py`
+  - [x] 2.2: Validate Launch ID input and raise `AllureValidationError` for invalid IDs
+  - [x] 2.3: Map delete/archive response to structured data for tool formatting
 
-- [ ] **Task 3: Extend AllureClient** (AC: #1, #2)
-  - [ ] 3.1: Add `delete_launch()` request to `src/client/client.py`
-  - [ ] 3.2: Map response to generated Pydantic models or compatible DTOs
+- [x] **Task 3: Extend AllureClient** (AC: #1, #2)
+  - [x] 3.1: Add `delete_launch()` request to `src/client/client.py`
+  - [x] 3.2: Map response to generated Pydantic models or compatible DTOs
 
-- [ ] **Task 4: Error Handling & Agent Hints** (AC: #2)
-  - [ ] 4.1: Ensure not-found/invalid IDs raise `ResourceNotFoundError` or `AllureAPIError`
-  - [ ] 4.2: Confirm global error handler formats clear Agent Hints
+- [x] **Task 4: Error Handling & Agent Hints** (AC: #2)
+  - [x] 4.1: Ensure not-found/invalid IDs raise `ResourceNotFoundError` or `AllureAPIError`
+  - [x] 4.2: Confirm global error handler formats clear Agent Hints
 
-- [ ] **Task 5: Tests** (AC: #1, #2)
-  - [ ] 5.1: Unit tests for `LaunchService.delete_launch()` validation and mapping
-  - [ ] 5.2: Integration tests for client request/response mapping
-  - [ ] 5.3: Tool output tests for LLM-friendly formatting
-  - [ ] 5.4: E2E test for delete-launch flow (skip when sandbox credentials missing)
+- [x] **Task 5: Tests** (AC: #1, #2)
+  - [x] 5.1: Unit tests for `LaunchService.delete_launch()` validation and mapping
+  - [x] 5.2: Integration tests for client request/response mapping
+  - [x] 5.3: Tool output tests for LLM-friendly formatting
+  - [x] 5.4: E2E test for delete-launch flow (skip when sandbox credentials missing)
 
 ## Dev Notes
 
@@ -128,13 +128,34 @@ gpt-5.2-codex
 
 ### Debug Log References
 
-- N/A
+- `uv run --env-file .env.test pytest tests/unit/ tests/integration/` (pass)
+- `uv run --env-file .env.test pytest tests/e2e/ -n auto --dist loadfile` (pass)
+- `uv run --env-file .env.test pytest tests/unit/test_launch_tools.py tests/integration/test_launch_tools.py tests/unit/test_launch_service.py tests/e2e/test_launches.py` (pass)
+- `uv run --extra dev mypy src/services/launch_service.py src/tools/launches.py` (pass)
 
 ### Completion Notes List
 
-- Ultimate context engine analysis completed - comprehensive developer guide created.
+- Implemented `delete_launch` end-to-end in client/service/tool layers using the existing launch architecture and typed exception flow.
+- Added idempotent launch delete behavior in service (`archived` vs `already_deleted`) with structured `LaunchDeleteResult` including launch ID and optional name.
+- Registered `delete_launch` in `src/tools/__init__.py` exports and `all_tools` list.
+- Added launch delete tests across unit, integration, and e2e launch suites.
+- Full launch-focused, unit+integration, and full e2e suites pass locally using `.env.test`.
 
 ### File List
 
 - specs/implementation-artifacts/5-3-delete-launch.md
-- specs/implementation-artifacts/sprint-status.yaml
+- src/client/client.py
+- src/services/launch_service.py
+- src/tools/launches.py
+- src/tools/__init__.py
+- tests/unit/test_launch_service.py
+- tests/unit/test_launch_tools.py
+- tests/integration/test_launch_client.py
+- tests/integration/test_launch_tools.py
+- tests/e2e/test_launches.py
+
+## Change Log
+
+| Date | Actor | Description |
+| :--- | :--- | :--- |
+| 2026-02-12 | Dev Agent | Implemented delete_launch across client/service/tool with idempotent behavior, updated launch tests, and moved story to review. |

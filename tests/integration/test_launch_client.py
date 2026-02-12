@@ -204,6 +204,31 @@ async def test_client_search_launches_aql_calls_api() -> None:
 
 
 @pytest.mark.asyncio
+async def test_client_delete_launch_calls_api() -> None:
+    client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
+    client._is_entered = True
+    client._token_expires_at = time.time() + 3600
+    client._launch_api = MagicMock()
+    client._launch_api.delete27 = AsyncMock(return_value=None)
+
+    await client.delete_launch(launch_id=12)
+
+    client._launch_api.delete27.assert_called_once_with(id=12, _request_timeout=client._timeout)
+
+
+@pytest.mark.asyncio
+async def test_client_delete_launch_not_found_raises() -> None:
+    client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
+    client._is_entered = True
+    client._token_expires_at = time.time() + 3600
+    client._launch_api = MagicMock()
+    client._launch_api.delete27 = AsyncMock(side_effect=ApiException(status=404, reason="Not Found", body="{}"))
+
+    with pytest.raises(AllureNotFoundError, match="Resource not found"):
+        await client.delete_launch(launch_id=404)
+
+
+@pytest.mark.asyncio
 async def test_client_validate_launch_query_calls_api() -> None:
     client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
     client._is_entered = True
