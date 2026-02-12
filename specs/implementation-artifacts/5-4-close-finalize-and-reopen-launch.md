@@ -1,6 +1,6 @@
 # Story 5.4: Close/Finalize & Reopen Launch
 
-Status: ready-for-dev
+Status: review
 
 ## Dev Agent Guardrails
 
@@ -27,30 +27,30 @@ so that I can control the launch lifecycle and make corrections when needed.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Define Close/Reopen Tools** (AC: #1-#4)
-  - [ ] 1.1: Add `close_launch` tool in `src/tools/launches.py` following existing launch tool patterns
-  - [ ] 1.2: Add `reopen_launch` tool in `src/tools/launches.py`
-  - [ ] 1.3: Add LLM-optimized docstrings with args for Launch ID and optional auth override
-  - [ ] 1.4: Keep tools thin (validate args, call service, format response)
+- [x] **Task 1: Define Close/Reopen Tools** (AC: #1-#4)
+  - [x] 1.1: Add `close_launch` tool in `src/tools/launches.py` following existing launch tool patterns
+  - [x] 1.2: Add `reopen_launch` tool in `src/tools/launches.py`
+  - [x] 1.3: Add LLM-optimized docstrings with args for Launch ID and optional auth override
+  - [x] 1.4: Keep tools thin (validate args, call service, format response)
 
-- [ ] **Task 2: Implement Launch Lifecycle Service** (AC: #1-#4)
-  - [ ] 2.1: Add `close_launch()` and `reopen_launch()` to `src/services/launch_service.py`
-  - [ ] 2.2: Validate Launch ID input and raise `AllureValidationError` for invalid IDs
-  - [ ] 2.3: Map close/reopen responses to structured data for tool formatting
+- [x] **Task 2: Implement Launch Lifecycle Service** (AC: #1-#4)
+  - [x] 2.1: Add `close_launch()` and `reopen_launch()` to `src/services/launch_service.py`
+  - [x] 2.2: Validate Launch ID input and raise `AllureValidationError` for invalid IDs
+  - [x] 2.3: Map close/reopen responses to structured data for tool formatting
 
-- [ ] **Task 3: Extend AllureClient** (AC: #1-#4)
-  - [ ] 3.1: Add `close_launch()` and `reopen_launch()` requests to `src/client/client.py`
-  - [ ] 3.2: Map responses to generated Pydantic models or compatible DTOs
+- [x] **Task 3: Extend AllureClient** (AC: #1-#4)
+  - [x] 3.1: Add `close_launch()` and `reopen_launch()` requests to `src/client/client.py`
+  - [x] 3.2: Map responses to generated Pydantic models or compatible DTOs
 
-- [ ] **Task 4: Error Handling & Agent Hints** (AC: #3)
-  - [ ] 4.1: Ensure invalid state transitions raise `AllureAPIError`
-  - [ ] 4.2: Confirm global error handler formats clear Agent Hints
+- [x] **Task 4: Error Handling & Agent Hints** (AC: #3)
+  - [x] 4.1: Ensure invalid state transitions raise `AllureAPIError`
+  - [x] 4.2: Confirm global error handler formats clear Agent Hints
 
-- [ ] **Task 5: Tests** (AC: #1-#4)
-  - [ ] 5.1: Unit tests for `LaunchService.close_launch()` and `LaunchService.reopen_launch()`
-  - [ ] 5.2: Integration tests for client request/response mapping
-  - [ ] 5.3: Tool output tests for LLM-friendly formatting
-  - [ ] 5.4: E2E test for close/reopen flows (skip when sandbox credentials missing)
+- [x] **Task 5: Tests** (AC: #1-#4)
+  - [x] 5.1: Unit tests for `LaunchService.close_launch()` and `LaunchService.reopen_launch()`
+  - [x] 5.2: Integration tests for client request/response mapping
+  - [x] 5.3: Tool output tests for LLM-friendly formatting
+  - [x] 5.4: E2E test for close/reopen flows (skip when sandbox credentials missing)
 
 ## Dev Notes
 
@@ -132,13 +132,45 @@ gpt-5.2-codex
 
 ### Debug Log References
 
-- N/A
+- Focused launch suites: `uv run --extra dev --env-file .env.test pytest tests/unit/test_launch_service.py tests/unit/test_launch_tools.py tests/integration/test_launch_client.py tests/integration/test_launch_tools.py` (pass)
+- Story E2E file: `uv run --extra dev --env-file .env.test pytest tests/e2e/test_launches.py` (blocked by sandbox connectivity in this environment)
+- Required broader suites:
+  - `uv run --extra dev --env-file .env.test pytest tests/unit/ tests/integration/` (pass)
+  - `uv run --extra dev --env-file .env.test pytest tests/e2e/ -n auto --dist loadfile` (fails due to sandbox endpoint DNS/connectivity)
+  - reran failing story E2E tests one-by-one:
+    - `uv run --extra dev --env-file .env.test pytest tests/e2e/test_launches.py::test_create_close_reopen_launch_lifecycle`
+    - `uv run --extra dev --env-file .env.test pytest tests/e2e/test_launches.py::test_reopened_launch_accepts_upload_if_supported`
+- Quality gates:
+  - `uv run --extra dev ruff check src/client/client.py src/services/launch_service.py src/tools/launches.py src/tools/__init__.py tests/unit/test_launch_service.py tests/unit/test_launch_tools.py tests/integration/test_launch_client.py tests/integration/test_launch_tools.py tests/e2e/test_launches.py` (pass)
+  - `uv run --extra dev mypy --strict src/` (pass)
 
 ### Completion Notes List
 
-- Ultimate context engine analysis completed - comprehensive developer guide created.
+- Implemented launch lifecycle wrappers in `AllureClient`: `close_launch` and `reopen_launch` with launch ID validation and `_call_api` typed error propagation.
+- Implemented service lifecycle operations in `LaunchService`: `close_launch` and `reopen_launch`, reusing existing validators and mapping `AllureNotFoundError` to `LaunchNotFoundError` consistently with `get_launch`.
+- Added thin MCP tools `close_launch` and `reopen_launch` with optional `project_id` and `api_token` runtime override support via `get_auth_context`, and lifecycle-first formatted output while reusing `_format_launch_detail`.
+- Registered lifecycle tools in `src/tools/__init__.py` (`imports`, `__all__`, and `all_tools`).
+- Added/updated tests across unit, integration, and e2e files for client/service/tool lifecycle behavior, invalid IDs, not-found mapping, invalid transitions, and lifecycle output formatting.
+- AC4 handling is implemented as conditional in E2E: when a launch-result-upload path is not exposed in this repo client surface, assertion is explicitly skipped with reason.
+- Local environment note: E2E execution is currently blocked by sandbox connectivity (`AllureAPIError` from token exchange DNS/connect failure), so E2E remains pending external environment validation.
 
 ### File List
 
 - specs/implementation-artifacts/5-4-close-finalize-and-reopen-launch.md
 - specs/implementation-artifacts/sprint-status.yaml
+- src/client/client.py
+- src/services/launch_service.py
+- src/tools/launches.py
+- src/tools/__init__.py
+- tests/unit/test_launch_service.py
+- tests/unit/test_launch_tools.py
+- tests/integration/test_launch_client.py
+- tests/integration/test_launch_tools.py
+- tests/e2e/test_launches.py
+
+### Change Log
+
+- Added launch lifecycle support (`close_launch`, `reopen_launch`) across client, service, and MCP tools.
+- Registered new lifecycle tools in tool exports and auto-registration list.
+- Extended launch test coverage in unit/integration suites and lifecycle E2E scenarios (with conditional AC4 upload-path check).
+- Updated story status and implementation record for review handoff.

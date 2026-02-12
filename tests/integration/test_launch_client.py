@@ -7,7 +7,7 @@ import pytest
 from pydantic import SecretStr
 
 from src.client import AllureClient
-from src.client.exceptions import AllureNotFoundError
+from src.client.exceptions import AllureNotFoundError, AllureValidationError
 from src.client.generated.exceptions import ApiException
 from src.client.generated.models.aql_validate_response_dto import AqlValidateResponseDto
 from src.client.generated.models.find_all29200_response import FindAll29200Response
@@ -98,6 +98,54 @@ async def test_client_get_launch_not_found_raises() -> None:
 
     with pytest.raises(AllureNotFoundError, match="Resource not found"):
         await client.get_launch(launch_id=404)
+
+
+@pytest.mark.asyncio
+async def test_client_close_launch_calls_api() -> None:
+    client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
+    client._is_entered = True
+    client._token_expires_at = time.time() + 3600
+    client._launch_api = MagicMock()
+    client._launch_api.close = AsyncMock(return_value=None)
+
+    await client.close_launch(launch_id=3)
+
+    client._launch_api.close.assert_called_once_with(id=3, _request_timeout=client._timeout)
+
+
+@pytest.mark.asyncio
+async def test_client_close_launch_invalid_id_raises() -> None:
+    client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
+    client._is_entered = True
+    client._token_expires_at = time.time() + 3600
+    client._launch_api = MagicMock()
+
+    with pytest.raises(AllureValidationError, match="Launch ID must be a positive integer"):
+        await client.close_launch(launch_id=0)
+
+
+@pytest.mark.asyncio
+async def test_client_reopen_launch_calls_api() -> None:
+    client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
+    client._is_entered = True
+    client._token_expires_at = time.time() + 3600
+    client._launch_api = MagicMock()
+    client._launch_api.reopen = AsyncMock(return_value=None)
+
+    await client.reopen_launch(launch_id=4)
+
+    client._launch_api.reopen.assert_called_once_with(id=4, _request_timeout=client._timeout)
+
+
+@pytest.mark.asyncio
+async def test_client_reopen_launch_invalid_id_raises() -> None:
+    client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
+    client._is_entered = True
+    client._token_expires_at = time.time() + 3600
+    client._launch_api = MagicMock()
+
+    with pytest.raises(AllureValidationError, match="Launch ID must be a positive integer"):
+        await client.reopen_launch(launch_id=0)
 
 
 @pytest.mark.asyncio

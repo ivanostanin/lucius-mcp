@@ -151,6 +151,14 @@
       "description": "Get complete details of a specific launch."
     },
     {
+      "name": "close_launch",
+      "description": "Close a launch and return updated launch details."
+    },
+    {
+      "name": "reopen_launch",
+      "description": "Reopen a launch and return updated launch details."
+    },
+    {
       "name": "list_integrations",
       "description": "List available integrations in Allure TestOps."
     }

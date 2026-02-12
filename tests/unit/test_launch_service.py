@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from src.client import AllureClient
-from src.client.exceptions import AllureNotFoundError, AllureValidationError, LaunchNotFoundError
+from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError, LaunchNotFoundError
 from src.client.generated.models.find_all29200_response import FindAll29200Response
 from src.client.generated.models.launch_dto import LaunchDto
 from src.client.generated.models.launch_preview_dto import LaunchPreviewDto
@@ -23,6 +23,8 @@ def mock_client() -> MagicMock:
     client.search_launches_aql = AsyncMock()
     client.validate_launch_query = AsyncMock(return_value=(True, 0))
     client.get_launch = AsyncMock()
+    client.close_launch = AsyncMock()
+    client.reopen_launch = AsyncMock()
     return client
 
 
@@ -132,3 +134,85 @@ async def test_get_launch_not_found_maps_error(service: LaunchService, mock_clie
 
     with pytest.raises(LaunchNotFoundError, match="Launch ID 99 not found"):
         await service.get_launch(99)
+
+
+@pytest.mark.asyncio
+async def test_close_launch_valid(service: LaunchService, mock_client: MagicMock) -> None:
+    closed_launch = LaunchDto(id=15, name="Launch 15", closed=True)
+    mock_client.get_launch.return_value = closed_launch
+
+    result = await service.close_launch(15)
+
+    assert result.id == 15
+    assert result.closed is True
+    mock_client.close_launch.assert_called_once_with(15)
+    mock_client.get_launch.assert_called_once_with(15)
+
+
+@pytest.mark.asyncio
+async def test_close_launch_invalid_id(service: LaunchService) -> None:
+    with pytest.raises(AllureValidationError, match="Launch ID must be a positive integer"):
+        await service.close_launch(0)
+
+
+@pytest.mark.asyncio
+async def test_close_launch_not_found_maps_error(service: LaunchService, mock_client: MagicMock) -> None:
+    mock_client.close_launch.side_effect = AllureNotFoundError("Not found", status_code=404, response_body="{}")
+
+    with pytest.raises(LaunchNotFoundError, match="Launch ID 41 not found"):
+        await service.close_launch(41)
+
+
+@pytest.mark.asyncio
+async def test_close_launch_invalid_transition_bubbles_api_error(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    mock_client.close_launch.side_effect = AllureAPIError(
+        "API request failed: Launch is already closed",
+        status_code=409,
+        response_body='{"message":"already closed"}',
+    )
+
+    with pytest.raises(AllureAPIError, match="already closed"):
+        await service.close_launch(20)
+
+
+@pytest.mark.asyncio
+async def test_reopen_launch_valid(service: LaunchService, mock_client: MagicMock) -> None:
+    reopened_launch = LaunchDto(id=16, name="Launch 16", closed=False)
+    mock_client.get_launch.return_value = reopened_launch
+
+    result = await service.reopen_launch(16)
+
+    assert result.id == 16
+    assert result.closed is False
+    mock_client.reopen_launch.assert_called_once_with(16)
+    mock_client.get_launch.assert_called_once_with(16)
+
+
+@pytest.mark.asyncio
+async def test_reopen_launch_invalid_id(service: LaunchService) -> None:
+    with pytest.raises(AllureValidationError, match="Launch ID must be a positive integer"):
+        await service.reopen_launch(0)
+
+
+@pytest.mark.asyncio
+async def test_reopen_launch_not_found_maps_error(service: LaunchService, mock_client: MagicMock) -> None:
+    mock_client.reopen_launch.side_effect = AllureNotFoundError("Not found", status_code=404, response_body="{}")
+
+    with pytest.raises(LaunchNotFoundError, match="Launch ID 42 not found"):
+        await service.reopen_launch(42)
+
+
+@pytest.mark.asyncio
+async def test_reopen_launch_invalid_transition_bubbles_api_error(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    mock_client.reopen_launch.side_effect = AllureAPIError(
+        "API request failed: Launch is already open",
+        status_code=409,
+        response_body='{"message":"already open"}',
+    )
+
+    with pytest.raises(AllureAPIError, match="already open"):
+        await service.reopen_launch(21)

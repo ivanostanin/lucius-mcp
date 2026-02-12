@@ -119,6 +119,68 @@ async def get_launch(
     return _format_launch_detail(launch)
 
 
+async def close_launch(
+    launch_id: Annotated[int, Field(description="Launch ID (required).")],
+    project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    api_token: Annotated[str | None, Field(description="Optional runtime API token override.")] = None,
+) -> str:
+    """Close a launch and return updated launch details.
+
+    Args:
+        launch_id: The unique ID of the launch.
+        project_id: Optional override for the default Project ID.
+        api_token: Optional runtime API token override.
+
+    Returns:
+        LLM-friendly summary of the closed launch.
+    """
+    auth_context = get_auth_context(api_token=api_token, project_id=project_id)
+    project = auth_context.project_id or settings.ALLURE_PROJECT_ID
+    if project is None:
+        raise ValueError("Project ID is required to close launch")
+
+    async with AllureClient(
+        base_url=settings.ALLURE_ENDPOINT,
+        token=auth_context.api_token,
+        project=project,
+    ) as client:
+        service = LaunchService(client=client)
+        launch = await service.close_launch(launch_id)
+
+    return f"Launch closed successfully.\n{_format_launch_detail(launch)}"
+
+
+async def reopen_launch(
+    launch_id: Annotated[int, Field(description="Launch ID (required).")],
+    project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    api_token: Annotated[str | None, Field(description="Optional runtime API token override.")] = None,
+) -> str:
+    """Reopen a launch and return updated launch details.
+
+    Args:
+        launch_id: The unique ID of the launch.
+        project_id: Optional override for the default Project ID.
+        api_token: Optional runtime API token override.
+
+    Returns:
+        LLM-friendly summary of the reopened launch.
+    """
+    auth_context = get_auth_context(api_token=api_token, project_id=project_id)
+    project = auth_context.project_id or settings.ALLURE_PROJECT_ID
+    if project is None:
+        raise ValueError("Project ID is required to reopen launch")
+
+    async with AllureClient(
+        base_url=settings.ALLURE_ENDPOINT,
+        token=auth_context.api_token,
+        project=project,
+    ) as client:
+        service = LaunchService(client=client)
+        launch = await service.reopen_launch(launch_id)
+
+    return f"Launch reopened successfully.\n{_format_launch_detail(launch)}"
+
+
 def _format_launch_list(result: LaunchListResult) -> str:
     if not result.items:
         return "No launches found in this project."

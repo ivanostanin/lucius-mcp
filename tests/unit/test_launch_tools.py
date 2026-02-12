@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from src.tools.launches import create_launch, get_launch, list_launches
+from src.tools.launches import close_launch, create_launch, get_launch, list_launches, reopen_launch
 
 
 @pytest.mark.asyncio
@@ -76,7 +76,7 @@ async def test_list_launches_empty() -> None:
 @pytest.mark.asyncio
 async def test_get_launch_output_format() -> None:
     with patch("src.tools.launches.get_auth_context") as mock_auth_context:
-        mock_auth_context.return_value = type("AuthContext", (), {"api_token": "token", "project_id": 1})
+        mock_auth_context.return_value = type("AuthContext", (), {"api_token": "runtime-token", "project_id": 1})
         with patch(
             "src.tools.launches.settings",
             type("Settings", (), {"ALLURE_ENDPOINT": "https://example.com", "ALLURE_PROJECT_ID": 1}),
@@ -108,6 +108,7 @@ async def test_get_launch_output_format() -> None:
 
                     output = await get_launch(launch_id=10)
 
+                    mock_auth_context.assert_called_once_with(project_id=None)
                     assert "Launch details" in output
                     assert "ID: 10" in output
                     assert "Status: open" in output
@@ -116,3 +117,75 @@ async def test_get_launch_output_format() -> None:
                     assert "Known defects: 2" in output
                     assert "New defects: 1" in output
                     assert "Summary: passed=7, failed=1" in output
+
+
+@pytest.mark.asyncio
+async def test_close_launch_output_format() -> None:
+    with patch("src.tools.launches.get_auth_context") as mock_auth_context:
+        mock_auth_context.return_value = type("AuthContext", (), {"api_token": "runtime-token", "project_id": 1})
+        with patch(
+            "src.tools.launches.settings",
+            type("Settings", (), {"ALLURE_ENDPOINT": "https://example.com", "ALLURE_PROJECT_ID": 1}),
+        ):
+            with patch("src.tools.launches.AllureClient") as mock_client_cls:
+                mock_client = AsyncMock()
+                mock_client_cls.return_value.__aenter__.return_value = mock_client
+
+                with patch("src.tools.launches.LaunchService") as mock_service_cls:
+                    mock_service = mock_service_cls.return_value
+                    mock_launch = type(
+                        "LaunchDto",
+                        (),
+                        {
+                            "id": 20,
+                            "name": "Launch 20",
+                            "closed": True,
+                            "created_date": 100,
+                            "last_modified_date": 200,
+                        },
+                    )
+                    mock_service.close_launch = AsyncMock(return_value=mock_launch)
+
+                    runtime_api_token = mock_auth_context.return_value.api_token
+                    output = await close_launch(launch_id=20, project_id=1, api_token=runtime_api_token)
+
+                    mock_auth_context.assert_called_once_with(api_token=runtime_api_token, project_id=1)
+                    mock_service.close_launch.assert_called_once_with(20)
+                    assert output.startswith("Launch closed successfully.")
+                    assert "Status: closed" in output
+
+
+@pytest.mark.asyncio
+async def test_reopen_launch_output_format() -> None:
+    with patch("src.tools.launches.get_auth_context") as mock_auth_context:
+        mock_auth_context.return_value = type("AuthContext", (), {"api_token": "runtime-token", "project_id": 1})
+        with patch(
+            "src.tools.launches.settings",
+            type("Settings", (), {"ALLURE_ENDPOINT": "https://example.com", "ALLURE_PROJECT_ID": 1}),
+        ):
+            with patch("src.tools.launches.AllureClient") as mock_client_cls:
+                mock_client = AsyncMock()
+                mock_client_cls.return_value.__aenter__.return_value = mock_client
+
+                with patch("src.tools.launches.LaunchService") as mock_service_cls:
+                    mock_service = mock_service_cls.return_value
+                    mock_launch = type(
+                        "LaunchDto",
+                        (),
+                        {
+                            "id": 21,
+                            "name": "Launch 21",
+                            "closed": False,
+                            "created_date": 101,
+                            "last_modified_date": 201,
+                        },
+                    )
+                    mock_service.reopen_launch = AsyncMock(return_value=mock_launch)
+
+                    runtime_api_token = mock_auth_context.return_value.api_token
+                    output = await reopen_launch(launch_id=21, project_id=1, api_token=runtime_api_token)
+
+                    mock_auth_context.assert_called_once_with(api_token=runtime_api_token, project_id=1)
+                    mock_service.reopen_launch.assert_called_once_with(21)
+                    assert output.startswith("Launch reopened successfully.")
+                    assert "Status: open" in output

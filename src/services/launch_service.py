@@ -194,6 +194,36 @@ class LaunchService:
                 response_body=exc.response_body,
             ) from exc
 
+    async def close_launch(self, launch_id: int) -> LaunchDto:
+        """Close a launch and return updated launch details."""
+        self._validate_project_id(self._project_id)
+        self._validate_launch_id(launch_id)
+
+        try:
+            await self._client.close_launch(launch_id)
+            return await self._client.get_launch(launch_id)
+        except AllureNotFoundError as exc:
+            raise LaunchNotFoundError(
+                launch_id=launch_id,
+                status_code=exc.status_code,
+                response_body=exc.response_body,
+            ) from exc
+
+    async def reopen_launch(self, launch_id: int) -> LaunchDto:
+        """Reopen a launch and return updated launch details."""
+        self._validate_project_id(self._project_id)
+        self._validate_launch_id(launch_id)
+
+        try:
+            await self._client.reopen_launch(launch_id)
+            return await self._client.get_launch(launch_id)
+        except AllureNotFoundError as exc:
+            raise LaunchNotFoundError(
+                launch_id=launch_id,
+                status_code=exc.status_code,
+                response_body=exc.response_body,
+            ) from exc
+
     async def validate_launch_query(self, rql: str) -> tuple[bool, int | None]:
         """Validate an AQL query for launches."""
         if not isinstance(rql, str) or not rql.strip():

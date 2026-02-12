@@ -1014,6 +1014,44 @@ class AllureClient:
 
         return await self._call_api(api.find_one23(id=launch_id, _request_timeout=self._timeout))
 
+    async def close_launch(self, launch_id: int) -> None:
+        """Close a launch by its ID.
+
+        Args:
+            launch_id: The unique ID of the launch.
+
+        Raises:
+            AllureNotFoundError: If launch doesn't exist.
+            AllureValidationError: If input is invalid.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
+        """
+        api = await self._get_api("_launch_api", error_name="launch APIs")
+
+        if not isinstance(launch_id, int) or launch_id <= 0:
+            raise AllureValidationError("Launch ID must be a positive integer")
+
+        await self._call_api(api.close(id=launch_id, _request_timeout=self._timeout))
+
+    async def reopen_launch(self, launch_id: int) -> None:
+        """Reopen a launch by its ID.
+
+        Args:
+            launch_id: The unique ID of the launch.
+
+        Raises:
+            AllureNotFoundError: If launch doesn't exist.
+            AllureValidationError: If input is invalid.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
+        """
+        api = await self._get_api("_launch_api", error_name="launch APIs")
+
+        if not isinstance(launch_id, int) or launch_id <= 0:
+            raise AllureValidationError("Launch ID must be a positive integer")
+
+        await self._call_api(api.reopen(id=launch_id, _request_timeout=self._timeout))
+
     async def search_launches_aql(
         self,
         project_id: int,
