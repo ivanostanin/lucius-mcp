@@ -117,6 +117,7 @@ python_classes = [
 
 markers = [
     "test_id: Test ID for traceability to requirements and test design documents",
-    "priority: Test execution priority"
+    "priority: Test execution priority",
+    "e2e: End-to-end tests that validate runtime lifecycle and bundle execution"
 ]
 
