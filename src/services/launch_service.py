@@ -5,11 +5,12 @@ from dataclasses import dataclass
 
 from pydantic import ValidationError as PydanticValidationError
 
-from src.client import AllureClient, FindAll29200Response, LaunchCreateDto, LaunchDto
-from src.client.exceptions import AllureNotFoundError, AllureValidationError, LaunchNotFoundError
+from src.client import AllureClient, FindAll29200Response, LaunchCreateDto, LaunchDto, LaunchUploadResponseDto
+from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError, LaunchNotFoundError
 from src.client.generated.models.aql_validate_response_dto import AqlValidateResponseDto
 from src.client.generated.models.external_link_dto import ExternalLinkDto
 from src.client.generated.models.issue_dto import IssueDto
+from src.client.generated.models.launch_existing_upload_dto import LaunchExistingUploadDto
 from src.client.generated.models.launch_preview_dto import LaunchPreviewDto
 from src.client.generated.models.launch_tag_dto import LaunchTagDto
 from src.client.generated.models.page_launch_dto import PageLaunchDto
@@ -193,6 +194,82 @@ class LaunchService:
                 status_code=exc.status_code,
                 response_body=exc.response_body,
             ) from exc
+
+    async def close_launch(self, launch_id: int) -> LaunchDto:
+        """Close a launch and return updated launch details."""
+        self._validate_project_id(self._project_id)
+        self._validate_launch_id(launch_id)
+
+        pre_close = await self.get_launch(launch_id)
+
+        try:
+            await self._client.close_launch(launch_id)
+            closed_launch = await self._client.get_launch(launch_id)
+        except AllureNotFoundError as exc:
+            raise LaunchNotFoundError(
+                launch_id=launch_id,
+                status_code=exc.status_code,
+                response_body=exc.response_body,
+            ) from exc
+
+        if closed_launch.closed is not True:
+            raise AllureAPIError(
+                f"Launch {launch_id} was not closed by API",
+                suggestions=["Retry close_launch", "Inspect launch state via get_launch"],
+            )
+
+        close_report = self._determine_close_report_status(pre_close, closed_launch)
+        closed_launch.__dict__["close_report_generation"] = close_report
+        return closed_launch
+
+    async def reopen_launch(self, launch_id: int) -> LaunchDto:
+        """Reopen a launch and return updated launch details."""
+        self._validate_project_id(self._project_id)
+        self._validate_launch_id(launch_id)
+
+        try:
+            await self._client.reopen_launch(launch_id)
+            reopened = await self._client.get_launch(launch_id)
+        except AllureNotFoundError as exc:
+            raise LaunchNotFoundError(
+                launch_id=launch_id,
+                status_code=exc.status_code,
+                response_body=exc.response_body,
+            ) from exc
+
+        if reopened.closed is True:
+            raise AllureAPIError(
+                f"Launch {launch_id} was not reopened by API",
+                suggestions=["Retry reopen_launch", "Inspect launch state via get_launch"],
+            )
+
+        return reopened
+
+    async def upload_results_to_launch(
+        self,
+        launch_id: int,
+        files: list[bytes | str | tuple[str, bytes]],
+    ) -> LaunchUploadResponseDto:
+        """Upload result files to an existing launch."""
+        self._validate_project_id(self._project_id)
+        self._validate_launch_id(launch_id)
+
+        if not isinstance(files, list) or not files:
+            raise AllureValidationError("files must be a non-empty list")
+
+        upload_info = LaunchExistingUploadDto()
+        return await self._client.upload_results_to_launch(launch_id=launch_id, files=files, info=upload_info)
+
+    @staticmethod
+    def _determine_close_report_status(pre_close: LaunchDto, closed_launch: LaunchDto) -> str:
+        if pre_close.closed is True:
+            return "already-closed"
+
+        status = getattr(closed_launch, "status", None)
+        if isinstance(status, str) and status.strip():
+            return status
+
+        return "scheduled"
 
     async def validate_launch_query(self, rql: str) -> tuple[bool, int | None]:
         """Validate an AQL query for launches."""

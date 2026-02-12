@@ -104,7 +104,7 @@ async def get_launch(
         LLM-friendly summary of the launch details.
     """
     auth_context = get_auth_context(project_id=project_id)
-    project = auth_context.project_id or settings.ALLURE_PROJECT_ID
+    project = auth_context.project_id if auth_context.project_id is not None else settings.ALLURE_PROJECT_ID
     if project is None:
         raise ValueError("Project ID is required to retrieve launch details")
 
@@ -117,6 +117,68 @@ async def get_launch(
         launch = await service.get_launch(launch_id)
 
     return _format_launch_detail(launch)
+
+
+async def close_launch(
+    launch_id: Annotated[int, Field(description="Launch ID (required).")],
+    project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    api_token: Annotated[str | None, Field(description="Optional runtime API token override.")] = None,
+) -> str:
+    """Close a launch and return updated launch details.
+
+    Args:
+        launch_id: The unique ID of the launch.
+        project_id: Optional override for the default Project ID.
+        api_token: Optional runtime API token override.
+
+    Returns:
+        LLM-friendly summary of the closed launch.
+    """
+    auth_context = get_auth_context(api_token=api_token, project_id=project_id)
+    project = auth_context.project_id if auth_context.project_id is not None else settings.ALLURE_PROJECT_ID
+    if project is None:
+        raise ValueError("Project ID is required to close launch")
+
+    async with AllureClient(
+        base_url=settings.ALLURE_ENDPOINT,
+        token=auth_context.api_token,
+        project=project,
+    ) as client:
+        service = LaunchService(client=client)
+        launch = await service.close_launch(launch_id)
+
+    return f"Launch closed successfully.\n{_format_launch_detail(launch)}"
+
+
+async def reopen_launch(
+    launch_id: Annotated[int, Field(description="Launch ID (required).")],
+    project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    api_token: Annotated[str | None, Field(description="Optional runtime API token override.")] = None,
+) -> str:
+    """Reopen a launch and return updated launch details.
+
+    Args:
+        launch_id: The unique ID of the launch.
+        project_id: Optional override for the default Project ID.
+        api_token: Optional runtime API token override.
+
+    Returns:
+        LLM-friendly summary of the reopened launch.
+    """
+    auth_context = get_auth_context(api_token=api_token, project_id=project_id)
+    project = auth_context.project_id if auth_context.project_id is not None else settings.ALLURE_PROJECT_ID
+    if project is None:
+        raise ValueError("Project ID is required to reopen launch")
+
+    async with AllureClient(
+        base_url=settings.ALLURE_ENDPOINT,
+        token=auth_context.api_token,
+        project=project,
+    ) as client:
+        service = LaunchService(client=client)
+        launch = await service.reopen_launch(launch_id)
+
+    return f"Launch reopened successfully.\n{_format_launch_detail(launch)}"
 
 
 def _format_launch_list(result: LaunchListResult) -> str:
@@ -150,10 +212,25 @@ def _format_launch_detail(launch: object) -> str:
     status = "closed" if closed else "open"
 
     lines = ["Launch details:"]
+    _append_close_report_line(lines, launch)
     lines.append(f"- ID: {launch_id if launch_id is not None else 'unknown'}")
     lines.append(f"- Name: {name}")
     lines.append(f"- Status: {status}")
 
+    _append_timing_lines(lines, launch)
+    _append_metadata_lines(lines, launch)
+    _append_statistic_lines(lines, launch)
+
+    return "\n".join(lines)
+
+
+def _append_close_report_line(lines: list[str], launch: object) -> None:
+    close_report_generation = getattr(launch, "close_report_generation", None)
+    if close_report_generation is not None:
+        lines.append(f"- Close report generation: {close_report_generation}")
+
+
+def _append_timing_lines(lines: list[str], launch: object) -> None:
     started_at = getattr(launch, "created_date", None) or getattr(launch, "createdDate", None)
     ended_at = getattr(launch, "last_modified_date", None) or getattr(launch, "lastModifiedDate", None)
 
@@ -162,6 +239,8 @@ def _format_launch_detail(launch: object) -> str:
     if ended_at is not None:
         lines.append(f"- Ended: {ended_at}")
 
+
+def _append_metadata_lines(lines: list[str], launch: object) -> None:
     field_labels = [
         ("project_id", "Project ID"),
         ("projectId", "Project ID"),
@@ -176,23 +255,24 @@ def _format_launch_detail(launch: object) -> str:
     seen_labels: set[str] = set()
     for field_name, label in field_labels:
         value = getattr(launch, field_name, None)
-        if value is None:
-            continue
-        if label in seen_labels:
+        if value is None or label in seen_labels:
             continue
         lines.append(f"- {label}: {value}")
         seen_labels.add(label)
 
-    statistic = getattr(launch, "statistic", None)
-    if statistic:
-        summary_parts: list[str] = []
-        for item in statistic:
-            status_label = getattr(item, "status", None)
-            count = getattr(item, "count", None)
-            if status_label is None or count is None:
-                continue
-            summary_parts.append(f"{status_label!s}={count}")
-        if summary_parts:
-            lines.append(f"- Summary: {', '.join(summary_parts)}")
 
-    return "\n".join(lines)
+def _append_statistic_lines(lines: list[str], launch: object) -> None:
+    statistic = getattr(launch, "statistic", None)
+    if not statistic:
+        return
+
+    summary_parts: list[str] = []
+    for item in statistic:
+        status_label = getattr(item, "status", None)
+        count = getattr(item, "count", None)
+        if status_label is None or count is None:
+            continue
+        summary_parts.append(f"{status_label!s}={count}")
+
+    if summary_parts:
+        lines.append(f"- Summary: {', '.join(summary_parts)}")

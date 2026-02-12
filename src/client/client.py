@@ -58,6 +58,8 @@ from .generated.models.integration_dto import IntegrationDto
 from .generated.models.issue_dto import IssueDto
 from .generated.models.launch_create_dto import LaunchCreateDto
 from .generated.models.launch_dto import LaunchDto
+from .generated.models.launch_existing_upload_dto import LaunchExistingUploadDto
+from .generated.models.launch_upload_response_dto import LaunchUploadResponseDto
 from .generated.models.normalized_scenario_dto import NormalizedScenarioDto
 from .generated.models.normalized_scenario_dto_attachments_value import NormalizedScenarioDtoAttachmentsValue
 from .generated.models.page_custom_field_value_with_tc_count_dto import PageCustomFieldValueWithTcCountDto
@@ -89,6 +91,7 @@ from .generated.models.test_fixture_result_attachment_row_dto import (
     TestFixtureResultAttachmentRowDto,
 )
 from .generated.models.test_result_attachment_row_dto import TestResultAttachmentRowDto
+from .generated.rest import RESTResponse
 from .overridden.test_case_custom_fields_v2 import TestCaseCustomFieldV2ControllerApi
 
 
@@ -173,6 +176,7 @@ __all__ = [
     "FindAll29200Response",
     "LaunchCreateDto",
     "LaunchDto",
+    "LaunchUploadResponseDto",
     "PageLaunchDto",
     "PageLaunchPreviewDto",
     "PageSharedStepDto",
@@ -1013,6 +1017,138 @@ class AllureClient:
             raise AllureValidationError("Launch ID must be a positive integer")
 
         return await self._call_api(api.find_one23(id=launch_id, _request_timeout=self._timeout))
+
+    async def close_launch(self, launch_id: int) -> int:
+        """Close a launch by its ID.
+
+        Args:
+            launch_id: The unique ID of the launch.
+
+        Returns:
+            HTTP status code from the close operation.
+
+        Raises:
+            AllureNotFoundError: If launch doesn't exist.
+            AllureValidationError: If input is invalid.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
+        """
+        api = await self._get_api("_launch_api", error_name="launch APIs")
+
+        if not isinstance(launch_id, int) or launch_id <= 0:
+            raise AllureValidationError("Launch ID must be a positive integer")
+
+        response = await self._call_api(api.close_with_http_info(id=launch_id, _request_timeout=self._timeout))
+        return response.status_code
+
+    async def reopen_launch(self, launch_id: int) -> None:
+        """Reopen a launch by its ID.
+
+        Args:
+            launch_id: The unique ID of the launch.
+
+        Raises:
+            AllureNotFoundError: If launch doesn't exist.
+            AllureValidationError: If input is invalid.
+            AllureAuthError: If unauthorized.
+            AllureAPIError: If the server returns an error.
+        """
+        api = await self._get_api("_launch_api", error_name="launch APIs")
+
+        if not isinstance(launch_id, int) or launch_id <= 0:
+            raise AllureValidationError("Launch ID must be a positive integer")
+
+        await self._call_api(api.reopen(id=launch_id, _request_timeout=self._timeout))
+
+    async def upload_results_to_launch(
+        self,
+        launch_id: int,
+        files: list[bytes | str | tuple[str, bytes]],
+        info: LaunchExistingUploadDto | None = None,
+    ) -> LaunchUploadResponseDto:
+        """Upload result files/archives to an existing launch.
+
+        Args:
+            launch_id: The unique ID of the launch.
+            files: Files to upload (paths, bytes, or named byte tuples).
+            info: Optional upload metadata (`LaunchExistingUploadDto`).
+
+        Returns:
+            Upload response payload.
+
+        Raises:
+            AllureValidationError: If inputs are invalid.
+            AllureAPIError: If the server returns an error.
+        """
+        if not isinstance(launch_id, int) or launch_id <= 0:
+            raise AllureValidationError("Launch ID must be a positive integer")
+        if not isinstance(files, list) or not files:
+            raise AllureValidationError("files must be a non-empty list")
+
+        self._require_entered()
+        await self._ensure_valid_token()
+
+        if self._api_client is None:
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+
+        info_payload = info if info is not None else LaunchExistingUploadDto()
+
+        method = "POST"
+        headers = {
+            "Accept": "*/*",
+            "Content-Type": "multipart/form-data",
+        }
+        form_params: list[tuple[str, object]] = [("info", info_payload.to_dict())]
+        files_map: dict[str, list[bytes | str | tuple[str, bytes]]] = {"file": files}
+
+        upload_paths = [
+            f"/api/launch/{launch_id}/upload/file",
+            f"/api/launch/{launch_id}/upload",
+        ]
+
+        last_error: ApiException | None = None
+
+        for resource_path in upload_paths:
+            request_args = self._api_client.param_serialize(
+                method=method,
+                resource_path=resource_path,
+                header_params=headers,
+                post_params=form_params,
+                files=files_map,
+                auth_settings=[],
+            )
+
+            call_coro = self._api_client.call_api(
+                *request_args,
+                _request_timeout=self._timeout,
+            )
+            response = await self._call_api_raw(cast(Awaitable[httpx.Response], call_coro))
+
+            rest_response = cast(RESTResponse, response)
+            status_code = rest_response.status
+            if not 200 <= status_code <= 299:
+                last_error = ApiException(
+                    status=status_code,
+                    reason=rest_response.reason,
+                    body=rest_response.response.text,
+                )
+                continue
+
+            data = rest_response.response.json()
+            if not isinstance(data, dict):
+                raise AllureAPIError("Unexpected launch upload response from API")
+
+            result = LaunchUploadResponseDto.from_dict(data)
+            if result is None:
+                raise AllureAPIError("Unexpected launch upload response from API")
+
+            return result
+
+        if last_error is not None:
+            self._handle_api_exception(last_error)
+            raise last_error
+
+        raise AllureAPIError("Launch upload failed")
 
     async def search_launches_aql(
         self,
