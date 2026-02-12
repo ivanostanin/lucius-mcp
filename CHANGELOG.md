@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+## [v0.5.0] - 2026-02-12
+
+### Added
+- `delete_launch` tool to archive obsolete launches with idempotent outcomes (Story 5.3).
+- `close_launch` and `reopen_launch` tools to manage launch lifecycle transitions and surface launch status details (Story 5.4).
+- Bundle-runtime E2E lifecycle coverage that unpacks generated `.mcpb` artifacts and validates MCP startup/handshake from unpacked content (Story 4.6).
+- `e2e` pytest marker registration and `scripts/full-test-suite.sh` to standardize full validation execution.
+
+### Changed
+- Launch tool manifest definitions updated to expose lifecycle operations in MCP bundles (`deployment/mcpb/manifest.python.json`, `deployment/mcpb/manifest.uv.json`).
+- Release preparation protocol updated with explicit environment/branch setup and manual PR creation guidance.
+- Story and sprint tracking artifacts updated to mark Story 4.6 as completed.
+
+### Fixed
+- Attachment discriminator parsing in `AllureClient` now normalizes DTO entity names for scenario step attachment deserialization.
+- `create_test_case` tool documentation updated to include `test_layer_id` argument guidance.
+- Re-enabled unit coverage for scenario-step attachment parsing regression (`tests/unit/test_client.py`).
+
 ## [v0.4.1] - 2026-02-09
 
 ### Added
