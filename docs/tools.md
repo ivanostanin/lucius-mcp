@@ -57,3 +57,13 @@ Agent Hints" on failure.
 | `create_launch` | Create a new test execution launch.                | `name`, `tags` |
 | `list_launches` | View recent launches and their status.             | `page`, `size` |
 | `get_launch`    | Get detailed stats and defect counts for a launch. | `launch_id`    |
+
+## 📋 Test Plan Management
+
+| Tool                       | Description                                         | Key Parameters                              |
+|:---------------------------|:----------------------------------------------------|:--------------------------------------------|
+| `create_test_plan`         | Create a new test plan (manual or dynamic).         | `name`, `test_case_ids`, `aql_filter`       |
+| `update_test_plan`         | Update plan metadata (name).                        | `plan_id`, `name`                           |
+| `manage_test_plan_content` | Add/remove test cases or update AQL filter.         | `plan_id`, `add_ids`, `remove_ids`, `aql`   |
+| `list_test_plans`          | List test plans with pagination.                    | `page`, `size`                              |
+| `delete_test_plan`         | Soft-delete (archive) a test plan.                  | `plan_id`                                   |

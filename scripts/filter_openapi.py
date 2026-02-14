@@ -36,6 +36,9 @@ KEEP_TAGS = {
     "test-layer-controller",
     "test-layer-schema-controller",
     "integration-controller",
+    # Test Plan Management
+    "test-plan-controller",
+    "test-case-test-plan-bulk-controller",
 }
 
 

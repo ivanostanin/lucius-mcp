@@ -24,6 +24,7 @@ Lucius makes this easier by giving your AI tools that are simple to use and hard
 | **Shared Steps**       | Create and manage reusable sequence sequences.   | `create_shared_step`, `list_shared_steps`, `update_shared_step`, `delete_shared_step`, `link_shared_step`, `unlink_shared_step`                                                                  |
 | **Test Layers**        | Manage test taxonomy and auto-mapping schemas.   | `list_test_layers`, `create_test_layer`, `update_test_layer`, `delete_test_layer`, `list_test_layer_schemas`, `create_test_layer_schema`, `update_test_layer_schema`, `delete_test_layer_schema` |
 | **Custom Fields**      | Project-level management of custom field values. | `list_custom_field_values`, `create_custom_field_value`, `update_custom_field_value`, `delete_custom_field_value`                                                                                |
+| **Test Plan Mgmt**       | Organize tests into executable plans.            | `create_test_plan`, `update_test_plan`, `manage_test_plan_content`, `list_test_plans`, `delete_test_plan`                                                                                        |
 | **Launch Mgmt**        | Execution tracking and launch statistics.        | `create_launch`, `get_launch`, `list_launches`                                                                                                                                                   |
 
 ## 🚀 Quick Start

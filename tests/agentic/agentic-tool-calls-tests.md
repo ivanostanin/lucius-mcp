@@ -242,6 +242,29 @@ From `src/tools/__init__.py:24-79`:
   9. **Negative Test**: `create_test_case(name="Invalid Issue", issues=["INVALID_FORMAT"])`
      - Expectation: Error message containing `"Invalid issue key format"`.
 
+#### 10. Test Plan Management
+- **Scenario source**: `specs/implementation-artifacts/7-1-test-plan-management.md`
+- **Goal**: Verify Test Plan lifecycle (creation, update, content management, listing).
+- **Steps**:
+  1. **Create Manual Plan**: `create_test_plan(name="[Agent] Manual Plan", test_case_ids=[TC_CORE_ID])`
+     - Expectation: Output contains `"Created Test Plan <PLAN_ID>: '[Agent] Manual Plan'"`.
+     - Action: Capture `id` as `MANUAL_PLAN_ID`.
+  2. **Verify Creation**: `list_test_plans(page=0, size=10)`
+     - Expectation: List contains `[<MANUAL_PLAN_ID>] [Agent] Manual Plan`.
+  3. **Create AQL Plan**: `create_test_plan(name="[Agent] AQL Plan", aql_filter="tag:smoke")`
+     - Expectation: Output contains `"Created Test Plan <AQL_PLAN_ID>: '[Agent] AQL Plan'"`.
+     - Action: Capture `id` as `AQL_PLAN_ID`.
+  4. **Update Plan Metadata**: `update_test_plan(plan_id=MANUAL_PLAN_ID, name="[Agent] Manual Plan Renamed")`
+     - Expectation: Output contains `"Updated Test Plan <MANUAL_PLAN_ID>: '[Agent] Manual Plan Renamed'"`.
+  5. **Manage Content (Add)**: `manage_test_plan_content(plan_id=MANUAL_PLAN_ID, add_test_case_ids=[TC_UPDATE_ID])`
+     - Expectation: Output contains `"Updated content for Test Plan <MANUAL_PLAN_ID>"`.
+  6. **Manage Content (Remove)**: `manage_test_plan_content(plan_id=MANUAL_PLAN_ID, remove_test_case_ids=[TC_CORE_ID])`
+     - Expectation: Output contains `"Updated content for Test Plan <MANUAL_PLAN_ID>"`.
+  7. **Update AQL Filter**: `manage_test_plan_content(plan_id=AQL_PLAN_ID, update_aql_filter="tag:regression")`
+     - Expectation: Output contains `"Updated content for Test Plan <AQL_PLAN_ID>"`.
+  8. **List Plans**: `list_test_plans()`
+     - Expectation: Output lists both plans with updated names and potentially updated case counts.
+
 ## Report
 - After all checks are complete, produce a final test report.
 - The report must list **every performed check** with a strict result: **Pass / Fail / Skipped**.
@@ -276,6 +299,7 @@ From `src/tools/__init__.py:24-79`:
 - **Launches**: 7 covers `create_launch`, `list_launches`, `get_launch`.
 - **Custom Field Values**: 8 covers `create_custom_field_value`, `list_custom_field_values`, `update_custom_field_value`, `delete_custom_field_value`.
 - **Issue Linking & Integrations**: 9 covers `list_integrations` and `issues` parameter in `create_test_case` and `update_test_case` (add, remove, clear, explicit integration selection).
+- **Test Plans**: 10 covers `create_test_plan`, `update_test_plan`, `manage_test_plan_content`, `list_test_plans`.
 
 ## Notes / constraints
 - Some E2E checks use service-level assertions (scenario DTOs). Manual validation relies on tool outputs + `get_test_case_details` as the closest proxy.

@@ -252,6 +252,7 @@ Class | Method | HTTP request | Description
 *TestCaseSearchControllerApi* | [**validate_query1**](src/client/generated/docs/TestCaseSearchControllerApi.md#validate_query1) | **GET** /api/testcase/query/validate | Find all test cases by given AQL
 *TestCaseTagControllerApi* | [**get_tags**](src/client/generated/docs/TestCaseTagControllerApi.md#get_tags) | **GET** /api/testcase/{testCaseId}/tag | Find tags for test case
 *TestCaseTagControllerApi* | [**set_tags**](src/client/generated/docs/TestCaseTagControllerApi.md#set_tags) | **POST** /api/testcase/{testCaseId}/tag | Set test tags for test case
+*TestCaseTestPlanBulkControllerApi* | [**create_test_plan**](src/client/generated/docs/TestCaseTestPlanBulkControllerApi.md#create_test_plan) | **POST** /api/v2/test-case/bulk/test-plan/create | Create test plan from selected test cases
 *TestLayerControllerApi* | [**create9**](src/client/generated/docs/TestLayerControllerApi.md#create9) | **POST** /api/testlayer | 
 *TestLayerControllerApi* | [**delete9**](src/client/generated/docs/TestLayerControllerApi.md#delete9) | **DELETE** /api/testlayer/{id} | 
 *TestLayerControllerApi* | [**find_all7**](src/client/generated/docs/TestLayerControllerApi.md#find_all7) | **GET** /api/testlayer | 
@@ -263,6 +264,22 @@ Class | Method | HTTP request | Description
 *TestLayerSchemaControllerApi* | [**find_all6**](src/client/generated/docs/TestLayerSchemaControllerApi.md#find_all6) | **GET** /api/testlayerschema | Find all test layer schemas for given project
 *TestLayerSchemaControllerApi* | [**find_one7**](src/client/generated/docs/TestLayerSchemaControllerApi.md#find_one7) | **GET** /api/testlayerschema/{id} | Find test layer schema by id
 *TestLayerSchemaControllerApi* | [**patch8**](src/client/generated/docs/TestLayerSchemaControllerApi.md#patch8) | **PATCH** /api/testlayerschema/{id} | Patch test layer schema
+*TestPlanControllerApi* | [**assign2**](src/client/generated/docs/TestPlanControllerApi.md#assign2) | **POST** /api/testplan/{id}/assign | Assign test plan test cases to user
+*TestPlanControllerApi* | [**create7**](src/client/generated/docs/TestPlanControllerApi.md#create7) | **POST** /api/testplan | Create a new test plan
+*TestPlanControllerApi* | [**delete7**](src/client/generated/docs/TestPlanControllerApi.md#delete7) | **DELETE** /api/testplan/{id} | Delete test plan by given id
+*TestPlanControllerApi* | [**find_all_by_project**](src/client/generated/docs/TestPlanControllerApi.md#find_all_by_project) | **GET** /api/testplan | Find all test plans for given project
+*TestPlanControllerApi* | [**find_one6**](src/client/generated/docs/TestPlanControllerApi.md#find_one6) | **GET** /api/testplan/{id} | Find test plan by id
+*TestPlanControllerApi* | [**get_diff**](src/client/generated/docs/TestPlanControllerApi.md#get_diff) | **GET** /api/testplan/{id}/diff | Get test plan test cases changes
+*TestPlanControllerApi* | [**get_groups2**](src/client/generated/docs/TestPlanControllerApi.md#get_groups2) | **GET** /api/testplan/{id}/tree/group | Find tree groups for node
+*TestPlanControllerApi* | [**get_jobs**](src/client/generated/docs/TestPlanControllerApi.md#get_jobs) | **GET** /api/testplan/{id}/job | Get test plan jobs statistic
+*TestPlanControllerApi* | [**get_leafs1**](src/client/generated/docs/TestPlanControllerApi.md#get_leafs1) | **GET** /api/testplan/{id}/tree/leaf | Find tree leafs for node
+*TestPlanControllerApi* | [**get_members2**](src/client/generated/docs/TestPlanControllerApi.md#get_members2) | **GET** /api/testplan/{id}/member | Get test plan members statistic
+*TestPlanControllerApi* | [**patch7**](src/client/generated/docs/TestPlanControllerApi.md#patch7) | **PATCH** /api/testplan/{id} | Patch test plan
+*TestPlanControllerApi* | [**reset_jobs**](src/client/generated/docs/TestPlanControllerApi.md#reset_jobs) | **POST** /api/testplan/{id}/resetjob | Reset test plan
+*TestPlanControllerApi* | [**run3**](src/client/generated/docs/TestPlanControllerApi.md#run3) | **POST** /api/testplan/{id}/run | Run test plan by given id
+*TestPlanControllerApi* | [**set_job_parameters**](src/client/generated/docs/TestPlanControllerApi.md#set_job_parameters) | **POST** /api/testplan/{id}/jobparameter | Configure test plan job parameters
+*TestPlanControllerApi* | [**suggest3**](src/client/generated/docs/TestPlanControllerApi.md#suggest3) | **GET** /api/testplan/suggest | Suggest for test plans
+*TestPlanControllerApi* | [**sync**](src/client/generated/docs/TestPlanControllerApi.md#sync) | **POST** /api/testplan/{id}/sync | Sync test plan
 
 
 ## Documentation For Models

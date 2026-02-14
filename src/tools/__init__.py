@@ -10,6 +10,7 @@ from src.tools.launches import close_launch, create_launch, delete_launch, get_l
 from src.tools.link_shared_step import link_shared_step
 from src.tools.list_custom_field_values import list_custom_field_values
 from src.tools.list_integrations import list_integrations
+from src.tools.plans import create_test_plan, list_test_plans, manage_test_plan_content, update_test_plan
 from src.tools.search import get_test_case_details, list_test_cases, search_test_cases
 from src.tools.shared_steps import create_shared_step, delete_shared_step, list_shared_steps, update_shared_step
 from src.tools.test_layers import (
@@ -34,6 +35,7 @@ __all__ = [
     "create_test_case",
     "create_test_layer",
     "create_test_layer_schema",
+    "create_test_plan",
     "delete_custom_field_value",
     "delete_launch",
     "delete_shared_step",
@@ -52,6 +54,8 @@ __all__ = [
     "list_test_cases",
     "list_test_layer_schemas",
     "list_test_layers",
+    "list_test_plans",
+    "manage_test_plan_content",
     "reopen_launch",
     "search_test_cases",
     "unlink_shared_step",
@@ -60,6 +64,7 @@ __all__ = [
     "update_test_case",
     "update_test_layer",
     "update_test_layer_schema",
+    "update_test_plan",
 ]
 
 ToolFn = Callable[..., Awaitable[object]]
@@ -100,4 +105,9 @@ all_tools: list[ToolFn] = [
     create_test_layer_schema,
     update_test_layer_schema,
     delete_test_layer_schema,
+    # Test Plan Tools
+    create_test_plan,
+    update_test_plan,
+    manage_test_plan_content,
+    list_test_plans,
 ]
