@@ -165,6 +165,22 @@
     {
       "name": "list_integrations",
       "description": "List available integrations in Allure TestOps."
+    },
+    {
+      "name": "create_test_plan",
+      "description": "Create a new Test Plan."
+    },
+    {
+      "name": "update_test_plan",
+      "description": "Update Test Plan metadata (name, description, tags, etc)."
+    },
+    {
+      "name": "manage_test_plan_content",
+      "description": "Add or remove Test Cases from a Test Plan, or update its AQL filter."
+    },
+    {
+      "name": "list_test_plans",
+      "description": "List Test Plans."
     }
   ],
   "user_config": {
