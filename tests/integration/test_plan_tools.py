@@ -5,7 +5,13 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from src.client.generated.models import TestPlanDto
-from src.tools.plans import create_test_plan, list_test_plans, manage_test_plan_content, update_test_plan
+from src.tools.plans import (
+    create_test_plan,
+    delete_test_plan,
+    list_test_plans,
+    manage_test_plan_content,
+    update_test_plan,
+)
 
 
 @pytest.mark.asyncio
@@ -84,3 +90,29 @@ async def test_list_test_plans_tool() -> None:
             assert "[1] P1 (5 cases)" in output
             assert "[2] P2 (0 cases)" in output
             mock_service.list_plans.assert_called_once_with(page=0, size=10)
+
+
+@pytest.mark.asyncio
+async def test_delete_test_plan_tool() -> None:
+    with patch("src.tools.plans.AllureClient.from_env") as mock_client_ctx:
+        mock_client = AsyncMock()
+        mock_client_ctx.return_value.__aenter__.return_value = mock_client
+
+        with patch("src.tools.plans.PlanService") as mock_service_cls:
+            mock_service = mock_service_cls.return_value
+            mock_service.delete_plan = AsyncMock()
+
+            # Test with confirm=True
+            output = await delete_test_plan(plan_id=100, confirm=True)
+
+            assert "Successfully deleted Test Plan 100" in output
+            mock_service.delete_plan.assert_called_once_with(plan_id=100)
+
+
+@pytest.mark.asyncio
+async def test_delete_test_plan_no_confirm() -> None:
+    # Test without confirmation (should not call service)
+    output = await delete_test_plan(plan_id=100, confirm=False)
+
+    assert "⚠️ Deletion requires confirmation" in output
+    assert "confirm=True" in output

@@ -26,6 +26,7 @@ Lucius makes this easier by giving your AI tools that are simple to use and hard
 | **Custom Fields**      | Project-level management of custom field values. | `list_custom_field_values`, `create_custom_field_value`, `update_custom_field_value`, `delete_custom_field_value`                                                                                |
 | **Test Plan Mgmt**       | Organize tests into executable plans.            | `create_test_plan`, `update_test_plan`, `manage_test_plan_content`, `list_test_plans`, `delete_test_plan`                                                                                        |
 | **Launch Mgmt**        | Execution tracking and launch statistics.        | `create_launch`, `get_launch`, `list_launches`                                                                                                                                                   |
+| **Test Plans**         | Manage Test Plans and their content.             | `create_test_plan`, `update_test_plan`, `delete_test_plan`, `list_test_plans`, `manage_test_plan_content`                                                                                                                        |
 
 ## 🚀 Quick Start
 

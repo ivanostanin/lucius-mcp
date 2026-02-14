@@ -262,8 +262,14 @@ From `src/tools/__init__.py:24-79`:
      - Expectation: Output contains `"Updated content for Test Plan <MANUAL_PLAN_ID>"`.
   7. **Update AQL Filter**: `manage_test_plan_content(plan_id=AQL_PLAN_ID, update_aql_filter="tag:regression")`
      - Expectation: Output contains `"Updated content for Test Plan <AQL_PLAN_ID>"`.
-  8. **List Plans**: `list_test_plans()`
-     - Expectation: Output lists both plans with updated names and potentially updated case counts.
+    8. **List Plans**: `list_test_plans()`
+       - Expectation: Output lists both plans with updated names and potentially updated case counts.
+    9. **Delete Manual Plan**: `delete_test_plan(plan_id=MANUAL_PLAN_ID)`
+       - Expectation: Output contains `"Successfully deleted Test Plan <MANUAL_PLAN_ID>"`.
+    10. **Delete AQL Plan**: `delete_test_plan(plan_id=AQL_PLAN_ID)`
+        - Expectation: Output contains `"Successfully deleted Test Plan <AQL_PLAN_ID>"`.
+    11. **Verify Deletion**: `list_test_plans()`
+        - Expectation: List DOES NOT contain the deleted plans.
 
 ## Report
 - After all checks are complete, produce a final test report.
@@ -299,7 +305,7 @@ From `src/tools/__init__.py:24-79`:
 - **Launches**: 7 covers `create_launch`, `list_launches`, `get_launch`.
 - **Custom Field Values**: 8 covers `create_custom_field_value`, `list_custom_field_values`, `update_custom_field_value`, `delete_custom_field_value`.
 - **Issue Linking & Integrations**: 9 covers `list_integrations` and `issues` parameter in `create_test_case` and `update_test_case` (add, remove, clear, explicit integration selection).
-- **Test Plans**: 10 covers `create_test_plan`, `update_test_plan`, `manage_test_plan_content`, `list_test_plans`.
+- **Test Plans**: 10 covers `create_test_plan`, `update_test_plan`, `manage_test_plan_content`, `list_test_plans`, `delete_test_plan`.
 
 ## Notes / constraints
 - Some E2E checks use service-level assertions (scenario DTOs). Manual validation relies on tool outputs + `get_test_case_details` as the closest proxy.

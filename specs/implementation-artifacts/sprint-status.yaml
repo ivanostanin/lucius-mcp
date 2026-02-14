@@ -103,6 +103,7 @@ development_status:
   epic-7: in-progress
   7-1-test-plan-management: done
   7-2-defect-lifecycle-management-with-automation-rules: backlog
+  7-3-delete-test-plans: done
   epic-7-retrospective: optional
 
   # Epic 8: Enterprise Security & Intelligence (Phase 3)

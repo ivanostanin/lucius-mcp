@@ -208,3 +208,38 @@ async def test_update_plan(service: PlanService, mock_client: AsyncMock) -> None
         mock_api.patch7.assert_called_once()
         patch_dto = mock_api.patch7.call_args.kwargs["test_plan_patch_dto"]
         assert patch_dto.name == name
+
+
+@pytest.mark.asyncio
+async def test_delete_plan(service: PlanService, mock_client: AsyncMock) -> None:
+    """Test deleting a plan."""
+    plan_id = 1
+
+    with patch("src.services.plan_service.TestPlanControllerApi") as mock_controller:
+        mock_api = mock_controller.return_value
+        mock_api.delete7.return_value = "delete_coro"
+        mock_client._call_api.return_value = None
+
+        await service.delete_plan(plan_id)
+
+        mock_api.delete7.assert_called_once_with(id=plan_id)
+
+
+@pytest.mark.asyncio
+async def test_delete_plan_not_found(service: PlanService, mock_client: AsyncMock) -> None:
+    """Test deleting a non-existent plan (should be idempotent)."""
+    plan_id = 1
+
+    from src.client.exceptions import AllureNotFoundError
+
+    with patch("src.services.plan_service.TestPlanControllerApi") as mock_controller:
+        mock_api = mock_controller.return_value
+        mock_api.delete7.return_value = "delete_coro"
+
+        # Simulate 404
+        mock_client._call_api.side_effect = AllureNotFoundError("Not found")
+
+        # Should not raise exception
+        await service.delete_plan(plan_id)
+
+        mock_api.delete7.assert_called_once_with(id=plan_id)
