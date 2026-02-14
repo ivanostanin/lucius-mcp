@@ -1,7 +1,7 @@
 import logging
 
 from src.client import AllureClient
-from src.client.exceptions import AllureValidationError
+from src.client.exceptions import AllureNotFoundError, AllureValidationError
 from src.client.generated.api.test_plan_controller_api import TestPlanControllerApi
 from src.client.generated.models.test_plan_create_dto import TestPlanCreateDto
 from src.client.generated.models.test_plan_dto import TestPlanDto
@@ -146,3 +146,11 @@ class PlanService:
             self._api.find_all_by_project(project_id=self._project_id, page=page, size=size, sort=["id,desc"])
         )
         return response.content or []
+
+    async def delete_plan(self, plan_id: int) -> None:
+        """Delete a test plan."""
+        try:
+            await self._client._call_api(self._api.delete7(id=plan_id))
+        except AllureNotFoundError:
+            # Idempotent behavior: if plan is already gone, consider it success
+            logger.info("Test plan %s not found during deletion (treated as success)", plan_id)

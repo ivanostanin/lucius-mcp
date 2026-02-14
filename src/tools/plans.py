@@ -120,3 +120,33 @@ async def list_test_plans(
             result.append(f"[{p.id}] {p.name} ({count} cases)")
 
         return "\n".join(result)
+
+
+async def delete_test_plan(
+    plan_id: Annotated[int, "ID of the test plan to delete"],
+    confirm: Annotated[bool, "Must be set to True to proceed with deletion. Safety measure."] = False,
+) -> str:
+    """Delete a Test Plan.
+    ⚠️ CAUTION: Destructive.
+
+    Permanently removes the Test Plan from Allure TestOps.
+    The operation is idempotent: if the plan does not exist, it returns success.
+
+    Args:
+        plan_id: The numeric ID of the Test Plan to delete.
+        confirm: Must be set to True to proceed with deletion.
+
+    Returns:
+        A formatted success message or a warning if confirmation is missing.
+    """
+    if not confirm:
+        return (
+            "⚠️ Deletion requires confirmation.\n\n"
+            "This action permanently deletes the Test Plan. "
+            f"Please call again with confirm=True to proceed with deleting test plan {plan_id}."
+        )
+
+    async with AllureClient.from_env() as client:
+        service = PlanService(client)
+        await service.delete_plan(plan_id=plan_id)
+        return f"Successfully deleted Test Plan {plan_id}."
