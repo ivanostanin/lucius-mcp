@@ -50,6 +50,14 @@ Agent Hints" on failure.
 | `update_custom_field_value` | Update an existing custom field value name.      | `cfv_id`, `name`          |
 | `delete_custom_field_value` | Remove a custom field value option.              | `cfv_id`, `confirm`       |
 
+## 🧭 Test Hierarchy
+
+| Tool                         | Description                                              | Key Parameters               |
+|:-----------------------------|:---------------------------------------------------------|:-----------------------------|
+| `create_test_suite`          | Create a new suite node (top-level or nested) in a tree. | `name`, `tree_id`, `parent_suite_id` |
+| `list_test_suites`           | List suite hierarchy for a project tree.                 | `tree_id`, `include_empty`   |
+| `assign_test_cases_to_suite` | Move/attach test cases to a target suite path.           | `suite_id`, `test_case_ids`, `tree_id` |
+
 ## 🚀 Launch Management
 
 | Tool            | Description                                        | Key Parameters |

@@ -10469,6 +10469,563 @@
         ]
       }
     },
+    "/api/v2/project/{projectId}/test-case/tree/group": {
+      "post": {
+        "operationId": "addGroup",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "in": "query",
+            "name": "treeId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "in": "query",
+            "name": "parentNodeId",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestCaseTreeGroupAddDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestCaseLightTreeNodeDto"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Add a new group to the specified tree",
+        "tags": [
+          "test-case-tree-controller-v-2"
+        ]
+      },
+      "put": {
+        "operationId": "upsert",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "in": "query",
+            "name": "treeId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "in": "query",
+            "name": "parentNodeId",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestCaseTreeGroupAddDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestCaseLightTreeNodeDto"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Add a new group to the specified tree and return group if it exists",
+        "tags": [
+          "test-case-tree-controller-v-2"
+        ]
+      }
+    },
+    "/api/v2/project/{projectId}/test-case/tree/group/{groupId}": {
+      "delete": {
+        "operationId": "deleteGroup",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "Delete the specified group",
+        "tags": [
+          "test-case-tree-controller-v-2"
+        ]
+      }
+    },
+    "/api/v2/project/{projectId}/test-case/tree/group/{groupId}/name": {
+      "put": {
+        "operationId": "renameGroup",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestCaseTreeGroupRenameDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestCaseLightTreeNodeDto"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Rename the specified group",
+        "tags": [
+          "test-case-tree-controller-v-2"
+        ]
+      }
+    },
+    "/api/v2/project/{projectId}/test-case/tree/leaf": {
+      "post": {
+        "operationId": "addLeaf",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "in": "query",
+            "name": "treeId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "in": "query",
+            "name": "nodeId",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestCaseTreeLeafAddDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestCaseTreeLeafDtoV2"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Add a new leaf to the specified tree",
+        "tags": [
+          "test-case-tree-controller-v-2"
+        ]
+      }
+    },
+    "/api/v2/project/{projectId}/test-case/tree/leaf/{leafId}/name": {
+      "put": {
+        "operationId": "renameLeaf",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "in": "path",
+            "name": "leafId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestCaseTreeLeafRenameDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestCaseTreeLeafDtoV2"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Rename the specified leaf",
+        "tags": [
+          "test-case-tree-controller-v-2"
+        ]
+      }
+    },
+    "/api/v2/project/{projectId}/test-case/tree/suggest": {
+      "get": {
+        "operationId": "suggest_1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "in": "query",
+            "name": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "treeId",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "default": [],
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              }
+            }
+          },
+          {
+            "in": "query",
+            "name": "id",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              }
+            }
+          },
+          {
+            "in": "query",
+            "name": "ignoreId",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              }
+            }
+          },
+          {
+            "description": "Zero-based page index (0..N)",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "description": "The size of the page to be returned",
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "minimum": 1
+            }
+          },
+          {
+            "description": "Sorting criteria in the format: property(,asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "default": [
+                "name,ASC"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageIdAndNameOnlyDto"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Tree groups suggest",
+        "tags": [
+          "test-case-tree-controller-v-2"
+        ]
+      }
+    },
+    "/api/v2/project/{projectId}/test-case/tree/tree-node": {
+      "get": {
+        "operationId": "getTreeNode",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "in": "query",
+            "name": "treeId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "in": "query",
+            "name": "parentNodeId",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "filterId",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "description": "Zero-based page index (0..N)",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "description": "The size of the page to be returned",
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "minimum": 1
+            }
+          },
+          {
+            "description": "Sorting criteria in the format: property(,asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "default": [
+                "name,ASC"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "in": "query",
+            "name": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "baseAql",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestCaseFullTreeNodeDto"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Get test cases as a tree structure (AQL)",
+        "tags": [
+          "test-case-tree-controller-v-2"
+        ]
+      }
+    },
     "/api/v2/test-case/bulk/test-plan/create": {
       "post": {
         "operationId": "createTestPlan",
@@ -10497,6 +11054,147 @@
         "summary": "Create test plan from selected test cases",
         "tags": [
           "test-case-test-plan-bulk-controller"
+        ]
+      }
+    },
+    "/api/v2/test-case/tree/bulk/drag-and-drop": {
+      "post": {
+        "operationId": "dragAndDrop",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestCaseBulkDragAndDropDtoV2"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          }
+        },
+        "summary": "dragAndDrop test cases for trees",
+        "tags": [
+          "test-case-tree-bulk-controller-v-2"
+        ]
+      }
+    },
+    "/api/v2/tree": {
+      "get": {
+        "operationId": "findAll_48",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "in": "query",
+            "name": "withArchived",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "description": "Zero-based page index (0..N)",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "description": "The size of the page to be returned",
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "minimum": 1
+            }
+          },
+          {
+            "description": "Sorting criteria in the format: property(,asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "default": [
+                "name,ASC"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageTreeDtoV2"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "tree-controller-v-2"
+        ]
+      }
+    },
+    "/api/v2/tree/{id}": {
+      "get": {
+        "operationId": "findOne_38",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "in": "query",
+            "name": "withArchived",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TreeDtoV2"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "tree-controller-v-2"
         ]
       }
     }
