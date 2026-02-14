@@ -72,7 +72,7 @@ development_status:
   3-10-add-test-test_layers-handling-in-update_test_case-tool: done
   3-11-crud-custom-field-values: done
   3-12-support-issue-links-in-test-cases: done
-  3-13-integration-filtering-for-issue-links: review
+  3-13-integration-filtering-for-issue-links: done
   epic-3-retrospective: optional
 
   # Epic 4: Production Operations (Phase 2 Priority)
@@ -102,7 +102,7 @@ development_status:
   # Epic 7: Test Planning & Governance (Phase 3)
   epic-7: in-progress
   7-1-test-plan-management: done
-  7-2-defect-lifecycle-management-with-automation-rules: backlog
+  7-2-defect-lifecycle-management-with-automation-rules: review-ready
   7-3-delete-test-plans: done
   epic-7-retrospective: optional
 

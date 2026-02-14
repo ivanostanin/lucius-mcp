@@ -586,7 +586,7 @@ async with src.client.generated.ApiClient(configuration) as api_client:
     filter_id = 56 # int |  (optional)
     page = 0 # int | Zero-based page index (0..N) (optional) (default to 0)
     size = 10 # int | The size of the page to be returned (optional) (default to 10)
-    sort = ["created_date,DESC"] # List[str] | Sorting criteria in the format: property(,asc|desc). Default sort order is ascending. Multiple sort criteria are supported. (optional) (default to ["created_date,DESC"])
+    sort = [created_date,DESC] # List[str] | Sorting criteria in the format: property(,asc|desc). Default sort order is ascending. Multiple sort criteria are supported. (optional) (default to [created_date,DESC])
 
     try:
         # Find all launches preview
@@ -609,7 +609,7 @@ Name | Type | Description  | Notes
  **filter_id** | **int**|  | [optional] 
  **page** | **int**| Zero-based page index (0..N) | [optional] [default to 0]
  **size** | **int**| The size of the page to be returned | [optional] [default to 10]
- **sort** | [**List[str]**](str.md)| Sorting criteria in the format: property(,asc|desc). Default sort order is ascending. Multiple sort criteria are supported. | [optional] [default to [&quot;created_date,DESC&quot;]]
+ **sort** | [**List[str]**](str.md)| Sorting criteria in the format: property(,asc|desc). Default sort order is ascending. Multiple sort criteria are supported. | [optional] [default to [created_date,DESC]]
 
 ### Return type
 

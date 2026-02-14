@@ -39,6 +39,9 @@ KEEP_TAGS = {
     # Test Plan Management
     "test-plan-controller",
     "test-case-test-plan-bulk-controller",
+    # Defect Management
+    "defect-controller",
+    "defect-matcher-controller",
 }
 
 

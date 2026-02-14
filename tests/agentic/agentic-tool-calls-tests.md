@@ -63,6 +63,9 @@ From `src/tools/__init__.py:24-79`:
 - `list_test_layers`, `create_test_layer`, `update_test_layer`, `delete_test_layer`
 - `list_test_layer_schemas`, `create_test_layer_schema`, `update_test_layer_schema`, `delete_test_layer_schema`
 - `list_integrations`
+- `create_test_plan`, `update_test_plan`, `manage_test_plan_content`, `list_test_plans`, `delete_test_plan`
+- `create_defect`, `get_defect`, `update_defect`, `delete_defect`, `list_defects`
+- `create_defect_matcher`, `update_defect_matcher`, `delete_defect_matcher`, `list_defect_matchers`
 
 ## Execution plan
 
@@ -271,6 +274,41 @@ From `src/tools/__init__.py:24-79`:
     11. **Verify Deletion**: `list_test_plans()`
         - Expectation: List DOES NOT contain the deleted plans.
 
+#### 11. Defect Management
+- **Scenario source**: `specs/implementation-artifacts/7-2-defect-lifecycle-management.md`
+- **Goal**: Verify Defect and Defect Matcher lifecycle (creation, retrieval, update, deletion).
+- **Steps**:
+  1. **Create Defect**: `create_defect(name="[Agent] Known Bug", description="Intermittent test failure")`
+     - Expectation: Output contains `"Created Defect #<DEFECT_ID>: '[Agent] Known Bug'"`.
+     - Action: Capture `id` as `DEFECT_ID`.
+  2. **Get Defect**: `get_defect(defect_id=DEFECT_ID)`
+     - Expectation: Output contains `"Defect #<DEFECT_ID>"`, `"Status: Open"`, and `"Intermittent test failure"`.
+  3. **Update Defect**: `update_defect(defect_id=DEFECT_ID, name="[Agent] Known Bug Fixed", closed=true)`
+     - Expectation: Output contains `"Updated Defect #<DEFECT_ID>"` and `"Status: Closed"`.
+  4. **Verify Update**: `get_defect(defect_id=DEFECT_ID)`
+     - Expectation: Name is `"[Agent] Known Bug Fixed"`, status is `"Closed"`.
+  5. **List Defects**: `list_defects()`
+     - Expectation: List contains `#<DEFECT_ID>`.
+  6. **Reopen Defect**: `update_defect(defect_id=DEFECT_ID, closed=false)`
+     - Expectation: Output contains `"Status: Open"`.
+  7. **Create Matcher**: `create_defect_matcher(defect_id=DEFECT_ID, name="NPE Rule", message_regex=".*NullPointerException.*")`
+     - Expectation: Output contains `"Created Defect Matcher #<MATCHER_ID>"`.
+     - Action: Capture `id` as `MATCHER_ID`.
+  8. **List Matchers**: `list_defect_matchers(defect_id=DEFECT_ID)`
+     - Expectation: List contains `#<MATCHER_ID>: NPE Rule` with message regex.
+  9. **Update Matcher**: `update_defect_matcher(matcher_id=MATCHER_ID, name="NPE Rule Updated")`
+     - Expectation: Output contains `"Updated Defect Matcher #<MATCHER_ID>"`.
+  10. **Delete Matcher (No Confirm)**: `delete_defect_matcher(matcher_id=MATCHER_ID, confirm=false)`
+      - Expectation: Output contains `"aborted"` and `"confirm=true"`.
+  11. **Delete Matcher (Confirm)**: `delete_defect_matcher(matcher_id=MATCHER_ID, confirm=true)`
+      - Expectation: Output contains `"Deleted Defect Matcher #<MATCHER_ID>"`.
+  12. **Verify Matcher Deletion**: `list_defect_matchers(defect_id=DEFECT_ID)`
+      - Expectation: `"No matchers found"`.
+  13. **Delete Defect (No Confirm)**: `delete_defect(defect_id=DEFECT_ID, confirm=false)`
+      - Expectation: Output contains `"aborted"` and `"confirm=true"`.
+  14. **Delete Defect (Confirm)**: `delete_defect(defect_id=DEFECT_ID, confirm=true)`
+      - Expectation: Output contains `"Deleted Defect #<DEFECT_ID>"`.
+
 ## Report
 - After all checks are complete, produce a final test report.
 - The report must list **every performed check** with a strict result: **Pass / Fail / Skipped**.
@@ -306,6 +344,7 @@ From `src/tools/__init__.py:24-79`:
 - **Custom Field Values**: 8 covers `create_custom_field_value`, `list_custom_field_values`, `update_custom_field_value`, `delete_custom_field_value`.
 - **Issue Linking & Integrations**: 9 covers `list_integrations` and `issues` parameter in `create_test_case` and `update_test_case` (add, remove, clear, explicit integration selection).
 - **Test Plans**: 10 covers `create_test_plan`, `update_test_plan`, `manage_test_plan_content`, `list_test_plans`, `delete_test_plan`.
+- **Defects**: 11 covers `create_defect`, `get_defect`, `update_defect`, `delete_defect`, `list_defects`, `create_defect_matcher`, `update_defect_matcher`, `delete_defect_matcher`, `list_defect_matchers`.
 
 ## Notes / constraints
 - Some E2E checks use service-level assertions (scenario DTOs). Manual validation relies on tool outputs + `get_test_case_details` as the closest proxy.

@@ -180,6 +180,42 @@
     {
       "name": "list_test_plans",
       "description": "List Test Plans."
+    },
+    {
+      "name": "create_defect",
+      "description": "Create a new defect in the current project."
+    },
+    {
+      "name": "get_defect",
+      "description": "Retrieve detailed information about a specific defect."
+    },
+    {
+      "name": "update_defect",
+      "description": "Update a defect's name, description, or open/closed status."
+    },
+    {
+      "name": "delete_defect",
+      "description": "⚠️ Permanently delete a defect and its matchers."
+    },
+    {
+      "name": "list_defects",
+      "description": "List all defects in the current project."
+    },
+    {
+      "name": "create_defect_matcher",
+      "description": "Create an automation rule to auto-link failures to a defect."
+    },
+    {
+      "name": "update_defect_matcher",
+      "description": "Update a matcher's name or regex patterns."
+    },
+    {
+      "name": "delete_defect_matcher",
+      "description": "⚠️ Permanently delete a defect matcher."
+    },
+    {
+      "name": "list_defect_matchers",
+      "description": "List all matchers for a given defect."
     }
   ],
   "user_config": {

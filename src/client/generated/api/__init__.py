@@ -7,6 +7,8 @@ from src.client.generated.api.custom_field_project_controller_v2_api import Cust
 from src.client.generated.api.custom_field_schema_controller_api import CustomFieldSchemaControllerApi
 from src.client.generated.api.custom_field_value_controller_api import CustomFieldValueControllerApi
 from src.client.generated.api.custom_field_value_project_controller_api import CustomFieldValueProjectControllerApi
+from src.client.generated.api.defect_controller_api import DefectControllerApi
+from src.client.generated.api.defect_matcher_controller_api import DefectMatcherControllerApi
 from src.client.generated.api.integration_controller_api import IntegrationControllerApi
 from src.client.generated.api.launch_controller_api import LaunchControllerApi
 from src.client.generated.api.launch_search_controller_api import LaunchSearchControllerApi
