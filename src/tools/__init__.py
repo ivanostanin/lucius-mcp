@@ -2,6 +2,17 @@ from collections.abc import Awaitable, Callable
 
 from src.tools.create_custom_field_value import create_custom_field_value
 from src.tools.create_test_case import create_test_case
+from src.tools.defects import (
+    create_defect,
+    create_defect_matcher,
+    delete_defect,
+    delete_defect_matcher,
+    get_defect,
+    list_defect_matchers,
+    list_defects,
+    update_defect,
+    update_defect_matcher,
+)
 from src.tools.delete_custom_field_value import delete_custom_field_value
 from src.tools.delete_test_case import delete_test_case
 from src.tools.get_custom_fields import get_custom_fields
@@ -30,6 +41,8 @@ from src.tools.update_test_case import update_test_case
 __all__ = [
     "close_launch",
     "create_custom_field_value",
+    "create_defect",
+    "create_defect_matcher",
     "create_launch",
     "create_shared_step",
     "create_test_case",
@@ -37,17 +50,22 @@ __all__ = [
     "create_test_layer_schema",
     "create_test_plan",
     "delete_custom_field_value",
+    "delete_defect",
+    "delete_defect_matcher",
     "delete_launch",
     "delete_shared_step",
     "delete_test_case",
     "delete_test_layer",
     "delete_test_layer_schema",
     "get_custom_fields",
+    "get_defect",
     "get_launch",
     "get_test_case_custom_fields",
     "get_test_case_details",
     "link_shared_step",
     "list_custom_field_values",
+    "list_defect_matchers",
+    "list_defects",
     "list_integrations",
     "list_launches",
     "list_shared_steps",
@@ -60,6 +78,8 @@ __all__ = [
     "search_test_cases",
     "unlink_shared_step",
     "update_custom_field_value",
+    "update_defect",
+    "update_defect_matcher",
     "update_shared_step",
     "update_test_case",
     "update_test_layer",
@@ -110,4 +130,14 @@ all_tools: list[ToolFn] = [
     update_test_plan,
     manage_test_plan_content,
     list_test_plans,
+    # Defect Management Tools
+    create_defect,
+    get_defect,
+    update_defect,
+    delete_defect,
+    list_defects,
+    create_defect_matcher,
+    update_defect_matcher,
+    delete_defect_matcher,
+    list_defect_matchers,
 ]

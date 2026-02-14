@@ -107,6 +107,22 @@ Class | Method | HTTP request | Description
 *CustomFieldValueProjectControllerApi* | [**merge_custom_fields_to_existing_record**](src/client/generated/docs/CustomFieldValueProjectControllerApi.md#merge_custom_fields_to_existing_record) | **POST** /api/project/{projectId}/cfv/merge-to/{toCfvId} | Merge custom field values to existing record by id
 *CustomFieldValueProjectControllerApi* | [**merge_custom_fields_to_new_record**](src/client/generated/docs/CustomFieldValueProjectControllerApi.md#merge_custom_fields_to_new_record) | **POST** /api/project/{projectId}/cfv/merge | Merge custom field values to new record
 *CustomFieldValueProjectControllerApi* | [**patch23**](src/client/generated/docs/CustomFieldValueProjectControllerApi.md#patch23) | **PATCH** /api/project/{projectId}/cfv/{cfvId} | Patch specified custom field value, test results won&#39;t be affected
+*DefectControllerApi* | [**create45**](src/client/generated/docs/DefectControllerApi.md#create45) | **POST** /api/defect | 
+*DefectControllerApi* | [**create_issue**](src/client/generated/docs/DefectControllerApi.md#create_issue) | **POST** /api/defect/{id}/createissue | 
+*DefectControllerApi* | [**delete37**](src/client/generated/docs/DefectControllerApi.md#delete37) | **DELETE** /api/defect/{id} | 
+*DefectControllerApi* | [**find_all_by_project_id**](src/client/generated/docs/DefectControllerApi.md#find_all_by_project_id) | **GET** /api/defect | 
+*DefectControllerApi* | [**find_by_id1**](src/client/generated/docs/DefectControllerApi.md#find_by_id1) | **GET** /api/defect/{id} | 
+*DefectControllerApi* | [**get_launches**](src/client/generated/docs/DefectControllerApi.md#get_launches) | **GET** /api/defect/{id}/launch | 
+*DefectControllerApi* | [**get_matchers**](src/client/generated/docs/DefectControllerApi.md#get_matchers) | **GET** /api/defect/{id}/matcher | 
+*DefectControllerApi* | [**get_test_cases2**](src/client/generated/docs/DefectControllerApi.md#get_test_cases2) | **GET** /api/defect/{id}/testcase | 
+*DefectControllerApi* | [**get_test_results**](src/client/generated/docs/DefectControllerApi.md#get_test_results) | **GET** /api/defect/{id}/testresult | 
+*DefectControllerApi* | [**link_issue**](src/client/generated/docs/DefectControllerApi.md#link_issue) | **POST** /api/defect/{id}/issue | 
+*DefectControllerApi* | [**patch42**](src/client/generated/docs/DefectControllerApi.md#patch42) | **PATCH** /api/defect/{id} | 
+*DefectControllerApi* | [**suggest20**](src/client/generated/docs/DefectControllerApi.md#suggest20) | **GET** /api/defect/suggest | 
+*DefectControllerApi* | [**unlink_issue**](src/client/generated/docs/DefectControllerApi.md#unlink_issue) | **DELETE** /api/defect/{id}/issue | 
+*DefectMatcherControllerApi* | [**create46**](src/client/generated/docs/DefectMatcherControllerApi.md#create46) | **POST** /api/defect/matcher | 
+*DefectMatcherControllerApi* | [**delete38**](src/client/generated/docs/DefectMatcherControllerApi.md#delete38) | **DELETE** /api/defect/matcher/{id} | 
+*DefectMatcherControllerApi* | [**patch43**](src/client/generated/docs/DefectMatcherControllerApi.md#patch43) | **PATCH** /api/defect/matcher/{id} | 
 *IntegrationControllerApi* | [**create37**](src/client/generated/docs/IntegrationControllerApi.md#create37) | **POST** /api/integration | 
 *IntegrationControllerApi* | [**create_project_integration**](src/client/generated/docs/IntegrationControllerApi.md#create_project_integration) | **POST** /api/integration/project | 
 *IntegrationControllerApi* | [**delete_by_id3**](src/client/generated/docs/IntegrationControllerApi.md#delete_by_id3) | **DELETE** /api/integration/{id} | 

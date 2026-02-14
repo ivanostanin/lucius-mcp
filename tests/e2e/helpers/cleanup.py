@@ -1,7 +1,7 @@
 """Helper utilities for E2E test isolation and cleanup."""
 
 from src.client import AllureClient
-from src.services import PlanService, TestLayerService
+from src.services import DefectService, PlanService, TestLayerService
 
 
 class CleanupTracker:
@@ -36,6 +36,7 @@ class CleanupTracker:
         self._shared_steps: list[int] = []
         self._test_layers: list[int] = []
         self._test_plans: list[int] = []
+        self._defects: list[int] = []
 
     def track_test_case(self, test_case_id: int) -> None:
         """Track a test case for cleanup.
@@ -69,30 +70,50 @@ class CleanupTracker:
         """
         self._test_plans.append(plan_id)
 
+    def track_defect(self, defect_id: int) -> None:
+        """Track a defect for cleanup.
+
+        Args:
+            defect_id: ID of the defect to track
+        """
+        self._defects.append(defect_id)
+
     async def cleanup_all(self) -> None:
         """Delete all tracked entities.
 
         Performs best-effort cleanup - silently ignores errors if entities
         are already deleted or inaccessible.
         """
+        await self._cleanup_test_cases()
+        await self._cleanup_shared_steps()
+        await self._cleanup_test_layers()
+        await self._cleanup_test_plans()
+        await self._cleanup_defects()
+
+    async def _cleanup_test_cases(self) -> None:
         import logging
 
         logger = logging.getLogger(__name__)
-
-        # Clean up test cases
         for tc_id in self._test_cases:
             try:
                 await self._client.delete_test_case(tc_id)
             except Exception as e:
                 logger.warning(f"Failed to cleanup test case {tc_id}: {e}")
 
-        # Clean up shared steps
+    async def _cleanup_shared_steps(self) -> None:
+        import logging
+
+        logger = logging.getLogger(__name__)
         for step_id in self._shared_steps:
             try:
                 await self._client.delete_shared_step(step_id)
             except Exception as e:
                 logger.warning(f"Failed to cleanup shared step {step_id}: {e}")
 
+    async def _cleanup_test_layers(self) -> None:
+        import logging
+
+        logger = logging.getLogger(__name__)
         layers_service = TestLayerService(self._client)
         for layer_id in self._test_layers:
             try:
@@ -100,9 +121,24 @@ class CleanupTracker:
             except Exception as e:
                 logger.warning(f"Failed to cleanup test layer {layer_id}: {e}")
 
+    async def _cleanup_test_plans(self) -> None:
+        import logging
+
+        logger = logging.getLogger(__name__)
         plan_service = PlanService(self._client)
         for plan_id in self._test_plans:
             try:
                 await plan_service.delete_plan(plan_id)
             except Exception as e:
                 logger.warning(f"Failed to cleanup test plan {plan_id}: {e}")
+
+    async def _cleanup_defects(self) -> None:
+        import logging
+
+        logger = logging.getLogger(__name__)
+        defect_service = DefectService(self._client)
+        for defect_id in self._defects:
+            try:
+                await defect_service.delete_defect(defect_id)
+            except Exception as e:
+                logger.warning(f"Failed to cleanup defect {defect_id}: {e}")

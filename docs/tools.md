@@ -67,3 +67,17 @@ Agent Hints" on failure.
 | `manage_test_plan_content` | Add/remove test cases or update AQL filter.         | `plan_id`, `add_ids`, `remove_ids`, `aql`   |
 | `list_test_plans`          | List test plans with pagination.                    | `page`, `size`                              |
 | `delete_test_plan`         | Soft-delete (archive) a test plan.                  | `plan_id`                                   |
+
+## 🐛 Defect Management
+
+| Tool                     | Description                                                        | Key Parameters                          |
+|:-------------------------|:-------------------------------------------------------------------|:----------------------------------------|
+| `create_defect`          | Create a new defect in the current project.                        | `name`, `description`                   |
+| `get_defect`             | Retrieve detailed information about a specific defect.             | `defect_id`                             |
+| `update_defect`          | Update a defect's name, description, or open/closed status.        | `defect_id`, `name`, `closed`           |
+| `delete_defect`          | Permanently delete a defect and its matchers.                      | `defect_id`, `confirm`                  |
+| `list_defects`           | List all defects in the current project.                           | N/A                                     |
+| `create_defect_matcher`  | Create an automation rule to auto-link failures to a defect.       | `defect_id`, `name`, `message_regex`    |
+| `update_defect_matcher`  | Update a matcher's name or regex patterns.                         | `matcher_id`, `name`, `message_regex`   |
+| `delete_defect_matcher`  | Permanently delete a defect matcher.                               | `matcher_id`, `confirm`                 |
+| `list_defect_matchers`   | List all matchers for a given defect.                              | `defect_id`                             |
