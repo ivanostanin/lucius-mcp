@@ -91,12 +91,15 @@ development_status:
   5-2-get-launch-details: done
   5-3-delete-launch: done
   5-4-close-finalize-and-reopen-launch: done
+  5-5-expose-upload-results-to-launch: ready-for-dev
   epic-5-retrospective: optional
 
   # Epic 6: Advanced Organization & Discovery (Phase 2)
   epic-6: in-progress
   6-1-test-hierarchy-management: done
   6-2-advanced-search-with-aql: done
+  6-3-delete-test-suite: ready-for-dev
+  6-4-delete-archived-test-cases: ready-for-dev
   epic-6-retrospective: optional
 
   # Epic 7: Test Planning & Governance (Phase 3)
@@ -105,6 +108,9 @@ development_status:
   7-2-defect-lifecycle-management-with-automation-rules: done
   7-3-delete-test-plans: done
   7-4-link-defects-to-test-cases: done
+  7-5-unlink-defects-from-test-cases: ready-for-dev
+  7-6-get-projects-tool: ready-for-dev
+  7-7-test-code-generator: ready-for-dev
   epic-7-retrospective: optional
 
   # Epic 8: Enterprise Security & Intelligence (Phase 3)
