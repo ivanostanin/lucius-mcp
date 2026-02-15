@@ -1,7 +1,11 @@
 """Helper utilities for E2E test isolation and cleanup."""
 
+import asyncio
+
 from src.client import AllureClient
+from src.client.exceptions import LaunchNotFoundError
 from src.services import CustomFieldValueService, DefectService, PlanService, TestHierarchyService, TestLayerService
+from src.services.launch_service import LaunchService
 
 
 class CleanupTracker:
@@ -39,6 +43,7 @@ class CleanupTracker:
         self._test_plans: list[int] = []
         self._defects: list[int] = []
         self._custom_field_value_names: list[str] = []
+        self._launches: list[int] = []
 
     def track_test_case(self, test_case_id: int) -> None:
         """Track a test case for cleanup.
@@ -101,6 +106,34 @@ class CleanupTracker:
         if normalized:
             self._custom_field_value_names.append(normalized)
 
+    def track_launch(self, launch_id: int) -> None:
+        """Track a launch for cleanup.
+
+        Args:
+            launch_id: ID of the launch to track
+        """
+        self._launches.append(launch_id)
+
+    async def delete_launch_strict(self, launch_id: int, retries: int = 3, delay: float = 0.2) -> None:
+        """Delete launch and verify it no longer exists with retries.
+
+        Args:
+            launch_id: ID of the launch to delete
+            retries: Maximum deletion attempts
+            delay: Delay between attempts in seconds
+
+        Raises:
+            AssertionError: If launch still exists after all retries
+        """
+        service = LaunchService(client=self._client)
+        for _ in range(retries):
+            await service.delete_launch(launch_id)
+            if not await self._launch_exists(service, launch_id):
+                return
+            await asyncio.sleep(delay)
+
+        raise AssertionError(f"Launch {launch_id} still exists after deletion attempts")
+
     async def cleanup_all(self) -> None:
         """Delete all tracked entities.
 
@@ -114,6 +147,15 @@ class CleanupTracker:
         await self._cleanup_test_plans()
         await self._cleanup_defects()
         await self._cleanup_custom_field_values()
+        await self._cleanup_launches()
+
+    @staticmethod
+    async def _launch_exists(service: LaunchService, launch_id: int) -> bool:
+        try:
+            await service.get_launch(launch_id)
+            return True
+        except LaunchNotFoundError:
+            return False
 
     async def _cleanup_test_cases(self) -> None:
         import logging
@@ -226,3 +268,13 @@ class CleanupTracker:
                         custom_field_name,
                         e,
                     )
+
+    async def _cleanup_launches(self) -> None:
+        import logging
+
+        logger = logging.getLogger(__name__)
+        for launch_id in self._launches:
+            try:
+                await self.delete_launch_strict(launch_id)
+            except Exception as e:
+                logger.warning(f"Failed to cleanup launch {launch_id}: {e}")

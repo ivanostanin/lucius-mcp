@@ -1150,8 +1150,12 @@ class AllureClient:
             "Accept": "*/*",
             "Content-Type": "multipart/form-data",
         }
-        form_params: list[tuple[str, object]] = [("info", info_payload.to_dict())]
-        files_map: dict[str, list[bytes | str | tuple[str, bytes]]] = {"file": files}
+        info_part = json.dumps(info_payload.to_dict()).encode("utf-8")
+        form_params: list[tuple[str, object]] = []
+        files_map: dict[str, bytes | str | tuple[str, bytes] | list[bytes | str | tuple[str, bytes]]] = {
+            "file": files,
+            "info": ("info.json", info_part),
+        }
 
         upload_paths = [
             f"/api/launch/{launch_id}/upload/file",
