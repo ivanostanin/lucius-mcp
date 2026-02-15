@@ -26,7 +26,10 @@ from src.client.generated.api.test_case_scenario_controller_api import TestCaseS
 from src.client.generated.api.test_case_search_controller_api import TestCaseSearchControllerApi
 from src.client.generated.api.test_case_tag_controller_api import TestCaseTagControllerApi
 from src.client.generated.api.test_case_test_plan_bulk_controller_api import TestCaseTestPlanBulkControllerApi
+from src.client.generated.api.test_case_tree_bulk_controller_v2_api import TestCaseTreeBulkControllerV2Api
+from src.client.generated.api.test_case_tree_controller_v2_api import TestCaseTreeControllerV2Api
 from src.client.generated.api.test_layer_controller_api import TestLayerControllerApi
 from src.client.generated.api.test_layer_schema_controller_api import TestLayerSchemaControllerApi
 from src.client.generated.api.test_plan_controller_api import TestPlanControllerApi
+from src.client.generated.api.tree_controller_v2_api import TreeControllerV2Api
 

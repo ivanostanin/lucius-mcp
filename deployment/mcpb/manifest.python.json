@@ -139,6 +139,18 @@
       "description": "Delete a test layer schema."
     },
     {
+      "name": "create_test_suite",
+      "description": "Create a new test suite node in the hierarchy tree."
+    },
+    {
+      "name": "list_test_suites",
+      "description": "List hierarchical test suites for a project tree."
+    },
+    {
+      "name": "assign_test_cases_to_suite",
+      "description": "Assign test cases to a target hierarchy suite."
+    },
+    {
       "name": "create_launch",
       "description": "Create a new launch in Allure TestOps."
     },

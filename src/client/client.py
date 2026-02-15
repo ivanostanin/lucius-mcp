@@ -5,6 +5,7 @@ client, adding features like token management, automatic refresh, and
 standardized error handling.
 """
 
+import json
 import time
 from collections.abc import Awaitable
 from typing import Literal, TypeVar, cast, overload
@@ -39,8 +40,11 @@ from .generated.api.test_case_controller_api import TestCaseControllerApi
 from .generated.api.test_case_overview_controller_api import TestCaseOverviewControllerApi
 from .generated.api.test_case_scenario_controller_api import TestCaseScenarioControllerApi
 from .generated.api.test_case_search_controller_api import TestCaseSearchControllerApi
+from .generated.api.test_case_tree_bulk_controller_v2_api import TestCaseTreeBulkControllerV2Api
+from .generated.api.test_case_tree_controller_v2_api import TestCaseTreeControllerV2Api
 from .generated.api.test_layer_controller_api import TestLayerControllerApi
 from .generated.api.test_layer_schema_controller_api import TestLayerSchemaControllerApi
+from .generated.api.tree_controller_v2_api import TreeControllerV2Api
 from .generated.api_client import ApiClient
 from .generated.configuration import Configuration
 from .generated.exceptions import ApiException
@@ -63,10 +67,14 @@ from .generated.models.launch_upload_response_dto import LaunchUploadResponseDto
 from .generated.models.normalized_scenario_dto import NormalizedScenarioDto
 from .generated.models.normalized_scenario_dto_attachments_value import NormalizedScenarioDtoAttachmentsValue
 from .generated.models.page_custom_field_value_with_tc_count_dto import PageCustomFieldValueWithTcCountDto
+from .generated.models.page_id_and_name_only_dto import PageIdAndNameOnlyDto
 from .generated.models.page_launch_dto import PageLaunchDto
 from .generated.models.page_launch_preview_dto import PageLaunchPreviewDto
 from .generated.models.page_shared_step_dto import PageSharedStepDto
 from .generated.models.page_test_case_dto import PageTestCaseDto
+from .generated.models.page_test_case_tree_node_dto import PageTestCaseTreeNodeDto
+from .generated.models.page_test_case_tree_node_dto_content_inner import PageTestCaseTreeNodeDtoContentInner
+from .generated.models.page_tree_dto_v2 import PageTreeDtoV2
 from .generated.models.scenario_step_create_dto import ScenarioStepCreateDto
 from .generated.models.scenario_step_created_response_dto import ScenarioStepCreatedResponseDto
 from .generated.models.scenario_step_patch_dto import ScenarioStepPatchDto
@@ -77,20 +85,29 @@ from .generated.models.shared_step_patch_dto import SharedStepPatchDto
 from .generated.models.shared_step_scenario_dto_steps_inner import SharedStepScenarioDtoStepsInner
 from .generated.models.shared_step_step_dto import SharedStepStepDto
 from .generated.models.test_case_attachment_row_dto import TestCaseAttachmentRowDto
+from .generated.models.test_case_bulk_drag_and_drop_dto_v2 import TestCaseBulkDragAndDropDtoV2
 from .generated.models.test_case_create_v2_dto import TestCaseCreateV2Dto
 from .generated.models.test_case_dto import TestCaseDto
+from .generated.models.test_case_full_tree_node_dto import TestCaseFullTreeNodeDto
+from .generated.models.test_case_light_tree_node_dto import TestCaseLightTreeNodeDto
 from .generated.models.test_case_overview_dto import TestCaseOverviewDto
 from .generated.models.test_case_patch_v2_dto import TestCasePatchV2Dto
 from .generated.models.test_case_row_dto import TestCaseRowDto
 from .generated.models.test_case_scenario_dto import TestCaseScenarioDto
 from .generated.models.test_case_scenario_v2_dto import TestCaseScenarioV2Dto
-from .generated.models.test_case_tree_selection_dto import TestCaseTreeSelectionDto
+from .generated.models.test_case_tree_group_add_dto import TestCaseTreeGroupAddDto
+from .generated.models.test_case_tree_group_rename_dto import TestCaseTreeGroupRenameDto
+from .generated.models.test_case_tree_leaf_add_dto import TestCaseTreeLeafAddDto
+from .generated.models.test_case_tree_leaf_dto_v2 import TestCaseTreeLeafDtoV2
+from .generated.models.test_case_tree_leaf_rename_dto import TestCaseTreeLeafRenameDto
+from .generated.models.test_case_tree_selection_dto_v2 import TestCaseTreeSelectionDtoV2
 
 # Shared step attachments with entity field
 from .generated.models.test_fixture_result_attachment_row_dto import (
     TestFixtureResultAttachmentRowDto,
 )
 from .generated.models.test_result_attachment_row_dto import TestResultAttachmentRowDto
+from .generated.models.tree_dto_v2 import TreeDtoV2
 from .generated.rest import RESTResponse
 from .overridden.test_case_custom_fields_v2 import TestCaseCustomFieldV2ControllerApi
 
@@ -157,6 +174,9 @@ type ApiType = (
     | TestLayerSchemaControllerApi
     | LaunchControllerApi
     | LaunchSearchControllerApi
+    | TreeControllerV2Api
+    | TestCaseTreeControllerV2Api
+    | TestCaseTreeBulkControllerV2Api
     | IntegrationControllerApi
 )
 
@@ -200,7 +220,7 @@ __all__ = [
     "TestCaseRowDto",
     "TestCaseScenarioDto",
     "TestCaseScenarioV2Dto",
-    "TestCaseTreeSelectionDto",
+    "TestCaseTreeSelectionDtoV2",
 ]
 
 
@@ -272,6 +292,9 @@ class AllureClient:
         self._test_layer_schema_api: TestLayerSchemaControllerApi | None = None
         self._launch_api: LaunchControllerApi | None = None
         self._launch_search_api: LaunchSearchControllerApi | None = None
+        self._tree_api: TreeControllerV2Api | None = None
+        self._test_case_tree_api: TestCaseTreeControllerV2Api | None = None
+        self._test_case_tree_bulk_api: TestCaseTreeBulkControllerV2Api | None = None
         self._integration_api: IntegrationControllerApi | None = None
         self._is_entered = False
 
@@ -419,6 +442,9 @@ class AllureClient:
             self._test_layer_schema_api = TestLayerSchemaControllerApi(self._api_client)
             self._launch_api = LaunchControllerApi(self._api_client)
             self._launch_search_api = LaunchSearchControllerApi(self._api_client)
+            self._tree_api = TreeControllerV2Api(self._api_client)
+            self._test_case_tree_api = TestCaseTreeControllerV2Api(self._api_client)
+            self._test_case_tree_bulk_api = TestCaseTreeBulkControllerV2Api(self._api_client)
             self._integration_api = IntegrationControllerApi(self._api_client)
 
     @property
@@ -508,7 +534,6 @@ class AllureClient:
         raise AllureAPIError(f"Internal error: {api_name} not initialized")
 
     @overload
-    @overload
     async def _get_api(
         self, attr_name: Literal["_test_case_api"], *, error_name: str | None = None
     ) -> TestCaseControllerApi: ...
@@ -587,6 +612,21 @@ class AllureClient:
     async def _get_api(
         self, attr_name: Literal["_launch_search_api"], *, error_name: str | None = None
     ) -> LaunchSearchControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_tree_api"], *, error_name: str | None = None
+    ) -> TreeControllerV2Api: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_test_case_tree_api"], *, error_name: str | None = None
+    ) -> TestCaseTreeControllerV2Api: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_test_case_tree_bulk_api"], *, error_name: str | None = None
+    ) -> TestCaseTreeBulkControllerV2Api: ...
 
     async def _get_api(self, attr_name: str, *, error_name: str | None = None) -> ApiType:
         self._require_entered()
@@ -846,6 +886,18 @@ class AllureClient:
             for tag in tags:
                 parts.append(f'tag="{cls._escape_rql_value(tag)}"')
         return " and ".join(parts)
+
+    @staticmethod
+    def _validate_positive_int_list(values: list[int] | None, error_message: str) -> list[int] | None:
+        if values is None:
+            return None
+
+        validated: list[int] = []
+        for value in values:
+            if not isinstance(value, int) or value <= 0:
+                raise AllureValidationError(error_message)
+            validated.append(value)
+        return validated
 
     async def list_test_cases(
         self,
@@ -1933,6 +1985,375 @@ class AllureClient:
         """
         test_case_api = await self._get_api("_test_case_api")
         await self._call_api(test_case_api.delete13(id=test_case_id))
+
+    # ==========================================
+    # Test hierarchy operations
+    # ==========================================
+
+    async def list_trees(
+        self,
+        project_id: int,
+        with_archived: bool | None = None,
+        page: int | None = None,
+        size: int | None = None,
+        sort: list[str] | None = None,
+    ) -> PageTreeDtoV2:
+        """List hierarchy trees in a project."""
+        tree_api = await self._get_api("_tree_api", error_name="tree APIs")
+
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+        if page is not None and (not isinstance(page, int) or page < 0):
+            raise AllureValidationError("Page must be a non-negative integer")
+        if size is not None and (not isinstance(size, int) or size <= 0):
+            raise AllureValidationError("Size must be a positive integer")
+
+        return await self._call_api(
+            tree_api.find_all48(
+                project_id=project_id,
+                with_archived=with_archived,
+                page=page,
+                size=size,
+                sort=sort,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def get_tree(self, tree_id: int, with_archived: bool | None = None) -> TreeDtoV2:
+        """Get tree details by ID."""
+        tree_api = await self._get_api("_tree_api", error_name="tree APIs")
+
+        if not isinstance(tree_id, int) or tree_id <= 0:
+            raise AllureValidationError("Tree ID must be a positive integer")
+
+        return await self._call_api(
+            tree_api.find_one38(
+                id=tree_id,
+                with_archived=with_archived,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def create_tree_group(
+        self,
+        project_id: int,
+        tree_id: int,
+        name: str,
+        parent_node_id: int | None = None,
+    ) -> TestCaseLightTreeNodeDto:
+        """Create a test suite group node in a tree."""
+        tree_api = await self._get_api("_test_case_tree_api", error_name="test case tree APIs")
+
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+        if not isinstance(tree_id, int) or tree_id <= 0:
+            raise AllureValidationError("Tree ID must be a positive integer")
+        if not isinstance(name, str) or not name.strip():
+            raise AllureValidationError("Suite name is required")
+        if parent_node_id is not None and (not isinstance(parent_node_id, int) or parent_node_id <= 0):
+            raise AllureValidationError("Parent node ID must be a positive integer")
+
+        dto = TestCaseTreeGroupAddDto(name=name.strip())
+
+        return await self._call_api(
+            tree_api.add_group(
+                project_id=project_id,
+                tree_id=tree_id,
+                test_case_tree_group_add_dto=dto,
+                parent_node_id=parent_node_id,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def upsert_tree_group(
+        self,
+        project_id: int,
+        tree_id: int,
+        name: str,
+        parent_node_id: int | None = None,
+    ) -> TestCaseLightTreeNodeDto:
+        """Create or return existing suite group node in a tree."""
+        tree_api = await self._get_api("_test_case_tree_api", error_name="test case tree APIs")
+
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+        if not isinstance(tree_id, int) or tree_id <= 0:
+            raise AllureValidationError("Tree ID must be a positive integer")
+        if not isinstance(name, str) or not name.strip():
+            raise AllureValidationError("Suite name is required")
+        if parent_node_id is not None and (not isinstance(parent_node_id, int) or parent_node_id <= 0):
+            raise AllureValidationError("Parent node ID must be a positive integer")
+
+        dto = TestCaseTreeGroupAddDto(name=name.strip())
+
+        return await self._call_api(
+            tree_api.upsert(
+                project_id=project_id,
+                tree_id=tree_id,
+                test_case_tree_group_add_dto=dto,
+                parent_node_id=parent_node_id,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def rename_tree_group(self, project_id: int, group_id: int, name: str) -> TestCaseLightTreeNodeDto:
+        """Rename a suite group node by group ID."""
+        tree_api = await self._get_api("_test_case_tree_api", error_name="test case tree APIs")
+
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+        if not isinstance(group_id, int) or group_id <= 0:
+            raise AllureValidationError("Group ID must be a positive integer")
+        if not isinstance(name, str) or not name.strip():
+            raise AllureValidationError("Suite name is required")
+
+        dto = TestCaseTreeGroupRenameDto(name=name.strip())
+
+        return await self._call_api(
+            tree_api.rename_group(
+                project_id=project_id,
+                group_id=group_id,
+                test_case_tree_group_rename_dto=dto,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def create_tree_leaf(
+        self,
+        project_id: int,
+        tree_id: int,
+        name: str,
+        node_id: int | None = None,
+    ) -> TestCaseTreeLeafDtoV2:
+        """Create a tree leaf node in a tree."""
+        tree_api = await self._get_api("_test_case_tree_api", error_name="test case tree APIs")
+
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+        if not isinstance(tree_id, int) or tree_id <= 0:
+            raise AllureValidationError("Tree ID must be a positive integer")
+        if not isinstance(name, str) or not name.strip():
+            raise AllureValidationError("Leaf name is required")
+        if node_id is not None and (not isinstance(node_id, int) or node_id <= 0):
+            raise AllureValidationError("Node ID must be a positive integer")
+
+        dto = TestCaseTreeLeafAddDto(name=name.strip())
+
+        return await self._call_api(
+            tree_api.add_leaf(
+                project_id=project_id,
+                tree_id=tree_id,
+                test_case_tree_leaf_add_dto=dto,
+                node_id=node_id,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def rename_tree_leaf(self, project_id: int, leaf_id: int, name: str) -> TestCaseTreeLeafDtoV2:
+        """Rename a tree leaf by leaf ID."""
+        tree_api = await self._get_api("_test_case_tree_api", error_name="test case tree APIs")
+
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+        if not isinstance(leaf_id, int) or leaf_id <= 0:
+            raise AllureValidationError("Leaf ID must be a positive integer")
+        if not isinstance(name, str) or not name.strip():
+            raise AllureValidationError("Leaf name is required")
+
+        dto = TestCaseTreeLeafRenameDto(name=name.strip())
+
+        return await self._call_api(
+            tree_api.rename_leaf(
+                project_id=project_id,
+                leaf_id=leaf_id,
+                test_case_tree_leaf_rename_dto=dto,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def get_tree_node(
+        self,
+        project_id: int,
+        tree_id: int,
+        parent_node_id: int | None = None,
+        search: str | None = None,
+        filter_id: int | None = None,
+        page: int | None = None,
+        size: int | None = None,
+        sort: list[str] | None = None,
+        query: str | None = None,
+        base_aql: str | None = None,
+    ) -> TestCaseFullTreeNodeDto:
+        """Get test case hierarchy nodes for a tree."""
+        tree_api = await self._get_api("_test_case_tree_api", error_name="test case tree APIs")
+
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+        if not isinstance(tree_id, int) or tree_id <= 0:
+            raise AllureValidationError("Tree ID must be a positive integer")
+        if parent_node_id is not None and (not isinstance(parent_node_id, int) or parent_node_id <= 0):
+            raise AllureValidationError("Parent node ID must be a positive integer")
+        if filter_id is not None and (not isinstance(filter_id, int) or filter_id <= 0):
+            raise AllureValidationError("Filter ID must be a positive integer")
+        if page is not None and (not isinstance(page, int) or page < 0):
+            raise AllureValidationError("Page must be a non-negative integer")
+        if size is not None and (not isinstance(size, int) or size <= 0):
+            raise AllureValidationError("Size must be a positive integer")
+
+        response = await tree_api.get_tree_node_without_preload_content(
+            project_id=project_id,
+            tree_id=tree_id,
+            parent_node_id=parent_node_id,
+            search=search,
+            filter_id=filter_id,
+            page=page,
+            size=size,
+            sort=sort,
+            query=query,
+            base_aql=base_aql,
+            _request_timeout=self._timeout,
+        )
+
+        response_text = response.read().decode("utf-8")
+        payload = json.loads(response_text)
+
+        root = TestCaseFullTreeNodeDto(
+            id=payload.get("id"),
+            name=payload.get("name"),
+            type=payload.get("type"),
+            children=self._parse_tree_children(payload.get("children")),
+        )
+        return root
+
+    def _parse_tree_children(self, children_payload: object) -> PageTestCaseTreeNodeDto | None:
+        """Parse raw tree node children payload into generated DTOs safely."""
+        if not isinstance(children_payload, dict):
+            return None
+
+        content_payload = children_payload.get("content")
+        if not isinstance(content_payload, list):
+            return PageTestCaseTreeNodeDto(
+                content=[],
+                total_elements=children_payload.get("totalElements"),
+                total_pages=children_payload.get("totalPages"),
+                size=children_payload.get("size"),
+                number=children_payload.get("number"),
+            )
+
+        content: list[PageTestCaseTreeNodeDtoContentInner] = []
+        for item in content_payload:
+            if not isinstance(item, dict):
+                continue
+
+            item_type = item.get("type")
+            if item_type == "GROUP":
+                group_node = TestCaseLightTreeNodeDto(
+                    id=item.get("id"),
+                    name=item.get("name"),
+                    type=item_type,
+                    parent_node_id=item.get("parentNodeId"),
+                )
+                content.append(PageTestCaseTreeNodeDtoContentInner(actual_instance=group_node))
+                continue
+
+            if item_type == "LEAF":
+                leaf_payload = dict(item)
+                if "testCaseId" not in leaf_payload and isinstance(leaf_payload.get("id"), int):
+                    leaf_payload["testCaseId"] = leaf_payload["id"]
+                leaf_node = TestCaseTreeLeafDtoV2.from_dict(leaf_payload)
+                if leaf_node is not None:
+                    content.append(PageTestCaseTreeNodeDtoContentInner(actual_instance=leaf_node))
+
+        return PageTestCaseTreeNodeDto(
+            content=content,
+            total_elements=children_payload.get("totalElements"),
+            total_pages=children_payload.get("totalPages"),
+            size=children_payload.get("size"),
+            number=children_payload.get("number"),
+        )
+
+    async def assign_test_cases_to_tree_node(
+        self,
+        project_id: int,
+        test_case_ids: list[int],
+        target_node_id: int,
+        tree_id: int,
+    ) -> None:
+        """Assign test cases to a suite node via bulk drag-and-drop."""
+        bulk_api = await self._get_api("_test_case_tree_bulk_api", error_name="test case tree bulk APIs")
+
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+        if not isinstance(target_node_id, int) or target_node_id <= 0:
+            raise AllureValidationError("Target node ID must be a positive integer")
+        if not isinstance(tree_id, int) or tree_id <= 0:
+            raise AllureValidationError("Tree ID must be a positive integer")
+        if not isinstance(test_case_ids, list) or not test_case_ids:
+            raise AllureValidationError("At least one test case ID is required")
+
+        normalized_ids: list[int] = []
+        for case_id in test_case_ids:
+            if not isinstance(case_id, int) or case_id <= 0:
+                raise AllureValidationError("All test case IDs must be positive integers")
+            normalized_ids.append(case_id)
+
+        selection = TestCaseTreeSelectionDtoV2(
+            project_id=project_id,
+            tree_id=tree_id,
+            leaves_include=normalized_ids,
+            node_id=target_node_id,
+        )
+        drag_payload = TestCaseBulkDragAndDropDtoV2(node_id=target_node_id, selection=selection)
+
+        await self._call_api(
+            bulk_api.drag_and_drop(
+                test_case_bulk_drag_and_drop_dto_v2=drag_payload,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def suggest_tree_groups(
+        self,
+        project_id: int,
+        query: str | None = None,
+        tree_id: int | None = None,
+        path: list[int] | None = None,
+        node_ids: list[int] | None = None,
+        ignore_ids: list[int] | None = None,
+        page: int | None = None,
+        size: int | None = None,
+        sort: list[str] | None = None,
+    ) -> PageIdAndNameOnlyDto:
+        """Suggest tree groups (id/name) for suite navigation and matching."""
+        tree_api = await self._get_api("_test_case_tree_api", error_name="test case tree APIs")
+
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+        if tree_id is not None and (not isinstance(tree_id, int) or tree_id <= 0):
+            raise AllureValidationError("Tree ID must be a positive integer")
+        if page is not None and (not isinstance(page, int) or page < 0):
+            raise AllureValidationError("Page must be a non-negative integer")
+        if size is not None and (not isinstance(size, int) or size <= 0):
+            raise AllureValidationError("Size must be a positive integer")
+
+        validated_path = self._validate_positive_int_list(path, "Path node IDs must be positive integers")
+        validated_node_ids = self._validate_positive_int_list(node_ids, "Node IDs must be positive integers")
+        validated_ignore_ids = self._validate_positive_int_list(ignore_ids, "Ignore IDs must be positive integers")
+
+        return await self._call_api(
+            tree_api.suggest1(
+                project_id=project_id,
+                query=query,
+                tree_id=tree_id,
+                path=validated_path,
+                id=validated_node_ids,
+                ignore_id=validated_ignore_ids,
+                page=page,
+                size=size,
+                sort=sort,
+                _request_timeout=self._timeout,
+            )
+        )
 
     # ==========================================
     # Shared Step operations

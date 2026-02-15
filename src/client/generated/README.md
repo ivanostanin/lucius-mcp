@@ -269,6 +269,15 @@ Class | Method | HTTP request | Description
 *TestCaseTagControllerApi* | [**get_tags**](src/client/generated/docs/TestCaseTagControllerApi.md#get_tags) | **GET** /api/testcase/{testCaseId}/tag | Find tags for test case
 *TestCaseTagControllerApi* | [**set_tags**](src/client/generated/docs/TestCaseTagControllerApi.md#set_tags) | **POST** /api/testcase/{testCaseId}/tag | Set test tags for test case
 *TestCaseTestPlanBulkControllerApi* | [**create_test_plan**](src/client/generated/docs/TestCaseTestPlanBulkControllerApi.md#create_test_plan) | **POST** /api/v2/test-case/bulk/test-plan/create | Create test plan from selected test cases
+*TestCaseTreeBulkControllerV2Api* | [**drag_and_drop**](src/client/generated/docs/TestCaseTreeBulkControllerV2Api.md#drag_and_drop) | **POST** /api/v2/test-case/tree/bulk/drag-and-drop | dragAndDrop test cases for trees
+*TestCaseTreeControllerV2Api* | [**add_group**](src/client/generated/docs/TestCaseTreeControllerV2Api.md#add_group) | **POST** /api/v2/project/{projectId}/test-case/tree/group | Add a new group to the specified tree
+*TestCaseTreeControllerV2Api* | [**add_leaf**](src/client/generated/docs/TestCaseTreeControllerV2Api.md#add_leaf) | **POST** /api/v2/project/{projectId}/test-case/tree/leaf | Add a new leaf to the specified tree
+*TestCaseTreeControllerV2Api* | [**delete_group**](src/client/generated/docs/TestCaseTreeControllerV2Api.md#delete_group) | **DELETE** /api/v2/project/{projectId}/test-case/tree/group/{groupId} | Delete the specified group
+*TestCaseTreeControllerV2Api* | [**get_tree_node**](src/client/generated/docs/TestCaseTreeControllerV2Api.md#get_tree_node) | **GET** /api/v2/project/{projectId}/test-case/tree/tree-node | Get test cases as a tree structure (AQL)
+*TestCaseTreeControllerV2Api* | [**rename_group**](src/client/generated/docs/TestCaseTreeControllerV2Api.md#rename_group) | **PUT** /api/v2/project/{projectId}/test-case/tree/group/{groupId}/name | Rename the specified group
+*TestCaseTreeControllerV2Api* | [**rename_leaf**](src/client/generated/docs/TestCaseTreeControllerV2Api.md#rename_leaf) | **PUT** /api/v2/project/{projectId}/test-case/tree/leaf/{leafId}/name | Rename the specified leaf
+*TestCaseTreeControllerV2Api* | [**suggest1**](src/client/generated/docs/TestCaseTreeControllerV2Api.md#suggest1) | **GET** /api/v2/project/{projectId}/test-case/tree/suggest | Tree groups suggest
+*TestCaseTreeControllerV2Api* | [**upsert**](src/client/generated/docs/TestCaseTreeControllerV2Api.md#upsert) | **PUT** /api/v2/project/{projectId}/test-case/tree/group | Add a new group to the specified tree and return group if it exists
 *TestLayerControllerApi* | [**create9**](src/client/generated/docs/TestLayerControllerApi.md#create9) | **POST** /api/testlayer | 
 *TestLayerControllerApi* | [**delete9**](src/client/generated/docs/TestLayerControllerApi.md#delete9) | **DELETE** /api/testlayer/{id} | 
 *TestLayerControllerApi* | [**find_all7**](src/client/generated/docs/TestLayerControllerApi.md#find_all7) | **GET** /api/testlayer | 
@@ -296,6 +305,8 @@ Class | Method | HTTP request | Description
 *TestPlanControllerApi* | [**set_job_parameters**](src/client/generated/docs/TestPlanControllerApi.md#set_job_parameters) | **POST** /api/testplan/{id}/jobparameter | Configure test plan job parameters
 *TestPlanControllerApi* | [**suggest3**](src/client/generated/docs/TestPlanControllerApi.md#suggest3) | **GET** /api/testplan/suggest | Suggest for test plans
 *TestPlanControllerApi* | [**sync**](src/client/generated/docs/TestPlanControllerApi.md#sync) | **POST** /api/testplan/{id}/sync | Sync test plan
+*TreeControllerV2Api* | [**find_all48**](src/client/generated/docs/TreeControllerV2Api.md#find_all48) | **GET** /api/v2/tree | 
+*TreeControllerV2Api* | [**find_one38**](src/client/generated/docs/TreeControllerV2Api.md#find_one38) | **GET** /api/v2/tree/{id} | 
 
 
 ## Documentation For Models

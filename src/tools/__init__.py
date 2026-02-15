@@ -25,12 +25,15 @@ from src.tools.plans import create_test_plan, list_test_plans, manage_test_plan_
 from src.tools.search import get_test_case_details, list_test_cases, search_test_cases
 from src.tools.shared_steps import create_shared_step, delete_shared_step, list_shared_steps, update_shared_step
 from src.tools.test_layers import (
+    assign_test_cases_to_suite,
     create_test_layer,
     create_test_layer_schema,
+    create_test_suite,
     delete_test_layer,
     delete_test_layer_schema,
     list_test_layer_schemas,
     list_test_layers,
+    list_test_suites,
     update_test_layer,
     update_test_layer_schema,
 )
@@ -39,6 +42,7 @@ from src.tools.update_custom_field_value import update_custom_field_value
 from src.tools.update_test_case import update_test_case
 
 __all__ = [
+    "assign_test_cases_to_suite",
     "close_launch",
     "create_custom_field_value",
     "create_defect",
@@ -49,6 +53,7 @@ __all__ = [
     "create_test_layer",
     "create_test_layer_schema",
     "create_test_plan",
+    "create_test_suite",
     "delete_custom_field_value",
     "delete_defect",
     "delete_defect_matcher",
@@ -73,6 +78,7 @@ __all__ = [
     "list_test_layer_schemas",
     "list_test_layers",
     "list_test_plans",
+    "list_test_suites",
     "manage_test_plan_content",
     "reopen_launch",
     "search_test_cases",
@@ -125,6 +131,10 @@ all_tools: list[ToolFn] = [
     create_test_layer_schema,
     update_test_layer_schema,
     delete_test_layer_schema,
+    # Test Hierarchy Tools
+    create_test_suite,
+    list_test_suites,
+    assign_test_cases_to_suite,
     # Test Plan Tools
     create_test_plan,
     update_test_plan,

@@ -284,14 +284,6 @@ async def test_e2e_u4_update_custom_fields(
     """
     service = TestCaseService(client=allure_client)
 
-    # Create with initial custom fields
-    # Note: Custom fields must exist in the project
-    created_case = await service.create_test_case(name="E2E-U4 Custom Fields Test", custom_fields={"Feature": "Flow"})
-    test_case_id = created_case.id
-    assert test_case_id is not None
-    cleanup_tracker.track_test_case(test_case_id)
-
-    # Update custom fields
     custom_fields = await service.get_custom_fields()
     fields_with_values = [cf for cf in custom_fields if cf.get("values") and len(cf["values"]) > 0]
     if len(fields_with_values) < 1:
@@ -300,9 +292,22 @@ async def test_e2e_u4_update_custom_fields(
             f"Configure custom fields in TestOps before running this test."
         )
 
+    initial_field = fields_with_values[0]
+    initial_field_name = initial_field["name"]
+    initial_value = initial_field["values"][0]
+
+    created_case = await service.create_test_case(
+        name="E2E-U4 Custom Fields Test",
+        custom_fields={initial_field_name: initial_value},
+    )
+    test_case_id = created_case.id
+    assert test_case_id is not None
+    cleanup_tracker.track_test_case(test_case_id)
+
     target_field = fields_with_values[0]
     target_field_name = target_field["name"]
-    target_value = target_field["values"][0]
+    target_values = target_field["values"]
+    target_value = target_values[1] if len(target_values) > 1 else target_values[0]
 
     update_data = TestCaseUpdate(custom_fields={target_field_name: target_value})
     await service.update_test_case(test_case_id, update_data)

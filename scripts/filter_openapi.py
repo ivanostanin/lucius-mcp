@@ -35,6 +35,10 @@ KEEP_TAGS = {
     # Test Layer Management
     "test-layer-controller",
     "test-layer-schema-controller",
+    # Test Hierarchy Management
+    "test-case-tree-controller-v-2",
+    "tree-controller-v-2",
+    "test-case-tree-bulk-controller-v-2",
     "integration-controller",
     # Test Plan Management
     "test-plan-controller",

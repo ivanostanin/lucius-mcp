@@ -31,6 +31,7 @@ To ensure robust end-to-end validation, any AI agent executing this plan MUST fo
   - Custom fields: `tests/e2e/test_get_custom_fields.py:15-235`, `tests/e2e/test_custom_field_validation_e2e.py:15-196`
   - Shared steps + link/unlink: `tests/e2e/test_shared_steps.py:14-210`, `tests/e2e/test_link_shared_step.py:13-108`, `tests/e2e/test_link_shared_steps.py:12-86`
   - Test layers + schemas: `tests/e2e/test_test_layer_crud.py:20-352`
+  - Test hierarchy: `tests/e2e/test_test_hierarchy_management.py:14-90`
   - Auth override (optional negatives): `tests/e2e/test_runtime_auth_override.py:12-83`
 - Tool outputs (source of expected strings):
   - `create_test_case`: `src/tools/create_test_case.py:83-95`
@@ -43,14 +44,15 @@ To ensure robust end-to-end validation, any AI agent executing this plan MUST fo
   - `link/unlink`: `src/tools/link_shared_step.py:38-93`, `src/tools/unlink_shared_step.py:29-68`
   - `test_layers` tools: `src/tools/create_test_layer.py:11-33`, `src/tools/list_test_layers.py:11-38`, `src/tools/update_test_layer.py:11-33`, `src/tools/delete_test_layer.py:11-31`
   - `test_layer_schema` tools: `src/tools/create_test_layer_schema.py:11-39`, `src/tools/list_test_layer_schemas.py:11-43`, `src/tools/update_test_layer_schema.py:11-40`, `src/tools/delete_test_layer_schema.py:11-31`
+  - `test_hierarchy` tools: `src/tools/create_test_suite.py:18-43`, `src/tools/list_test_suites.py:28-61`, `src/tools/assign_test_cases_to_suite.py:18-46`
   - `launches`: `src/tools/launches.py:11-112`
 
 ## Reusable test data & conventions (for future reuse)
 - **Run prefix**: use a unique prefix like `[manual-<date>-<rand>]` in names to avoid collisions.
 - **Attachment payload** (1x1 pixel, from `tests/e2e/conftest.py:88-90`):
   - `pixel_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNiAAAABgANjd8qAAAAAElFTkSuQmCC"`
-- **Track IDs** as you go: `TEST_CASE_ID`, `SHARED_STEP_ID`, `LAYER_ID`, `SCHEMA_ID`, `LAUNCH_ID`.
-- **Cleanup policy**: use delete tools for cases/steps/layers/schemas. Launches have no delete tool; use a unique name and clean in UI if needed.
+- **Track IDs** as you go: `TEST_CASE_ID`, `SHARED_STEP_ID`, `LAYER_ID`, `SCHEMA_ID`, `LAUNCH_ID`, `SUITE_ID`.
+- **Cleanup policy**: use delete tools for cases/steps/layers/schemas/custom-field values. Hierarchy currently has no suite delete tool, so use unique suite names and always cleanup created test cases with `delete_test_case`.
 
 ## Tool inventory (must be covered)
 From `src/tools/__init__.py:24-79`:
@@ -62,6 +64,7 @@ From `src/tools/__init__.py:24-79`:
 - `link_shared_step`, `unlink_shared_step`
 - `list_test_layers`, `create_test_layer`, `update_test_layer`, `delete_test_layer`
 - `list_test_layer_schemas`, `create_test_layer_schema`, `update_test_layer_schema`, `delete_test_layer_schema`
+- `create_test_suite`, `list_test_suites`, `assign_test_cases_to_suite`
 - `list_integrations`
 - `create_test_plan`, `update_test_plan`, `manage_test_plan_content`, `list_test_plans`, `delete_test_plan`
 - `create_defect`, `get_defect`, `update_defect`, `delete_defect`, `list_defects`
@@ -184,7 +187,27 @@ From `src/tools/__init__.py:24-79`:
   7. **Delete Layer**: `delete_test_layer(layer_id=LAYER_ID, confirm=true)`
      - Expectation: Success message.
 
-#### 7. Launches
+#### 7. Test hierarchy (suites + assignment)
+- **Scenario source**: `tests/e2e/test_test_hierarchy_management.py:14-90`
+- **Goal**: Validate suite creation/listing and test-case assignment to suites.
+- **Steps**:
+  1. **Create Root Suite**: `create_test_suite(name="[Agent] Hierarchy Root")`
+     - Expectation: Output contains `Test suite created successfully` and `ID`.
+     - Action: Capture `id` as `SUITE_ROOT_ID`.
+  2. **Create Nested Suite**: `create_test_suite(name="[Agent] Hierarchy Nested", parent_suite_id=SUITE_ROOT_ID)`
+     - Expectation: Output contains `Test suite created successfully` and `ID`.
+     - Action: Capture `id` as `SUITE_ID`.
+  3. **List Suites**: `list_test_suites(include_empty=true)`
+     - Expectation: Output contains `Tree:` and includes `SUITE_ROOT_ID` and `SUITE_ID`.
+  4. **Create Test Case**: `create_test_case(name="[Agent] Hierarchy Assignment Case")`
+     - Expectation: Output contains `Created Test Case ID`.
+     - Action: Capture `id` as `TC_HIER_ID`.
+  5. **Assign to Suite**: `assign_test_cases_to_suite(suite_id=SUITE_ID, test_case_ids=[TC_HIER_ID])`
+     - Expectation: Output contains `Assigned 1 test case(s)`.
+  6. **Cleanup Created Test Case**: `delete_test_case(test_case_id=TC_HIER_ID, confirm=true)`
+     - Expectation: Output contains archived/already-archived confirmation.
+
+#### 8. Launches
 - **Scenario source**: tool coverage
 - **Goal**: Validate launch creation, listing, and detail retrieval.
 - **Steps**:
@@ -197,7 +220,7 @@ From `src/tools/__init__.py:24-79`:
      - Expectation: Output contains strict keys: `id`, `name`, `status`, `created_date`.
      - Verification: `id` matches `LAUNCH_ID`.
 
-#### 8. Custom Field Values Lifecycle
+#### 9. Custom Field Values Lifecycle
 - **Scenario source**: `specs/implementation-artifacts/3-11-crud-custom-field-values.md`
 - **Goal**: Verify project-level custom field value management.
 - **Prerequisite**: Use `get_custom_fields` to find a valid `CF_ID` (or create a temporary custom field if none exist).
@@ -218,7 +241,7 @@ From `src/tools/__init__.py:24-79`:
   7. **Verify Deletion**: `list_custom_field_values(project_id=<PROJECT_ID>, custom_field_id=<CF_ID>)`
      - Expectation: List DOES NOT contain `id: VALUE_ID`.
 
-#### 9. Issue Linking
+#### 10. Issue Linking
 - **Scenario source**: `specs/implementation-artifacts/3-12-support-issue-links-in-test-cases.md`, `specs/implementation-artifacts/3-13-integration-filtering-for-issue-links.md`
 - **Goal**: Verify adding, removing, clearing, and validating issue links with integration filtering.
 - **Steps**:
@@ -245,7 +268,7 @@ From `src/tools/__init__.py:24-79`:
   9. **Negative Test**: `create_test_case(name="Invalid Issue", issues=["INVALID_FORMAT"])`
      - Expectation: Error message containing `"Invalid issue key format"`.
 
-#### 10. Test Plan Management
+#### 11. Test Plan Management
 - **Scenario source**: `specs/implementation-artifacts/7-1-test-plan-management.md`
 - **Goal**: Verify Test Plan lifecycle (creation, update, content management, listing).
 - **Steps**:
@@ -274,7 +297,7 @@ From `src/tools/__init__.py:24-79`:
     11. **Verify Deletion**: `list_test_plans()`
         - Expectation: List DOES NOT contain the deleted plans.
 
-#### 11. Defect Management
+#### 12. Defect Management
 - **Scenario source**: `specs/implementation-artifacts/7-2-defect-lifecycle-management.md`
 - **Goal**: Verify Defect and Defect Matcher lifecycle (creation, retrieval, update, deletion).
 - **Steps**:
@@ -333,6 +356,7 @@ From `src/tools/__init__.py:24-79`:
 - Shared steps: create/list/update/delete messages as in `shared_steps.py`.
 - Link/unlink: confirmation plus updated steps preview (`link_shared_step.py:91-93`, `unlink_shared_step.py:65-68`).
 - Test layers/schemas: success or info messages as defined in tool files.
+- Test hierarchy: suite create/list and assignment messages as defined in hierarchy tool files.
 - Launches: formatted list with pagination (`launches.py:91-112`).
 
 ## Coverage matrix (tool → scenario module)
@@ -340,11 +364,12 @@ From `src/tools/__init__.py:24-79`:
 - **Custom fields**: 4 covers `get_custom_fields`.
 - **Shared steps**: 5 covers `create_shared_step`, `list_shared_steps`, `update_shared_step`, `delete_shared_step`, `link_shared_step`, `unlink_shared_step`.
 - **Test layers**: 6 covers `list_test_layers`, `create_test_layer`, `update_test_layer`, `delete_test_layer`, `list_test_layer_schemas`, `create_test_layer_schema`, `update_test_layer_schema`, `delete_test_layer_schema`.
-- **Launches**: 7 covers `create_launch`, `list_launches`, `get_launch`.
-- **Custom Field Values**: 8 covers `create_custom_field_value`, `list_custom_field_values`, `update_custom_field_value`, `delete_custom_field_value`.
-- **Issue Linking & Integrations**: 9 covers `list_integrations` and `issues` parameter in `create_test_case` and `update_test_case` (add, remove, clear, explicit integration selection).
-- **Test Plans**: 10 covers `create_test_plan`, `update_test_plan`, `manage_test_plan_content`, `list_test_plans`, `delete_test_plan`.
-- **Defects**: 11 covers `create_defect`, `get_defect`, `update_defect`, `delete_defect`, `list_defects`, `create_defect_matcher`, `update_defect_matcher`, `delete_defect_matcher`, `list_defect_matchers`.
+- **Test hierarchy**: 7 covers `create_test_suite`, `list_test_suites`, `assign_test_cases_to_suite` (+ test-case cleanup via `delete_test_case`).
+- **Launches**: 8 covers `create_launch`, `list_launches`, `get_launch`.
+- **Custom Field Values**: 9 covers `create_custom_field_value`, `list_custom_field_values`, `update_custom_field_value`, `delete_custom_field_value`.
+- **Issue Linking & Integrations**: 10 covers `list_integrations` and `issues` parameter in `create_test_case` and `update_test_case` (add, remove, clear, explicit integration selection).
+- **Test Plans**: 11 covers `create_test_plan`, `update_test_plan`, `manage_test_plan_content`, `list_test_plans`, `delete_test_plan`.
+- **Defects**: 12 covers `create_defect`, `get_defect`, `update_defect`, `delete_defect`, `list_defects`, `create_defect_matcher`, `update_defect_matcher`, `delete_defect_matcher`, `list_defect_matchers`.
 
 ## Notes / constraints
 - Some E2E checks use service-level assertions (scenario DTOs). Manual validation relies on tool outputs + `get_test_case_details` as the closest proxy.

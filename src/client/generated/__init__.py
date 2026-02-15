@@ -43,9 +43,12 @@ __all__ = [
     "TestCaseSearchControllerApi",
     "TestCaseTagControllerApi",
     "TestCaseTestPlanBulkControllerApi",
+    "TestCaseTreeBulkControllerV2Api",
+    "TestCaseTreeControllerV2Api",
     "TestLayerControllerApi",
     "TestLayerSchemaControllerApi",
     "TestPlanControllerApi",
+    "TreeControllerV2Api",
     "ApiResponse",
     "ApiClient",
     "Configuration",
@@ -766,9 +769,12 @@ from src.client.generated.api.test_case_scenario_controller_api import TestCaseS
 from src.client.generated.api.test_case_search_controller_api import TestCaseSearchControllerApi as TestCaseSearchControllerApi
 from src.client.generated.api.test_case_tag_controller_api import TestCaseTagControllerApi as TestCaseTagControllerApi
 from src.client.generated.api.test_case_test_plan_bulk_controller_api import TestCaseTestPlanBulkControllerApi as TestCaseTestPlanBulkControllerApi
+from src.client.generated.api.test_case_tree_bulk_controller_v2_api import TestCaseTreeBulkControllerV2Api as TestCaseTreeBulkControllerV2Api
+from src.client.generated.api.test_case_tree_controller_v2_api import TestCaseTreeControllerV2Api as TestCaseTreeControllerV2Api
 from src.client.generated.api.test_layer_controller_api import TestLayerControllerApi as TestLayerControllerApi
 from src.client.generated.api.test_layer_schema_controller_api import TestLayerSchemaControllerApi as TestLayerSchemaControllerApi
 from src.client.generated.api.test_plan_controller_api import TestPlanControllerApi as TestPlanControllerApi
+from src.client.generated.api.tree_controller_v2_api import TreeControllerV2Api as TreeControllerV2Api
 
 # import ApiClient
 from src.client.generated.api_response import ApiResponse as ApiResponse
