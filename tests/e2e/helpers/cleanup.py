@@ -1,7 +1,7 @@
 """Helper utilities for E2E test isolation and cleanup."""
 
 from src.client import AllureClient
-from src.services import DefectService, PlanService, TestLayerService
+from src.services import CustomFieldValueService, DefectService, PlanService, TestHierarchyService, TestLayerService
 
 
 class CleanupTracker:
@@ -35,8 +35,10 @@ class CleanupTracker:
         self._test_cases: list[int] = []
         self._shared_steps: list[int] = []
         self._test_layers: list[int] = []
+        self._test_suites: list[int] = []
         self._test_plans: list[int] = []
         self._defects: list[int] = []
+        self._custom_field_value_names: list[str] = []
 
     def track_test_case(self, test_case_id: int) -> None:
         """Track a test case for cleanup.
@@ -62,6 +64,14 @@ class CleanupTracker:
         """
         self._test_layers.append(layer_id)
 
+    def track_test_suite(self, suite_id: int) -> None:
+        """Track a test suite for cleanup.
+
+        Args:
+            suite_id: ID of the test suite to track
+        """
+        self._test_suites.append(suite_id)
+
     def track_test_plan(self, plan_id: int) -> None:
         """Track a test plan for cleanup.
 
@@ -78,6 +88,19 @@ class CleanupTracker:
         """
         self._defects.append(defect_id)
 
+    def track_custom_field_value_name(self, value_name: str) -> None:
+        """Track a custom field value name for cleanup across project fields.
+
+        This is useful when tests create values implicitly via hierarchy mappings
+        and don't receive a direct value ID.
+
+        Args:
+            value_name: Value name to remove from any project custom field.
+        """
+        normalized = value_name.strip()
+        if normalized:
+            self._custom_field_value_names.append(normalized)
+
     async def cleanup_all(self) -> None:
         """Delete all tracked entities.
 
@@ -87,8 +110,10 @@ class CleanupTracker:
         await self._cleanup_test_cases()
         await self._cleanup_shared_steps()
         await self._cleanup_test_layers()
+        await self._cleanup_test_suites()
         await self._cleanup_test_plans()
         await self._cleanup_defects()
+        await self._cleanup_custom_field_values()
 
     async def _cleanup_test_cases(self) -> None:
         import logging
@@ -121,6 +146,17 @@ class CleanupTracker:
             except Exception as e:
                 logger.warning(f"Failed to cleanup test layer {layer_id}: {e}")
 
+    async def _cleanup_test_suites(self) -> None:
+        import logging
+
+        logger = logging.getLogger(__name__)
+        hierarchy_service = TestHierarchyService(self._client)
+        for suite_id in reversed(self._test_suites):
+            try:
+                await hierarchy_service.delete_test_suite(suite_id=suite_id)
+            except Exception as e:
+                logger.warning(f"Failed to cleanup test suite {suite_id}: {e}")
+
     async def _cleanup_test_plans(self) -> None:
         import logging
 
@@ -142,3 +178,51 @@ class CleanupTracker:
                 await defect_service.delete_defect(defect_id)
             except Exception as e:
                 logger.warning(f"Failed to cleanup defect {defect_id}: {e}")
+
+    async def _cleanup_custom_field_values(self) -> None:
+        import logging
+
+        logger = logging.getLogger(__name__)
+        if not self._custom_field_value_names:
+            return
+
+        tracked_names = set(self._custom_field_value_names)
+
+        try:
+            project_id = self._client.get_project()
+            project_fields = await self._client.get_custom_fields_with_values(project_id)
+        except Exception as e:
+            logger.warning(f"Failed to enumerate project custom fields for cleanup: {e}")
+            return
+
+        cf_value_service = CustomFieldValueService(self._client)
+        for field in project_fields:
+            custom_field = getattr(field, "custom_field", None)
+            custom_field_name = getattr(custom_field, "name", None)
+            if not isinstance(custom_field_name, str) or not custom_field_name.strip():
+                continue
+
+            values = getattr(field, "values", None) or []
+            present_names: set[str] = set()
+            for value in values:
+                if isinstance(value, str):
+                    present_names.add(value)
+                    continue
+                value_name = getattr(value, "name", None)
+                if isinstance(value_name, str):
+                    present_names.add(value_name)
+
+            for matched_name in sorted(tracked_names.intersection(present_names)):
+                try:
+                    await cf_value_service.delete_custom_field_value(
+                        custom_field_name=custom_field_name,
+                        cfv_name=matched_name,
+                        force=True,
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "Failed to cleanup custom field value '%s' from field '%s': %s",
+                        matched_name,
+                        custom_field_name,
+                        e,
+                    )

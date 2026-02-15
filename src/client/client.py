@@ -2118,6 +2118,23 @@ class AllureClient:
             )
         )
 
+    async def delete_tree_group(self, project_id: int, group_id: int) -> None:
+        """Delete a suite group node by group ID."""
+        tree_api = await self._get_api("_test_case_tree_api", error_name="test case tree APIs")
+
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+        if not isinstance(group_id, int) or group_id <= 0:
+            raise AllureValidationError("Group ID must be a positive integer")
+
+        await self._call_api(
+            tree_api.delete_group(
+                project_id=project_id,
+                group_id=group_id,
+                _request_timeout=self._timeout,
+            )
+        )
+
     async def create_tree_leaf(
         self,
         project_id: int,

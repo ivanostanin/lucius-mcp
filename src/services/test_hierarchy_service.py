@@ -110,6 +110,14 @@ class TestHierarchyService:
         )
         return len(normalized_ids)
 
+    async def delete_test_suite(self, suite_id: int) -> None:
+        """Delete a suite node by ID."""
+        target_suite_id = self._require_positive_id(suite_id, "Suite ID")
+        await self._client.delete_tree_group(
+            project_id=self._project_id,
+            group_id=target_suite_id,
+        )
+
     async def resolve_suite_id_by_name(
         self,
         name: str,

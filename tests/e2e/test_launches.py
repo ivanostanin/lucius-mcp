@@ -1,12 +1,33 @@
 """E2E tests for launch lifecycle operations."""
 
+import asyncio
 from pathlib import Path
 
 import pytest
 
+from src.client.exceptions import LaunchNotFoundError
 from src.client.generated.models.launch_upload_response_dto import LaunchUploadResponseDto
 from src.services.launch_service import LaunchService
 from src.utils.error import AllureAPIError
+
+
+async def _launch_exists(service: LaunchService, launch_id: int) -> bool:
+    try:
+        await service.get_launch(launch_id)
+        return True
+    except LaunchNotFoundError:
+        return False
+
+
+async def _delete_launch_strict(service: LaunchService, launch_id: int) -> None:
+    """Delete launch and verify it no longer exists (with short retries)."""
+    for _ in range(3):
+        await service.delete_launch(launch_id)
+        if not await _launch_exists(service, launch_id):
+            return
+        await asyncio.sleep(0.2)
+
+    raise AssertionError(f"Launch {launch_id} still exists after deletion attempts")
 
 
 @pytest.mark.asyncio
@@ -48,7 +69,7 @@ async def test_create_close_reopen_launch_lifecycle(allure_client, project_id, t
         cleanup_launch_id = None
     finally:
         if cleanup_launch_id is not None:
-            await service.delete_launch(cleanup_launch_id)
+            await _delete_launch_strict(service, cleanup_launch_id)
 
 
 # todo: revise this once launch_upload_controller is in
@@ -68,29 +89,32 @@ async def test_reopened_launch_accepts_upload_if_supported(allure_client, projec
     assert created.id is not None
 
     created_id = created.id
-    await service.close_launch(created_id)
-    reopened = await service.reopen_launch(created_id)
-    assert reopened.closed is not True
+    try:
+        await service.close_launch(created_id)
+        reopened = await service.reopen_launch(created_id)
+        assert reopened.closed is not True
 
-    sample_file = Path(__file__).with_name(f"{test_run_id}-launch-upload.xml")
-    sample_file.write_text(
-        """<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+        sample_file = Path(__file__).with_name(f"{test_run_id}-launch-upload.xml")
+        sample_file.write_text(
+            """<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <testsuite name=\"ac4-suite\" tests=\"1\" failures=\"0\" skipped=\"0\" time=\"0.01\">
   <testcase classname=\"ac4\" name=\"upload-after-reopen\" time=\"0.01\" />
 </testsuite>
 """,
-        encoding="utf-8",
-    )
+            encoding="utf-8",
+        )
 
-    try:
         try:
-            upload_result = await service.upload_results_to_launch(launch_id=created_id, files=[str(sample_file)])
-        except AllureAPIError as exc:
-            if exc.status_code is not None and exc.status_code >= 500:
-                pytest.skip(f"AC4 upload check skipped due to environment/server upload error: {exc}")
-            raise
+            try:
+                upload_result = await service.upload_results_to_launch(launch_id=created_id, files=[str(sample_file)])
+            except AllureAPIError as exc:
+                if exc.status_code is not None and exc.status_code >= 500:
+                    pytest.skip(f"AC4 upload check skipped due to environment/server upload error: {exc}")
+                raise
+        finally:
+            sample_file.unlink(missing_ok=True)
     finally:
-        sample_file.unlink(missing_ok=True)
+        await _delete_launch_strict(service, created_id)
 
     assert isinstance(upload_result, LaunchUploadResponseDto)
     assert upload_result.launch_id == created_id

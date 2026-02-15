@@ -30,51 +30,53 @@ async def test_custom_field_values_crud(allure_client: AllureClient) -> None:
     unique_suffix = uuid.uuid4().hex[:8]
     value_name = f"e2e-value-{unique_suffix}"
     updated_name = f"e2e-updated-{unique_suffix}"
+    temp_value_names = {value_name, updated_name}
 
-    created = await service.create_custom_field_value(custom_field_name=field_name, name=value_name)
-    assert created.id is not None
+    try:
+        created = await service.create_custom_field_value(custom_field_name=field_name, name=value_name)
+        assert created.id is not None
 
-    deleted = await service.delete_custom_field_value(custom_field_name=field_name, cfv_id=created.id)
-    assert deleted is True
+        deleted = await service.delete_custom_field_value(custom_field_name=field_name, cfv_id=created.id)
+        assert deleted is True
 
-    deleted_again = await service.delete_custom_field_value(custom_field_name=field_name, cfv_id=created.id)
-    assert deleted_again is False
+        deleted_again = await service.delete_custom_field_value(custom_field_name=field_name, cfv_id=created.id)
+        assert deleted_again is False
 
-    created = await service.create_custom_field_value(custom_field_name=field_name, name=value_name)
-    assert created.id is not None
+        created = await service.create_custom_field_value(custom_field_name=field_name, name=value_name)
+        assert created.id is not None
 
-    page = await service.list_custom_field_values(
-        custom_field_name=field_name,
-        size=100,
-        sort=["id,desc"],
-    )
-    values = page.content or []
-    assert any(v.id == created.id for v in values)
-
-    # IDs are changed after update
-    await service.update_custom_field_value(custom_field_name=field_name, cfv_id=created.id, name=updated_name)
-
-    updated_values = []
-    for _ in range(10):
-        page_after_update = await service.list_custom_field_values(
+        page = await service.list_custom_field_values(
             custom_field_name=field_name,
             size=100,
             sort=["id,desc"],
         )
-        updated_values = page_after_update.content or []
+        values = page.content or []
+        assert any(v.id == created.id for v in values)
+
         # IDs are changed after update
-        if any(v.name == updated_name for v in updated_values):
-            break
-        await asyncio.sleep(0.5)
+        await service.update_custom_field_value(custom_field_name=field_name, cfv_id=created.id, name=updated_name)
 
-    if not any(v.name == updated_name for v in updated_values):
-        pytest.skip("Custom field value rename not reflected in list output.")
+        updated_values = []
+        for _ in range(10):
+            page_after_update = await service.list_custom_field_values(
+                custom_field_name=field_name,
+                size=100,
+                sort=["id,desc"],
+            )
+            updated_values = page_after_update.content or []
+            # IDs are changed after update
+            if any(v.name == updated_name for v in updated_values):
+                break
+            await asyncio.sleep(0.5)
 
-    assert any(v.name == updated_name for v in updated_values)
+        if not any(v.name == updated_name for v in updated_values):
+            pytest.skip("Custom field value rename not reflected in list output.")
 
-    # Cleanup
-    cf_values = await service.list_custom_field_values(custom_field_name=field_name)
-    for v in cf_values.content:
-        print(f"{v.id}: {v.name}")
-        if v.name == updated_name:
-            await service.delete_custom_field_value(custom_field_name=field_name, cfv_id=v.id)
+        assert any(v.name == updated_name for v in updated_values)
+    finally:
+        for temp_name in temp_value_names:
+            await service.delete_custom_field_value(
+                custom_field_name=field_name,
+                cfv_name=temp_name,
+                force=True,
+            )
