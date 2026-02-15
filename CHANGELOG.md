@@ -1,8 +1,24 @@
 # Changelog
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [v0.5.0] - 2026-02-12
+## [0.6.0] - 2026-02-15
+
+### Added
+- Test plan management tools for creating, listing, and updating test plans (#37).
+- `delete_test_plan` tool to remove obsolete test plans with idempotent behavior (#38).
+- Test hierarchy management tools for organizing and maintaining test trees (#39).
+- Defect lifecycle management tools for creating, updating, and retrieving defects (#40).
+- Defect-to-test-case linking support in defect and test case workflows (#42).
+
+### Fixed
+- Launch result uploads now handle entity cleanup more reliably in E2E and integration coverage (#43).
+
+## [0.5.0] - 2026-02-12
 
 ### Added
 - `delete_launch` tool to archive obsolete launches with idempotent outcomes (Story 5.3).
@@ -20,7 +36,7 @@
 - `create_test_case` tool documentation updated to include `test_layer_id` argument guidance.
 - Re-enabled unit coverage for scenario-step attachment parsing regression (`tests/unit/test_client.py`).
 
-## [v0.4.1] - 2026-02-09
+## [0.4.1] - 2026-02-09
 
 ### Added
 - Pull request template for standardized contributions (#29).
@@ -31,7 +47,7 @@
 ### Fixed
 - Test case step creation now correctly uses step with expected result instead of sub-steps for expected results (#30).
 
-## [v0.4.0] - 2026-02-06
+## [0.4.0] - 2026-02-06
 
 ### Added
 - CRUD support for project-level custom field values (#18).
@@ -52,7 +68,7 @@
 - Logic for unlinking shared steps from test cases (#20).
 - Exposure of the `get_launch` tool on the MCP server (#21).
 
-## [v0.3.0] - 2026-02-03
+## [0.3.0] - 2026-02-03
 
 ### Added
 - Launch management tools, including create and list launch operations.
@@ -68,17 +84,17 @@
 - Test layer handling in tools and update_test_case support.
 - Tag casing is preserved in search_test_cases results.
 
-## [v0.2.2] - 2026-01-30
+## [0.2.2] - 2026-01-30
 
 ### Fixed
 - Docker image build.
 
-## [v0.2.1] - 2026-01-30
+## [0.2.1] - 2026-01-30
 
 ### Fixed
 - Deployment workflows: release description now includes the changelog, and PyPI publishing steps are corrected.
 
-## [v0.2.0]
+## [0.2.0] - 2026-01-30
 
 ### Added
 - `get_custom_fields` tool to fetch custom fields and their allowed values (Story 3.6).
@@ -91,6 +107,18 @@
 - Improved guidance for `create_test_case` tool, providing extended hints when non-existing custom fields are used (Story 3.5).
 - Updated package metadata and versions.
 
-## [v0.1.0]
+## [0.1.0] - 2026-01-28
 
+### Added
 - Initial release
+
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.4.1...v0.5.0
+[0.4.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/ivanostanin/lucius-mcp/compare/ff94801ad5d21a1280fc92f2efaaff7851e70d0a...v0.4.0
+[0.3.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.2.2...ff94801ad5d21a1280fc92f2efaaff7851e70d0a
+[0.2.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.2.1...v0.2.2
+[0.2.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/ivanostanin/lucius-mcp/releases/tag/v0.1.0
