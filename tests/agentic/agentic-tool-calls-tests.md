@@ -67,7 +67,7 @@ From `src/tools/__init__.py:24-79`:
 - `create_test_suite`, `list_test_suites`, `assign_test_cases_to_suite`
 - `list_integrations`
 - `create_test_plan`, `update_test_plan`, `manage_test_plan_content`, `list_test_plans`, `delete_test_plan`
-- `create_defect`, `get_defect`, `update_defect`, `delete_defect`, `list_defects`
+- `create_defect`, `get_defect`, `update_defect`, `delete_defect`, `list_defects`, `link_defect_to_test_case`, `list_defect_test_cases`
 - `create_defect_matcher`, `update_defect_matcher`, `delete_defect_matcher`, `list_defect_matchers`
 
 ## Execution plan
@@ -331,6 +331,30 @@ From `src/tools/__init__.py:24-79`:
       - Expectation: Output contains `"aborted"` and `"confirm=true"`.
   14. **Delete Defect (Confirm)**: `delete_defect(defect_id=DEFECT_ID, confirm=true)`
       - Expectation: Output contains `"Deleted Defect #<DEFECT_ID>"`.
+
+#### 12. Defect-TestCase Linking
+- **Scenario source**: `specs/implementation-artifacts/7-4-link-defects-to-test-cases.md`
+- **Goal**: Verify defect-to-test-case linkage through shared issue mapping, including idempotency.
+- **Steps**:
+  1. **Create Defect**: `create_defect(name="[Agent] Link Defect", description="Linking validation")`
+     - Expectation: Output contains `"Created Defect #<LINK_DEFECT_ID>"`.
+     - Action: Capture `id` as `LINK_DEFECT_ID`.
+  2. **Create Test Case**: `create_test_case(name="[Agent] Link TC")`
+     - Expectation: Output contains `"Created Test Case ID: <LINK_TC_ID>"`.
+     - Action: Capture `id` as `LINK_TC_ID`.
+  3. **Discover Integrations**: `list_integrations()`
+     - Expectation: Output contains at least one integration.
+     - Action: Capture `id` as `LINK_INT_ID`.
+  4. **Link Explicit Mapping**: `link_defect_to_test_case(defect_id=LINK_DEFECT_ID, test_case_id=LINK_TC_ID, issue_key="PROJ-7004", integration_id=LINK_INT_ID)`
+     - Expectation: Output confirms defect + test case + issue linkage.
+  5. **Verify Defect Test Cases**: `list_defect_test_cases(defect_id=LINK_DEFECT_ID, page=0, size=20)`
+     - Expectation: Output includes `#LINK_TC_ID`.
+  6. **Idempotent Relink**: Repeat step 4 with the same inputs.
+     - Expectation: Output indicates no-op/already linked (idempotent behavior).
+  7. **Reuse Existing Defect Issue**: `link_defect_to_test_case(defect_id=LINK_DEFECT_ID, test_case_id=LINK_TC_ID)` (omit `issue_key`)
+     - Expectation: Output succeeds by reusing defect issue mapping.
+  8. **Cleanup**: `delete_test_case(test_case_id=LINK_TC_ID, confirm=true)` and `delete_defect(defect_id=LINK_DEFECT_ID, confirm=true)`
+     - Expectation: Cleanup operations succeed.
 
 ## Report
 - After all checks are complete, produce a final test report.

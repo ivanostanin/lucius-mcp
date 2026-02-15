@@ -14,7 +14,7 @@ _bmad/
 # Gemini CLI
 .gemini/
 # Antigravity BMAD workflows
-#.agent/
+.agent/
 
 # Python
 __pycache__/

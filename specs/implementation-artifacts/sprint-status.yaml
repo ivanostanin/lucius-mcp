@@ -104,6 +104,7 @@ development_status:
   7-1-test-plan-management: done
   7-2-defect-lifecycle-management-with-automation-rules: review-ready
   7-3-delete-test-plans: done
+  7-4-link-defects-to-test-cases: done
   epic-7-retrospective: optional
 
   # Epic 8: Enterprise Security & Intelligence (Phase 3)

@@ -664,10 +664,14 @@ class TestCaseService:
             integration_name=integration_name,
         )
 
-        # Idempotency Filter: Only link issues not already present
+        # Idempotency Filter: Only link issues not already present for the same integration
         current_case = await self.get_test_case(test_case_id)
-        existing_names = {i.name.upper() for i in (current_case.issues or []) if i.name}
-        issue_dtos = [io for io in issue_dtos if io.name not in existing_names]
+        existing_issue_pairs = {(i.name.upper(), i.integration_id) for i in (current_case.issues or []) if i.name}
+        issue_dtos = [
+            io
+            for io in issue_dtos
+            if io.name is not None and (io.name.upper(), io.integration_id) not in existing_issue_pairs
+        ]
 
         if not issue_dtos:
             return
