@@ -85,6 +85,8 @@ Agent Hints" on failure.
 | `update_defect`          | Update a defect's name, description, or open/closed status.        | `defect_id`, `name`, `closed`           |
 | `delete_defect`          | Permanently delete a defect and its matchers.                      | `defect_id`, `confirm`                  |
 | `list_defects`           | List all defects in the current project.                           | N/A                                     |
+| `link_defect_to_test_case` | Link a defect to a test case using a shared issue mapping.         | `defect_id`, `test_case_id`, `issue_key`, `integration_id`, `integration_name` |
+| `list_defect_test_cases` | List test cases currently linked to a defect.                      | `defect_id`, `page`, `size`             |
 | `create_defect_matcher`  | Create an automation rule to auto-link failures to a defect.       | `defect_id`, `name`, `message_regex`    |
 | `update_defect_matcher`  | Update a matcher's name or regex patterns.                         | `matcher_id`, `name`, `message_regex`   |
 | `delete_defect_matcher`  | Permanently delete a defect matcher.                               | `matcher_id`, `confirm`                 |

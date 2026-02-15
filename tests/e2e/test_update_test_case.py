@@ -284,6 +284,7 @@ async def test_e2e_u4_update_custom_fields(
     """
     service = TestCaseService(client=allure_client)
 
+    # Resolve a valid custom field/value pair for this project dynamically.
     custom_fields = await service.get_custom_fields()
     fields_with_values = [cf for cf in custom_fields if cf.get("values") and len(cf["values"]) > 0]
     if len(fields_with_values) < 1:
@@ -296,6 +297,7 @@ async def test_e2e_u4_update_custom_fields(
     initial_field_name = initial_field["name"]
     initial_value = initial_field["values"][0]
 
+    # Create with a project-valid custom field.
     created_case = await service.create_test_case(
         name="E2E-U4 Custom Fields Test",
         custom_fields={initial_field_name: initial_value},
@@ -304,6 +306,7 @@ async def test_e2e_u4_update_custom_fields(
     assert test_case_id is not None
     cleanup_tracker.track_test_case(test_case_id)
 
+    # Update custom fields (reuse resolved fields for environment stability).
     target_field = fields_with_values[0]
     target_field_name = target_field["name"]
     target_values = target_field["values"]

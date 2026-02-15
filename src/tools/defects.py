@@ -135,6 +135,95 @@ async def list_defects() -> str:
         return "\n".join(lines)
 
 
+async def link_defect_to_test_case(
+    defect_id: Annotated[int, "ID of the defect to link"],
+    test_case_id: Annotated[int, "ID of the test case to link"],
+    issue_key: Annotated[
+        str | None,
+        "Issue key to use for linking (for example, PROJ-123). "
+        "If omitted, the defect's existing issue mapping is reused.",
+    ] = None,
+    integration_id: Annotated[
+        int | None,
+        "Optional integration ID for issue mapping. Mutually exclusive with integration_name.",
+    ] = None,
+    integration_name: Annotated[
+        str | None,
+        "Optional integration name for issue mapping. Mutually exclusive with integration_id.",
+    ] = None,
+) -> str:
+    """Link a defect to a test case through a shared issue mapping.
+
+    This operation ensures defect governance and test coverage are connected:
+    the issue is linked to the defect and to the specified test case.
+
+    Args:
+        defect_id: Numeric ID of the defect.
+        test_case_id: Numeric ID of the test case.
+        issue_key: Optional issue key. If omitted, uses existing defect issue mapping.
+        integration_id: Optional integration ID for issue mapping.
+        integration_name: Optional integration name for issue mapping.
+
+    Returns:
+        Confirmation message including defect, test case, and issue mapping details.
+    """
+    async with AllureClient.from_env() as client:
+        service = DefectService(client)
+        result = await service.link_defect_to_test_case(
+            defect_id=defect_id,
+            test_case_id=test_case_id,
+            issue_key=issue_key,
+            integration_id=integration_id,
+            integration_name=integration_name,
+        )
+
+        if result.already_linked:
+            return (
+                f"Defect #{result.defect_id} is already linked to Test Case #{result.test_case_id} "
+                f"via issue '{result.issue_key}' (integration ID: {result.integration_id}). No changes made."
+            )
+
+        return (
+            f"Linked Defect #{result.defect_id} to Test Case #{result.test_case_id} "
+            f"via issue '{result.issue_key}' (integration ID: {result.integration_id})."
+        )
+
+
+async def list_defect_test_cases(
+    defect_id: Annotated[int, "ID of the defect whose linked test cases should be listed"],
+    page: Annotated[int, "Zero-based page index"] = 0,
+    size: Annotated[int, "Page size (1..100)"] = 20,
+) -> str:
+    """List test cases currently linked to a defect.
+
+    Args:
+        defect_id: Numeric ID of the defect.
+        page: Zero-based page index.
+        size: Page size (1..100).
+
+    Returns:
+        Paginated list of linked test cases with ID, name, and status.
+    """
+    async with AllureClient.from_env() as client:
+        service = DefectService(client)
+        result = await service.list_defect_test_cases(defect_id=defect_id, page=page, size=size)
+
+        if not result.items:
+            return f"No test cases linked to Defect #{defect_id}."
+
+        total_pages = result.total_pages if result.total_pages > 0 else 1
+        lines = [
+            f"Found {result.total} linked test case(s) for Defect #{defect_id} "
+            f"(page {result.page + 1} of {total_pages}):"
+        ]
+        for case in result.items:
+            case_id = case.id if case.id is not None else "N/A"
+            case_name = case.name or "(unnamed)"
+            status_name = case.status.name if case.status and case.status.name else "Unknown"
+            lines.append(f"  • #{case_id}: {case_name} [{status_name}]")
+        return "\n".join(lines)
+
+
 # ── Defect Matcher tools ──────────────────────────────────────────
 
 

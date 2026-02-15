@@ -26,7 +26,7 @@ Lucius makes this easier by giving your AI tools that are simple to use and hard
 | **Test Hierarchy**     | Organize suites and assign tests in tree paths.  | `create_test_suite`, `list_test_suites`, `assign_test_cases_to_suite`                                                                                                                           |
 | **Custom Fields**      | Project-level management of custom field values. | `list_custom_field_values`, `create_custom_field_value`, `update_custom_field_value`, `delete_custom_field_value`                                                                                |
 | **Test Plans**         | Manage Test Plans and their content.             | `create_test_plan`, `update_test_plan`, `delete_test_plan`, `list_test_plans`, `manage_test_plan_content`                                                                                                                        |
-| **Defect Mgmt**        | Track defects and automation rules.              | `create_defect`, `get_defect`, `update_defect`, `delete_defect`, `list_defects`, `create_defect_matcher`, `list_defect_matchers`, `update_defect_matcher`, `delete_defect_matcher`                                               |
+| **Defect Mgmt**        | Track defects, linkage, and automation rules.    | `create_defect`, `get_defect`, `update_defect`, `delete_defect`, `list_defects`, `link_defect_to_test_case`, `list_defect_test_cases`, `create_defect_matcher`, `list_defect_matchers`, `update_defect_matcher`, `delete_defect_matcher` |
 
 ## 🚀 Quick Start
 

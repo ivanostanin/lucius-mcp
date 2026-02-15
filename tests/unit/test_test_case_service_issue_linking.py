@@ -251,6 +251,7 @@ class TestIssueLinking:
         # Mock current case with PROJ-123 already linked
         mock_issue = Mock()
         mock_issue.name = "PROJ-123"
+        mock_issue.integration_id = 1
         mock_issue.id = 999
         mock_case = Mock(issues=[mock_issue])
         service.get_test_case = AsyncMock(return_value=mock_case)
@@ -274,3 +275,34 @@ class TestIssueLinking:
         request_dto = mock_bulk_instance.issue_add1.call_args[0][0]
         assert len(request_dto.issues) == 1
         assert request_dto.issues[0].name == "NEW-456"
+
+    @pytest.mark.asyncio
+    @patch("src.client.generated.api.test_case_bulk_controller_api.TestCaseBulkControllerApi")
+    async def test_add_issues_same_key_different_integration_not_filtered(
+        self, mock_bulk_api, service: TestCaseService
+    ) -> None:
+        """Test that idempotency comparison includes integration_id."""
+        test_case_id = 100
+        issues = ["PROJ-123"]
+
+        mock_issue = Mock()
+        mock_issue.name = "PROJ-123"
+        mock_issue.integration_id = 2
+        mock_case = Mock(issues=[mock_issue])
+        service.get_test_case = AsyncMock(return_value=mock_case)
+
+        mock_bulk_instance = mock_bulk_api.return_value
+        mock_bulk_instance.issue_add1 = AsyncMock()
+
+        with patch.object(service, "_build_issue_dtos") as mock_build:
+            from src.client.generated.models import IssueDto
+
+            mock_build.return_value = [IssueDto(name="PROJ-123", integration_id=1)]
+
+            await service.add_issues_to_test_case(test_case_id, issues)
+
+        mock_bulk_instance.issue_add1.assert_called_once()
+        request_dto = mock_bulk_instance.issue_add1.call_args[0][0]
+        assert len(request_dto.issues) == 1
+        assert request_dto.issues[0].name == "PROJ-123"
+        assert request_dto.issues[0].integration_id == 1

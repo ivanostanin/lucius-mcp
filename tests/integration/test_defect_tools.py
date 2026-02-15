@@ -7,13 +7,18 @@ import pytest
 from src.client.generated.models.defect_dto import DefectDto
 from src.client.generated.models.defect_matcher_dto import DefectMatcherDto
 from src.client.generated.models.defect_row_dto import DefectRowDto
+from src.client.generated.models.status_dto import StatusDto
+from src.client.generated.models.test_case_row_dto import TestCaseRowDto
+from src.services.defect_service import DefectTestCaseLinkResult, DefectTestCaseListResult
 from src.tools.defects import (
     create_defect,
     create_defect_matcher,
     delete_defect,
     delete_defect_matcher,
     get_defect,
+    link_defect_to_test_case,
     list_defect_matchers,
+    list_defect_test_cases,
     list_defects,
     update_defect,
     update_defect_matcher,
@@ -139,6 +144,126 @@ async def test_list_defects_empty() -> None:
             output = await list_defects()
 
             assert "No defects found" in output
+
+
+@pytest.mark.asyncio
+async def test_link_defect_to_test_case_tool() -> None:
+    with patch("src.tools.defects.AllureClient.from_env") as mock_ctx:
+        mock_client = AsyncMock()
+        mock_ctx.return_value.__aenter__.return_value = mock_client
+
+        with patch("src.tools.defects.DefectService") as mock_svc_cls:
+            mock_svc = mock_svc_cls.return_value
+            mock_svc.link_defect_to_test_case = AsyncMock(
+                return_value=DefectTestCaseLinkResult(
+                    defect_id=10,
+                    test_case_id=20,
+                    issue_key="PROJ-123",
+                    integration_id=7,
+                    already_linked=False,
+                )
+            )
+
+            output = await link_defect_to_test_case(
+                defect_id=10,
+                test_case_id=20,
+                issue_key="PROJ-123",
+                integration_id=7,
+            )
+
+            assert "Linked Defect #10 to Test Case #20" in output
+            assert "PROJ-123" in output
+            mock_svc.link_defect_to_test_case.assert_called_once_with(
+                defect_id=10,
+                test_case_id=20,
+                issue_key="PROJ-123",
+                integration_id=7,
+                integration_name=None,
+            )
+
+
+@pytest.mark.asyncio
+async def test_link_defect_to_test_case_tool_with_integration_name() -> None:
+    with patch("src.tools.defects.AllureClient.from_env") as mock_ctx:
+        mock_client = AsyncMock()
+        mock_ctx.return_value.__aenter__.return_value = mock_client
+
+        with patch("src.tools.defects.DefectService") as mock_svc_cls:
+            mock_svc = mock_svc_cls.return_value
+            mock_svc.link_defect_to_test_case = AsyncMock(
+                return_value=DefectTestCaseLinkResult(
+                    defect_id=10,
+                    test_case_id=20,
+                    issue_key="PROJ-123",
+                    integration_id=11,
+                    already_linked=False,
+                )
+            )
+
+            output = await link_defect_to_test_case(
+                defect_id=10,
+                test_case_id=20,
+                issue_key="PROJ-123",
+                integration_name="Jira",
+            )
+
+            assert "Linked Defect #10 to Test Case #20" in output
+            mock_svc.link_defect_to_test_case.assert_called_once_with(
+                defect_id=10,
+                test_case_id=20,
+                issue_key="PROJ-123",
+                integration_id=None,
+                integration_name="Jira",
+            )
+
+
+@pytest.mark.asyncio
+async def test_link_defect_to_test_case_tool_idempotent() -> None:
+    with patch("src.tools.defects.AllureClient.from_env") as mock_ctx:
+        mock_client = AsyncMock()
+        mock_ctx.return_value.__aenter__.return_value = mock_client
+
+        with patch("src.tools.defects.DefectService") as mock_svc_cls:
+            mock_svc = mock_svc_cls.return_value
+            mock_svc.link_defect_to_test_case = AsyncMock(
+                return_value=DefectTestCaseLinkResult(
+                    defect_id=10,
+                    test_case_id=20,
+                    issue_key="PROJ-123",
+                    integration_id=7,
+                    already_linked=True,
+                )
+            )
+
+            output = await link_defect_to_test_case(defect_id=10, test_case_id=20, issue_key="PROJ-123")
+
+            assert "already linked" in output.lower()
+            assert "No changes made" in output
+
+
+@pytest.mark.asyncio
+async def test_list_defect_test_cases_tool() -> None:
+    with patch("src.tools.defects.AllureClient.from_env") as mock_ctx:
+        mock_client = AsyncMock()
+        mock_ctx.return_value.__aenter__.return_value = mock_client
+
+        with patch("src.tools.defects.DefectService") as mock_svc_cls:
+            mock_svc = mock_svc_cls.return_value
+            mock_svc.list_defect_test_cases = AsyncMock(
+                return_value=DefectTestCaseListResult(
+                    items=[TestCaseRowDto(id=20, name="Linked TC", status=StatusDto(name="Draft"))],
+                    total=1,
+                    page=0,
+                    size=20,
+                    total_pages=1,
+                )
+            )
+
+            output = await list_defect_test_cases(defect_id=10, page=0, size=20)
+
+            assert "Found 1 linked test case(s) for Defect #10" in output
+            assert "#20: Linked TC [Draft]" in output
+            mock_svc.list_defect_test_cases.assert_called_once_with(defect_id=10, page=0, size=20)
 
 
 # ── Defect Matcher tools ────────────────────────────────────────

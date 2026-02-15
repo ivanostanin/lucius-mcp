@@ -215,6 +215,14 @@
       "description": "List all defects in the current project."
     },
     {
+      "name": "link_defect_to_test_case",
+      "description": "Link a defect to a test case through a shared issue mapping."
+    },
+    {
+      "name": "list_defect_test_cases",
+      "description": "List test cases linked to a defect."
+    },
+    {
       "name": "create_defect_matcher",
       "description": "Create an automation rule to auto-link failures to a defect."
     },
