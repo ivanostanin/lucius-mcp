@@ -1,24 +1,25 @@
 """E2E tests for launch lifecycle operations."""
 
-from pathlib import Path
+import json
+import time
+import uuid
 
 import pytest
 
 from src.client.generated.models.launch_upload_response_dto import LaunchUploadResponseDto
 from src.services.launch_service import LaunchService
-from src.utils.error import AllureAPIError
 
 
 @pytest.mark.asyncio
-async def test_create_close_reopen_launch_lifecycle(allure_client, project_id, test_run_id) -> None:
+async def test_create_close_reopen_launch_lifecycle(allure_client, project_id, test_run_id, cleanup_tracker) -> None:
     service = LaunchService(client=allure_client)
     launch_name = f"[{test_run_id}] E2E Launch"
-    cleanup_launch_id: int | None = None
+    created_id: int | None = None
 
     try:
         created = await service.create_launch(name=launch_name)
         assert created.id is not None
-        cleanup_launch_id = created.id
+        cleanup_tracker.track_launch(created.id)
 
         created_id = created.id
         retrieved = await service.get_launch(created_id)
@@ -44,16 +45,16 @@ async def test_create_close_reopen_launch_lifecycle(allure_client, project_id, t
         deleted_again = await service.delete_launch(created.id)
         assert deleted_again.launch_id == created.id
         assert deleted_again.status == "already_deleted"
-
-        cleanup_launch_id = None
     finally:
-        if cleanup_launch_id is not None:
-            await service.delete_launch(cleanup_launch_id)
+        if created_id is not None:
+            await cleanup_tracker.delete_launch_strict(created_id)
 
 
 # todo: revise this once launch_upload_controller is in
 @pytest.mark.asyncio
-async def test_reopened_launch_accepts_upload_if_supported(allure_client, project_id, test_run_id) -> None:
+async def test_reopened_launch_accepts_upload_if_supported(
+    allure_client, project_id, test_run_id, cleanup_tracker
+) -> None:
     upload_method_name = "upload_results_to_launch"
     if not hasattr(allure_client, upload_method_name):
         pytest.skip(
@@ -66,31 +67,52 @@ async def test_reopened_launch_accepts_upload_if_supported(allure_client, projec
 
     created = await service.create_launch(name=launch_name)
     assert created.id is not None
+    cleanup_tracker.track_launch(created.id)
 
     created_id = created.id
     await service.close_launch(created_id)
     reopened = await service.reopen_launch(created_id)
     assert reopened.closed is not True
 
-    sample_file = Path(__file__).with_name(f"{test_run_id}-launch-upload.xml")
-    sample_file.write_text(
-        """<?xml version=\"1.0\" encoding=\"UTF-8\"?>
-<testsuite name=\"ac4-suite\" tests=\"1\" failures=\"0\" skipped=\"0\" time=\"0.01\">
-  <testcase classname=\"ac4\" name=\"upload-after-reopen\" time=\"0.01\" />
-</testsuite>
-""",
-        encoding="utf-8",
-    )
+    now_ms = int(time.time() * 1000)
+    result_uuid = str(uuid.uuid4())
+    container_uuid = str(uuid.uuid4())
+    allure_result_payload = {
+        "uuid": result_uuid,
+        "historyId": result_uuid,
+        "name": "upload-after-reopen",
+        "fullName": "ac4.upload-after-reopen",
+        "status": "passed",
+        "stage": "finished",
+        "start": now_ms,
+        "stop": now_ms + 10,
+        "labels": [
+            {"name": "host", "value": "e2e-runner"},
+            {"name": "thread", "value": test_run_id},
+            {"name": "language", "value": "python"},
+            {"name": "suite", "value": "ac4-suite"},
+            {"name": "framework", "value": "pytest"},
+        ],
+    }
+    allure_container_payload = {
+        "uuid": container_uuid,
+        "children": [result_uuid],
+        "start": now_ms,
+        "stop": now_ms + 10,
+    }
 
-    try:
-        try:
-            upload_result = await service.upload_results_to_launch(launch_id=created_id, files=[str(sample_file)])
-        except AllureAPIError as exc:
-            if exc.status_code is not None and exc.status_code >= 500:
-                pytest.skip(f"AC4 upload check skipped due to environment/server upload error: {exc}")
-            raise
-    finally:
-        sample_file.unlink(missing_ok=True)
+    result_file_name = f"{result_uuid}-result.json"
+    result_file_bytes = json.dumps(allure_result_payload).encode("utf-8")
+    container_file_name = f"{container_uuid}-container.json"
+    container_file_bytes = json.dumps(allure_container_payload).encode("utf-8")
+
+    upload_result = await service.upload_results_to_launch(
+        launch_id=created_id,
+        files=[
+            (result_file_name, result_file_bytes),
+            (container_file_name, container_file_bytes),
+        ],
+    )
 
     assert isinstance(upload_result, LaunchUploadResponseDto)
     assert upload_result.launch_id == created_id

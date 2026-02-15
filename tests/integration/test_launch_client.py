@@ -186,7 +186,10 @@ async def test_client_upload_results_to_launch_uses_multipart_endpoint() -> None
     _, kwargs = api_client.param_serialize.call_args
     assert kwargs["resource_path"] == "/api/launch/9/upload/file"
     assert kwargs["header_params"]["Content-Type"] == "multipart/form-data"
-    assert kwargs["files"] == {"file": [("results.json", b"{}")]}
+    assert kwargs["files"] == {
+        "file": [("results.json", b"{}")],
+        "info": ("info.json", b"{}"),
+    }
 
 
 @pytest.mark.asyncio

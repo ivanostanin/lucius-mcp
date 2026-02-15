@@ -66,25 +66,25 @@ async def test_manage_custom_fields_lifecycle(  # noqa: C901
 
     ephemeral_values = {target_cf: [val1_name, val2_name]}
 
-    print(f"Creating ephemeral values for CF '{target_cf}': {val1_name}, {val2_name}")
-    await cf_value_service.create_custom_field_value(custom_field_name=target_cf, name=val1_name)
-    await cf_value_service.create_custom_field_value(custom_field_name=target_cf, name=val2_name)
-
-    # Dynamic Value Creation for Multi Select (if found)
-    multiselect_vals = []
-    if multiselect_cf:
-        ms_val1 = f"e2e-ms1-{unique_suffix}"
-        ms_val2 = f"e2e-ms2-{unique_suffix}"
-        print(f"Creating ephemeral values for Multiselect CF '{multiselect_cf}': {ms_val1}, {ms_val2}")
-        await cf_value_service.create_custom_field_value(custom_field_name=multiselect_cf, name=ms_val1)
-        await cf_value_service.create_custom_field_value(custom_field_name=multiselect_cf, name=ms_val2)
-        ephemeral_values[multiselect_cf] = [ms_val1, ms_val2]
-        multiselect_vals = [ms_val1, ms_val2]
-
     target_value_1 = val1_name
     target_value_2 = val2_name
+    multiselect_vals: list[str] = []
 
     try:
+        print(f"Creating ephemeral values for CF '{target_cf}': {val1_name}, {val2_name}")
+        await cf_value_service.create_custom_field_value(custom_field_name=target_cf, name=val1_name)
+        await cf_value_service.create_custom_field_value(custom_field_name=target_cf, name=val2_name)
+
+        # Dynamic Value Creation for Multi Select (if found)
+        if multiselect_cf:
+            ms_val1 = f"e2e-ms1-{unique_suffix}"
+            ms_val2 = f"e2e-ms2-{unique_suffix}"
+            print(f"Creating ephemeral values for Multiselect CF '{multiselect_cf}': {ms_val1}, {ms_val2}")
+            await cf_value_service.create_custom_field_value(custom_field_name=multiselect_cf, name=ms_val1)
+            await cf_value_service.create_custom_field_value(custom_field_name=multiselect_cf, name=ms_val2)
+            ephemeral_values[multiselect_cf] = [ms_val1, ms_val2]
+            multiselect_vals = [ms_val1, ms_val2]
+
         # 2. Create Test Case WITH Custom Fields
         case_name = "E2E Custom Fields Management"
         custom_fields_init = {target_cf: target_value_1}
@@ -169,13 +169,11 @@ async def test_manage_custom_fields_lifecycle(  # noqa: C901
         print("Cleaning up ephemeral custom field values...")
         for cf_name, created_names in ephemeral_values.items():
             try:
-                page = await cf_value_service.list_custom_field_values(custom_field_name=cf_name, size=1000)
-                if page and page.content:
-                    for v in page.content:
-                        if v.name in created_names:
-                            print(f"Deleting CF Value {v.name} (ID: {v.id})")
-                            await cf_value_service.delete_custom_field_value(
-                                custom_field_name=cf_name, cfv_id=v.id, force=True
-                            )
+                for created_name in created_names:
+                    await cf_value_service.delete_custom_field_value(
+                        custom_field_name=cf_name,
+                        cfv_name=created_name,
+                        force=True,
+                    )
             except Exception as e:
                 print(f"Error during cleanup of CF values for '{cf_name}': {e}")

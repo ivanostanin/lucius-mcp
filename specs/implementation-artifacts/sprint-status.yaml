@@ -102,7 +102,7 @@ development_status:
   # Epic 7: Test Planning & Governance (Phase 3)
   epic-7: in-progress
   7-1-test-plan-management: done
-  7-2-defect-lifecycle-management-with-automation-rules: review-ready
+  7-2-defect-lifecycle-management-with-automation-rules: done
   7-3-delete-test-plans: done
   7-4-link-defects-to-test-cases: done
   epic-7-retrospective: optional

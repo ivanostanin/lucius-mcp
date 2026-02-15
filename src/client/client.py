@@ -1150,8 +1150,12 @@ class AllureClient:
             "Accept": "*/*",
             "Content-Type": "multipart/form-data",
         }
-        form_params: list[tuple[str, object]] = [("info", info_payload.to_dict())]
-        files_map: dict[str, list[bytes | str | tuple[str, bytes]]] = {"file": files}
+        info_part = json.dumps(info_payload.to_dict()).encode("utf-8")
+        form_params: list[tuple[str, object]] = []
+        files_map: dict[str, bytes | str | tuple[str, bytes] | list[bytes | str | tuple[str, bytes]]] = {
+            "file": files,
+            "info": ("info.json", info_part),
+        }
 
         upload_paths = [
             f"/api/launch/{launch_id}/upload/file",
@@ -2114,6 +2118,23 @@ class AllureClient:
                 project_id=project_id,
                 group_id=group_id,
                 test_case_tree_group_rename_dto=dto,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def delete_tree_group(self, project_id: int, group_id: int) -> None:
+        """Delete a suite group node by group ID."""
+        tree_api = await self._get_api("_test_case_tree_api", error_name="test case tree APIs")
+
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+        if not isinstance(group_id, int) or group_id <= 0:
+            raise AllureValidationError("Group ID must be a positive integer")
+
+        await self._call_api(
+            tree_api.delete_group(
+                project_id=project_id,
+                group_id=group_id,
                 _request_timeout=self._timeout,
             )
         )
