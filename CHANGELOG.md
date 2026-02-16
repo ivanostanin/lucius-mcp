@@ -1,12 +1,19 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), but with `v` prefix in the version header,
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
 
 ## [Unreleased]
 
-## [0.6.0] - 2026-02-15
+## [v0.6.1] - 2026-02-16
+
+### Changed
+- Changelog update protocol now enforces Keep a Changelog 1.1.0 sections and release-link rules (#XX).
+- Release preparation instructions now include concrete `v0.6.1` branch/tag and version bump examples (#XX).
+
+## [v0.6.0] - 2026-02-15
 
 ### Added
 - Test plan management tools for creating, listing, and updating test plans (#37).
@@ -18,25 +25,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Launch result uploads now handle entity cleanup more reliably in E2E and integration coverage (#43).
 
-## [0.5.0] - 2026-02-12
+## [v0.5.0] - 2026-02-12
 
 ### Added
-- `delete_launch` tool to archive obsolete launches with idempotent outcomes (Story 5.3).
-- `close_launch` and `reopen_launch` tools to manage launch lifecycle transitions and surface launch status details (Story 5.4).
-- Bundle-runtime E2E lifecycle coverage that unpacks generated `.mcpb` artifacts and validates MCP startup/handshake from unpacked content (Story 4.6).
-- `e2e` pytest marker registration and `scripts/full-test-suite.sh` to standardize full validation execution.
+- `delete_launch` tool to archive obsolete launches with idempotent outcomes (Story 5.3) (#34).
+- `close_launch` and `reopen_launch` tools to manage launch lifecycle transitions and surface launch status details (Story 5.4) (#33).
+- Bundle-runtime E2E lifecycle coverage that unpacks generated `.mcpb` artifacts and validates MCP startup/handshake from unpacked content (Story 4.6) (#35).
+- `e2e` pytest marker registration and `scripts/full-test-suite.sh` to standardize full validation execution (#35).
 
 ### Changed
-- Launch tool manifest definitions updated to expose lifecycle operations in MCP bundles (`deployment/mcpb/manifest.python.json`, `deployment/mcpb/manifest.uv.json`).
-- Release preparation protocol updated with explicit environment/branch setup and manual PR creation guidance.
-- Story and sprint tracking artifacts updated to mark Story 4.6 as completed.
+- Launch tool manifest definitions updated to expose lifecycle operations in MCP bundles (`deployment/mcpb/manifest.python.json`, `deployment/mcpb/manifest.uv.json`) (#33, #34).
+- Release preparation protocol updated with explicit environment/branch setup and manual PR creation guidance (#32).
+- Story and sprint tracking artifacts updated to mark Story 4.6 as completed (#35).
 
 ### Fixed
-- Attachment discriminator parsing in `AllureClient` now normalizes DTO entity names for scenario step attachment deserialization.
-- `create_test_case` tool documentation updated to include `test_layer_id` argument guidance.
-- Re-enabled unit coverage for scenario-step attachment parsing regression (`tests/unit/test_client.py`).
+- Attachment discriminator parsing in `AllureClient` now normalizes DTO entity names for scenario step attachment deserialization (#32).
+- `create_test_case` tool documentation updated to include `test_layer_id` argument guidance (#32).
+- Re-enabled unit coverage for scenario-step attachment parsing regression (`tests/unit/test_client.py`) (#32).
 
-## [0.4.1] - 2026-02-09
+## [v0.4.1] - 2026-02-09
 
 ### Added
 - Pull request template for standardized contributions (#29).
@@ -47,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Test case step creation now correctly uses step with expected result instead of sub-steps for expected results (#30).
 
-## [0.4.0] - 2026-02-06
+## [v0.4.0] - 2026-02-06
 
 ### Added
 - CRUD support for project-level custom field values (#18).
@@ -68,7 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Logic for unlinking shared steps from test cases (#20).
 - Exposure of the `get_launch` tool on the MCP server (#21).
 
-## [0.3.0] - 2026-02-03
+## [v0.3.0] - 2026-02-03
 
 ### Added
 - Launch management tools, including create and list launch operations.
@@ -84,17 +91,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Test layer handling in tools and update_test_case support.
 - Tag casing is preserved in search_test_cases results.
 
-## [0.2.2] - 2026-01-30
+## [v0.2.2] - 2026-01-30
 
 ### Fixed
 - Docker image build.
 
-## [0.2.1] - 2026-01-30
+## [v0.2.1] - 2026-01-30
 
 ### Fixed
 - Deployment workflows: release description now includes the changelog, and PyPI publishing steps are corrected.
 
-## [0.2.0] - 2026-01-30
+## [v0.2.0] - 2026-01-30
 
 ### Added
 - `get_custom_fields` tool to fetch custom fields and their allowed values (Story 3.6).
@@ -107,18 +114,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved guidance for `create_test_case` tool, providing extended hints when non-existing custom fields are used (Story 3.5).
 - Updated package metadata and versions.
 
-## [0.1.0] - 2026-01-28
+## [v0.1.0] - 2026-01-28
 
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.6.0...HEAD
-[0.6.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.5.0...v0.6.0
-[0.5.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.4.1...v0.5.0
-[0.4.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.4.0...v0.4.1
-[0.4.0]: https://github.com/ivanostanin/lucius-mcp/compare/ff94801ad5d21a1280fc92f2efaaff7851e70d0a...v0.4.0
-[0.3.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.2.2...ff94801ad5d21a1280fc92f2efaaff7851e70d0a
-[0.2.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.2.1...v0.2.2
-[0.2.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.2.0...v0.2.1
-[0.2.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/ivanostanin/lucius-mcp/releases/tag/v0.1.0
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.6.1...HEAD
+[v0.6.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.6.0...v0.6.1
+[v0.6.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.5.0...v0.6.0
+[v0.5.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.4.1...v0.5.0
+[v0.4.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.4.0...v0.4.1
+[v0.4.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.3.0...v0.4.0
+[v0.3.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.2.2...v0.3.0
+[v0.2.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.2.1...v0.2.2
+[v0.2.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.2.0...v0.2.1
+[v0.2.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.1.0...v0.2.0
+[v0.1.0]: https://github.com/ivanostanin/lucius-mcp/releases/tag/v0.1.0
