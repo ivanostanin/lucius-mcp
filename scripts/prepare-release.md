@@ -7,13 +7,7 @@ This protocol outlines the mandatory steps an AI agent must take when preparing 
 Before initiating any release steps, run the full validation suite. A release MUST NOT proceed if any of these checks fail.
 
 ```bash
-uv run ruff format . && \
-uv run ruff check . --fix --unsafe-fixes && \
-uv run mypy src && \
-uv run pytest tests/unit tests/integration && \
-uv run --env-file .env.test pytest tests/e2e -n auto && \
-uv run pytest tests/docs && \
-uv run pytest tests/packaging
+./scripts/full-test-suite.sh
 ```
 
 ## 🚀 Release Steps
