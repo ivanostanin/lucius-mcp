@@ -43,6 +43,15 @@ Before submitting a PR, ensure all checks pass:
 uv run pytest tests/unit/ tests/integration/
 ```
 
+## 🔐 Telemetry Privacy Note
+
+When touching telemetry code, keep the existing privacy guardrails:
+
+- Do not include API tokens, headers, or request bodies with business/user content.
+- Hash environment-derived identifiers before emission (project id, endpoint host, installation identifier).
+- Keep telemetry best-effort only: failures must never break startup or tool execution.
+- Preserve concise telemetry status logging (`enabled`/`disabled`) without sensitive values.
+
 ### E2E Tests
 
 Requires access to a sandbox Allure TestOps instance and all environment variables necessary to start the server set.

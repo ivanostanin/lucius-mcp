@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
@@ -30,7 +31,30 @@ class Settings(BaseSettings):
     HOST: str = Field(default="127.0.0.1", description="Host to bind the server to")
     PORT: int = Field(default=8000, description="Port to bind the server to")
     MCP_MODE: Literal["http", "stdio"] = Field(default="stdio", description="Running mode: http or stdio")
+    TELEMETRY_ENABLED: bool | None = Field(
+        default=None,
+        description="Optional telemetry override. When unset, TelemetryConfig.enabled is used.",
+    )
+    TELEMETRY_UMAMI_WEBSITE_ID: str | None = Field(
+        default=None,
+        description="Optional Umami website id override. When unset, TelemetryConfig.umami_website_id is used.",
+    )
+    TELEMETRY_UMAMI_HOSTNAME: str | None = Field(
+        default=None,
+        description="Optional Umami hostname override. When unset, TelemetryConfig.umami_hostname is used.",
+    )
 
 
-# Global settings instance
+@dataclass(frozen=True)
+class TelemetryConfig:
+    """Telemetry settings are configured in code, with optional env opt-out."""
+
+    enabled: bool = True
+    umami_base_url: str = "https://collector.nmro.cc"
+    umami_website_id: str | None = "e011ac28-1d83-475e-b74a-6c610162dddb"
+    umami_hostname: str = "lucius-mcp.prod"
+    hash_salt: str | None = None
+
+
 settings = Settings()
+telemetry_config = TelemetryConfig()

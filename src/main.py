@@ -8,10 +8,12 @@ from fastmcp import FastMCP
 from starlette.applications import Starlette
 from starlette.routing import Mount
 
+from src.services.telemetry_service import TelemetryService
 from src.tools import all_tools
 from src.utils.config import settings
 from src.utils.error import agent_hint_handler
 from src.utils.logger import configure_logging, get_logger
+from src.utils.telemetry import set_telemetry_service, wrap_tool_with_telemetry
 from src.version import __version__
 
 # Configure logging early
@@ -19,6 +21,9 @@ configure_logging(
     log_level=settings.LOG_LEVEL, log_format=settings.LOG_FORMAT, force_stderr=(settings.MCP_MODE == "stdio")
 )
 logger = get_logger("lucius-mcp")
+telemetry_service = TelemetryService()
+set_telemetry_service(telemetry_service)
+
 
 # Initialize FastMCP server
 mcp = FastMCP(
@@ -28,7 +33,7 @@ mcp = FastMCP(
 
 # Register tools
 for tool in all_tools:
-    mcp.tool()(tool)
+    mcp.tool()(wrap_tool_with_telemetry(tool))
 
 # The ASGI app and main app are created lazily or only when needed for HTTP mode
 _mcp_asgi = None
@@ -47,6 +52,8 @@ async def lifespan(app: Starlette) -> typing.AsyncGenerator[None]:
     Lifespan context manager for Starlette application.
     Handles startup and shutdown events.
     """
+    telemetry_service.log_status()
+    telemetry_service.emit_startup_event()
     logger.info(f"Starting Lucius MCP Server in {settings.MCP_MODE} mode")
     mcp_asgi = get_mcp_asgi()
     # Ensure MCP task group is initialized by entering its lifespan
@@ -78,11 +85,17 @@ def get_app() -> Starlette | None:
 app = get_app()
 
 
+async def _run_stdio() -> None:
+    telemetry_service.log_status()
+    telemetry_service.emit_startup_event()
+    await mcp.run_stdio_async(show_banner=False, log_level=settings.LOG_LEVEL)
+
+
 def start() -> None:
     """Entry point for running the application directly."""
     if settings.MCP_MODE == "stdio":
         try:
-            asyncio.run(mcp.run_stdio_async(show_banner=False, log_level=settings.LOG_LEVEL))
+            asyncio.run(_run_stdio())
         except KeyboardInterrupt:
             os._exit(0)
     elif settings.MCP_MODE == "http":

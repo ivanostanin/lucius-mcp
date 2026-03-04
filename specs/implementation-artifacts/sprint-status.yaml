@@ -114,11 +114,12 @@ development_status:
   epic-7-retrospective: optional
 
   # Epic 8: Enterprise Security & Intelligence (Phase 3)
-  epic-8: backlog
+  epic-8: in-progress
   8-1-mcp-server-authentication-oauth-oidc-via-nginx-ingress: backlog
   8-2-mcp-transport-security-tls-mtls: backlog
   8-3-agent-skill-definitions-mcp-prompts: backlog
   8-4-security-hardening-and-audit: backlog
+  8-5-implement-telemetry-collection: review
   epic-8-retrospective: optional
 
   # Epic 9: Documentation & Knowledge Base

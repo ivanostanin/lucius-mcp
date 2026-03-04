@@ -1,10 +1,13 @@
-import typing
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock
 
+import pytest
 from pytest_mock import MockerFixture
+from starlette.applications import Starlette
 from starlette.testclient import TestClient
 
 from src.main import app as global_app
+from src.main import telemetry_service
+from src.utils.telemetry import wrap_tool_with_telemetry
 
 
 def test_app_initialization(client: TestClient) -> None:
@@ -19,6 +22,58 @@ def test_app_initialization(client: TestClient) -> None:
     assert global_app is not None
 
 
+def test_http_startup_emits_telemetry_status_and_event(app: Starlette, mocker: MockerFixture) -> None:
+    log_status = mocker.patch.object(telemetry_service, "log_status")
+    emit_startup_event = mocker.patch.object(telemetry_service, "emit_startup_event")
+
+    with TestClient(app) as client:
+        response = client.get("/")
+        assert response.status_code in [200, 404, 405]
+
+    log_status.assert_called_once()
+    emit_startup_event.assert_called_once()
+
+
+def test_http_startup_logs_telemetry_enabled_status(
+    app: Starlette,
+    mocker: MockerFixture,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    original_enabled = telemetry_service._enabled
+    telemetry_service._enabled = True
+    mocker.patch.object(telemetry_service, "emit_startup_event")
+
+    try:
+        with caplog.at_level("INFO"):
+            with TestClient(app) as client:
+                response = client.get("/")
+                assert response.status_code in [200, 404, 405]
+    finally:
+        telemetry_service._enabled = original_enabled
+
+    assert "Telemetry status: enabled" in caplog.text
+
+
+def test_http_startup_logs_telemetry_disabled_status(
+    app: Starlette,
+    mocker: MockerFixture,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    original_enabled = telemetry_service._enabled
+    telemetry_service._enabled = False
+    mocker.patch.object(telemetry_service, "emit_startup_event")
+
+    try:
+        with caplog.at_level("INFO"):
+            with TestClient(app) as client:
+                response = client.get("/")
+                assert response.status_code in [200, 404, 405]
+    finally:
+        telemetry_service._enabled = original_enabled
+
+    assert "Telemetry status: disabled" in caplog.text
+
+
 def test_start_stdio_mode(mocker: MockerFixture) -> None:
     """
     Verify that start() invokes run_stdio_async when MCP_MODE is 'stdio'.
@@ -28,24 +83,45 @@ def test_start_stdio_mode(mocker: MockerFixture) -> None:
 
     # Mock settings.MCP_MODE
     mocker.patch.object(settings, "MCP_MODE", "stdio")
+    mocker.patch.object(telemetry_service, "log_status")
+    mocker.patch.object(telemetry_service, "emit_startup_event")
 
-    # Mock asyncio.run to verify it's called
-    mock_asyncio_run = mocker.patch("asyncio.run")
-
-    # Mock mcp.run_stdio_async
-    # CRITICAL: We explicitly use a standard Mock, NOT an AsyncMock.
-    # If run_stdio_async is natively async, patch() creates an AsyncMock by default.
-    # An AsyncMock returns a coroutine when called. Since mock_asyncio_run acts as a mock,
-    # it swallows the coroutine without awaiting it, causing "RuntimeWarning: coroutine was never awaited".
-    # By forcing a standard Mock, no coroutine is created, avoiding the warning.
-    mocker.patch.object(mcp, "run_stdio_async", new_callable=mocker.Mock)
+    # Mock mcp.run_stdio_async and execute the stdio startup path.
+    run_stdio_async = mocker.patch.object(mcp, "run_stdio_async", new_callable=AsyncMock)
 
     start()
 
-    # Verify asyncio.run was called
-    mock_asyncio_run.assert_called_once()
+    run_stdio_async.assert_awaited_once_with(show_banner=False, log_level=settings.LOG_LEVEL)
 
-    # Verify mcp.run_stdio_async was called
-    # We cast to MagicMock because it's patched
-    cast_mock = typing.cast(MagicMock, mcp.run_stdio_async)
-    cast_mock.assert_called_once()
+
+@pytest.mark.asyncio
+async def test_wrap_tool_with_telemetry_emits_success(mocker: MockerFixture) -> None:
+    async def dummy_tool(value: int) -> str:
+        return str(value)
+
+    emit_tool_usage_event = mocker.patch.object(telemetry_service, "emit_tool_usage_event")
+    wrapped_tool = wrap_tool_with_telemetry(dummy_tool)
+
+    result = await wrapped_tool(7)
+
+    assert result == "7"
+    emit_tool_usage_event.assert_called_once()
+    assert emit_tool_usage_event.call_args.kwargs["tool_name"] == "dummy_tool"
+    assert emit_tool_usage_event.call_args.kwargs["outcome"] == "success"
+
+
+@pytest.mark.asyncio
+async def test_wrap_tool_with_telemetry_emits_error_and_reraises(mocker: MockerFixture) -> None:
+    async def failing_tool() -> str:
+        raise ValueError("boom")
+
+    emit_tool_usage_event = mocker.patch.object(telemetry_service, "emit_tool_usage_event")
+    wrapped_tool = wrap_tool_with_telemetry(failing_tool)
+
+    with pytest.raises(ValueError, match="boom"):
+        await wrapped_tool()
+
+    emit_tool_usage_event.assert_called_once()
+    assert emit_tool_usage_event.call_args.kwargs["tool_name"] == "failing_tool"
+    assert emit_tool_usage_event.call_args.kwargs["outcome"] == "error"
+    assert isinstance(emit_tool_usage_event.call_args.kwargs["error"], ValueError)
