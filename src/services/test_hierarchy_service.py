@@ -1,5 +1,6 @@
 """Service for managing test hierarchy suites in Allure TestOps."""
 
+import logging
 from dataclasses import dataclass
 
 from src.client import AllureClient
@@ -12,6 +13,7 @@ from src.client.generated.models.test_case_tree_leaf_dto_v2 import TestCaseTreeL
 from src.client.generated.models.tree_dto_v2 import TreeDtoV2
 
 MAX_NAME_LENGTH = 255
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -110,13 +112,23 @@ class TestHierarchyService:
         )
         return len(normalized_ids)
 
-    async def delete_test_suite(self, suite_id: int) -> None:
-        """Delete a suite node by ID."""
+    async def delete_suite(self, suite_id: int) -> bool:
+        """Delete a suite node by ID with idempotent behavior."""
         target_suite_id = self._require_positive_id(suite_id, "Suite ID")
-        await self._client.delete_tree_group(
-            project_id=self._project_id,
-            group_id=target_suite_id,
-        )
+        try:
+            await self._client.delete_tree_group(
+                project_id=self._project_id,
+                group_id=target_suite_id,
+            )
+            logger.info("Deleted test suite %s", target_suite_id)
+            return True
+        except AllureNotFoundError:
+            logger.info("Test suite %s already deleted or not found", target_suite_id)
+            return False
+
+    async def delete_test_suite(self, suite_id: int) -> bool:
+        """Backward-compatible alias for deleting suite nodes."""
+        return await self.delete_suite(suite_id=suite_id)
 
     async def resolve_suite_id_by_name(
         self,

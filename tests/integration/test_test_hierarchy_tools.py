@@ -8,6 +8,7 @@ from src.client.generated.models.tree_dto_v2 import TreeDtoV2
 from src.services.test_hierarchy_service import SuiteNode
 from src.tools.assign_test_cases_to_suite import assign_test_cases_to_suite
 from src.tools.create_test_suite import create_test_suite
+from src.tools.delete_test_suite import delete_test_suite
 from src.tools.list_test_suites import list_test_suites
 
 
@@ -96,3 +97,27 @@ async def test_assign_test_cases_to_suite_output() -> None:
                 test_case_ids=[100, 101, 102],
                 tree_id=2,
             )
+
+
+@pytest.mark.asyncio
+async def test_delete_test_suite_requires_confirm() -> None:
+    """delete_test_suite enforces explicit destructive confirmation."""
+    output = await delete_test_suite(suite_id=123, confirm=False)
+    assert output == "⚠️ Destructive operation. Confirm deletion of suite 123 by passing confirm=True."
+
+
+@pytest.mark.asyncio
+async def test_delete_test_suite_output_confirmed() -> None:
+    """delete_test_suite returns success output when confirmed."""
+    with patch("src.tools.delete_test_suite.AllureClient.from_env") as mock_client_ctx:
+        mock_client = AsyncMock()
+        mock_client_ctx.return_value.__aenter__.return_value = mock_client
+
+        with patch("src.tools.delete_test_suite.TestHierarchyService") as mock_service_cls:
+            mock_service = mock_service_cls.return_value
+            mock_service.delete_suite = AsyncMock(return_value=True)
+
+            output = await delete_test_suite(suite_id=555, confirm=True, project_id=7)
+
+            assert output == "✅ Test suite 555 deleted successfully (idempotent)."
+            mock_service.delete_suite.assert_called_once_with(suite_id=555)

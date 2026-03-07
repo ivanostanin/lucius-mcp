@@ -34,6 +34,7 @@ from src.tools.test_layers import (
     create_test_suite,
     delete_test_layer,
     delete_test_layer_schema,
+    delete_test_suite,
     list_test_layer_schemas,
     list_test_layers,
     list_test_suites,
@@ -67,6 +68,7 @@ __all__ = [
     "delete_test_case",
     "delete_test_layer",
     "delete_test_layer_schema",
+    "delete_test_suite",
     "delete_unused_custom_fields",
     "get_custom_fields",
     "get_defect",
@@ -146,6 +148,7 @@ all_tools: list[ToolFn] = [
     create_test_suite,
     list_test_suites,
     assign_test_cases_to_suite,
+    delete_test_suite,
     # Test Plan Tools
     create_test_plan,
     update_test_plan,

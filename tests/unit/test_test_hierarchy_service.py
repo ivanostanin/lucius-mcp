@@ -30,6 +30,7 @@ def mock_client() -> MagicMock:
     client.get_tree_node = AsyncMock()
     client.upsert_tree_group = AsyncMock()
     client.assign_test_cases_to_tree_node = AsyncMock()
+    client.delete_tree_group = AsyncMock()
     client.suggest_tree_groups = AsyncMock()
 
     return client
@@ -262,6 +263,35 @@ async def test_assign_test_cases_to_suite_missing_leaf_raises(
 
     with pytest.raises(AllureNotFoundError, match="Test case ID 9999 was not found"):
         await service.assign_test_cases_to_suite(suite_id=11, test_case_ids=[9999], tree_id=200)
+
+
+@pytest.mark.asyncio
+async def test_delete_suite_success(service: TestHierarchyService, mock_client: MagicMock) -> None:
+    """Delete suite returns True when API delete succeeds."""
+    deleted = await service.delete_suite(suite_id=11)
+
+    assert deleted is True
+    mock_client.delete_tree_group.assert_called_once_with(project_id=1, group_id=11)
+
+
+@pytest.mark.asyncio
+async def test_delete_suite_idempotent_not_found(service: TestHierarchyService, mock_client: MagicMock) -> None:
+    """Delete suite is idempotent when suite is already absent."""
+    mock_client.delete_tree_group.side_effect = AllureNotFoundError("missing")
+
+    deleted = await service.delete_suite(suite_id=11)
+
+    assert deleted is False
+    mock_client.delete_tree_group.assert_called_once_with(project_id=1, group_id=11)
+
+
+@pytest.mark.asyncio
+async def test_delete_suite_propagates_unexpected_errors(service: TestHierarchyService, mock_client: MagicMock) -> None:
+    """Delete suite propagates non-not-found errors."""
+    mock_client.delete_tree_group.side_effect = RuntimeError("boom")
+
+    with pytest.raises(RuntimeError, match="boom"):
+        await service.delete_suite(suite_id=11)
 
 
 @pytest.mark.asyncio
