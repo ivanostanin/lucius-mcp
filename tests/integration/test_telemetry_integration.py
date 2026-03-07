@@ -29,10 +29,14 @@ async def test_startup_and_tool_events_sent_to_umami(monkeypatch: pytest.MonkeyP
 
     assert route.call_count == 2
 
-    startup_payload = json.loads(route.calls[0].request.content.decode("utf-8"))["payload"]["data"]
-    tool_payload = json.loads(route.calls[1].request.content.decode("utf-8"))["payload"]["data"]
+    startup_event = json.loads(route.calls[0].request.content.decode("utf-8"))["payload"]
+    tool_event = json.loads(route.calls[1].request.content.decode("utf-8"))["payload"]
+    startup_payload = startup_event["data"]
+    tool_payload = tool_event["data"]
 
-    assert startup_payload["lucius_version"]
+    assert startup_event["name"] == f"startup.{startup_payload['deployment_method']}"
+    assert tool_event["name"] == "tool_use.search_test_cases"
+    assert startup_payload["server_version"]
     assert startup_payload["project_id_hash"] != "999"
     assert tool_payload["tool_name"] == "search_test_cases"
     assert tool_payload["outcome"] == "success"

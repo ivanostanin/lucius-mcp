@@ -73,7 +73,7 @@ Lucius includes privacy-preserving telemetry to help maintainers understand runt
 
 | Field | Purpose | Example | Sensitive/Hashed |
 |:------|:--------|:--------|:-----------------|
-| `lucius_version` | Server version trend | `0.6.1` | No |
+| `server_version` | Server version trend | `0.6.1` | No |
 | `python_version` | Runtime compatibility insight | `3.14.0` | No |
 | `platform` | OS/arch distribution | `darwin-arm64` | No |
 | `mcp_mode` | Transport usage | `stdio` | No |

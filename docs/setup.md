@@ -15,8 +15,8 @@ The server is configured via environment variables or a `.env` file.
 | `LOG_FORMAT`        | Logging format (`json`, `console`)       | `json`                       |
 | `MCP_MODE`          | Running mode: `stdio` or `http`          | `stdio`                      |
 | `TELEMETRY_ENABLED` | Optional telemetry override (`true`/`false`) | `None` (uses config default) |
-| `TELEMETRY_UMAMI_WEBSITE_ID` | Optional Umami website ID override | `None` (uses config default) |
-| `TELEMETRY_UMAMI_HOSTNAME` | Optional Umami hostname override | `None` (uses config default) |
+| `TELEMETRY_WEBSITE_ID` | Optional Umami website ID override | `None` (uses config default) |
+| `TELEMETRY_HOSTNAME` | Optional Umami hostname override | `None` (uses config default) |
 
 ## 🔐 Telemetry Behavior
 
@@ -27,7 +27,7 @@ Telemetry sends best-effort runtime and tool usage metadata to Umami and never b
 - Default mode is enabled (`TelemetryConfig.enabled = True`).
 - To disable telemetry globally in code, set `TelemetryConfig.enabled = False`.
 - To disable telemetry per runtime environment, set `TELEMETRY_ENABLED=false` (this env override takes precedence).
-- To override Umami destination identity at runtime, set `TELEMETRY_UMAMI_WEBSITE_ID` and/or `TELEMETRY_UMAMI_HOSTNAME`.
+- To override Umami destination identity at runtime, set `TELEMETRY_WEBSITE_ID` and/or `TELEMETRY_HOSTNAME`.
 - If `TelemetryConfig.umami_website_id` is unset, Lucius logs a concise warning and skips sending.
 - Failures to reach Umami are swallowed and logged without stack traces.
 
@@ -35,7 +35,7 @@ Telemetry sends best-effort runtime and tool usage metadata to Umami and never b
 
 | Field | Purpose | Sample | Sensitive/Hashed |
 |:------|:--------|:-------|:-----------------|
-| `lucius_version` | Version trend | `0.6.1` | No |
+| `server_version` | Version trend | `0.6.1` | No |
 | `python_version` | Runtime compatibility | `3.14.0` | No |
 | `platform` | OS/arch distribution | `darwin-arm64` | No |
 | `mcp_mode` | Transport usage | `stdio` | No |

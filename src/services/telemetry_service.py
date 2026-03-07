@@ -41,7 +41,7 @@ class TelemetryService:
         umami_hostname: str | None = None,
         hash_salt: str | None = None,
         mcp_mode: MpcMode | None = None,
-        lucius_version: str = __version__,
+        server_version: str = __version__,
     ) -> None:
         self._enabled = self._resolve_enabled(enabled)
         self._umami_base_url = self._resolve_umami_base_url(
@@ -51,7 +51,7 @@ class TelemetryService:
         self._hostname = self._resolve_umami_hostname(umami_hostname)
         self._hash_salt = telemetry_config.hash_salt if hash_salt is None else hash_salt
         self._mcp_mode = settings.MCP_MODE if mcp_mode is None else mcp_mode
-        self._lucius_version = lucius_version
+        self._server_version = server_version
         self._session_id = uuid.uuid4().hex
         self._started_at = dt.datetime.now(dt.UTC).isoformat()
         self._pending_tasks: set[asyncio.Task[None]] = set()
@@ -69,7 +69,8 @@ class TelemetryService:
     def emit_startup_event(self) -> None:
         if not self._enabled:
             return
-        payload = self._runtime_context()
+        deployment_method = self._detect_deployment_method()
+        payload = self._runtime_context(deployment_method=deployment_method)
         session_id_hash = self._hash_identifier(self._session_id) or "unknown"
         payload.update(
             {
@@ -78,7 +79,7 @@ class TelemetryService:
                 "installation_id_hash": self._installation_id_hash(),
             }
         )
-        self._schedule_event("lucius_startup", payload)
+        self._schedule_event(f"startup.{deployment_method}", payload)
 
     def emit_tool_usage_event(
         self,
@@ -91,6 +92,7 @@ class TelemetryService:
         if not self._enabled:
             return
         payload = self._runtime_context()
+        event_name = f"tool_use.{tool_name}"
         payload.update(
             {
                 "tool_name": tool_name,
@@ -100,8 +102,13 @@ class TelemetryService:
             }
         )
         if error is not None:
-            payload["error_category"] = self._classify_error(error)
-        self._schedule_event("lucius_tool_use", payload)
+            error_category = self._classify_error(error)
+            payload["error_category"] = error_category
+            if error_category == "validation":
+                event_name = f"tool_error.validation.{tool_name}"
+            else:
+                event_name = f"tool_error.other.{tool_name}"
+        self._schedule_event(event_name, payload)
 
     async def drain(self) -> None:
         """Test helper: wait for scheduled telemetry tasks to finish."""
@@ -109,15 +116,16 @@ class TelemetryService:
             return
         await asyncio.gather(*tuple(self._pending_tasks), return_exceptions=True)
 
-    def _runtime_context(self) -> dict[str, str]:
+    def _runtime_context(self, *, deployment_method: DeploymentMethod | None = None) -> dict[str, str]:
         endpoint_host_hash = self._hash_identifier(self._endpoint_host())
         project_hash = self._hash_identifier(str(settings.ALLURE_PROJECT_ID)) if settings.ALLURE_PROJECT_ID else None
+        resolved_deployment_method = deployment_method or self._detect_deployment_method()
         return {
-            "lucius_version": self._lucius_version,
+            "server_version": self._server_version,
             "python_version": platform.python_version(),
             "platform": f"{platform.system().lower()}-{platform.machine().lower()}",
             "mcp_mode": self._mcp_mode,
-            "deployment_method": self._detect_deployment_method(),
+            "deployment_method": resolved_deployment_method,
             "project_id_hash": project_hash or "unknown",
             "endpoint_host_hash": endpoint_host_hash or "unknown",
         }
@@ -166,16 +174,16 @@ class TelemetryService:
     def _resolve_umami_website_id(explicit_website_id: str | None) -> str | None:
         if explicit_website_id is not None:
             return explicit_website_id
-        if settings.TELEMETRY_UMAMI_WEBSITE_ID is not None:
-            return settings.TELEMETRY_UMAMI_WEBSITE_ID
+        if settings.TELEMETRY_WEBSITE_ID is not None:
+            return settings.TELEMETRY_WEBSITE_ID
         return telemetry_config.umami_website_id
 
     @staticmethod
     def _resolve_umami_hostname(explicit_hostname: str | None) -> str:
         if explicit_hostname is not None:
             resolved = explicit_hostname
-        elif settings.TELEMETRY_UMAMI_HOSTNAME is not None:
-            resolved = settings.TELEMETRY_UMAMI_HOSTNAME
+        elif settings.TELEMETRY_HOSTNAME is not None:
+            resolved = settings.TELEMETRY_HOSTNAME
         else:
             resolved = telemetry_config.umami_hostname
         return resolved or "lucius-mcp.local"

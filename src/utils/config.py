@@ -35,11 +35,11 @@ class Settings(BaseSettings):
         default=None,
         description="Optional telemetry override. When unset, TelemetryConfig.enabled is used.",
     )
-    TELEMETRY_UMAMI_WEBSITE_ID: str | None = Field(
+    TELEMETRY_WEBSITE_ID: str | None = Field(
         default=None,
         description="Optional Umami website id override. When unset, TelemetryConfig.umami_website_id is used.",
     )
-    TELEMETRY_UMAMI_HOSTNAME: str | None = Field(
+    TELEMETRY_HOSTNAME: str | None = Field(
         default=None,
         description="Optional Umami hostname override. When unset, TelemetryConfig.umami_hostname is used.",
     )

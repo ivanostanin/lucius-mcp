@@ -23,7 +23,7 @@ async def test_startup_event_payload_and_user_agent(monkeypatch: pytest.MonkeyPa
         umami_hostname="lucius.test",
         hash_salt="telemetry-salt",
         mcp_mode="http",
-        lucius_version="1.2.3",
+        server_version="1.2.3",
     )
     route = respx.post("https://cloud.umami.is/api/send").mock(return_value=httpx.Response(204))
 
@@ -38,8 +38,8 @@ async def test_startup_event_payload_and_user_agent(monkeypatch: pytest.MonkeyPa
 
     assert request.headers["User-Agent"]
     assert body["type"] == "event"
-    assert event_payload["name"] == "lucius_startup"
-    assert payload["lucius_version"] == "1.2.3"
+    assert event_payload["name"] == f"startup.{payload['deployment_method']}"
+    assert payload["server_version"] == "1.2.3"
     assert payload["mcp_mode"] == "http"
     assert payload["deployment_method"] in {"docker", "mcpb", "uvx+pypi", "cli", "plain-code-checkout"}
     assert payload["project_id_hash"] != "123"
@@ -74,11 +74,38 @@ async def test_tool_event_error_contains_classification(monkeypatch: pytest.Monk
     body = json.loads(route.calls.last.request.content.decode("utf-8"))
     event_payload = body["payload"]
     payload = event_payload["data"]
-    assert event_payload["name"] == "lucius_tool_use"
+    assert event_payload["name"] == "tool_error.validation.create_test_case"
     assert payload["tool_name"] == "create_test_case"
     assert payload["outcome"] == "error"
     assert payload["duration_bucket"] == "500ms-2s"
     assert payload["error_category"] == "validation"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_tool_event_non_validation_error_uses_other_error_event() -> None:
+    service = TelemetryService(
+        enabled=True,
+        umami_base_url="https://cloud.umami.is",
+        umami_website_id="website-1",
+        umami_hostname="lucius.test",
+    )
+    route = respx.post("https://cloud.umami.is/api/send").mock(return_value=httpx.Response(204))
+
+    service.emit_tool_usage_event(
+        tool_name="search_test_cases",
+        outcome="error",
+        duration_ms=80.0,
+        error=RuntimeError("boom"),
+    )
+    await service.drain()
+
+    assert route.called
+    body = json.loads(route.calls.last.request.content.decode("utf-8"))
+    event_payload = body["payload"]
+    payload = event_payload["data"]
+    assert event_payload["name"] == "tool_error.other.search_test_cases"
+    assert payload["error_category"] == "unexpected"
 
 
 @pytest.mark.asyncio
@@ -119,8 +146,8 @@ async def test_env_opt_out_disables_http_requests(monkeypatch: pytest.MonkeyPatc
 
 
 def test_env_overrides_umami_website_id_and_hostname(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(settings, "TELEMETRY_UMAMI_WEBSITE_ID", "env-website")
-    monkeypatch.setattr(settings, "TELEMETRY_UMAMI_HOSTNAME", "env-hostname.test")
+    monkeypatch.setattr(settings, "TELEMETRY_WEBSITE_ID", "env-website")
+    monkeypatch.setattr(settings, "TELEMETRY_HOSTNAME", "env-hostname.test")
 
     service = TelemetryService(enabled=False)
 
@@ -129,8 +156,8 @@ def test_env_overrides_umami_website_id_and_hostname(monkeypatch: pytest.MonkeyP
 
 
 def test_explicit_umami_values_override_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(settings, "TELEMETRY_UMAMI_WEBSITE_ID", "env-website")
-    monkeypatch.setattr(settings, "TELEMETRY_UMAMI_HOSTNAME", "env-hostname.test")
+    monkeypatch.setattr(settings, "TELEMETRY_WEBSITE_ID", "env-website")
+    monkeypatch.setattr(settings, "TELEMETRY_HOSTNAME", "env-hostname.test")
 
     service = TelemetryService(
         enabled=False,
@@ -198,7 +225,7 @@ async def test_tool_event_is_scheduled_async_non_blocking() -> None:
     release_send = asyncio.Event()
 
     async def fake_send_event(*, event_name: str, payload: dict[str, str]) -> None:
-        assert event_name == "lucius_tool_use"
+        assert event_name == "tool_use.list_test_cases"
         assert payload["tool_name"] == "list_test_cases"
         entered_send.set()
         await release_send.wait()

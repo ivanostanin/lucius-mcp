@@ -22,7 +22,7 @@ so that I can understand real-world usage patterns and prioritize product improv
    - **Given** Lucius server starts
    - **When** telemetry is enabled
    - **Then** a startup event is emitted with these fields:
-     - `lucius_version`
+     - `server_version`
      - `python_version`
      - `platform`
      - `mcp_mode` (`stdio` or `http`)
@@ -163,14 +163,14 @@ so that I can understand real-world usage patterns and prioritize product improv
 - Umami ingestion endpoint: `POST /api/send`.
 - Payload shape includes `type: "event"` and `payload` object with event metadata.
 - Umami requires a proper `User-Agent` header for event registration.
-- Event naming should stay concise and stable (for example `lucius_startup`, `lucius_tool_use`).
+- Event naming should stay concise and stable (for example `startup.<deployment_method>`, `tool_use.<tool_name>`, `tool_error.validation.<tool_name>`, `tool_error.other.<tool_name>`).
 - Telemetry must be enabled by default, disabled via `TelemetryConfig.enabled = False`, and overridable via `TELEMETRY_ENABLED`.
 - Startup path must emit a concise telemetry status log entry that confirms the resolved mode without exposing sensitive values.
 
 ### Recommended Metrics
 
 - Runtime context:
-  - `lucius_version`
+  - `server_version`
   - `python_version`
   - `platform` (OS family + architecture)
   - `mcp_mode`
