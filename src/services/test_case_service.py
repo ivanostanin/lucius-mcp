@@ -553,6 +553,46 @@ class TestCaseService:
             message=f"Test Case {test_case_id}: '{test_case.name}' has been archived.",
         )
 
+    async def cleanup_archived(self, page_size: int = 100) -> int:
+        """Permanently delete archived/deleted test cases from the current project."""
+        self._validate_project_id(self._project_id)
+        if not isinstance(page_size, int) or page_size <= 0:
+            raise AllureValidationError("page_size must be a positive integer")
+
+        archived_ids: list[int] = []
+        page = 0
+        while True:
+            result_page = await self._client.list_deleted_test_cases(
+                project_id=self._project_id,
+                page=page,
+                size=page_size,
+            )
+            rows = result_page.content or []
+            if not rows:
+                break
+
+            for row in rows:
+                if row.id is None:
+                    continue
+                status_name = (row.status.name or "").lower() if row.status else ""
+                if status_name and status_name not in {"archived", "deleted"}:
+                    continue
+                archived_ids.append(row.id)
+
+            if len(rows) < page_size:
+                break
+            page += 1
+
+        deleted_count = 0
+        for test_case_id in dict.fromkeys(archived_ids):
+            try:
+                await self._client.delete_test_case(test_case_id, force=True)
+                deleted_count += 1
+            except AllureNotFoundError:
+                logger.debug("Test case %s was already permanently removed.", test_case_id)
+
+        return deleted_count
+
     async def add_shared_step_to_case(
         self,
         test_case_id: int,
