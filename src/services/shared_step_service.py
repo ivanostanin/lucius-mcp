@@ -208,6 +208,47 @@ class SharedStepService:
             logger.debug(f"Shared step {step_id} already deleted or not found")
             return False
 
+    async def cleanup_archived(self, page_size: int = 100) -> int:
+        """Permanently remove archived shared steps from the project."""
+        self._validate_project_id(self._project_id)
+        if not isinstance(page_size, int) or page_size <= 0:
+            raise AllureValidationError("page_size must be a positive integer")
+
+        archived_ids: list[int] = []
+        page = 0
+        while True:
+            page_dto: PageSharedStepDto = await self._client.list_shared_steps(
+                project_id=self._project_id,
+                page=page,
+                size=page_size,
+                search=None,
+                archived=True,
+            )
+            steps = page_dto.content or []
+            if not steps:
+                break
+
+            for step in steps:
+                if step.id is None:
+                    continue
+                if step.archived is False:
+                    continue
+                archived_ids.append(step.id)
+
+            if len(steps) < page_size:
+                break
+            page += 1
+
+        deleted_count = 0
+        for step_id in dict.fromkeys(archived_ids):
+            try:
+                await self._client.purge_shared_step(step_id)
+                deleted_count += 1
+            except AllureNotFoundError:
+                logger.debug("Shared step %s was already permanently removed.", step_id)
+
+        return deleted_count
+
     # ==========================================
     # Helper Methods
     # ==========================================

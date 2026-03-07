@@ -32,6 +32,7 @@ from .generated.api.custom_field_value_project_controller_api import CustomField
 from .generated.api.integration_controller_api import IntegrationControllerApi
 from .generated.api.launch_controller_api import LaunchControllerApi
 from .generated.api.launch_search_controller_api import LaunchSearchControllerApi
+from .generated.api.project_controller_api import ProjectControllerApi
 from .generated.api.shared_step_attachment_controller_api import SharedStepAttachmentControllerApi
 from .generated.api.shared_step_controller_api import SharedStepControllerApi
 from .generated.api.shared_step_scenario_controller_api import SharedStepScenarioControllerApi
@@ -51,6 +52,7 @@ from .generated.exceptions import ApiException
 from .generated.models.aql_validate_response_dto import AqlValidateResponseDto
 from .generated.models.attachment_step_dto import AttachmentStepDto
 from .generated.models.body_step_dto import BodyStepDto
+from .generated.models.custom_field_project_dto import CustomFieldProjectDto
 from .generated.models.custom_field_project_with_values_dto import CustomFieldProjectWithValuesDto
 from .generated.models.custom_field_value_dto import CustomFieldValueDto
 from .generated.models.custom_field_value_project_create_dto import CustomFieldValueProjectCreateDto
@@ -72,9 +74,11 @@ from .generated.models.page_launch_dto import PageLaunchDto
 from .generated.models.page_launch_preview_dto import PageLaunchPreviewDto
 from .generated.models.page_shared_step_dto import PageSharedStepDto
 from .generated.models.page_test_case_dto import PageTestCaseDto
+from .generated.models.page_test_case_row_dto import PageTestCaseRowDto
 from .generated.models.page_test_case_tree_node_dto import PageTestCaseTreeNodeDto
 from .generated.models.page_test_case_tree_node_dto_content_inner import PageTestCaseTreeNodeDtoContentInner
 from .generated.models.page_tree_dto_v2 import PageTreeDtoV2
+from .generated.models.project_test_case_count_dto import ProjectTestCaseCountDto
 from .generated.models.scenario_step_create_dto import ScenarioStepCreateDto
 from .generated.models.scenario_step_created_response_dto import ScenarioStepCreatedResponseDto
 from .generated.models.scenario_step_patch_dto import ScenarioStepPatchDto
@@ -178,6 +182,7 @@ type ApiType = (
     | TestCaseTreeControllerV2Api
     | TestCaseTreeBulkControllerV2Api
     | IntegrationControllerApi
+    | ProjectControllerApi
 )
 
 type NormalizedScenarioDict = dict[str, object]
@@ -201,6 +206,7 @@ __all__ = [
     "PageLaunchPreviewDto",
     "PageSharedStepDto",
     "PageTestCaseDto",
+    "PageTestCaseRowDto",
     "ScenarioStepCreateDto",
     "ScenarioStepCreatedResponseDto",
     "ScenarioStepPatchDto",
@@ -296,6 +302,7 @@ class AllureClient:
         self._test_case_tree_api: TestCaseTreeControllerV2Api | None = None
         self._test_case_tree_bulk_api: TestCaseTreeBulkControllerV2Api | None = None
         self._integration_api: IntegrationControllerApi | None = None
+        self._project_api: ProjectControllerApi | None = None
         self._is_entered = False
 
     @classmethod
@@ -446,6 +453,7 @@ class AllureClient:
             self._test_case_tree_api = TestCaseTreeControllerV2Api(self._api_client)
             self._test_case_tree_bulk_api = TestCaseTreeBulkControllerV2Api(self._api_client)
             self._integration_api = IntegrationControllerApi(self._api_client)
+            self._project_api = ProjectControllerApi(self._api_client)
 
     @property
     def api_client(self) -> ApiClient:
@@ -642,6 +650,11 @@ class AllureClient:
     async def _get_api(
         self, attr_name: Literal["_test_case_tree_bulk_api"], *, error_name: str | None = None
     ) -> TestCaseTreeBulkControllerV2Api: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_project_api"], *, error_name: str | None = None
+    ) -> ProjectControllerApi: ...
 
     async def _get_api(self, attr_name: str, *, error_name: str | None = None) -> ApiType:
         self._require_entered()
@@ -960,6 +973,33 @@ class AllureClient:
                 rql=rql,
                 page=page,
                 size=size,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def list_deleted_test_cases(
+        self,
+        project_id: int,
+        page: int = 0,
+        size: int = 20,
+        sort: list[str] | None = None,
+    ) -> PageTestCaseRowDto:
+        """List deleted/archived test cases for a project."""
+        test_case_api = await self._get_api("_test_case_api")
+
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+        if not isinstance(page, int) or page < 0:
+            raise AllureValidationError("Page must be a non-negative integer")
+        if not isinstance(size, int) or size <= 0 or size > 100:
+            raise AllureValidationError("Size must be between 1 and 100")
+
+        return await self._call_api(
+            test_case_api.find_all_deleted(
+                project_id=project_id,
+                page=page,
+                size=size,
+                sort=sort,
                 _request_timeout=self._timeout,
             )
         )
@@ -1993,17 +2033,18 @@ class AllureClient:
         final_steps = build_steps(root_children)
         return TestCaseScenarioV2Dto(steps=final_steps)
 
-    async def delete_test_case(self, test_case_id: int) -> None:
-        """Permanently delete a test case from the system.
+    async def delete_test_case(self, test_case_id: int, force: bool | None = None) -> None:
+        """Delete a test case from the system.
 
         Args:
             test_case_id: The ID of the test case to remove.
+            force: When True, permanently remove an already archived test case.
 
         Raises:
             AllureAPIError: If the API request fails.
         """
         test_case_api = await self._get_api("_test_case_api")
-        await self._call_api(test_case_api.delete13(id=test_case_id))
+        await self._call_api(test_case_api.delete13(id=test_case_id, force=force))
 
     # ==========================================
     # Test hierarchy operations
@@ -2586,6 +2627,84 @@ class AllureClient:
         shared_step_api = await self._get_api("_shared_step_api")
         # Soft delete via archive
         await self._call_api(shared_step_api.archive(id=shared_step_id, _request_timeout=self._timeout))
+
+    async def purge_shared_step(self, shared_step_id: int) -> None:
+        """Permanently delete a shared step from the system."""
+        shared_step_api = await self._get_api("_shared_step_api")
+        await self._call_api(shared_step_api.delete18(id=shared_step_id, _request_timeout=self._timeout))
+
+    async def list_project_custom_fields(
+        self,
+        project_id: int,
+        page: int = 0,
+        size: int = 100,
+        query: str | None = None,
+        sort: list[str] | None = None,
+    ) -> list[CustomFieldProjectDto]:
+        """List custom fields associated with a specific project."""
+        api = await self._get_api("_custom_field_project_v2_api")
+
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+        if not isinstance(page, int) or page < 0:
+            raise AllureValidationError("Page must be a non-negative integer")
+        if not isinstance(size, int) or size <= 0 or size > 100:
+            raise AllureValidationError("Size must be between 1 and 100")
+
+        result_page = await self._call_api(
+            api.find_by_project1(
+                project_id=project_id,
+                query=query,
+                page=page,
+                size=size,
+                sort=sort,
+                _request_timeout=self._timeout,
+            )
+        )
+        return result_page.content or []
+
+    async def count_test_cases_in_projects(
+        self,
+        project_ids: list[int],
+        custom_field_id: int,
+        deleted: bool | None = None,
+    ) -> list[ProjectTestCaseCountDto]:
+        """Count test cases in projects for a given custom field."""
+        api = await self._get_api("_project_api")
+
+        if not project_ids:
+            raise AllureValidationError("At least one project ID is required")
+        for project_id in project_ids:
+            if not isinstance(project_id, int) or project_id <= 0:
+                raise AllureValidationError("Project IDs must be positive integers")
+        if not isinstance(custom_field_id, int) or custom_field_id <= 0:
+            raise AllureValidationError("Custom field ID must be a positive integer")
+
+        return await self._call_api(
+            api.count_test_cases_in_projects(
+                id=project_ids,
+                custom_field_id=custom_field_id,
+                deleted=deleted,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def remove_custom_field_from_project(self, custom_field_id: int, project_id: int) -> None:
+        """Remove a custom field from a project."""
+        api = await self._get_api("_custom_field_project_api")
+
+        if not isinstance(custom_field_id, int) or custom_field_id <= 0:
+            raise AllureValidationError("Custom field ID must be a positive integer")
+        if not isinstance(project_id, int) or project_id <= 0:
+            raise AllureValidationError("Project ID must be a positive integer")
+
+        await self._call_api(
+            api.remove4(
+                custom_field_id=custom_field_id,
+                project_id=project_id,
+                _request_timeout=self._timeout,
+            )
+        )
 
     async def update_test_case_custom_fields(
         self, test_case_id: int, custom_fields: list[CustomFieldValueWithCfDto]

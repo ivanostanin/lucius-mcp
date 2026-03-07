@@ -10,6 +10,7 @@ Agent Hints" on failure.
 | `create_test_case`            | Create a new test case with steps, tags, and custom fields. | `name`, `steps`, `tags`         |
 | `update_test_case`            | Idempotently update an existing test case.                  | `test_case_id`, `name`, `steps` |
 | `delete_test_case`            | Soft-delete (archive) a test case.                          | `test_case_id`, `confirm`       |
+| `delete_archived_test_cases`  | Permanently delete archived/deleted test cases.             | `confirm`                       |
 | `get_test_case_details`       | Retrieve complete details including steps and attachments.  | `test_case_id`                  |
 | `get_test_case_custom_fields` | Retrieve only custom field values for a test case.          | `test_case_id`                  |
 
@@ -30,6 +31,7 @@ Agent Hints" on failure.
 | `list_shared_steps`  | Find existing shared steps.                   | `search`, `page`                 |
 | `update_shared_step` | Update an existing shared step library entry. | `step_id`, `name`                |
 | `delete_shared_step` | Soft-delete (archive) a shared step.          | `step_id`, `confirm`             |
+| `delete_archived_shared_steps` | Permanently delete archived shared steps.    | `confirm`                        |
 | `link_shared_step`   | Reference a shared step within a test case.   | `test_case_id`, `shared_step_id` |
 | `unlink_shared_step` | Remove a shared step reference.               | `test_case_id`, `shared_step_id` |
 
@@ -49,6 +51,7 @@ Agent Hints" on failure.
 | `create_custom_field_value` | Add a new option to a custom field.              | `name`, `custom_field_id` |
 | `update_custom_field_value` | Update an existing custom field value name.      | `cfv_id`, `name`          |
 | `delete_custom_field_value` | Remove a custom field value option.              | `cfv_id`, `confirm`       |
+| `delete_unused_custom_fields` | Remove project custom fields unused by test cases. | `confirm`                |
 
 ## 🧭 Test Hierarchy
 

@@ -1,5 +1,6 @@
 from collections.abc import Awaitable, Callable
 
+from src.tools.cleanup import delete_archived_shared_steps, delete_archived_test_cases, delete_unused_custom_fields
 from src.tools.create_custom_field_value import create_custom_field_value
 from src.tools.create_test_case import create_test_case
 from src.tools.defects import (
@@ -56,6 +57,8 @@ __all__ = [
     "create_test_layer_schema",
     "create_test_plan",
     "create_test_suite",
+    "delete_archived_shared_steps",
+    "delete_archived_test_cases",
     "delete_custom_field_value",
     "delete_defect",
     "delete_defect_matcher",
@@ -64,6 +67,7 @@ __all__ = [
     "delete_test_case",
     "delete_test_layer",
     "delete_test_layer_schema",
+    "delete_unused_custom_fields",
     "get_custom_fields",
     "get_defect",
     "get_launch",
@@ -104,8 +108,10 @@ all_tools: list[ToolFn] = [
     get_test_case_details,
     update_test_case,
     delete_test_case,
+    delete_archived_test_cases,
     list_test_cases,
     get_custom_fields,
+    delete_unused_custom_fields,
     list_custom_field_values,
     create_custom_field_value,
     update_custom_field_value,
@@ -124,6 +130,7 @@ all_tools: list[ToolFn] = [
     list_shared_steps,
     update_shared_step,
     delete_shared_step,
+    delete_archived_shared_steps,
     link_shared_step,
     unlink_shared_step,
     # Test Layer Tools

@@ -37,6 +37,7 @@ To ensure robust end-to-end validation, any AI agent executing this plan MUST fo
   - `create_test_case`: `src/tools/create_test_case.py:83-95`
   - `update_test_case`: `src/tools/update_test_case.py:96-150`
   - `delete_test_case`: `src/tools/delete_test_case.py:36-53`
+  - Cleanup tools: `src/tools/cleanup.py:14-55`
   - `search/list/details`: `src/tools/search.py:9-251`
   - `get_custom_fields`: `src/tools/get_custom_fields.py:9-49`
   - `get_test_case_custom_fields`: `src/tools/get_test_case_custom_fields.py:9-34`
@@ -57,10 +58,13 @@ To ensure robust end-to-end validation, any AI agent executing this plan MUST fo
 ## Tool inventory (must be covered)
 From `src/tools/__init__.py:24-79`:
 - `create_test_case`, `get_test_case_details`, `update_test_case`, `delete_test_case`, `list_test_cases`, `search_test_cases`
+- `delete_archived_test_cases`
 - `get_custom_fields`, `get_test_case_custom_fields`
 - `create_custom_field_value`, `list_custom_field_values`, `update_custom_field_value`, `delete_custom_field_value`
+- `delete_unused_custom_fields`
 - `create_launch`, `list_launches`, `get_launch`
 - `create_shared_step`, `list_shared_steps`, `update_shared_step`, `delete_shared_step`
+- `delete_archived_shared_steps`
 - `link_shared_step`, `unlink_shared_step`
 - `list_test_layers`, `create_test_layer`, `update_test_layer`, `delete_test_layer`
 - `list_test_layer_schemas`, `create_test_layer_schema`, `update_test_layer_schema`, `delete_test_layer_schema`
@@ -356,6 +360,21 @@ From `src/tools/__init__.py:24-79`:
   8. **Cleanup**: `delete_test_case(test_case_id=LINK_TC_ID, confirm=true)` and `delete_defect(defect_id=LINK_DEFECT_ID, confirm=true)`
      - Expectation: Cleanup operations succeed.
 
+#### 13. Cleanup Archived Entities
+- **Scenario source**: `specs/implementation-artifacts/6-4-delete-archived-test-cases.md`
+- **Goal**: Verify destructive cleanup tools and safeguards.
+- **Steps**:
+  1. **Safety Check (No Confirm)**: `delete_archived_test_cases(confirm=false)`
+     - Expectation: Output equals `⚠️ Destructive operation. Pass confirm=True to proceed.`
+  2. **Purge Archived Test Cases**: `delete_archived_test_cases(confirm=true)`
+     - Expectation: Output contains `Deleted <n> archived test case(s).`
+  3. **Purge Archived Shared Steps**: `delete_archived_shared_steps(confirm=true)`
+     - Expectation: Output contains `Deleted <n> archived shared step(s).`
+  4. **Safety Check (No Confirm)**: `delete_unused_custom_fields(confirm=false)`
+     - Expectation: Output equals `⚠️ Destructive operation. Pass confirm=True to proceed.`
+  5. **Delete Unused Custom Fields**: `delete_unused_custom_fields(confirm=true)`
+     - Expectation: Output contains `Deleted <n> unused custom field(s).`
+
 ## Report
 - After all checks are complete, produce a final test report.
 - The report must list **every performed check** with a strict result: **Pass / Fail / Skipped**.
@@ -382,6 +401,7 @@ From `src/tools/__init__.py:24-79`:
 - Test layers/schemas: success or info messages as defined in tool files.
 - Test hierarchy: suite create/list and assignment messages as defined in hierarchy tool files.
 - Launches: formatted list with pagination (`launches.py:91-112`).
+- Cleanup tools: fixed safeguard warning text when `confirm=false`; deletion count summary when `confirm=true`.
 
 ## Coverage matrix (tool → scenario module)
 - **Test cases**: 1-3 cover `create_test_case`, `get_test_case_details`, `update_test_case`, `delete_test_case`, `list_test_cases`, `search_test_cases`, `get_test_case_custom_fields`.
@@ -394,6 +414,7 @@ From `src/tools/__init__.py:24-79`:
 - **Issue Linking & Integrations**: 10 covers `list_integrations` and `issues` parameter in `create_test_case` and `update_test_case` (add, remove, clear, explicit integration selection).
 - **Test Plans**: 11 covers `create_test_plan`, `update_test_plan`, `manage_test_plan_content`, `list_test_plans`, `delete_test_plan`.
 - **Defects**: 12 covers `create_defect`, `get_defect`, `update_defect`, `delete_defect`, `list_defects`, `create_defect_matcher`, `update_defect_matcher`, `delete_defect_matcher`, `list_defect_matchers`.
+- **Cleanup**: 13 covers `delete_archived_test_cases`, `delete_archived_shared_steps`, `delete_unused_custom_fields`.
 
 ## Notes / constraints
 - Some E2E checks use service-level assertions (scenario DTOs). Manual validation relies on tool outputs + `get_test_case_details` as the closest proxy.

@@ -47,6 +47,10 @@
       "description": "Archive an obsolete test case."
     },
     {
+      "name": "delete_archived_test_cases",
+      "description": "⚠️ Permanently delete archived test cases."
+    },
+    {
       "name": "link_shared_step",
       "description": "Link a shared step to a test case."
     },
@@ -87,6 +91,10 @@
       "description": "Delete a shared step from the library."
     },
     {
+      "name": "delete_archived_shared_steps",
+      "description": "⚠️ Permanently delete archived shared steps."
+    },
+    {
       "name": "get_custom_fields",
       "description": "List all custom fields available in a project."
     },
@@ -105,6 +113,10 @@
     {
       "name": "delete_custom_field_value",
       "description": "Delete a custom field value."
+    },
+    {
+      "name": "delete_unused_custom_fields",
+      "description": "⚠️ Delete custom fields unused by any test case in the project."
     },
     {
       "name": "list_test_layers",

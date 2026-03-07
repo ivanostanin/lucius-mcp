@@ -99,7 +99,7 @@ development_status:
   6-1-test-hierarchy-management: done
   6-2-advanced-search-with-aql: done
   6-3-delete-test-suite: ready-for-dev
-  6-4-delete-archived-test-cases: ready-for-dev
+  6-4-delete-archived-test-cases: review-ready
   epic-6-retrospective: optional
 
   # Epic 7: Test Planning & Governance (Phase 3)
