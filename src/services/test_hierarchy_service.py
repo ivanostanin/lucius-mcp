@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass
 
 from src.client import AllureClient
-from src.client.exceptions import AllureNotFoundError, AllureValidationError
+from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError
 from src.client.generated.models.id_and_name_only_dto import IdAndNameOnlyDto
 from src.client.generated.models.page_tree_dto_v2 import PageTreeDtoV2
 from src.client.generated.models.test_case_full_tree_node_dto import TestCaseFullTreeNodeDto
@@ -115,16 +115,33 @@ class TestHierarchyService:
     async def delete_suite(self, suite_id: int) -> bool:
         """Delete a suite node by ID with idempotent behavior."""
         target_suite_id = self._require_positive_id(suite_id, "Suite ID")
+        primary_deleted = False
+        api_error: AllureAPIError | None = None
+
         try:
             await self._client.delete_tree_group(
                 project_id=self._project_id,
                 group_id=target_suite_id,
             )
-            logger.info("Deleted test suite %s", target_suite_id)
-            return True
+            primary_deleted = True
         except AllureNotFoundError:
             logger.info("Test suite %s already deleted or not found", target_suite_id)
             return False
+        except AllureAPIError as exc:
+            api_error = exc
+
+        if await self._delete_suite_via_custom_field_value(target_suite_id):
+            logger.info("Deleted test suite %s via custom-field fallback", target_suite_id)
+            return True
+
+        if api_error is not None:
+            if await self._find_suite_custom_field_value_id(suite_id=target_suite_id) is None:
+                logger.info("Test suite %s already absent; treating API delete error as idempotent", target_suite_id)
+                return False
+            raise api_error
+
+        logger.info("Deleted test suite %s", target_suite_id)
+        return primary_deleted
 
     async def delete_test_suite(self, suite_id: int) -> bool:
         """Backward-compatible alias for deleting suite nodes."""
@@ -227,6 +244,98 @@ class TestHierarchyService:
             leaf_node_ids.append(leaf_id)
 
         return leaf_node_ids
+
+    async def _delete_suite_via_custom_field_value(self, suite_id: int) -> bool:
+        """Best-effort fallback: remove hierarchy node by custom field value ID."""
+        try:
+            custom_field_value_id = await self._find_suite_custom_field_value_id(suite_id=suite_id)
+        except Exception as exc:  # pragma: no cover - defensive telemetry/logging path
+            logger.warning("Unable to resolve custom field value for suite %s: %s", suite_id, exc)
+            return False
+
+        if custom_field_value_id is None:
+            return False
+
+        try:
+            await self._client.delete_custom_field_value(
+                project_id=self._project_id,
+                cfv_id=custom_field_value_id,
+            )
+            logger.info(
+                "Deleted suite %s via custom field value %s",
+                suite_id,
+                custom_field_value_id,
+            )
+            return True
+        except AllureNotFoundError:
+            logger.info(
+                "Suite %s custom field value %s already removed",
+                suite_id,
+                custom_field_value_id,
+            )
+            return False
+
+    async def _find_suite_custom_field_value_id(self, suite_id: int) -> int | None:
+        """Find custom field value backing a suite node by traversing project trees."""
+        trees_page: PageTreeDtoV2 = await self._client.list_trees(project_id=self._project_id, page=0, size=100)
+        trees = trees_page.content or []
+        for tree in trees:
+            tree_id = tree.id
+            if not isinstance(tree_id, int) or tree_id <= 0:
+                continue
+            root = await self._fetch_tree_node(tree_id=tree_id, parent_suite_id=None)
+            found = await self._find_suite_custom_field_value_in_subtree(
+                tree_id=tree_id,
+                root=root,
+                target_suite_id=suite_id,
+                visited_nodes=set(),
+            )
+            if found is not None:
+                return found
+        return None
+
+    async def _find_suite_custom_field_value_in_subtree(
+        self,
+        tree_id: int,
+        root: TestCaseFullTreeNodeDto,
+        target_suite_id: int,
+        visited_nodes: set[int],
+    ) -> int | None:
+        """Recursively walk suite groups and return matching custom field value ID."""
+        if not root.children or not root.children.content:
+            return None
+
+        for item in root.children.content:
+            actual = item.actual_instance
+            if not isinstance(actual, TestCaseLightTreeNodeDto):
+                continue
+
+            node_id = actual.id
+            if not isinstance(node_id, int) or node_id <= 0:
+                continue
+            if node_id in visited_nodes:
+                continue
+
+            if node_id == target_suite_id:
+                cfv_id = actual.custom_field_value_id
+                if isinstance(cfv_id, int) and cfv_id > 0:
+                    return cfv_id
+                return None
+
+            next_visited = set(visited_nodes)
+            next_visited.add(node_id)
+
+            child_root = await self._fetch_tree_node(tree_id=tree_id, parent_suite_id=node_id)
+            nested = await self._find_suite_custom_field_value_in_subtree(
+                tree_id=tree_id,
+                root=child_root,
+                target_suite_id=target_suite_id,
+                visited_nodes=next_visited,
+            )
+            if nested is not None:
+                return nested
+
+        return None
 
     async def _extract_suite_nodes(
         self,

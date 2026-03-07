@@ -2328,6 +2328,9 @@ class AllureClient:
                     id=item.get("id"),
                     name=item.get("name"),
                     type=item_type,
+                    count=item.get("count"),
+                    custom_field_id=item.get("customFieldId"),
+                    custom_field_value_id=item.get("customFieldValueId"),
                     parent_node_id=item.get("parentNodeId"),
                 )
                 content.append(PageTestCaseTreeNodeDtoContentInner(actual_instance=group_node))

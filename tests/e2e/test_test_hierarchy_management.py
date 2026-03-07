@@ -16,6 +16,29 @@ from src.tools.list_test_suites import list_test_suites
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 
+def _collect_suite_ids(nodes: list) -> list[int]:
+    ids: list[int] = []
+    for node in nodes:
+        ids.append(node.id)
+        ids.extend(_collect_suite_ids(node.children))
+    return ids
+
+
+async def _wait_for_suite_absence(
+    service: TestHierarchyService,
+    suite_id: int,
+    *,
+    retries: int = 120,
+    delay_seconds: float = 1.0,
+) -> bool:
+    for _ in range(retries):
+        _tree, suites = await service.list_test_suites(include_empty=True)
+        if suite_id not in _collect_suite_ids(suites):
+            return True
+        await asyncio.sleep(delay_seconds)
+    return False
+
+
 async def test_e2e_hierarchy_create_and_list_suites(
     project_id: int,
     allure_client: AllureClient,
@@ -204,28 +227,56 @@ async def test_e2e_hierarchy_delete_suite_lifecycle(
     )
     assert third_delete_output == delete_output
 
-    def _collect_ids(nodes: list) -> list[int]:
-        ids: list[int] = []
-        for node in nodes:
-            ids.append(node.id)
-            ids.extend(_collect_ids(node.children))
-        return ids
+    assert await _wait_for_suite_absence(service, nested_suite.id), (
+        f"Suite {nested_suite.id} is still present after delete lifecycle retries"
+    )
 
-    found_after_retries = True
-    for _ in range(20):
-        _tree, suites = await service.list_test_suites(include_empty=True)
-        if nested_suite.id not in _collect_ids(suites):
-            found_after_retries = False
-            break
-        await asyncio.sleep(0.5)
 
-    # Some Allure installations remove suite nodes asynchronously or retain
-    # grouped nodes while still treating deletion calls as idempotent success.
-    # Keep this test focused on the lifecycle and idempotent delete behavior.
-    if found_after_retries:
-        retry_delete_output = await delete_test_suite(
-            suite_id=nested_suite.id,
-            confirm=True,
-            project_id=project_id,
-        )
-        assert retry_delete_output == delete_output
+async def test_e2e_hierarchy_delete_parent_suite_with_children(
+    project_id: int,
+    allure_client: AllureClient,
+    cleanup_tracker: CleanupTracker,
+) -> None:
+    """Delete parent suite with nested suite + assigned case and verify hierarchy cleanup."""
+    service = TestHierarchyService(allure_client)
+    run_id = uuid4().hex[:8]
+
+    root_name = f"E2E-Delete-Parent-Root-{project_id}-{run_id}"
+    nested_name = f"E2E-Delete-Parent-Nested-{project_id}-{run_id}"
+    cleanup_tracker.track_custom_field_value_name(root_name)
+    cleanup_tracker.track_custom_field_value_name(nested_name)
+
+    root_suite = await service.create_test_suite(name=root_name)
+    assert root_suite.id is not None
+    cleanup_tracker.track_test_suite(root_suite.id)
+
+    nested_suite = await service.create_test_suite(name=nested_name, parent_suite_id=root_suite.id)
+    assert nested_suite.id is not None
+    cleanup_tracker.track_test_suite(nested_suite.id)
+
+    tc_output = await create_test_case(name=f"E2E Delete Parent Suite Case {run_id}", project_id=project_id)
+    match = re.search(r"ID: (\d+)", tc_output)
+    assert match is not None
+    test_case_id = int(match.group(1))
+    cleanup_tracker.track_test_case(test_case_id)
+
+    assign_output = await assign_test_cases_to_suite(
+        suite_id=nested_suite.id,
+        test_case_ids=[test_case_id],
+        project_id=project_id,
+    )
+    assert "Assigned 1 test case(s)" in assign_output
+
+    delete_parent_output = await delete_test_suite(
+        suite_id=root_suite.id,
+        confirm=True,
+        project_id=project_id,
+    )
+    assert delete_parent_output == f"✅ Test suite {root_suite.id} deleted successfully (idempotent)."
+
+    assert await _wait_for_suite_absence(service, root_suite.id), (
+        f"Parent suite {root_suite.id} is still present after deletion retries"
+    )
+    assert await _wait_for_suite_absence(service, nested_suite.id), (
+        f"Nested suite {nested_suite.id} is still present after parent deletion retries"
+    )
