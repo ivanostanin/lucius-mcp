@@ -221,6 +221,7 @@ async def test_link_defect_to_test_case_explicit_mapping_by_integration_name(ser
         mock_int.resolve_integration_for_issues.assert_called_once_with(
             integration_id=None,
             integration_name="Jira",
+            project_id=1,
         )
         mock_tc.add_issues_to_test_case.assert_called_once_with(20, ["PROJ-123"], integration_id=11)
 

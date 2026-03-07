@@ -473,6 +473,21 @@ class AllureClient:
             # For now return empty list to act as fallback.
             return []
 
+    async def get_project_available_integrations(self, project_id: int) -> list[IntegrationDto]:
+        """Fetch integrations available for a specific project."""
+        if self._integration_api is None:
+            raise RuntimeError("AllureClient must be used as an async context manager")
+
+        try:
+            page = await self._integration_api.get_project_available_integrations(
+                project_id=project_id,
+                page=0,
+                size=100,
+            )
+            return page.content or []
+        except Exception:
+            return []
+
     async def __aenter__(self) -> AllureClient:
         """Initialize the client session within an async context.
 

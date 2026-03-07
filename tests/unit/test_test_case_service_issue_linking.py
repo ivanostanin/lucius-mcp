@@ -44,7 +44,11 @@ class TestIssueLinking:
 
         await service.add_issues_to_test_case(test_case_id, issues)
 
-        mock_int_service_instance.resolve_integration_for_issues.assert_called_once()
+        mock_int_service_instance.resolve_integration_for_issues.assert_called_once_with(
+            integration_id=None,
+            integration_name=None,
+            project_id=1,
+        )
         mock_bulk_instance.issue_add1.assert_called_once()
         request_dto = mock_bulk_instance.issue_add1.call_args[0][0]
         assert request_dto.issues[0].integration_id == 1
@@ -77,7 +81,9 @@ class TestIssueLinking:
         await service.add_issues_to_test_case(100, ["PROJ-123"], integration_id=2)
 
         mock_int_service_instance.resolve_integration_for_issues.assert_called_once_with(
-            integration_id=2, integration_name=None
+            integration_id=2,
+            integration_name=None,
+            project_id=1,
         )
         request_dto = mock_bulk_api.return_value.issue_add1.call_args[0][0]
         assert request_dto.issues[0].integration_id == 2

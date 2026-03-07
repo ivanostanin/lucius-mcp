@@ -31,7 +31,7 @@ async def test_defect_testcase_linking_lifecycle(
     test_run_id: str,
 ) -> None:
     """Create defect and test case, link them, verify listing, and confirm idempotency."""
-    integrations = await allure_client.get_integrations()
+    integrations = await allure_client.get_project_available_integrations(project_id)
     if not integrations:
         pytest.skip("No integrations configured in the environment. Skipping defect-test-case linking E2E.")
 

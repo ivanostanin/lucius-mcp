@@ -13,8 +13,8 @@ class IntegrationService:
     """Service for managing Integrations in Allure TestOps.
 
     Integrations are external issue trackers (Jira, GitHub, etc.) that are configured
-    at the instance level. This service provides methods to discover available integrations
-    and resolve integration IDs for use in issue linking.
+    globally and connected to projects. This service provides methods to discover
+    available integrations and resolve integration IDs for use in issue linking.
     """
 
     def __init__(self, client: AllureClient) -> None:
@@ -25,8 +25,8 @@ class IntegrationService:
         """
         self._client = client
 
-    async def list_integrations(self) -> list[IntegrationDto]:
-        """List all available integrations.
+    async def list_integrations(self, project_id: int | None = None) -> list[IntegrationDto]:
+        """List available integrations, optionally filtered by project.
 
         Returns:
             List of IntegrationDto objects
@@ -34,13 +34,16 @@ class IntegrationService:
         Raises:
             AllureAPIError: If the API request fails
         """
+        if project_id is not None:
+            return await self._client.get_project_available_integrations(project_id)
         return await self._client.get_integrations()
 
-    async def get_integration_by_id(self, integration_id: int) -> IntegrationDto:
+    async def get_integration_by_id(self, integration_id: int, project_id: int | None = None) -> IntegrationDto:
         """Get an integration by its ID.
 
         Args:
             integration_id: The unique ID of the integration
+            project_id: Optional project scope for filtering available integrations
 
         Returns:
             The IntegrationDto
@@ -53,21 +56,23 @@ class IntegrationService:
         if integration_id <= 0:
             raise AllureValidationError("Integration ID must be a positive integer")
 
-        integrations = await self.list_integrations()
+        integrations = await self.list_integrations(project_id=project_id)
         for integration in integrations:
             if integration.id == integration_id:
                 return integration
 
+        scope = f" in project {project_id}" if project_id is not None else ""
         raise AllureNotFoundError(
-            f"Integration with ID {integration_id} not found. "
+            f"Integration with ID {integration_id} not found{scope}. "
             f"Available integrations: {self._format_integration_list(integrations)}"
         )
 
-    async def get_integration_by_name(self, name: str) -> IntegrationDto:
+    async def get_integration_by_name(self, name: str, project_id: int | None = None) -> IntegrationDto:
         """Get an integration by its exact name (case-sensitive).
 
         Args:
             name: The exact name of the integration
+            project_id: Optional project scope for filtering available integrations
 
         Returns:
             The IntegrationDto
@@ -80,19 +85,22 @@ class IntegrationService:
         if not name or not name.strip():
             raise AllureValidationError("Integration name is required")
 
-        integrations = await self.list_integrations()
+        integrations = await self.list_integrations(project_id=project_id)
         for integration in integrations:
             if integration.name == name:
                 return integration
 
+        scope = f" in project {project_id}" if project_id is not None else ""
         raise AllureNotFoundError(
-            f"Integration '{name}' not found. Available integrations: {self._format_integration_list(integrations)}"
+            f"Integration '{name}' not found{scope}. "
+            f"Available integrations: {self._format_integration_list(integrations)}"
         )
 
     async def resolve_integration(
         self,
         integration_id: int | None = None,
         integration_name: str | None = None,
+        project_id: int | None = None,
     ) -> IntegrationDto | None:
         """Resolve an integration from either ID or name.
 
@@ -101,6 +109,7 @@ class IntegrationService:
         Args:
             integration_id: Optional integration ID
             integration_name: Optional integration name
+            project_id: Optional project scope for filtering available integrations
 
         Returns:
             The resolved IntegrationDto if either parameter is provided, None otherwise
@@ -119,11 +128,11 @@ class IntegrationService:
 
         # 2. Resolve by ID
         if integration_id is not None:
-            return await self.get_integration_by_id(integration_id)
+            return await self.get_integration_by_id(integration_id, project_id=project_id)
 
         # 3. Resolve by Name
         if integration_name is not None:
-            return await self.get_integration_by_name(integration_name)
+            return await self.get_integration_by_name(integration_name, project_id=project_id)
 
         # 4. Neither provided
         return None
@@ -132,6 +141,7 @@ class IntegrationService:
         self,
         integration_id: int | None = None,
         integration_name: str | None = None,
+        project_id: int | None = None,
     ) -> int:
         """Resolve integration ID for issue linking with strict behavior.
 
@@ -142,6 +152,7 @@ class IntegrationService:
         Args:
             integration_id: Optional integration ID to use
             integration_name: Optional integration name to use
+            project_id: Optional project scope for filtering available integrations
 
         Returns:
             The resolved integration ID
@@ -153,18 +164,19 @@ class IntegrationService:
             AllureAPIError: If the API request fails or no integrations configured
         """
         # First check if explicit integration is provided
-        resolved = await self.resolve_integration(integration_id, integration_name)
+        resolved = await self.resolve_integration(integration_id, integration_name, project_id=project_id)
         if resolved:
             if resolved.id is None:
                 raise AllureAPIError("Resolved integration has no ID")
             return resolved.id
 
         # No explicit selection - check available integrations
-        integrations = await self.list_integrations()
+        integrations = await self.list_integrations(project_id=project_id)
+        scope = f" for project {project_id}" if project_id is not None else ""
 
         if not integrations:
             raise AllureAPIError(
-                "No integrations configured in Allure TestOps. "
+                f"No integrations configured{scope} in Allure TestOps. "
                 "Please configure an integration (Jira, GitHub, etc.) before linking issues."
             )
 
