@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.7.0] - 2026-03-08
+
+### Added
+- `delete_test_case` support for archived test case cleanup workflows (#52).
+- `delete_test_suite` tool to remove obsolete hierarchy suites (#53).
+- Anonymous telemetry collection for MCP tool usage and runtime metadata (#49).
+
+### Changed
+- Tool schemas now include richer annotation hints to improve client-side guidance (#54).
+
+### Fixed
+- Integration selection logic for linked issues in test case workflows (#50).
+- Flaky E2E coverage for test-layer update scenarios was stabilized (#51).
+
 ## [v0.6.1] - 2026-02-16
 
 ### Changed
@@ -119,7 +133,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.7.0...HEAD
+[v0.7.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.6.1...v0.7.0
 [v0.6.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.6.0...v0.6.1
 [v0.6.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.5.0...v0.6.0
 [v0.5.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.4.1...v0.5.0
