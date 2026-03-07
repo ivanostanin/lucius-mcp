@@ -1,6 +1,7 @@
 """E2E tests for test layer CRUD operations."""
 
 import os
+from uuid import uuid4
 
 import pytest
 
@@ -19,6 +20,18 @@ from src.tools.test_layers import (
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 
+def _unique_suffix() -> str:
+    return uuid4().hex[:8]
+
+
+def _unique_layer_name(prefix: str) -> str:
+    return f"{prefix}-{_unique_suffix()}"
+
+
+def _unique_schema_key(prefix: str) -> str:
+    return f"{prefix}_{_unique_suffix()}"
+
+
 async def test_e2e_test_layer_full_lifecycle(
     project_id: int,
     allure_client: AllureClient,
@@ -31,7 +44,7 @@ async def test_e2e_test_layer_full_lifecycle(
     service = TestLayerService(client=allure_client)
 
     # Step 1: Create a test layer
-    layer_name = "E2E-Test-Layer"
+    layer_name = _unique_layer_name("E2E-Test-Layer")
     created_layer = await service.create_test_layer(name=layer_name)
 
     assert created_layer.id is not None
@@ -45,7 +58,7 @@ async def test_e2e_test_layer_full_lifecycle(
     assert layer_id in layer_ids
 
     # Step 3: Update the layer name
-    new_name = "E2E-Test-Layer-Updated"
+    new_name = f"{layer_name}-Updated"
     updated_layer, changed = await service.update_test_layer(layer_id=layer_id, name=new_name)
 
     assert changed is True
@@ -75,7 +88,7 @@ async def test_e2e_test_layer_schema_full_lifecycle(
     service = TestLayerService(client=allure_client)
 
     # Step 1: Create a test layer first
-    layer_name = "E2E-Schema-Layer"
+    layer_name = _unique_layer_name("E2E-Schema-Layer")
     created_layer = await service.create_test_layer(name=layer_name)
     layer_id = created_layer.id
     assert layer_id is not None
@@ -83,7 +96,7 @@ async def test_e2e_test_layer_schema_full_lifecycle(
 
     try:
         # Step 2: Create a test layer schema
-        schema_key = "e2e_test_layer"
+        schema_key = _unique_schema_key("e2e_test_layer")
         created_schema = await service.create_test_layer_schema(
             project_id=project_id,
             test_layer_id=layer_id,
@@ -101,7 +114,7 @@ async def test_e2e_test_layer_schema_full_lifecycle(
         assert schema_id in schema_ids
 
         # Step 4: Update the schema key
-        new_key = "e2e_updated_layer"
+        new_key = _unique_schema_key("e2e_updated_layer")
         updated_schema, changed = await service.update_test_layer_schema(
             schema_id=schema_id,
             key=new_key,
@@ -151,9 +164,7 @@ async def test_e2e_create_and_delete_test_layer_tools(
     Verify create and delete tools work together.
     """
     # Create via tool
-    import uuid
-
-    layer_name = f"E2E-Tool-Layer-{uuid.uuid4().hex[:8]}"
+    layer_name = _unique_layer_name("E2E-Tool-Layer")
     create_output = await create_test_layer(name=layer_name, project_id=project_id)
 
     assert "✅" in create_output
@@ -192,7 +203,7 @@ async def test_e2e_update_test_layer_tool(
     service = TestLayerService(client=allure_client)
 
     # Create a layer
-    layer_name = "E2E-Update-Layer"
+    layer_name = _unique_layer_name("E2E-Update-Layer")
     created_layer = await service.create_test_layer(name=layer_name)
     layer_id = created_layer.id
     assert layer_id is not None
@@ -200,7 +211,7 @@ async def test_e2e_update_test_layer_tool(
 
     try:
         # Update via tool
-        new_name = "E2E-Update-Layer-Modified"
+        new_name = f"{layer_name}-Modified"
         update_output = await update_test_layer(layer_id=layer_id, name=new_name, project_id=project_id, confirm=True)
 
         assert "✅" in update_output or "[INFO]" in update_output
@@ -235,7 +246,7 @@ async def test_e2e_test_layer_schema_tools(
 
     try:
         # Create schema via tool
-        schema_key = "e2e_schema_tool"
+        schema_key = _unique_schema_key("e2e_schema_tool")
         create_output = await create_test_layer_schema(
             key=schema_key,
             test_layer_id=layer_id,
@@ -258,7 +269,7 @@ async def test_e2e_test_layer_schema_tools(
         assert str(schema_id) in list_output or "test layer schema" in list_output.lower()
 
         # Update schema via tool
-        new_key = "e2e_schema_tool_updated"
+        new_key = _unique_schema_key("e2e_schema_tool_updated")
         update_output = await update_test_layer_schema(
             schema_id=schema_id,
             key=new_key,
@@ -314,8 +325,8 @@ async def test_e2e_multiple_schemas_same_project(
     service = TestLayerService(client=allure_client)
 
     # Create two test layers
-    layer1 = await service.create_test_layer(name="E2E-Multi-Layer-1")
-    layer2 = await service.create_test_layer(name="E2E-Multi-Layer-2")
+    layer1 = await service.create_test_layer(name=_unique_layer_name("E2E-Multi-Layer-1"))
+    layer2 = await service.create_test_layer(name=_unique_layer_name("E2E-Multi-Layer-2"))
 
     layer1_id = layer1.id
     layer2_id = layer2.id
@@ -327,12 +338,12 @@ async def test_e2e_multiple_schemas_same_project(
         schema1 = await service.create_test_layer_schema(
             project_id=project_id,
             test_layer_id=layer1_id,
-            key="e2e_multi_schema_1",
+            key=_unique_schema_key("e2e_multi_schema_1"),
         )
         schema2 = await service.create_test_layer_schema(
             project_id=project_id,
             test_layer_id=layer2_id,
-            key="e2e_multi_schema_2",
+            key=_unique_schema_key("e2e_multi_schema_2"),
         )
 
         schema1_id = schema1.id
