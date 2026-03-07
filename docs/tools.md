@@ -60,6 +60,7 @@ Agent Hints" on failure.
 | `create_test_suite`          | Create a new suite node (top-level or nested) in a tree. | `name`, `tree_id`, `parent_suite_id` |
 | `list_test_suites`           | List suite hierarchy for a project tree.                 | `tree_id`, `include_empty`   |
 | `assign_test_cases_to_suite` | Move/attach test cases to a target suite path.           | `suite_id`, `test_case_ids`, `tree_id` |
+| `delete_test_suite`          | Delete/cleanup an obsolete hierarchy suite node.          | `suite_id`, `confirm` |
 
 ## 🚀 Launch Management
 

@@ -5,6 +5,7 @@ import pytest
 from src.tools.delete_custom_field_value import delete_custom_field_value
 from src.tools.delete_test_layer import delete_test_layer
 from src.tools.delete_test_layer_schema import delete_test_layer_schema
+from src.tools.delete_test_suite import delete_test_suite
 from src.tools.link_shared_step import link_shared_step
 from src.tools.shared_steps import delete_shared_step, update_shared_step
 from src.tools.unlink_shared_step import unlink_shared_step
@@ -62,6 +63,12 @@ async def test_delete_test_layer_confirmation() -> None:
     assert "⚠️ Deletion requires confirmation" in result
     assert "affect test case categorization" in result
     assert "789" in result
+
+
+@pytest.mark.asyncio
+async def test_delete_test_suite_confirmation() -> None:
+    result = await delete_test_suite(suite_id=789, confirm=False)
+    assert result == "⚠️ Destructive operation. Confirm deletion of suite 789 by passing confirm=True."
 
 
 @pytest.mark.asyncio

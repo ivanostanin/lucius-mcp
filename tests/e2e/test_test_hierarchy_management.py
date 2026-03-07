@@ -1,5 +1,6 @@
 """E2E tests for test hierarchy management workflows."""
 
+import asyncio
 import re
 from uuid import uuid4
 
@@ -10,8 +11,32 @@ from src.tools.assign_test_cases_to_suite import assign_test_cases_to_suite
 from src.tools.create_test_case import create_test_case
 from src.tools.create_test_suite import create_test_suite
 from src.tools.delete_test_case import delete_test_case
+from src.tools.delete_test_suite import delete_test_suite
 from src.tools.list_test_suites import list_test_suites
 from tests.e2e.helpers.cleanup import CleanupTracker
+
+
+def _collect_suite_ids(nodes: list) -> list[int]:
+    ids: list[int] = []
+    for node in nodes:
+        ids.append(node.id)
+        ids.extend(_collect_suite_ids(node.children))
+    return ids
+
+
+async def _wait_for_suite_absence(
+    service: TestHierarchyService,
+    suite_id: int,
+    *,
+    retries: int = 120,
+    delay_seconds: float = 1.0,
+) -> bool:
+    for _ in range(retries):
+        _tree, suites = await service.list_test_suites(include_empty=True)
+        if suite_id not in _collect_suite_ids(suites):
+            return True
+        await asyncio.sleep(delay_seconds)
+    return False
 
 
 async def test_e2e_hierarchy_create_and_list_suites(
@@ -30,12 +55,14 @@ async def test_e2e_hierarchy_create_and_list_suites(
 
     root_suite = await service.create_test_suite(name=root_name)
     assert root_suite.id is not None
+    cleanup_tracker.track_test_suite(root_suite.id)
 
     nested_suite = await service.create_test_suite(
         name=nested_name,
         parent_suite_id=root_suite.id,
     )
     assert nested_suite.id is not None
+    cleanup_tracker.track_test_suite(nested_suite.id)
 
     _tree, suites = await service.list_test_suites(include_empty=True)
     assert isinstance(suites, list)
@@ -54,6 +81,7 @@ async def test_e2e_hierarchy_assign_test_cases_to_suite(
     cleanup_tracker.track_custom_field_value_name(suite_name)
     suite = await service.create_test_suite(name=suite_name)
     assert suite.id is not None
+    cleanup_tracker.track_test_suite(suite.id)
 
     create_output = await create_test_case(
         name=f"E2E Hierarchy Assignment Case {run_id}",
@@ -112,6 +140,7 @@ async def test_e2e_hierarchy_tools_smoke(
     match = re.search(r"ID: (\d+)", create_output)
     assert match is not None
     suite_id = int(match.group(1))
+    cleanup_tracker.track_test_suite(suite_id)
 
     list_output = await list_test_suites(project_id=project_id)
     assert "Tree:" in list_output
@@ -131,3 +160,123 @@ async def test_e2e_hierarchy_tools_smoke(
 
     delete_output = await delete_test_case(test_case_id=tc_id, confirm=True, project_id=project_id)
     assert "Archived Test Case" in delete_output or "already archived" in delete_output
+
+
+async def test_e2e_hierarchy_delete_suite_lifecycle(
+    project_id: int,
+    allure_client: AllureClient,
+    cleanup_tracker: CleanupTracker,
+) -> None:
+    """Create suite + case, assign case, delete suite, then verify suite is removed."""
+    service = TestHierarchyService(allure_client)
+    run_id = uuid4().hex[:8]
+
+    root_name = f"E2E-Delete-Root-{project_id}-{run_id}"
+    nested_name = f"E2E-Delete-Nested-{project_id}-{run_id}"
+    cleanup_tracker.track_custom_field_value_name(root_name)
+    cleanup_tracker.track_custom_field_value_name(nested_name)
+
+    root_suite = await service.create_test_suite(name=root_name)
+    assert root_suite.id is not None
+    cleanup_tracker.track_test_suite(root_suite.id)
+
+    nested_suite = await service.create_test_suite(name=nested_name, parent_suite_id=root_suite.id)
+    assert nested_suite.id is not None
+    cleanup_tracker.track_test_suite(nested_suite.id)
+
+    tc_output = await create_test_case(name=f"E2E Delete Suite Case {run_id}", project_id=project_id)
+    match = re.search(r"ID: (\d+)", tc_output)
+    assert match is not None
+    test_case_id = int(match.group(1))
+    cleanup_tracker.track_test_case(test_case_id)
+
+    assign_output = await assign_test_cases_to_suite(
+        suite_id=nested_suite.id,
+        test_case_ids=[test_case_id],
+        project_id=project_id,
+    )
+    assert "Assigned 1 test case(s)" in assign_output
+
+    delete_output = await delete_test_suite(
+        suite_id=nested_suite.id,
+        confirm=True,
+        project_id=project_id,
+    )
+    assert f"✅ Test suite {nested_suite.id} deleted successfully (idempotent)." == delete_output
+
+    second_delete_output = await delete_test_suite(
+        suite_id=nested_suite.id,
+        confirm=True,
+        project_id=project_id,
+    )
+    assert second_delete_output == delete_output
+
+    # In some TestOps setups, suites with assigned leaves become removable
+    # only after leaf cleanup. Keep the lifecycle deterministic for both modes.
+    delete_case_output = await delete_test_case(
+        test_case_id=test_case_id,
+        confirm=True,
+        project_id=project_id,
+    )
+    assert "Archived Test Case" in delete_case_output or "already archived" in delete_case_output
+
+    third_delete_output = await delete_test_suite(
+        suite_id=nested_suite.id,
+        confirm=True,
+        project_id=project_id,
+    )
+    assert third_delete_output == delete_output
+
+    assert await _wait_for_suite_absence(service, nested_suite.id), (
+        f"Suite {nested_suite.id} is still present after delete lifecycle retries"
+    )
+
+
+async def test_e2e_hierarchy_delete_parent_suite_with_children(
+    project_id: int,
+    allure_client: AllureClient,
+    cleanup_tracker: CleanupTracker,
+) -> None:
+    """Delete parent suite with nested suite + assigned case and verify hierarchy cleanup."""
+    service = TestHierarchyService(allure_client)
+    run_id = uuid4().hex[:8]
+
+    root_name = f"E2E-Delete-Parent-Root-{project_id}-{run_id}"
+    nested_name = f"E2E-Delete-Parent-Nested-{project_id}-{run_id}"
+    cleanup_tracker.track_custom_field_value_name(root_name)
+    cleanup_tracker.track_custom_field_value_name(nested_name)
+
+    root_suite = await service.create_test_suite(name=root_name)
+    assert root_suite.id is not None
+    cleanup_tracker.track_test_suite(root_suite.id)
+
+    nested_suite = await service.create_test_suite(name=nested_name, parent_suite_id=root_suite.id)
+    assert nested_suite.id is not None
+    cleanup_tracker.track_test_suite(nested_suite.id)
+
+    tc_output = await create_test_case(name=f"E2E Delete Parent Suite Case {run_id}", project_id=project_id)
+    match = re.search(r"ID: (\d+)", tc_output)
+    assert match is not None
+    test_case_id = int(match.group(1))
+    cleanup_tracker.track_test_case(test_case_id)
+
+    assign_output = await assign_test_cases_to_suite(
+        suite_id=nested_suite.id,
+        test_case_ids=[test_case_id],
+        project_id=project_id,
+    )
+    assert "Assigned 1 test case(s)" in assign_output
+
+    delete_parent_output = await delete_test_suite(
+        suite_id=root_suite.id,
+        confirm=True,
+        project_id=project_id,
+    )
+    assert delete_parent_output == f"✅ Test suite {root_suite.id} deleted successfully (idempotent)."
+
+    assert await _wait_for_suite_absence(service, root_suite.id), (
+        f"Parent suite {root_suite.id} is still present after deletion retries"
+    )
+    assert await _wait_for_suite_absence(service, nested_suite.id), (
+        f"Nested suite {nested_suite.id} is still present after parent deletion retries"
+    )

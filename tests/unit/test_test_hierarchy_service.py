@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from src.client import AllureClient
-from src.client.exceptions import AllureNotFoundError, AllureValidationError
+from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError
 from src.client.generated.models.id_and_name_only_dto import IdAndNameOnlyDto
 from src.client.generated.models.node_type import NodeType
 from src.client.generated.models.page_id_and_name_only_dto import PageIdAndNameOnlyDto
@@ -30,6 +30,8 @@ def mock_client() -> MagicMock:
     client.get_tree_node = AsyncMock()
     client.upsert_tree_group = AsyncMock()
     client.assign_test_cases_to_tree_node = AsyncMock()
+    client.delete_tree_group = AsyncMock()
+    client.delete_custom_field_value = AsyncMock()
     client.suggest_tree_groups = AsyncMock()
 
     return client
@@ -262,6 +264,85 @@ async def test_assign_test_cases_to_suite_missing_leaf_raises(
 
     with pytest.raises(AllureNotFoundError, match="Test case ID 9999 was not found"):
         await service.assign_test_cases_to_suite(suite_id=11, test_case_ids=[9999], tree_id=200)
+
+
+@pytest.mark.asyncio
+async def test_delete_suite_success(service: TestHierarchyService, mock_client: MagicMock) -> None:
+    """Delete suite returns True when API delete succeeds."""
+    mock_client.list_trees.return_value = PageTreeDtoV2(content=[])
+
+    deleted = await service.delete_suite(suite_id=11)
+
+    assert deleted is True
+    mock_client.delete_tree_group.assert_called_once_with(project_id=1, group_id=11)
+    mock_client.delete_custom_field_value.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_delete_suite_idempotent_not_found(service: TestHierarchyService, mock_client: MagicMock) -> None:
+    """Delete suite is idempotent when suite is already absent."""
+    mock_client.delete_tree_group.side_effect = AllureNotFoundError("missing")
+
+    deleted = await service.delete_suite(suite_id=11)
+
+    assert deleted is False
+    mock_client.delete_tree_group.assert_called_once_with(project_id=1, group_id=11)
+    mock_client.delete_custom_field_value.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_delete_suite_fallback_deletes_custom_field_value(
+    service: TestHierarchyService, mock_client: MagicMock
+) -> None:
+    """Delete suite removes backing custom field value when node still exists."""
+    mock_client.list_trees.return_value = PageTreeDtoV2(
+        content=[TreeDtoV2(id=200, name="Main", project_id=1, custom_fields_project=[])]
+    )
+    mock_client.get_tree_node.return_value = TestCaseFullTreeNodeDto(
+        id=10,
+        name="Root",
+        children=PageTestCaseTreeNodeDto(
+            content=[
+                PageTestCaseTreeNodeDtoContentInner(
+                    actual_instance=TestCaseLightTreeNodeDto(
+                        id=11,
+                        name="Suite",
+                        type=NodeType.GROUP,
+                        parent_node_id=10,
+                        custom_field_value_id=3706,
+                    )
+                )
+            ]
+        ),
+    )
+
+    deleted = await service.delete_suite(suite_id=11)
+
+    assert deleted is True
+    mock_client.delete_tree_group.assert_called_once_with(project_id=1, group_id=11)
+    mock_client.delete_custom_field_value.assert_called_once_with(project_id=1, cfv_id=3706)
+
+
+@pytest.mark.asyncio
+async def test_delete_suite_propagates_unexpected_errors(service: TestHierarchyService, mock_client: MagicMock) -> None:
+    """Delete suite propagates non-not-found errors."""
+    mock_client.delete_tree_group.side_effect = RuntimeError("boom")
+
+    with pytest.raises(RuntimeError, match="boom"):
+        await service.delete_suite(suite_id=11)
+
+
+@pytest.mark.asyncio
+async def test_delete_suite_api_error_is_idempotent_when_suite_absent(
+    service: TestHierarchyService, mock_client: MagicMock
+) -> None:
+    """Delete suite treats API errors as idempotent if suite no longer exists."""
+    mock_client.delete_tree_group.side_effect = AllureAPIError("boom")
+    mock_client.list_trees.return_value = PageTreeDtoV2(content=[])
+
+    deleted = await service.delete_suite(suite_id=11)
+
+    assert deleted is False
 
 
 @pytest.mark.asyncio

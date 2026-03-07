@@ -77,6 +77,10 @@ class CleanupTracker:
         """
         self._test_suites.append(suite_id)
 
+    def track_suite(self, suite_id: int) -> None:
+        """Backward-compatible alias for tracking a suite entity."""
+        self.track_test_suite(suite_id)
+
     def track_test_plan(self, plan_id: int) -> None:
         """Track a test plan for cleanup.
 

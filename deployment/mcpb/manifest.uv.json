@@ -162,6 +162,10 @@
       "description": "Assign test cases to a target hierarchy suite."
     },
     {
+      "name": "delete_test_suite",
+      "description": "Delete/archive an obsolete hierarchy test suite."
+    },
+    {
       "name": "create_launch",
       "description": "Create a new launch in Allure TestOps."
     },

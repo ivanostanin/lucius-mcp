@@ -6,6 +6,7 @@ from src.tools.create_test_layer_schema import create_test_layer_schema
 from src.tools.create_test_suite import create_test_suite
 from src.tools.delete_test_layer import delete_test_layer
 from src.tools.delete_test_layer_schema import delete_test_layer_schema
+from src.tools.delete_test_suite import delete_test_suite
 from src.tools.list_test_layer_schemas import list_test_layer_schemas
 from src.tools.list_test_layers import list_test_layers
 from src.tools.list_test_suites import list_test_suites
@@ -19,6 +20,7 @@ __all__ = [
     "create_test_suite",
     "delete_test_layer",
     "delete_test_layer_schema",
+    "delete_test_suite",
     "list_test_layer_schemas",
     "list_test_layers",
     "list_test_suites",

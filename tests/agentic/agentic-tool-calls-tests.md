@@ -45,7 +45,7 @@ To ensure robust end-to-end validation, any AI agent executing this plan MUST fo
   - `link/unlink`: `src/tools/link_shared_step.py:38-93`, `src/tools/unlink_shared_step.py:29-68`
   - `test_layers` tools: `src/tools/create_test_layer.py:11-33`, `src/tools/list_test_layers.py:11-38`, `src/tools/update_test_layer.py:11-33`, `src/tools/delete_test_layer.py:11-31`
   - `test_layer_schema` tools: `src/tools/create_test_layer_schema.py:11-39`, `src/tools/list_test_layer_schemas.py:11-43`, `src/tools/update_test_layer_schema.py:11-40`, `src/tools/delete_test_layer_schema.py:11-31`
-  - `test_hierarchy` tools: `src/tools/create_test_suite.py:18-43`, `src/tools/list_test_suites.py:28-61`, `src/tools/assign_test_cases_to_suite.py:18-46`
+  - `test_hierarchy` tools: `src/tools/create_test_suite.py:18-43`, `src/tools/list_test_suites.py:28-61`, `src/tools/assign_test_cases_to_suite.py:18-46`, `src/tools/delete_test_suite.py:10-45`
   - `launches`: `src/tools/launches.py:11-112`
 
 ## Reusable test data & conventions (for future reuse)
@@ -53,7 +53,7 @@ To ensure robust end-to-end validation, any AI agent executing this plan MUST fo
 - **Attachment payload** (1x1 pixel, from `tests/e2e/conftest.py:88-90`):
   - `pixel_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNiAAAABgANjd8qAAAAAElFTkSuQmCC"`
 - **Track IDs** as you go: `TEST_CASE_ID`, `SHARED_STEP_ID`, `LAYER_ID`, `SCHEMA_ID`, `LAUNCH_ID`, `SUITE_ID`.
-- **Cleanup policy**: use delete tools for cases/steps/layers/schemas/custom-field values. Hierarchy currently has no suite delete tool, so use unique suite names and always cleanup created test cases with `delete_test_case`.
+- **Cleanup policy**: use delete tools for cases/steps/layers/schemas/custom-field values and hierarchy suites (`delete_test_suite`).
 
 ## Tool inventory (must be covered)
 From `src/tools/__init__.py:24-79`:
@@ -68,7 +68,7 @@ From `src/tools/__init__.py:24-79`:
 - `link_shared_step`, `unlink_shared_step`
 - `list_test_layers`, `create_test_layer`, `update_test_layer`, `delete_test_layer`
 - `list_test_layer_schemas`, `create_test_layer_schema`, `update_test_layer_schema`, `delete_test_layer_schema`
-- `create_test_suite`, `list_test_suites`, `assign_test_cases_to_suite`
+- `create_test_suite`, `list_test_suites`, `assign_test_cases_to_suite`, `delete_test_suite`
 - `list_integrations`
 - `create_test_plan`, `update_test_plan`, `manage_test_plan_content`, `list_test_plans`, `delete_test_plan`
 - `create_defect`, `get_defect`, `update_defect`, `delete_defect`, `list_defects`, `link_defect_to_test_case`, `list_defect_test_cases`
@@ -208,7 +208,11 @@ From `src/tools/__init__.py:24-79`:
      - Action: Capture `id` as `TC_HIER_ID`.
   5. **Assign to Suite**: `assign_test_cases_to_suite(suite_id=SUITE_ID, test_case_ids=[TC_HIER_ID])`
      - Expectation: Output contains `Assigned 1 test case(s)`.
-  6. **Cleanup Created Test Case**: `delete_test_case(test_case_id=TC_HIER_ID, confirm=true)`
+  6. **Delete Nested Suite**: `delete_test_suite(suite_id=SUITE_ID, confirm=true)`
+     - Expectation: Output confirms suite deletion (idempotent).
+  7. **Verify Deletion**: `list_test_suites(include_empty=true)`
+     - Expectation: Output no longer contains `SUITE_ID`.
+  8. **Cleanup Created Test Case**: `delete_test_case(test_case_id=TC_HIER_ID, confirm=true)`
      - Expectation: Output contains archived/already-archived confirmation.
 
 #### 8. Launches
@@ -399,7 +403,7 @@ From `src/tools/__init__.py:24-79`:
 - Shared steps: create/list/update/delete messages as in `shared_steps.py`.
 - Link/unlink: confirmation plus updated steps preview (`link_shared_step.py:91-93`, `unlink_shared_step.py:65-68`).
 - Test layers/schemas: success or info messages as defined in tool files.
-- Test hierarchy: suite create/list and assignment messages as defined in hierarchy tool files.
+- Test hierarchy: suite create/list/assign/delete messages as defined in hierarchy tool files.
 - Launches: formatted list with pagination (`launches.py:91-112`).
 - Cleanup tools: fixed safeguard warning text when `confirm=false`; deletion count summary when `confirm=true`.
 
@@ -408,7 +412,7 @@ From `src/tools/__init__.py:24-79`:
 - **Custom fields**: 4 covers `get_custom_fields`.
 - **Shared steps**: 5 covers `create_shared_step`, `list_shared_steps`, `update_shared_step`, `delete_shared_step`, `link_shared_step`, `unlink_shared_step`.
 - **Test layers**: 6 covers `list_test_layers`, `create_test_layer`, `update_test_layer`, `delete_test_layer`, `list_test_layer_schemas`, `create_test_layer_schema`, `update_test_layer_schema`, `delete_test_layer_schema`.
-- **Test hierarchy**: 7 covers `create_test_suite`, `list_test_suites`, `assign_test_cases_to_suite` (+ test-case cleanup via `delete_test_case`).
+- **Test hierarchy**: 7 covers `create_test_suite`, `list_test_suites`, `assign_test_cases_to_suite`, `delete_test_suite` (+ test-case cleanup via `delete_test_case`).
 - **Launches**: 8 covers `create_launch`, `list_launches`, `get_launch`.
 - **Custom Field Values**: 9 covers `create_custom_field_value`, `list_custom_field_values`, `update_custom_field_value`, `delete_custom_field_value`.
 - **Issue Linking & Integrations**: 10 covers `list_integrations` and `issues` parameter in `create_test_case` and `update_test_case` (add, remove, clear, explicit integration selection).
