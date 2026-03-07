@@ -1,7 +1,7 @@
 import logging
 
 from src.client import AllureClient
-from src.client.exceptions import AllureNotFoundError, AllureValidationError
+from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -24,11 +24,20 @@ class CustomFieldService:
 
         deleted_count = 0
         for field_id in project_field_ids:
-            if await self._is_field_in_use(field_id):
-                continue
+            try:
+                if await self._is_field_in_use(field_id):
+                    continue
 
-            if await self._remove_field_from_project(field_id):
-                deleted_count += 1
+                if await self._remove_field_from_project(field_id):
+                    deleted_count += 1
+            except AllureAPIError as exc:
+                logger.warning(
+                    "Failed to process custom field %s in project %s during cleanup: %s",
+                    field_id,
+                    self._project_id,
+                    exc,
+                )
+                continue
 
         return deleted_count
 
@@ -57,15 +66,18 @@ class CustomFieldService:
         return sorted(set(field_ids))
 
     async def _is_field_in_use(self, field_id: int) -> bool:
-        usage_stats = await self._client.count_test_cases_in_projects(
-            project_ids=[self._project_id],
-            custom_field_id=field_id,
-            deleted=False,
-        )
+        # Evaluate usage in both active and archived test cases to avoid
+        # removing fields still referenced in project history.
+        for deleted in (False, True):
+            usage_stats = await self._client.count_test_cases_in_projects(
+                project_ids=[self._project_id],
+                custom_field_id=field_id,
+                deleted=deleted,
+            )
 
-        for stat in usage_stats:
-            if stat.id == self._project_id:
-                return (stat.test_case_count or 0) > 0
+            for stat in usage_stats:
+                if stat.id == self._project_id and (stat.test_case_count or 0) > 0:
+                    return True
         return False
 
     async def _remove_field_from_project(self, field_id: int) -> bool:

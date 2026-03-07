@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, call
 
 import pytest
 
-from src.client.exceptions import AllureNotFoundError
+from src.client.exceptions import AllureAPIError, AllureNotFoundError
 from src.services.custom_field_service import CustomFieldService
 from src.services.shared_step_service import SharedStepService
 from src.services.test_case_service import TestCaseService
@@ -29,7 +29,7 @@ async def test_cleanup_archived_test_cases_force_deletes_archived_and_deleted(mo
                     SimpleNamespace(id=102, status=SimpleNamespace(name="Deleted")),
                 ]
             ),
-            SimpleNamespace(content=[SimpleNamespace(id=103, status=SimpleNamespace(name="Draft"))]),
+            SimpleNamespace(content=[]),
         ]
     )
     mock_client.delete_test_case = AsyncMock()
@@ -41,6 +41,23 @@ async def test_cleanup_archived_test_cases_force_deletes_archived_and_deleted(mo
         call(101, force=True),
         call(102, force=True),
     ]
+
+
+@pytest.mark.asyncio
+async def test_cleanup_archived_test_cases_accepts_missing_status(mock_client: MagicMock) -> None:
+    service = TestCaseService(client=mock_client)
+    mock_client.list_deleted_test_cases = AsyncMock(
+        side_effect=[
+            SimpleNamespace(content=[SimpleNamespace(id=999, status=None)]),
+            SimpleNamespace(content=[]),
+        ]
+    )
+    mock_client.delete_test_case = AsyncMock()
+
+    deleted_count = await service.cleanup_archived(page_size=100)
+
+    assert deleted_count == 1
+    mock_client.delete_test_case.assert_awaited_once_with(999, force=True)
 
 
 @pytest.mark.asyncio
@@ -83,6 +100,7 @@ async def test_cleanup_unused_custom_fields_removes_only_unused(mock_client: Mag
         side_effect=[
             [SimpleNamespace(id=1, test_case_count=3)],
             [SimpleNamespace(id=1, test_case_count=0)],
+            [SimpleNamespace(id=1, test_case_count=0)],
         ]
     )
     mock_client.remove_custom_field_from_project = AsyncMock()
@@ -93,5 +111,37 @@ async def test_cleanup_unused_custom_fields_removes_only_unused(mock_client: Mag
     assert mock_client.count_test_cases_in_projects.await_args_list == [
         call(project_ids=[1], custom_field_id=201, deleted=False),
         call(project_ids=[1], custom_field_id=202, deleted=False),
+        call(project_ids=[1], custom_field_id=202, deleted=True),
     ]
     mock_client.remove_custom_field_from_project.assert_awaited_once_with(custom_field_id=202, project_id=1)
+
+
+@pytest.mark.asyncio
+async def test_cleanup_unused_custom_fields_continues_when_remove_fails(mock_client: MagicMock) -> None:
+    service = CustomFieldService(client=mock_client)
+    mock_client.list_project_custom_fields = AsyncMock(
+        side_effect=[
+            [
+                SimpleNamespace(custom_field=SimpleNamespace(id=301)),
+                SimpleNamespace(custom_field=SimpleNamespace(id=302)),
+            ],
+            [],
+        ]
+    )
+    mock_client.count_test_cases_in_projects = AsyncMock(
+        side_effect=[
+            [SimpleNamespace(id=1, test_case_count=0)],
+            [SimpleNamespace(id=1, test_case_count=0)],
+            [SimpleNamespace(id=1, test_case_count=0)],
+            [SimpleNamespace(id=1, test_case_count=0)],
+        ]
+    )
+    mock_client.remove_custom_field_from_project = AsyncMock(side_effect=[AllureAPIError("blocked"), None])
+
+    deleted_count = await service.cleanup_unused(page_size=100)
+
+    assert deleted_count == 1
+    assert mock_client.remove_custom_field_from_project.await_args_list == [
+        call(custom_field_id=301, project_id=1),
+        call(custom_field_id=302, project_id=1),
+    ]

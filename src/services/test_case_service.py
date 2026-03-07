@@ -574,9 +574,6 @@ class TestCaseService:
             for row in rows:
                 if row.id is None:
                     continue
-                status_name = (row.status.name or "").lower() if row.status else ""
-                if status_name and status_name not in {"archived", "deleted"}:
-                    continue
                 archived_ids.append(row.id)
 
             if len(rows) < page_size:
