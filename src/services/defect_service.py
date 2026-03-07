@@ -228,6 +228,7 @@ class DefectService:
             target_integration_id = await integration_service.resolve_integration_for_issues(
                 integration_id=integration_id,
                 integration_name=integration_name,
+                project_id=self._project_id,
             )
         else:
             defect = await self.get_defect(defect_id)
@@ -244,6 +245,7 @@ class DefectService:
                 target_integration_id = await integration_service.resolve_integration_for_issues(
                     integration_id=integration_id,
                     integration_name=integration_name,
+                    project_id=self._project_id,
                 )
 
         try:

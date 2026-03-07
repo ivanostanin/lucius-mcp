@@ -24,8 +24,9 @@ async def test_list_integrations_tool_output(mock_from_env):
     """Test the output formatting of list_integrations tool."""
     mock_client = AsyncMock()
     mock_from_env.return_value.__aenter__.return_value = mock_client
+    mock_client.get_project = Mock(return_value=17)
 
-    mock_client.get_integrations.return_value = [
+    mock_client.get_project_available_integrations.return_value = [
         IntegrationDto(id=1, name="Jira Instance", info=IntegrationInfoDto(type=IntegrationTypeDto.JIRA)),
         IntegrationDto(id=2, name="GitHub Repo", info=IntegrationInfoDto(type=IntegrationTypeDto.GITHUB)),
     ]
@@ -50,7 +51,8 @@ async def test_list_integrations_tool_empty(mock_from_env):
     """Test list_integrations tool when no integrations are found."""
     mock_client = AsyncMock()
     mock_from_env.return_value.__aenter__.return_value = mock_client
-    mock_client.get_integrations.return_value = []
+    mock_client.get_project = Mock(return_value=17)
+    mock_client.get_project_available_integrations.return_value = []
 
     result = await list_integrations()
     assert "No integrations configured" in result

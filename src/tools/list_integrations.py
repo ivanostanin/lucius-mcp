@@ -14,8 +14,8 @@ async def list_integrations(
         Field(
             description=(
                 "Optional override for the default Project ID. "
-                "Note: Integrations are configured at the instance level, not per-project, "
-                "but this parameter is accepted for API consistency."
+                "When provided (or from environment default), integrations are filtered "
+                "to those available for that project."
             )
         ),
     ] = None,
@@ -27,8 +27,8 @@ async def list_integrations(
 
     Args:
         project_id: Optional override for the default Project ID.
-            Note: Integrations are configured at the instance level, not per-project,
-            but this parameter is accepted for API consistency.
+            When provided (or from environment default), integrations are filtered
+            to those available for that project.
 
     Returns:
         A formatted list of available integrations with their IDs and names.
@@ -46,7 +46,7 @@ async def list_integrations(
     """
     async with AllureClient.from_env(project=project_id) as client:
         service = IntegrationService(client)
-        integrations = await service.list_integrations()
+        integrations = await service.list_integrations(project_id=client.get_project())
 
         if not integrations:
             return (

@@ -43,7 +43,7 @@ async def test_e2e_issue_lifecycle(
     list_output = await list_integrations(project_id=project_id)
     assert "**Available Integrations**" in list_output
 
-    integrations = await allure_client.get_integrations()
+    integrations = await allure_client.get_project_available_integrations(project_id)
     if not integrations:
         pytest.skip("No integrations configured in the environment. Skipping issue link E2E.")
 

@@ -37,6 +37,14 @@ async def test_list_integrations(service, mock_client, integrations):
 
 
 @pytest.mark.asyncio
+async def test_list_integrations_project_scoped(service, mock_client, integrations):
+    mock_client.get_project_available_integrations.return_value = [integrations[1]]
+    result = await service.list_integrations(project_id=42)
+    assert result == [integrations[1]]
+    mock_client.get_project_available_integrations.assert_called_once_with(42)
+
+
+@pytest.mark.asyncio
 async def test_get_integration_by_id_success(service, mock_client, integrations):
     mock_client.get_integrations.return_value = integrations
     result = await service.get_integration_by_id(1)
@@ -104,6 +112,14 @@ async def test_resolve_integration_for_issues_single(service, mock_client):
     mock_client.get_integrations.return_value = integrations
     result = await service.resolve_integration_for_issues()
     assert result == 1
+
+
+@pytest.mark.asyncio
+async def test_resolve_integration_for_issues_project_filtered_single(service, mock_client):
+    mock_client.get_project_available_integrations.return_value = [IntegrationDto(id=9, name="Project Jira")]
+    result = await service.resolve_integration_for_issues(project_id=7)
+    assert result == 9
+    mock_client.get_project_available_integrations.assert_called_once_with(7)
 
 
 @pytest.mark.asyncio
