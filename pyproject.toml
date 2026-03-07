@@ -19,6 +19,7 @@ dependencies = [
     "wsproto>=1.3.2",
     "python-json-logger>=2.0.7",
     "rich>=13.7.0",
+    "umami-analytics>=0.3.22",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

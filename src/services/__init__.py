@@ -6,6 +6,7 @@ from .defect_service import DefectService
 from .plan_service import PlanService
 from .search_service import SearchService
 from .shared_step_service import SharedStepService
+from .telemetry_service import TelemetryService
 from .test_case_service import TestCaseService
 from .test_hierarchy_service import TestHierarchyService
 from .test_layer_service import TestLayerService
@@ -17,6 +18,7 @@ __all__ = [
     "PlanService",
     "SearchService",
     "SharedStepService",
+    "TelemetryService",
     "TestCaseService",
     "TestHierarchyService",
     "TestLayerService",

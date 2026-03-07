@@ -57,6 +57,35 @@ claude mcp add testops-mcp --transport stdio \
 
 For detailed setup, including Claude Desktop (MCPB) integration, see [Setup Guide](docs/setup.md).
 
+## 🔐 Telemetry & Privacy
+
+Lucius includes privacy-preserving telemetry to help maintainers understand runtime and tool usage trends.
+
+- Telemetry is enabled by default.
+- Telemetry runtime settings are defined in [`src/utils/config.py`](src/utils/config.py) via `TelemetryConfig`.
+- Umami is the single telemetry backend and events are sent via the `umami-python` client.
+- To disable telemetry at runtime without code edits, set `TELEMETRY_ENABLED=false`.
+- Payloads include runtime/tool metadata (version, platform, mode, deployment method, outcome, duration bucket).
+- Sensitive identifiers are hashed before sending (for example endpoint host and project id).
+- Tool arguments, test content, API tokens, and secret values are never sent.
+
+### Telemetry Data Dictionary
+
+| Field | Purpose | Example | Sensitive/Hashed |
+|:------|:--------|:--------|:-----------------|
+| `server_version` | Server version trend | `0.6.1` | No |
+| `python_version` | Runtime compatibility insight | `3.14.0` | No |
+| `platform` | OS/arch distribution | `darwin-arm64` | No |
+| `mcp_mode` | Transport usage | `stdio` | No |
+| `deployment_method` | Install/run footprint | `uvx+pypi` | No |
+| `tool_name` | Tool adoption | `create_test_case` | No |
+| `outcome` | Success/error ratio | `success` | No |
+| `duration_bucket` | Performance trend | `100-500ms` | No |
+| `error_category` | Failure classification | `validation` | No |
+| `endpoint_host_hash` | Installation grouping | `f8a2...` | Hashed |
+| `project_id_hash` | Project-level grouping | `9d71...` | Hashed |
+| `installation_id_hash` | Longitudinal installation metric | `b02e...` | Hashed |
+
 ## 📂 Documentation
 
 Full documentation is available in the [docs/](docs/index.md) folder:
