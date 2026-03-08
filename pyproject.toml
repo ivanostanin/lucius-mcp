@@ -9,7 +9,7 @@ authors = [{ name = "Ivan Ostanin", email = "ivan@ostanin.me" }]
 keywords = ["mcp", "allure", "testops", "allure-testops", "mcp-server", "fastmcp", "model-context-protocol"]
 requires-python = ">=3.14"
 dependencies = [
-    "fastmcp>=2.14.4",
+    "fastmcp>=3.0.0",
     "httpx>=0.28.1",
     "pydantic>=2.12.5",
     "pydantic-settings>=2.12.0",
