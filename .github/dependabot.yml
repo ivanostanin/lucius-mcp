@@ -1,0 +1,31 @@
+version: 2
+updates:
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    labels: ["dependencies", "python"]
+    reviewers:
+      - "ivanostanin"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    labels: ["dependencies", "github-actions"]
+    reviewers:
+      - "ivanostanin"
+
+  - package-ecosystem: "docker"
+    directory: "/deployment"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    labels: ["dependencies", "docker"]
+    reviewers:
+      - "ivanostanin"
