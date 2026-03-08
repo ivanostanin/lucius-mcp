@@ -2,10 +2,7 @@
 
 ## Supported Versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| >= 0.4  | :white_check_mark: |
-| < 0.4   | :x:                |
+Security fixes are applied to the latest version on the default branch.
 
 ## Reporting a Vulnerability
 
