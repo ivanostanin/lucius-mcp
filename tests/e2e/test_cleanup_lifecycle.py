@@ -113,7 +113,7 @@ async def test_cleanup_archived_test_cases_e2e(
     for _ in range(10):
         try:
             await allure_client.get_test_case(created.id)
-        except (AllureNotFoundError, TestCaseNotFoundError):
+        except AllureNotFoundError, TestCaseNotFoundError:
             break
         await asyncio.sleep(0.5)
     else:
