@@ -16,7 +16,7 @@ jobs:
   mcpb-build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Node.js for mcpb
         uses: actions/setup-node@v6
