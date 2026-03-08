@@ -1,6 +1,6 @@
-# Lucius MCP Server
+# Allure TestOps MCP Server
 
-A specialized Model Context Protocol (MCP) server for Allure TestOps, built with `FastMCP` and `Starlette`.
+Lucius is a specialized Model Context Protocol (MCP) server for Allure TestOps, built with `FastMCP` and `Starlette`.
 
 ## 🎯 Motivation
 
