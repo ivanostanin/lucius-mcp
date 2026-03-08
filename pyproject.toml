@@ -1,6 +1,6 @@
 [project]
 name = "lucius-mcp"
-version = "0.7.0"
+version = "0.7.1"
 description = "Allure TestOps MCP Server"
 readme = "README.md"
 license = "Apache-2.0"
@@ -20,6 +20,10 @@ dependencies = [
     "python-json-logger>=2.0.7",
     "rich>=13.7.0",
     "umami-analytics>=0.3.22",
+    "python-multipart>=0.0.22",
+    "urllib3>=2.6.3",
+    "cryptography>=46.0.5",
+    "authlib>=1.6.7",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
