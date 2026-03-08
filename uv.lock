@@ -866,11 +866,11 @@ wheels = [
 
 [[package]]
 name = "openapi-generator-cli"
-version = "7.19.0"
+version = "7.20.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/9a/7a/520866b59e6bb3f9b4bbd4d9efebb94a3a619c5dfe42ad67ab1ea924c00f/openapi_generator_cli-7.19.0.tar.gz", hash = "sha256:0008c9d6ab68c44230516e582081cb74d6d545c9cb77b2c569a6eca7bf4940de", size = 27810724, upload-time = "2026-01-20T01:51:10.575Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/43/42/fee27b2dc5910899e205d8e166c3cfc750871c2d9ebe668e5b5a294bca43/openapi_generator_cli-7.20.0.tar.gz", hash = "sha256:ed1b7f2f70feeafc9a4d7b666e78c54ce647b1c1def93e127b3e6c95cf011922", size = 27898927, upload-time = "2026-02-17T02:12:14.818Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/41/29/c5e7e1e53b0fa39da0d182ace22c69473543fa0ff09be9806e4c6ce8a7cf/openapi_generator_cli-7.19.0-py3-none-any.whl", hash = "sha256:9ca1d6b570e60c8ffed4611e6250743d2b2a2cc8b9fe39066a204ecedf6a59c6", size = 27825328, upload-time = "2026-01-20T01:51:06.609Z" },
+    { url = "https://files.pythonhosted.org/packages/ac/ac/098a1084ea3b6d8fb9fe0123601eeffb946882c3dc35c6c9f088515178b0/openapi_generator_cli-7.20.0-py3-none-any.whl", hash = "sha256:a6f566b261af11613e75c575f278fa82947940a7d911e7cc357c8decf8001c37", size = 27913192, upload-time = "2026-02-17T02:12:18.566Z" },
 ]
 
 [[package]]
