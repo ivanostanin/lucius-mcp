@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   python-quality:
     uses: ./.github/workflows/_python_check.yml
@@ -25,7 +28,6 @@ jobs:
     needs: [python-quality, extract-version]
     permissions:
       contents: read
-      packages: write
     uses: ./.github/workflows/_mcpb_build.yml
     with:
       version: ${{ needs.extract-version.outputs.version }}
