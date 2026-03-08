@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import Mapping
 
 from src.main import mcp
@@ -10,7 +11,8 @@ from src.tools.annotations import (
 
 
 def _get_registered_tools() -> dict[str, object]:
-    return dict(mcp._tool_manager._tools)
+    tools = asyncio.run(mcp.list_tools(run_middleware=False))
+    return {tool.name: tool for tool in tools}
 
 
 def _annotation_value(annotations: object, key: str) -> object:

@@ -1,3 +1,4 @@
+import asyncio
 import json
 from pathlib import Path
 
@@ -40,7 +41,8 @@ def test_manifest_tools_match_code():
         pytest.skip("mcp instance not found in src.main")
 
     mcp_instance = module.mcp
-    code_tools = set(mcp_instance._tool_manager._tools.keys())
+    tools = asyncio.run(mcp_instance.list_tools(run_middleware=False))
+    code_tools = {tool.name for tool in tools}
 
     for server_type in ["uv", "python"]:
         manifest_path = get_manifest_path(server_type)
