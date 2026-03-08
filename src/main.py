@@ -10,7 +10,7 @@ from starlette.routing import Mount
 
 from src.services.telemetry_service import TelemetryService
 from src.tools import all_tools
-from src.tools.annotations import get_tool_annotations, validate_tool_annotation_coverage
+from src.tools.annotations import get_tool_annotations, get_tool_tags, validate_tool_annotation_coverage
 from src.utils.config import settings
 from src.utils.error import agent_hint_handler
 from src.utils.logger import configure_logging, get_logger
@@ -35,7 +35,9 @@ mcp = FastMCP(
 # Register tools
 validate_tool_annotation_coverage({tool.__name__ for tool in all_tools})
 for tool in all_tools:
-    mcp.tool(annotations=get_tool_annotations(tool.__name__))(wrap_tool_with_telemetry(tool))
+    mcp.tool(tags=get_tool_tags(tool.__name__), annotations=get_tool_annotations(tool.__name__))(
+        wrap_tool_with_telemetry(tool)
+    )
 
 # The ASGI app and main app are created lazily or only when needed for HTTP mode
 _mcp_asgi = None

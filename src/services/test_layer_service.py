@@ -123,7 +123,7 @@ class TestLayerService:
         except ApiException as e:
             self._client._handle_api_exception(e)
             raise
-        except (AllureNotFoundError, AllureValidationError, AllureAPIError):
+        except AllureNotFoundError, AllureValidationError, AllureAPIError:
             raise
         except Exception as e:
             raise AllureAPIError(f"Failed to get test layer {layer_id}: {e}") from e
@@ -307,7 +307,7 @@ class TestLayerService:
         except ApiException as e:
             self._client._handle_api_exception(e)
             raise
-        except (AllureNotFoundError, AllureValidationError, AllureAPIError):
+        except AllureNotFoundError, AllureValidationError, AllureAPIError:
             raise
         except Exception as e:
             raise AllureAPIError(f"Failed to get test layer schema {schema_id}: {e}") from e

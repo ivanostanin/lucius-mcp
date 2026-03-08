@@ -5,6 +5,7 @@ from src.main import mcp
 from src.tools.annotations import (
     DESTRUCTIVE_IDEMPOTENT_TOOLS,
     TOOL_HINT_POLICY,
+    TOOL_TAGS,
     generate_tool_title,
     validate_tool_annotation_coverage,
 )
@@ -24,9 +25,11 @@ def _annotation_value(annotations: object, key: str) -> object:
 def test_annotation_policy_matches_registered_tools() -> None:
     registered_tool_names = set(_get_registered_tools().keys())
     policy_tool_names = set(TOOL_HINT_POLICY.keys())
+    tag_policy_tool_names = set(TOOL_TAGS.keys())
 
     assert len(registered_tool_names) == 55
     assert registered_tool_names == policy_tool_names
+    assert registered_tool_names == tag_policy_tool_names
 
     validate_tool_annotation_coverage(registered_tool_names)
 
@@ -43,6 +46,7 @@ def test_all_registered_tools_have_expected_annotations() -> None:
         assert _annotation_value(annotations, "readOnlyHint") == expected["readOnlyHint"]
         assert _annotation_value(annotations, "destructiveHint") == expected["destructiveHint"]
         assert _annotation_value(annotations, "idempotentHint") == expected["idempotentHint"]
+        assert getattr(tool, "tags", set()) == TOOL_TAGS[tool_name]
 
 
 def test_new_cleanup_and_suite_delete_tools_are_destructive_idempotent() -> None:

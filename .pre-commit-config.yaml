@@ -1,6 +1,13 @@
 repos:
   - repo: local
     hooks:
+      - id: sync-mcp-manifest-on-tools-change
+        name: sync-mcp-manifest-on-tools-change
+        entry: scripts/pre_commit_sync_mcp_manifest.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+
       - id: ruff-format
         name: ruff-format
         entry: uv run ruff format .

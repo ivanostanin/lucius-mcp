@@ -124,6 +124,64 @@ def _build_hint_policy() -> dict[str, dict[str, bool]]:
 
 TOOL_HINT_POLICY: Final[dict[str, dict[str, bool]]] = _build_hint_policy()
 
+TOOL_TAGS: Final[dict[str, frozenset[str]]] = {
+    "assign_test_cases_to_suite": frozenset({"test-case", "test-suite"}),
+    "close_launch": frozenset({"launch"}),
+    "create_custom_field_value": frozenset({"custom-field", "custom-field-value"}),
+    "create_defect": frozenset({"defect"}),
+    "create_defect_matcher": frozenset({"defect", "defect-matcher"}),
+    "create_launch": frozenset({"launch"}),
+    "create_shared_step": frozenset({"shared-step"}),
+    "create_test_case": frozenset({"test-case"}),
+    "create_test_layer": frozenset({"test-layer"}),
+    "create_test_layer_schema": frozenset({"test-layer", "test-layer-schema"}),
+    "create_test_plan": frozenset({"test-plan"}),
+    "create_test_suite": frozenset({"test-suite"}),
+    "delete_archived_shared_steps": frozenset({"shared-step"}),
+    "delete_archived_test_cases": frozenset({"test-case"}),
+    "delete_custom_field_value": frozenset({"custom-field", "custom-field-value"}),
+    "delete_defect": frozenset({"defect"}),
+    "delete_defect_matcher": frozenset({"defect", "defect-matcher"}),
+    "delete_launch": frozenset({"launch"}),
+    "delete_shared_step": frozenset({"shared-step"}),
+    "delete_test_case": frozenset({"test-case"}),
+    "delete_test_layer": frozenset({"test-layer"}),
+    "delete_test_layer_schema": frozenset({"test-layer", "test-layer-schema"}),
+    "delete_test_suite": frozenset({"test-suite"}),
+    "delete_unused_custom_fields": frozenset({"custom-field", "test-case"}),
+    "get_custom_fields": frozenset({"custom-field"}),
+    "get_defect": frozenset({"defect"}),
+    "get_launch": frozenset({"launch"}),
+    "get_test_case_custom_fields": frozenset({"custom-field", "test-case"}),
+    "get_test_case_details": frozenset({"test-case"}),
+    "link_defect_to_test_case": frozenset({"defect", "integration", "test-case"}),
+    "link_shared_step": frozenset({"shared-step", "test-case"}),
+    "list_custom_field_values": frozenset({"custom-field", "custom-field-value"}),
+    "list_defect_matchers": frozenset({"defect", "defect-matcher"}),
+    "list_defect_test_cases": frozenset({"defect", "test-case"}),
+    "list_defects": frozenset({"defect"}),
+    "list_integrations": frozenset({"integration"}),
+    "list_launches": frozenset({"launch"}),
+    "list_shared_steps": frozenset({"shared-step"}),
+    "list_test_cases": frozenset({"test-case"}),
+    "list_test_layer_schemas": frozenset({"test-layer", "test-layer-schema"}),
+    "list_test_layers": frozenset({"test-layer"}),
+    "list_test_plans": frozenset({"test-plan"}),
+    "list_test_suites": frozenset({"test-suite"}),
+    "manage_test_plan_content": frozenset({"test-case", "test-plan"}),
+    "reopen_launch": frozenset({"launch"}),
+    "search_test_cases": frozenset({"test-case"}),
+    "unlink_shared_step": frozenset({"shared-step", "test-case"}),
+    "update_custom_field_value": frozenset({"custom-field", "custom-field-value"}),
+    "update_defect": frozenset({"defect"}),
+    "update_defect_matcher": frozenset({"defect", "defect-matcher"}),
+    "update_shared_step": frozenset({"shared-step"}),
+    "update_test_case": frozenset({"test-case"}),
+    "update_test_layer": frozenset({"test-layer"}),
+    "update_test_layer_schema": frozenset({"test-layer", "test-layer-schema"}),
+    "update_test_plan": frozenset({"test-plan"}),
+}
+
 
 def generate_tool_title(tool_name: str) -> str:
     words = tool_name.split("_")
@@ -144,19 +202,30 @@ def get_tool_annotations(tool_name: str) -> ToolAnnotations:
     )
 
 
+def get_tool_tags(tool_name: str) -> set[str]:
+    tags = TOOL_TAGS.get(tool_name)
+    if tags is None:
+        raise KeyError(f"No tags defined for tool '{tool_name}'")
+    return set(tags)
+
+
 def validate_tool_annotation_coverage(tool_names: Set[str] | set[str]) -> None:
-    policy_tool_names = set(TOOL_HINT_POLICY.keys())
     expected_tool_names = set(tool_names)
+    problems: list[str] = []
 
-    missing_in_policy = expected_tool_names - policy_tool_names
-    extra_in_policy = policy_tool_names - expected_tool_names
+    for source_name, source_tool_names in (
+        ("hint policy", set(TOOL_HINT_POLICY.keys())),
+        ("tag policy", set(TOOL_TAGS.keys())),
+    ):
+        missing_in_source = expected_tool_names - source_tool_names
+        extra_in_source = source_tool_names - expected_tool_names
 
-    if missing_in_policy or extra_in_policy:
-        problems: list[str] = []
-        if missing_in_policy:
-            problems.append(f"missing in policy: {sorted(missing_in_policy)}")
-        if extra_in_policy:
-            problems.append(f"extra in policy: {sorted(extra_in_policy)}")
+        if missing_in_source:
+            problems.append(f"missing in {source_name}: {sorted(missing_in_source)}")
+        if extra_in_source:
+            problems.append(f"extra in {source_name}: {sorted(extra_in_source)}")
+
+    if problems:
         raise ValueError("Tool annotation coverage mismatch: " + "; ".join(problems))
 
 
@@ -166,7 +235,9 @@ __all__ = [
     "DESTRUCTIVE_IDEMPOTENT_TOOLS",
     "READ_ONLY_TOOLS",
     "TOOL_HINT_POLICY",
+    "TOOL_TAGS",
     "generate_tool_title",
     "get_tool_annotations",
+    "get_tool_tags",
     "validate_tool_annotation_coverage",
 ]
