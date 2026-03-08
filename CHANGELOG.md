@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.7.1] - 2026-03-08
+
+### Changed
+- Upgraded core and development dependencies, including FastMCP 3, Uvicorn 0.41.0, Pydantic Settings 2.13.1, Rich 14.3.3, Faker 40.8.0, Ruff 0.15.5, and OpenAPI Generator CLI 7.20.0 (#57, #64, #65, #66, #67, #68, #69).
+- Updated GitHub Actions dependencies used in CI and release workflows (`actions/setup-node`, `actions/checkout`, `docker/login-action`, `docker/build-push-action`, `softprops/action-gh-release`) (#59, #60, #61, #62, #63).
+- Refined Dependabot automation configuration for dependency maintenance (#58).
+
+### Fixed
+- Corrected a README documentation issue (#56).
+
 ## [v0.7.0] - 2026-03-08
 
 ### Added
@@ -133,7 +143,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.7.1...HEAD
+[v0.7.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.7.0...v0.7.1
 [v0.7.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.6.1...v0.7.0
 [v0.6.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.6.0...v0.6.1
 [v0.6.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.5.0...v0.6.0
