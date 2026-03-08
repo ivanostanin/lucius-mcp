@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.7.2] - 2026-03-09
+
+### Changed
+- Updated project security policy documentation in `SECURITY.md` (#71).
+
+### Security
+- Tightened GitHub Actions workflow permissions to enforce least-privilege defaults (#72).
+
 ## [v0.7.1] - 2026-03-08
 
 ### Changed
@@ -143,7 +151,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.7.2...HEAD
+[v0.7.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.7.1...v0.7.2
 [v0.7.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.7.0...v0.7.1
 [v0.7.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.6.1...v0.7.0
 [v0.6.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.6.0...v0.6.1
