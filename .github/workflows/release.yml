@@ -87,7 +87,7 @@ jobs:
         uses: actions/checkout@v6.0.2
 
       - name: Download artifacts
-        uses: actions/download-artifact@v8.0.0
+        uses: actions/download-artifact@v8
         with:
           name: mcpb-bundle-${{ needs.validate-version.outputs.version }}
           path: dist/
