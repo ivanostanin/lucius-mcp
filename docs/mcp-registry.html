@@ -1,0 +1,970 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MCP Tool Registry</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f8f9fa;
+      --bg-elev: #fcfcfc;
+      --bg-soft: #f1f3f5;
+      --text: #23272f;
+      --muted: #6a7380;
+      --line: #d8dde3;
+      --accent: #e8771f;
+      --accent-soft: #ffe4cd;
+      --chip: #ffeddc;
+      --shadow: 0 8px 24px rgba(31, 37, 45, 0.08);
+      --sidebar-rhythm: 0.83rem;
+      --top-row-height: 64px;
+      --stat-pill-height: calc(var(--top-row-height) - (2 * var(--sidebar-rhythm)));
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #0a0c10;
+      --bg-elev: #12161d;
+      --bg-soft: #1a202a;
+      --text: #e8edf7;
+      --muted: #9aa6b8;
+      --line: #2a3443;
+      --accent: #5ea2ff;
+      --accent-soft: #24406a;
+      --chip: #223a5f;
+      --shadow: 0 12px 34px rgba(0, 0, 0, 0.45);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 10% -10%, rgba(214, 159, 110, 0.15), transparent 44%),
+        radial-gradient(circle at 90% 0%, rgba(128, 155, 198, 0.12), transparent 40%),
+        var(--bg);
+    }
+
+    .shell {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 1rem;
+      display: grid;
+      gap: 1rem;
+    }
+
+    .header {
+      display: grid;
+      gap: 0.6rem;
+      padding: 1.1rem 1.2rem;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--bg-elev);
+      box-shadow: var(--shadow);
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.2rem, 2.4vw, 1.8rem);
+      letter-spacing: 0.01em;
+    }
+
+    .muted {
+      color: var(--muted);
+      margin: 0;
+      line-height: 1.45;
+      font-size: 0.95rem;
+    }
+
+    .header a {
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .header a:hover {
+      text-decoration: underline;
+    }
+
+    .theme-toggle-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--bg-soft);
+      color: var(--text);
+      font-size: 1rem;
+      cursor: pointer;
+      display: inline-grid;
+      place-items: center;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 1rem;
+      min-height: 72vh;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--bg-elev);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .sidebar {
+      display: grid;
+      grid-template-rows: auto auto auto 1fr;
+    }
+
+    .sidebar-section {
+      padding: 1rem;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .sidebar .sidebar-section:not(:last-child) {
+      padding: var(--sidebar-rhythm) 1rem;
+    }
+
+    .sidebar .sidebar-section.metrics-section {
+      min-height: var(--top-row-height);
+      display: flex;
+      align-items: center;
+    }
+
+    .sidebar .sidebar-section.metrics-section .stats-row {
+      width: 100%;
+    }
+
+    .sidebar-section:last-child {
+      border-bottom: 0;
+      min-height: 0;
+      overflow: auto;
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--sidebar-rhythm);
+    }
+
+    .stat-pill {
+      border: 1px solid var(--line);
+      background: var(--bg-soft);
+      border-radius: 10px;
+      min-height: var(--stat-pill-height);
+      padding: 0.5rem 0.6rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.82rem;
+    }
+
+    .stat-pill .label {
+      color: var(--muted);
+    }
+
+    .stat-pill .value {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    input[type="search"] {
+      width: 100%;
+      padding: 0.66rem 0.72rem;
+      border-radius: 10px;
+      border: 1px solid var(--accent);
+      font: inherit;
+      color: var(--text);
+      background: var(--bg-elev);
+    }
+
+    .filter-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--sidebar-rhythm);
+    }
+
+    .filter-btn {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--bg-elev);
+      color: var(--text);
+      font: inherit;
+      font-size: 0.86rem;
+      padding: 0.46rem 0.55rem;
+      cursor: pointer;
+    }
+
+    .filter-btn.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .groups {
+      display: grid;
+      gap: 0.6rem;
+      padding-bottom: 0.6rem;
+    }
+
+    details.group {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      background: var(--bg-soft);
+    }
+
+    details.group summary {
+      list-style: none;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      gap: 0.8rem;
+      align-items: center;
+      padding: 0.6rem 0.72rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+      border-bottom: 1px solid transparent;
+    }
+
+    details.group[open] summary {
+      border-bottom-color: var(--line);
+    }
+
+    .group-count {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 500;
+    }
+
+    .tool-list {
+      display: grid;
+      gap: 0.25rem;
+      padding: 0.35rem;
+      max-height: 290px;
+      overflow: auto;
+    }
+
+    .tool-row {
+      width: 100%;
+      appearance: none;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      display: block;
+      text-align: left;
+      padding: 0.45rem;
+      cursor: pointer;
+      background: var(--bg-elev);
+      color: var(--text);
+      font: inherit;
+    }
+
+    .tool-row:hover {
+      border-color: var(--accent);
+    }
+
+    .tool-row.selected {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+    }
+
+    .tool-row strong {
+      display: block;
+      font-size: 0.86rem;
+      margin-bottom: 0.15rem;
+    }
+
+    .tool-row span {
+      font-size: 0.77rem;
+      color: var(--muted);
+      line-height: 1.3;
+    }
+
+    .main {
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .main-head {
+      padding: var(--sidebar-rhythm) 1.1rem;
+      min-height: calc(var(--top-row-height) + 8px);
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: flex-start;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .main-head h2 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 400;
+      color: var(--muted);
+    }
+
+    .details-wrap {
+      padding: 1rem;
+      overflow: auto;
+      display: grid;
+      gap: 0.9rem;
+      align-content: start;
+    }
+
+    .empty {
+      border: 1px dashed var(--line);
+      background: var(--bg-soft);
+      border-radius: 12px;
+      color: var(--muted);
+      padding: 1rem;
+      font-size: 0.95rem;
+    }
+
+    .tool-card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0.9rem;
+      background: var(--bg-soft);
+      display: grid;
+      gap: 0.7rem;
+    }
+
+    .tool-title {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .tool-title h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .mono {
+      font-family: "SFMono-Regular", Menlo, Consolas, monospace;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+
+    .chip {
+      font-size: 0.72rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 0.18rem 0.5rem;
+      background: var(--chip);
+      color: var(--text);
+    }
+
+    .chip.hint-yes {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+    }
+
+    .tool-description {
+      font-size: 0.88rem;
+      color: var(--muted);
+      margin: 0;
+      white-space: pre-line;
+      line-height: 1.45;
+    }
+
+    .schema-sections {
+      display: grid;
+      gap: 0.7rem;
+    }
+
+    .schema-block {
+      display: grid;
+      gap: 0.45rem;
+    }
+
+    .schema-widget {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--bg-elev);
+      overflow: hidden;
+    }
+
+    .schema-widget summary {
+      cursor: pointer;
+      list-style: none;
+      font-size: 0.86rem;
+      font-weight: 700;
+      padding: 0.55rem 0.7rem;
+      color: var(--text);
+    }
+
+    .schema-widget[open] summary {
+      border-bottom: 1px solid var(--line);
+    }
+
+    .schema-widget .schema-table,
+    .schema-widget .schema-empty {
+      border-left: 0;
+      border-right: 0;
+      border-bottom: 0;
+      border-top: 0;
+      border-radius: 0;
+      margin: 0;
+    }
+
+    .raw-schema {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--bg-elev);
+      overflow: hidden;
+      margin-top: 0;
+    }
+
+    .raw-schema summary {
+      cursor: pointer;
+      list-style: none;
+      padding: 0.52rem 0.66rem;
+      font-size: 0.83rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .raw-schema pre {
+      margin: 0;
+      padding: 0.7rem;
+      overflow: auto;
+      border-top: 1px solid var(--line);
+      background: var(--bg-soft);
+      font-size: 0.75rem;
+      line-height: 1.4;
+      color: var(--text);
+    }
+
+    .schema-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      background: var(--bg-elev);
+    }
+
+    .schema-table th,
+    .schema-table td {
+      text-align: left;
+      vertical-align: top;
+      padding: 0.5rem 0.55rem;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .schema-table tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .schema-table th {
+      font-weight: 700;
+      color: var(--text);
+      width: 19%;
+      white-space: nowrap;
+      background: var(--bg-soft);
+    }
+
+    .schema-table td.mono {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .schema-table th:nth-child(4) {
+      width: 43%;
+      white-space: normal;
+    }
+
+    .schema-empty {
+      padding: 0.6rem;
+      border-radius: 10px;
+      border: 1px dashed var(--line);
+      color: var(--muted);
+      font-size: 0.85rem;
+      background: var(--bg-elev);
+    }
+
+    @media (max-width: 980px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        max-height: 60vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="header panel">
+      <div class="header-top">
+        <div>
+          <h1 id="server-name">MCP Tool Registry</h1>
+          <p class="muted" id="server-description">Loading manifest...</p>
+        </div>
+        <button id="theme-toggle" class="theme-toggle-btn" type="button" aria-label="Toggle theme">☀️</button>
+      </div>
+      <p class="muted">
+        Project:
+        <a id="project-link" href="https://github.com/ivanostanin/lucius-mcp" target="_blank" rel="noreferrer noopener">
+          github.com/ivanostanin/lucius-mcp
+        </a>
+      </p>
+    </header>
+
+    <section class="layout">
+      <aside class="panel sidebar" aria-label="Tool filters and groups">
+        <div class="sidebar-section">
+          <input id="search-input" type="search" placeholder="Search name, title, description, tags..." />
+        </div>
+
+        <div class="sidebar-section">
+          <div class="filter-buttons">
+            <button id="filter-readonly" class="filter-btn" type="button">Read only</button>
+            <button id="filter-destructive" class="filter-btn" type="button">Destructive</button>
+          </div>
+        </div>
+
+        <div class="sidebar-section metrics-section">
+          <div class="stats-row">
+            <div class="stat-pill">
+              <span class="label">Total</span>
+              <span class="value" id="tools-total">0</span>
+            </div>
+            <div class="stat-pill">
+              <span class="label">Visible</span>
+              <span class="value" id="tools-visible">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="groups" id="groups"></div>
+        </div>
+      </aside>
+
+      <main class="panel main">
+        <div class="main-head">
+          <h2>Selected Tool Details</h2>
+        </div>
+        <div class="details-wrap" id="details"></div>
+      </main>
+    </section>
+  </div>
+
+  <script>
+    const state = {
+      manifest: null,
+      tools: [],
+      selectedToolName: null,
+      filters: {
+        query: "",
+        hintMode: null,
+      },
+      openGroups: new Set(),
+    };
+
+    const elements = {
+      serverName: document.getElementById("server-name"),
+      serverDescription: document.getElementById("server-description"),
+      projectLink: document.getElementById("project-link"),
+      toolsTotal: document.getElementById("tools-total"),
+      toolsVisible: document.getElementById("tools-visible"),
+      searchInput: document.getElementById("search-input"),
+      filterReadOnly: document.getElementById("filter-readonly"),
+      filterDestructive: document.getElementById("filter-destructive"),
+      groups: document.getElementById("groups"),
+      details: document.getElementById("details"),
+      themeToggle: document.getElementById("theme-toggle"),
+    };
+
+    const byText = (value) => (value ?? "").toString().toLowerCase();
+    const asText = (value) => (value ?? "").toString();
+    const escapeHtml = (value) =>
+      asText(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+
+    const normalizeType = (schema) => {
+      if (!schema) return "unknown";
+      if (schema.type) return schema.type;
+      if (Array.isArray(schema.anyOf)) {
+        return schema.anyOf.map((item) => item.type || "unknown").filter(Boolean).join(" | ");
+      }
+      if (Array.isArray(schema.oneOf)) {
+        return schema.oneOf.map((item) => item.type || "unknown").filter(Boolean).join(" | ");
+      }
+      return "object";
+    };
+
+    function formatTag(tag) {
+      return asText(tag)
+        .split(/[-_]+/)
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+    }
+
+    function getPrimaryTag(tool) {
+      const tags = tool?._meta?.fastmcp?.tags;
+      return Array.isArray(tags) && tags.length ? tags[0] : "untagged";
+    }
+
+    function getAllTags(tool) {
+      const tags = tool?._meta?.fastmcp?.tags;
+      return Array.isArray(tags) ? tags : [];
+    }
+
+    function getHints(tool) {
+      return {
+        readOnly: tool?.annotations?.readOnlyHint === true,
+        destructive: tool?.annotations?.destructiveHint === true,
+      };
+    }
+
+    function cleanToolDescription(description) {
+      const text = asText(description);
+      const lines = text.split("\n");
+      const stopWords = new Set(["args:", "returns:", "raises:"]);
+      const keptLines = [];
+
+      for (const rawLine of lines) {
+        const line = rawLine.trim().toLowerCase();
+        if (stopWords.has(line)) break;
+        keptLines.push(rawLine);
+      }
+
+      return keptLines.join("\n").trim();
+    }
+
+    function matchesFilters(tool) {
+      const q = state.filters.query;
+      const hints = getHints(tool);
+      const tags = getAllTags(tool).join(" ");
+      const haystack = [tool.name, tool.title, tool.description, tags].map(byText).join(" ");
+
+      if (q && !haystack.includes(q)) return false;
+      if (state.filters.hintMode === "readOnly" && !hints.readOnly) return false;
+      if (state.filters.hintMode === "destructive" && !hints.destructive) return false;
+      return true;
+    }
+
+    function visibleTools() {
+      return state.tools.filter(matchesFilters);
+    }
+
+    function groupedVisibleTools() {
+      const groups = new Map();
+      for (const tool of visibleTools()) {
+        const tag = getPrimaryTag(tool);
+        if (!groups.has(tag)) groups.set(tag, []);
+        groups.get(tag).push(tool);
+      }
+      return new Map(
+        [...groups.entries()].sort((a, b) => {
+          const byCount = b[1].length - a[1].length;
+          if (byCount !== 0) return byCount;
+          return a[0].localeCompare(b[0]);
+        })
+      );
+    }
+
+    function schemaRows(schema) {
+      if (!schema || !schema.properties) return [];
+      const required = new Set(schema.required || []);
+      return Object.entries(schema.properties).map(([name, def]) => ({
+        name,
+        type: normalizeType(def),
+        required: required.has(name),
+        description: def.description || "",
+      }));
+    }
+
+    function renderGroups() {
+      const grouped = groupedVisibleTools();
+      elements.groups.innerHTML = "";
+
+      if (!grouped.size) {
+        elements.groups.innerHTML = '<p class="muted" style="margin:0;">No tools match current filters.</p>';
+        return;
+      }
+
+      for (const [groupName, tools] of grouped.entries()) {
+        const details = document.createElement("details");
+        details.className = "group";
+        details.open = state.openGroups.has(groupName);
+        details.addEventListener("toggle", () => {
+          if (details.open) state.openGroups.add(groupName);
+          else state.openGroups.delete(groupName);
+        });
+
+        const summary = document.createElement("summary");
+        const summaryName = document.createElement("span");
+        summaryName.textContent = formatTag(groupName);
+        const summaryCount = document.createElement("span");
+        summaryCount.className = "group-count";
+        summaryCount.textContent = `${tools.length} visible`;
+        summary.appendChild(summaryName);
+        summary.appendChild(summaryCount);
+        details.appendChild(summary);
+
+        const list = document.createElement("div");
+        list.className = "tool-list";
+
+        for (const tool of tools) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = `tool-row${state.selectedToolName === tool.name ? " selected" : ""}`;
+          button.addEventListener("click", () => {
+            state.selectedToolName = state.selectedToolName === tool.name ? null : tool.name;
+            render();
+          });
+
+          const toolName = document.createElement("strong");
+          toolName.className = "mono";
+          toolName.textContent = tool.name;
+          const toolDescription = document.createElement("span");
+          const shortDescription = cleanToolDescription(tool.description || "").split("\n")[0].trim();
+          toolDescription.textContent = shortDescription || "No description provided.";
+
+          button.appendChild(toolName);
+          button.appendChild(toolDescription);
+          list.appendChild(button);
+        }
+
+        details.appendChild(list);
+        elements.groups.appendChild(details);
+      }
+    }
+
+    function hintChip(label, value) {
+      return `<span class="chip ${value ? "hint-yes" : ""}">${escapeHtml(label)}: ${value ? "yes" : "no"}</span>`;
+    }
+
+    function renderSchemaTable(schema, key) {
+      const rows = schemaRows(schema);
+      if (!rows.length) {
+        return `<div class="schema-empty">No structured ${key} schema fields.</div>`;
+      }
+      const body = rows
+        .map((row) => `
+          <tr>
+            <td class="mono">${escapeHtml(row.name)}</td>
+            <td>${escapeHtml(row.type)}</td>
+            <td>${row.required ? "yes" : "no"}</td>
+            <td>${row.description ? escapeHtml(row.description) : "<span class='muted'>-</span>"}</td>
+          </tr>`)
+        .join("");
+
+      return `
+        <table class="schema-table">
+          <thead>
+            <tr>
+              <th>Field</th>
+              <th>Type</th>
+              <th>Required</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>${body}</tbody>
+        </table>`;
+    }
+
+    function renderRawSchema(schema, label) {
+      const raw = escapeHtml(JSON.stringify(schema ?? {}, null, 2));
+      return `
+        <details class="raw-schema">
+          <summary>${escapeHtml(label)} Raw JSON</summary>
+          <pre>${raw}</pre>
+        </details>
+      `;
+    }
+
+    function renderSchemaTableSection(title, schema, key) {
+      return `
+        <details class="schema-widget" open>
+          <summary>${escapeHtml(title)}</summary>
+          ${renderSchemaTable(schema, key)}
+        </details>
+      `;
+    }
+
+    function renderSchemaBlock(title, schema, key) {
+      return `
+        <section class="schema-block">
+          ${renderSchemaTableSection(title, schema, key)}
+          ${renderRawSchema(schema, title)}
+        </section>
+      `;
+    }
+
+    function renderDetails() {
+      const tool = state.tools.find((item) => item.name === state.selectedToolName);
+      elements.details.innerHTML = "";
+
+      if (!tool) {
+        elements.details.innerHTML = '<div class="empty">Select a tool from the sidebar to inspect its structure.</div>';
+        return;
+      }
+
+      const hints = getHints(tool);
+      const tags = getAllTags(tool);
+      const card = document.createElement("article");
+      card.className = "tool-card";
+      const cleanedDescription = cleanToolDescription(tool.description || "");
+      card.innerHTML = `
+        <div class="tool-title">
+          <h3>${escapeHtml(tool.name)}</h3>
+          <span class="mono">${escapeHtml(tool.title || "Untitled tool")}</span>
+        </div>
+        <p class="tool-description">${escapeHtml(cleanedDescription || "No description provided.")}</p>
+        <div class="chips">
+          ${tags.map((tag) => `<span class="chip">tag: ${escapeHtml(formatTag(tag))}</span>`).join("") || '<span class="chip">tag: Untagged</span>'}
+          ${hintChip("readOnly", hints.readOnly)}
+          ${hintChip("destructive", hints.destructive)}
+        </div>
+        <div class="schema-sections">
+          ${renderSchemaBlock("Input Schema", tool.inputSchema, "input")}
+          ${renderSchemaBlock("Output Schema", tool.outputSchema, "output")}
+        </div>
+      `;
+      elements.details.appendChild(card);
+    }
+
+    function renderMetrics() {
+      elements.toolsTotal.textContent = String(state.tools.length);
+      elements.toolsVisible.textContent = String(visibleTools().length);
+    }
+
+    function renderHintButtons() {
+      const isReadOnly = state.filters.hintMode === "readOnly";
+      const isDestructive = state.filters.hintMode === "destructive";
+      elements.filterReadOnly.classList.toggle("active", isReadOnly);
+      elements.filterDestructive.classList.toggle("active", isDestructive);
+      elements.filterReadOnly.setAttribute("aria-pressed", String(isReadOnly));
+      elements.filterDestructive.setAttribute("aria-pressed", String(isDestructive));
+    }
+
+    function render() {
+      renderMetrics();
+      renderHintButtons();
+      renderGroups();
+      renderDetails();
+    }
+
+    function bindFilters() {
+      elements.searchInput.addEventListener("input", (event) => {
+        state.filters.query = byText(event.target.value).trim();
+        render();
+      });
+
+      elements.filterReadOnly.addEventListener("click", () => {
+        state.filters.hintMode = state.filters.hintMode === "readOnly" ? null : "readOnly";
+        render();
+      });
+
+      elements.filterDestructive.addEventListener("click", () => {
+        state.filters.hintMode = state.filters.hintMode === "destructive" ? null : "destructive";
+        render();
+      });
+    }
+
+    function getSystemTheme() {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+
+    function setThemeButton(theme) {
+      const isDark = theme === "dark";
+      elements.themeToggle.textContent = isDark ? "🌙" : "☀️";
+      elements.themeToggle.setAttribute("aria-label", isDark ? "Switch to light theme" : "Switch to dark theme");
+      elements.themeToggle.setAttribute("title", isDark ? "Dark theme" : "Light theme");
+    }
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute("data-theme", theme);
+      setThemeButton(theme);
+    }
+
+    function initTheme() {
+      applyTheme(getSystemTheme());
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      mediaQuery.addEventListener("change", (event) => {
+        applyTheme(event.matches ? "dark" : "light");
+      });
+
+      elements.themeToggle.addEventListener("click", () => {
+        const current = document.documentElement.getAttribute("data-theme") || getSystemTheme();
+        applyTheme(current === "dark" ? "light" : "dark");
+      });
+    }
+
+    function setHeaderData(manifest) {
+      const version = manifest.serverInfo?.version ? `v${manifest.serverInfo.version}` : "v?";
+      elements.serverName.textContent = `Tool registry for Lucius Allure TestOps MCP Server ${version}`;
+      elements.serverDescription.textContent = "Registry of supported tools";
+
+      const rawProjectUrl = manifest.serverInfo?.websiteUrl || "github.com/ivanostanin/lucius-mcp";
+      const normalizedProjectUrl = rawProjectUrl.replace(/^http:\/\//i, "https://");
+      const hrefProjectUrl = /^https?:\/\//i.test(normalizedProjectUrl)
+        ? normalizedProjectUrl
+        : `https://${normalizedProjectUrl}`;
+
+      elements.projectLink.href = hrefProjectUrl;
+      elements.projectLink.textContent = hrefProjectUrl.replace(/^https?:\/\//i, "");
+    }
+
+    async function loadManifest() {
+      const response = await fetch("./mcp_manifest.json", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`Failed to load manifest: ${response.status}`);
+      }
+      return response.json();
+    }
+
+    async function init() {
+      initTheme();
+      bindFilters();
+      try {
+        state.manifest = await loadManifest();
+        state.tools = Array.isArray(state.manifest.tools) ? state.manifest.tools : [];
+        setHeaderData(state.manifest);
+        render();
+      } catch (error) {
+        elements.serverDescription.textContent = "Could not load mcp_manifest.json. Serve docs/ over HTTP and retry.";
+        elements.details.innerHTML = `<div class="empty">${error.message}</div>`;
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
