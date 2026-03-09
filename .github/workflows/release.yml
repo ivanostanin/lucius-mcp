@@ -117,11 +117,11 @@ jobs:
 
       - name: Prepare GitHub Pages content
         run: |
-          mkdir -p _site/lucius-testops-mcp-server
-          cp docs/mcp-registry.html _site/lucius-testops-mcp-server/mcp-registry.html
-          cp docs/mcp_manifest.json _site/lucius-testops-mcp-server/mcp_manifest.json
-          # Make /lucius-testops-mcp-server/ resolve directly.
-          cp docs/mcp-registry.html _site/lucius-testops-mcp-server/index.html
+          mkdir -p _site
+          cp docs/mcp-registry.html _site/mcp-registry.html
+          cp docs/mcp_manifest.json _site/mcp_manifest.json
+          # Make / resolve directly.
+          cp docs/mcp-registry.html _site/index.html
 
       - name: Upload pages artifact
         uses: actions/upload-pages-artifact@v4.0.0
