@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.8.0] - 2026-03-09
+
+### Added
+- Added MCP manifest documentation for tool exposure and usage guidance (#74).
+- Added tool registry documentation updates for MCP clients (#79).
+
+### Changed
+- Updated GitHub Actions dependencies for artifact handling and Docker build support (`actions/upload-artifact`, `actions/download-artifact`, `docker/setup-qemu-action`, `docker/setup-buildx-action`) (#75, #76, #77, #78).
+
 ## [v0.7.2] - 2026-03-09
 
 ### Changed
@@ -151,7 +160,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.7.2...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.8.0...HEAD
+[v0.8.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.7.2...v0.8.0
 [v0.7.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.7.1...v0.7.2
 [v0.7.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.7.0...v0.7.1
 [v0.7.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.6.1...v0.7.0
