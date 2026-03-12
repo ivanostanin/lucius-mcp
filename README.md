@@ -57,6 +57,21 @@ claude mcp add testops-mcp --transport stdio \
 
 For detailed setup, including Claude Desktop (MCPB) integration, see [Setup Guide](docs/setup.md).
 
+### 🧪 Development
+
+Set up a development environment:
+
+```bash
+# Clone the repo
+git clone https://github.com/ivanostanin/lucius-mcp.git
+
+# Install dependencies with uv
+uv sync --extra dev
+
+# Run unit tests
+uv run pytest tests/ -v
+```
+
 ## 🔐 Telemetry & Privacy
 
 Lucius includes privacy-preserving telemetry to help maintainers understand runtime and tool usage trends.
