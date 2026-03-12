@@ -560,3 +560,141 @@ So that we meet enterprise security standards and can investigate incidents.
 **And** all authenticated requests are logged by the application with structured audit trails (user, timestamp, tool invoked, result)
 **And** audit logs are written in JSON format and exportable for SIEM integration
 **And** the Helm chart provides configurable values for rate limits, allowed IPs, and log retention.
+
+
+## Epic 9: Documentation & Knowledge Base & CLI
+
+Provide comprehensive documentation and developer tools for lucius-mcp, including CLI access for direct tool invocation without MCP client runtime.
+
+### Story 9.1: Comprehensive Project Documentation
+
+As a Developer or QA Engineer,
+I want comprehensive documentation covering architecture, installation, configuration, and usage,
+So that I can quickly understand and onboard to the lucius-mcp project.
+
+**Acceptance Criteria:**
+
+**Given** a properly structured project
+**When** developers access the repository documentation
+**Then** all critical aspects are documented:
+  - Architecture overview with diagrams
+  - Installation and setup instructions
+  - Configuration guide (environment variables, MCP client setup)
+  - Tool API reference with examples
+  - Testing guidelines and standards
+  - Troubleshooting common issues
+**And** documentation is kept up-to-date with code changes
+**And** code examples are tested and verified
+**And** diagrams reflect the actual system architecture
+
+### Story 9.2: FastMCP CLI Integration
+
+As a Developer or QA Engineer,
+I want a universal CLI entry point `lucius` with subcommands that provide type-safe access to all MCP tools,
+so that I can execute lucius-mcp functionality directly from the command line without requiring an MCP client runtime.
+
+**CLI Design Principles (Course Correction):**
+
+1. **No MCP/Python Logs in Output**
+   - CLI should never display MCP server logs or Python tracebacks
+   - Only user-facing error messages shown
+   - All exceptions caught and formatted as clear error messages
+
+2. **Guiding Error Messages**
+   - Tool call errors provide guiding messages explaining what went wrong
+   - Validation errors show meaningful hints (same as MCP server behavior)
+   - Error messages include suggestions for fixes
+
+3. **Use MCP Tools, Don't Reimplement**
+   - CLI uses MCP server tools directly
+   - CLI does NOT reimplement business logic or API calls
+   - CLI is thin wrapper around MCP tools for command-line access
+   - Exception: CLI-specific functionality like --version, --help
+
+4. **Individual Tool Help**
+   - Every tool has its own `--help` command
+   - `lucius call <tool_name> --help` shows isolated tool documentation
+   - Help includes: tool description, parameters, types, formats, examples
+   - Help generated from MCP tool schema (not duplicated)
+
+5. **Multiple Output Formats**
+   - Every command supports: JSON, table, plain
+   - JSON is the DEFAULT output format
+   - Flag: `--format json|table|plain` or `-f json|table|plain`
+   - Consistent output formatting across all commands
+
+6. **Lazy Client Initialization**
+   - `lucius list` uses static info built at build time
+   - No MCP client initialization for `lucius list`
+   - MCP client initialized ONLY when `lucius call <tool>` invoked
+   - ONLY called tool loaded (eager imports removed from CLI entry point)
+   - Fast startup (~< 1s) for help/version/list commands
+
+7. **No HTTP Server in CLI**
+   - HTTP server never imported or used in CLI
+   - CLI uses stdio transport only
+   - No Starlette, uvicorn, or HTTP-related imports in CLI code
+   - Compiled binary must NOT include HTTP server components
+
+**Acceptance Criteria:**
+
+**Given** a lucius-mcp installation
+**When** I run CLI commands
+**Then** the following commands are available and work correctly:
+
+**P0 (Must-Have):**
+
+1. **CLI Entry Point**: Universal CLI entry point `lucius` with subcommands following pattern `lucius <command> [options]`
+
+2. **Single Binary Distribution**: Compile CLI to standalone binaries using nuitka for:
+   - Linux (ARM64, x86_64)
+   - macOS (ARM64, x86_64)
+   - Windows (ARM64, x86_64)
+
+3. **Type-Safe Interface**: Implement type-safe CLI commands using cyclopts framework, leveraging JSON schemas from MCP tool definitions
+
+4. **Core Commands**:
+   - `lucius list [--format json|table|plain]` - List available tools using build-time static data (no MCP client)
+   - `lucius call <tool_name> --args <json> [--format json|table|plain]` - Execute MCP tools via CLI
+   - `lucius call <tool_name> --help` - Show isolated tool documentation from static schema
+   - `lucius --help` - Display help and usage information
+   - `lucius --version` - Display version information
+
+5. **Clean Error Output**:
+   - No MCP server logs in CLI output
+   - No Python tracebacks in CLI output
+   - Only user-facing error messages with guidance displayed
+   - Tool call errors provide guiding messages
+   - Validation errors show meaningful hints
+
+6. **Tool Help Isolation**: Every tool has isolated `--help` generated from MCP schema including description, parameters, types, formats, examples
+
+7. **Output Format Support**: All commands support JSON (default), table, and plain output formats
+
+8. **Lazy Initialization**:
+   - CLI starts fast (~< 1s) for help/version/list commands
+   - MCP client initialized only on `lucius call <tool>` invocation
+   - Only called tool loaded (no eager imports)
+   - `lucius list` uses build-time static info
+
+**P1 (Should-Have):**
+
+9. **Tab Completion**: Support shell completion for commands and tool names
+
+10. **E2E Test Coverage**: Implement E2E tests covering all CLI commands and tool invocations
+
+11. **Packaging Tests**: Add packaging tests for all 6 target platforms to verify binary functionality
+
+12. **No HTTP Dependencies**: Verify HTTP server components (Starlette, uvicorn) not imported or bundled in compiled binary
+
+13. **Error Handling**: Provide clear, helpful error messages with guiding hints for invalid arguments or API errors
+
+14. **Use MCP Tools**: Verify CLI uses MCP tools directly, no reimplemented business logic
+
+**P2 (Nice-to-Have):**
+
+15. **Documentation**: Comprehensive CLI documentation including installation, usage, building, troubleshooting
+
+16. **Docker Integration**: Support running the CLI in Docker containers for consistent environments
+
+17. **CI/CD Pipeline**: Automated build and test pipeline for all platform binaries

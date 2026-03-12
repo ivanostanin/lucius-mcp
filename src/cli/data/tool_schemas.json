@@ -1,0 +1,2788 @@
+{
+  "create_test_case": {
+    "name": "create_test_case",
+    "description": "Create a new test case in Allure TestOps.\n\nArgs:\n    name: The name of the test case.\n    description: A markdown description of the test case.\n    steps: List of steps. Each step must be a dict with 'action' and 'expected' keys.\n           Example: [{'action': 'Login', 'expected': 'Dashboard visible'}]\n    tags: List of tag names.\n    attachments: List of attachments.\n                 Example Base64: [{'name': 's.png', 'content': '<base64>', 'content_type': 'image/png'}]\n                 Example URL: [{'name': 'report.pdf', 'url': 'http://example.com/report.pdf',\n                                'content_type': 'application/pdf'}]\n    custom_fields: Dictionary of custom field names and their values (string or list of strings).\n                   Example: {'Layer': 'UI', 'Components': ['Auth', 'DB']}\n    test_layer_id: Optional test layer ID to assign (use list_test_layers to find IDs).\n    test_layer_name: Optional test layer name to assign (exact case-sensitive match).\n    issues: Optional list of issue keys to link (e.g., ['PROJ-123']).\n    integration_id: Optional integration ID for issue linking (required when multiple integrations exist).\n    integration_name: Optional integration name for issue linking (mutually exclusive with integration_id).\n    project_id: Optional override for the default Project ID.\n\nReturns:\n    A message confirming creation with the ID and Name.\n\nRaises:\n    AuthenticationError: If no API token available from environment or arguments.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "The name of the test case.",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A markdown description of the test case."
+        },
+        "steps": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of steps. Each step must be a dict with 'action' and 'expected' keys. Example: [{'action': 'Login', 'expected': 'Dashboard visible'}]"
+        },
+        "tags": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of tag names."
+        },
+        "attachments": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of attachments.Example Base64: [{'name': 's.png', 'content': '<base64>', 'content_type': 'image/png'}]Example URL: [{'name': 'report.pdf', 'url': 'http://example.com/report.pdf', 'content_type': 'application/pdf'}]"
+        },
+        "custom_fields": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Dictionary of custom field names and their values (string or list of strings).Example: {'Layer': 'UI', 'Components': ['Auth', 'DB']}"
+        },
+        "test_layer_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional test layer ID to assign (use list_test_layers to find IDs). If provided, the layer must exist in the project."
+        },
+        "test_layer_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional test layer name to assign (exact case-sensitive match). Mutually exclusive with test_layer_id."
+        },
+        "issues": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional list of issue keys to link (e.g., ['PROJ-123'])."
+        },
+        "integration_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional integration ID for issue linking (use list_integrations to find IDs). Required when multiple integrations exist. Mutually exclusive with integration_name."
+        },
+        "integration_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional integration name for issue linking (exact case-sensitive match). Required when multiple integrations exist. Mutually exclusive with integration_id."
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional override for the default Project ID."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "tags": "{'test-case'}",
+    "annotations": "title='Create Test Case' readOnlyHint=False destructiveHint=False idempotentHint=False openWorldHint=None"
+  },
+  "get_test_case_details": {
+    "name": "get_test_case_details",
+    "description": "Get complete details of a specific test case.\n\nRetrieves all information about a test case including its steps, tags,\ncustom fields, and attachments. Use this before updating a test case to\nunderstand its current state.\n\nArgs:\n    test_case_id: The unique ID of the test case to retrieve.\n    project_id: Optional override for the default Project ID.\n\nReturns:\n    Formatted test case details including all metadata.\n\nRaises:\n    AuthenticationError: If no API token available from environment or arguments.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "test_case_id": {
+          "description": "ID of the test case to retrieve.",
+          "type": "integer"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Allure TestOps project ID to list test cases from."
+        }
+      },
+      "required": [
+        "test_case_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'test-case'}",
+    "annotations": "title='Get Test Case Details' readOnlyHint=True destructiveHint=False idempotentHint=True openWorldHint=None"
+  },
+  "update_test_case": {
+    "name": "update_test_case",
+    "description": "Update an existing test case in Allure TestOps.\n\u26a0\ufe0f CAUTION: Destructive.\n\nPerforms a partial update: only supplied fields are sent to the API. When\nprovided, ``steps`` replace all existing steps, and ``attachments`` replace\nall existing global attachments. Omit a field to preserve its current value.\n\nArgs:\n    test_case_id: The ID of the test case to update.\n    name: New name for the test case.\n    description: New description for the test case.\n    precondition: New precondition text.\n    steps: New list of steps. Each step is a dict with ``action``,\n        ``expected``, and optional ``attachments`` list.\n    tags: New list of tags.\n    attachments: New list of global attachments. Each dict has ``name`` and\n        either ``content`` (base64) or ``url``.\n    custom_fields: Custom field updates as a name-to-value (or list of values) mapping.\n    automated: Whether the test case is automated.\n    expected_result: Global expected result for the test case.\n    status_id: ID of the test case status.\n    test_layer_id: ID of the test layer.\n    test_layer_name: Name of the test layer.\n    workflow_id: ID of the workflow.\n    links: New list of external links. Each dict has ``name``, ``url``,\n        and optional ``type``.\n    issues: List of issue keys to ADD (e.g. ['PROJ-123']).\n    remove_issues: List of issue keys to REMOVE.\n    clear_issues: If True, remove ALL issues from the test case.\n    integration_id: Optional integration ID for issue linking.\n    integration_name: Optional integration name for issue linking.\n    project_id: Optional override for the default Project ID.\n    confirm: Must be set to True to proceed with update.\n        This is a safety measure to prevent accidental updates.\n\nReturns:\n    A confirmation message summarizing the update.\n\nRaises:\n    AuthenticationError: If no API token available from environment or\n        arguments.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "test_case_id": {
+          "description": "The ID of the test case to update",
+          "type": "integer"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "New name for the test case"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "New description"
+        },
+        "precondition": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "New precondition"
+        },
+        "steps": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "New list of steps. Each step is a dict with 'action', 'expected', and optional 'attachments' list."
+        },
+        "tags": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "New list of tags"
+        },
+        "attachments": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "New list of global attachments. Each dict has 'name' and 'content' (base64) or 'url'."
+        },
+        "custom_fields": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Dictionary of custom fields to update (Name -> Value or list of values)"
+        },
+        "automated": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Set whether the test case is automated"
+        },
+        "expected_result": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Global expected result for the test case"
+        },
+        "status_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "ID of the test case status"
+        },
+        "test_layer_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "ID of the test layer"
+        },
+        "test_layer_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Name of the test layer"
+        },
+        "workflow_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "ID of the workflow"
+        },
+        "links": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "New list of external links. Each dict has 'name', 'url', and optional 'type'."
+        },
+        "issues": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of issue keys to ADD (e.g. ['PROJ-123'])."
+        },
+        "remove_issues": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of issue keys to REMOVE."
+        },
+        "clear_issues": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "If True, remove ALL issues from the test case."
+        },
+        "integration_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional integration ID for issue linking (use list_integrations to find IDs). Required when multiple integrations exist and adding issues. Mutually exclusive with integration_name."
+        },
+        "integration_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional integration name for issue linking (exact case-sensitive match). Required when multiple integrations exist and adding issues. Mutually exclusive with integration_id."
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional override for the default Project ID."
+        },
+        "confirm": {
+          "default": false,
+          "description": "Must be set to True to proceed with update. Safety measure.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "test_case_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'test-case'}",
+    "annotations": "title='Update Test Case' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "delete_test_case": {
+    "name": "delete_test_case",
+    "description": "Archive an obsolete test case.\n\u26a0\ufe0f CAUTION: Destructive.\n\nThis performs a SOFT DELETE (archive). The test case can typically\nbe recovered from the Allure UI if needed.\n\n\u26a0\ufe0f CAUTION: This action removes the test case from active views.\nHistorical data and launch associations may be affected.\n\nArgs:\n    test_case_id: The Allure test case ID to archive.\n        Found in the URL: /testcase/12345 -> test_case_id=12345\n    confirm: Must be set to True to proceed with deletion.\n        This is a safety measure to prevent accidental deletions.\n    project_id: Optional Allure TestOps project ID override.\n\nReturns:\n    Confirmation message with the archived test case details.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "test_case_id": {
+          "description": "The Allure test case ID to archive.",
+          "type": "integer"
+        },
+        "confirm": {
+          "default": false,
+          "description": "Must be set to True to proceed with deletion. Safety measure.",
+          "type": "boolean"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional Allure TestOps project ID override."
+        }
+      },
+      "required": [
+        "test_case_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'test-case'}",
+    "annotations": "title='Delete Test Case' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "delete_archived_test_cases": {
+    "name": "delete_archived_test_cases",
+    "description": "Permanently delete all archived/deleted test cases in the current project.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "confirm": {
+          "default": false,
+          "description": "Must be set to True to proceed.",
+          "type": "boolean"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional Allure TestOps project ID override."
+        }
+      },
+      "type": "object"
+    },
+    "tags": "{'test-case'}",
+    "annotations": "title='Delete Archived Test Cases' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "list_test_cases": {
+    "name": "list_test_cases",
+    "description": "List all test cases in a project.\n\nReturns a paginated list of test cases with their IDs, names, and tags.\nUse this to review existing test documentation in a project.\n\nArgs:\n    page: Page number for pagination (0-indexed). Default: 0.\n    size: Number of results per page (max 100). Default: 20.\n    name_filter: Optional filter to search by name or description.\n    tags: Optional list of tag names to filter by (exact match).\n    status: Optional test case status name to filter by (exact match).\n    project_id: Optional override for the default Project ID.\n\nReturns:\n    A formatted list of test cases with pagination info.\n\nRaises:\n    AuthenticationError: If no API token available from environment or arguments.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "default": 0,
+          "description": "Zero-based page index.",
+          "type": "integer"
+        },
+        "size": {
+          "default": 20,
+          "description": "Number of results per page (max 100).",
+          "maximum": 100,
+          "type": "integer"
+        },
+        "name_filter": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional name/description search."
+        },
+        "tags": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 100,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional tag filters (exact match)."
+        },
+        "status": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional status filter (exact match)."
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Allure TestOps project ID to list test cases from."
+        }
+      },
+      "type": "object"
+    },
+    "tags": "{'test-case'}",
+    "annotations": "title='List Test Cases' readOnlyHint=True destructiveHint=False idempotentHint=True openWorldHint=None"
+  },
+  "get_custom_fields": {
+    "name": "get_custom_fields",
+    "description": "Get available custom fields and their allowed values for the project.\n\nUse this tool to discover what custom fields are available (e.g., 'Layer', 'Priority')\nand what values are valid for them (e.g., 'UI', 'High'). This is essential before\ncreating or updating test cases to ensure you use valid field names and values.\n\nArgs:\n    name: Optional name filter to find a specific field (case-insensitive).\n    project_id: Optional project ID override.\n\nReturns:\n    A list of custom fields with their required status and allowed values.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional case-insensitive name filter to search for specific custom fields."
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Allure TestOps project ID to fetch custom fields from."
+        }
+      },
+      "type": "object"
+    },
+    "tags": "{'custom-field'}",
+    "annotations": "title='Get Custom Fields' readOnlyHint=True destructiveHint=False idempotentHint=True openWorldHint=None"
+  },
+  "delete_unused_custom_fields": {
+    "name": "delete_unused_custom_fields",
+    "description": "Delete custom fields that are unused by any test case in the current project.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "confirm": {
+          "default": false,
+          "description": "Must be set to True to proceed.",
+          "type": "boolean"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional Allure TestOps project ID override."
+        }
+      },
+      "type": "object"
+    },
+    "tags": "{'test-case', 'custom-field'}",
+    "annotations": "title='Delete Unused Custom Fields' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "list_custom_field_values": {
+    "name": "list_custom_field_values",
+    "description": "List available values for a custom field.\n\nArgs:\n    custom_field_id: Project-scoped custom field ID to list values for.\n    custom_field_name: Custom field name to resolve when custom_field_id is not provided.\n    query: Optional search query to filter values.\n    var_global: Optional filter for global values.\n    test_case_search: Optional test case search filter to match values in test cases.\n    page: Zero-based page index.\n    size: Number of items per page.\n    sort: Optional sort criteria, e.g. [\"name,asc\", \"id,desc\"].\n    project_id: Optional override for the default Project ID.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "custom_field_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Project-scoped custom field ID to list values for."
+        },
+        "custom_field_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Custom field name to resolve when custom_field_id is not provided."
+        },
+        "query": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional search query to filter values."
+        },
+        "var_global": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional filter for global values."
+        },
+        "test_case_search": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional test case search filter to match values in test cases."
+        },
+        "page": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Zero-based page index."
+        },
+        "size": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Number of items per page."
+        },
+        "sort": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional sort criteria, e.g. ['name,asc', 'id,desc']"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional override for the default Project ID."
+        }
+      },
+      "type": "object"
+    },
+    "tags": "{'custom-field-value', 'custom-field'}",
+    "annotations": "title='List Custom Field Values' readOnlyHint=True destructiveHint=False idempotentHint=True openWorldHint=None"
+  },
+  "create_custom_field_value": {
+    "name": "create_custom_field_value",
+    "description": "Create a new custom field value option.\n\nArgs:\n    name: Name for the new custom field value.\n    custom_field_id: Project-scoped custom field ID to create a value for.\n    custom_field_name: Custom field name to resolve when custom_field_id is not provided.\n    project_id: Optional override for the default Project ID.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "Name for the new custom field value.",
+          "type": "string"
+        },
+        "custom_field_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Project-scoped custom field ID to create a value for."
+        },
+        "custom_field_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Custom field name to resolve when custom_field_id is not provided."
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional override for the default Project ID."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "tags": "{'custom-field-value', 'custom-field'}",
+    "annotations": "title='Create Custom Field Value' readOnlyHint=False destructiveHint=False idempotentHint=False openWorldHint=None"
+  },
+  "update_custom_field_value": {
+    "name": "update_custom_field_value",
+    "description": "Update an existing custom field value.\n\u26a0\ufe0f CAUTION: Destructive.\n\nArgs:\n    cfv_id: Custom field value ID to update.\n    name: New name for the custom field value.\n    custom_field_id: Project-scoped custom field ID (optional, resolves by name if missing).\n    custom_field_name: Custom field name to resolve when custom_field_id is not provided.\n    project_id: Optional Allure TestOps project ID override.\n    confirm: Must be set to True to proceed with update.\n        This is a safety measure to prevent accidental updates.\n\nReturns:\n    Confirmation message indicating whether changes were made.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "cfv_id": {
+          "description": "Custom field value ID to update.",
+          "type": "integer"
+        },
+        "name": {
+          "description": "New name for the custom field value.",
+          "type": "string"
+        },
+        "custom_field_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Project-scoped custom field ID (optional, resolves by name if missing)."
+        },
+        "custom_field_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Custom field name to resolve when custom_field_id is not provided."
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional override for the default Project ID."
+        },
+        "confirm": {
+          "default": false,
+          "description": "Must be set to True to proceed with update. Safety measure.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "cfv_id",
+        "name"
+      ],
+      "type": "object"
+    },
+    "tags": "{'custom-field-value', 'custom-field'}",
+    "annotations": "title='Update Custom Field Value' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "delete_custom_field_value": {
+    "name": "delete_custom_field_value",
+    "description": "Delete a custom field value.\n\u26a0\ufe0f CAUTION: Destructive.\n\nArgs:\n    cfv_id: Custom field value ID to delete.\n    custom_field_id: Project-scoped custom field ID (optional, resolves by name if missing).\n    custom_field_name: Custom field name to resolve when custom_field_id is not provided.\n    project_id: Optional Allure TestOps project ID override.\n    confirm: Must be set to True to proceed with deletion.\n        This is a safety measure to prevent accidental deletions.\n\nReturns:\n    Confirmation message.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "cfv_id": {
+          "description": "Custom field value ID to delete.",
+          "type": "integer"
+        },
+        "custom_field_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Project-scoped custom field ID (optional, resolves by name if missing)."
+        },
+        "custom_field_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Custom field name to resolve when custom_field_id is not provided."
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional override for the default Project ID."
+        },
+        "confirm": {
+          "default": false,
+          "description": "Must be set to True to proceed with deletion. Safety measure.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "cfv_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'custom-field-value', 'custom-field'}",
+    "annotations": "title='Delete Custom Field Value' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "get_test_case_custom_fields": {
+    "name": "get_test_case_custom_fields",
+    "description": "Retrieve custom field values for a specific test case.\n\nArgs:\n    test_case_id: The ID of the test case.\n    project_id: Optional project ID override.\n\nReturns:\n    A dictionary where keys are custom field names and values are\n    either a single string value or a list of string values.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "test_case_id": {
+          "description": "The ID of the test case to retrieve custom fields for",
+          "type": "integer"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional override for the default Project ID."
+        }
+      },
+      "required": [
+        "test_case_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'test-case', 'custom-field'}",
+    "annotations": "title='Get Test Case Custom Fields' readOnlyHint=True destructiveHint=False idempotentHint=True openWorldHint=None"
+  },
+  "search_test_cases": {
+    "name": "search_test_cases",
+    "description": "Search for test cases by name, tag, or AQL query.\n\nFind test cases matching your search criteria. Supports simple name/tag search\nor advanced AQL (Allure Query Language) for complex filtering.\n\nSimple Query Syntax (use 'query' parameter):\n- Plain text: Searches in test case names (case-insensitive)\n- tag:value: Filters by exact tag match\n- Combined: \"login tag:smoke\" finds test cases with \"login\" in name AND \"smoke\" tag\n\nImportant: see https://docs.qameta.io/allure-testops/advanced/aql/ for the full AQL syntax reference.\nAQL Syntax (use 'aql' parameter):\n- Operators: and, or, not\n- Precedence: and binds tighter than or; use parentheses to group\n- Strings are double-quoted; numbers are unquoted; booleans are true/false\n- Comparison operators: =, !=, ~= (contains), in, not in\n- Field examples: status, tag, name, createdBy, automated, layer\n\nArgs:\n    query: Simple search query. Examples:\n        - \"login flow\" (name search)\n        - \"tag:smoke\" (tag filter)\n        - \"tag:smoke tag:regression\" (multiple tags - AND logic)\n        - \"authentication tag:security\" (combined)\n    aql: Raw AQL query for advanced filtering. Examples:\n        - 'status=\"failed\" and tag=\"regression\"'\n        - '(createdBy = \"John\" or createdBy = \"Jane\") and name ~= \"test\"'\n        - 'tag in [\"smoke\", \"e2e\"] and automated = true'\n        - 'id = 17'\n        - 'cf[\"Story\"] = \"Story 2\"'\n        - 'cfv in [\"Auth\", \"Story 2\"]'\n    page: Page number (0-indexed). Default: 0.\n    size: Results per page (max 100). Default: 20.\n    project_id: Optional override for the default Project ID.\n\nReturns:\n    List of matching test cases or descriptive error message.\n\nRaises:\n    AuthenticationError: If no API token available from environment or arguments.\n    AllureValidationError: If AQL syntax is invalid or query is empty.\n\nExamples:\n    search_test_cases(query=\"login\")\n    \u2192 \"Found 5 test cases matching 'login':\n       - [#1] User Login Flow (tags: smoke, auth)\n       - [#2] Admin Login Test (tags: admin)\"\n\n    search_test_cases(aql='status=\"failed\" and tag=\"regression\"')\n    \u2192 \"Found 12 test cases matching 'status=\"failed\" and tag=\"regression\"':\n       - [#5] Critical Path Test ...\"",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "query": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Simple search query. Examples: 'login flow', 'tag:smoke', 'tag:smoke tag:regression', 'authentication tag:security'. Ignored when 'aql' is provided."
+        },
+        "aql": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Raw AQL (Allure Query Language) for complex searches. Important: see https://docs.qameta.io/allure-testops/advanced/aql/ for the full AQL syntax reference.Supports AND, OR, NOT operators, parentheses for grouping, and field filters. Strings must be double-quoted. Examples:\n  - 'status=\"failed\" and tag=\"regression\"'\n  - '(createdBy = \"John\" or createdBy = \"Jane\") and name ~= \"test\"'\n  - 'tag in [\"smoke\", \"e2e\"] and automated = true'\n  - 'not status = \"Draft\" and layer = \"API\"'"
+        },
+        "page": {
+          "default": 0,
+          "description": "Zero-based page index.",
+          "type": "integer"
+        },
+        "size": {
+          "default": 20,
+          "description": "Number of results per page (max 100).",
+          "maximum": 100,
+          "type": "integer"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Allure TestOps project ID to list test cases from."
+        }
+      },
+      "type": "object"
+    },
+    "tags": "{'test-case'}",
+    "annotations": "title='Search Test Cases' readOnlyHint=True destructiveHint=False idempotentHint=True openWorldHint=None"
+  },
+  "create_launch": {
+    "name": "create_launch",
+    "description": "Create a new launch in Allure TestOps.\n\nArgs:\n    name: Launch name.\n    autoclose: Whether the launch auto-closes.\n    external: Whether the launch is external.\n    issues: Optional list of issue dictionaries.\n    links: Optional list of external link dictionaries.\n    tags: Optional list of launch tags.\n    project_id: Optional override for the default Project ID.\n\nReturns:\n    Confirmation message with launch ID and name.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "Launch name (required).",
+          "type": "string"
+        },
+        "autoclose": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Whether the launch auto-closes."
+        },
+        "external": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Whether the launch is external."
+        },
+        "issues": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional list of issue dictionaries."
+        },
+        "links": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional list of external links (name, url, type)."
+        },
+        "tags": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional list of tags."
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional override for the default Project ID."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "tags": "{'launch'}",
+    "annotations": "title='Create Launch' readOnlyHint=False destructiveHint=False idempotentHint=False openWorldHint=None"
+  },
+  "get_launch": {
+    "name": "get_launch",
+    "description": "Retrieve a specific launch and summarize its details.\n\nArgs:\n    launch_id: The unique ID of the launch.\n    project_id: Optional override for the default Project ID.\n\nReturns:\n    LLM-friendly summary of the launch details.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "launch_id": {
+          "description": "Launch ID (required).",
+          "type": "integer"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional override for the default Project ID."
+        }
+      },
+      "required": [
+        "launch_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'launch'}",
+    "annotations": "title='Get Launch' readOnlyHint=True destructiveHint=False idempotentHint=True openWorldHint=None"
+  },
+  "list_launches": {
+    "name": "list_launches",
+    "description": "List launches in a project.\n\nArgs:\n    page: Zero-based page index.\n    size: Number of results per page (max 100).\n    search: Optional name search.\n    filter_id: Optional filter ID.\n    sort: Optional sort criteria.\n    project_id: Optional override for the default Project ID.\n\nReturns:\n    Formatted list of launches with pagination info.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "default": 0,
+          "description": "Zero-based page index.",
+          "type": "integer"
+        },
+        "size": {
+          "default": 20,
+          "description": "Number of results per page (max 100).",
+          "maximum": 100,
+          "type": "integer"
+        },
+        "search": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional name search."
+        },
+        "filter_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional filter ID."
+        },
+        "sort": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Sorting criteria in the format: property(,asc|desc). Example: ['createdDate,DESC']"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional override for the default Project ID."
+        }
+      },
+      "type": "object"
+    },
+    "tags": "{'launch'}",
+    "annotations": "title='List Launches' readOnlyHint=True destructiveHint=False idempotentHint=True openWorldHint=None"
+  },
+  "delete_launch": {
+    "name": "delete_launch",
+    "description": "Delete/archive a launch by ID.\n\u26a0\ufe0f CAUTION: Destructive.\n\nArgs:\n    launch_id: The unique ID of the launch to archive.\n    project_id: Optional override for the default Project ID.\n\nReturns:\n    Confirmation message with launch ID and idempotent status.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "launch_id": {
+          "description": "Launch ID to delete/archive (required).",
+          "type": "integer"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional override for the default Project ID."
+        }
+      },
+      "required": [
+        "launch_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'launch'}",
+    "annotations": "title='Delete Launch' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "close_launch": {
+    "name": "close_launch",
+    "description": "Close a launch and return updated launch details.\n\nArgs:\n    launch_id: The unique ID of the launch.\n    project_id: Optional override for the default Project ID.\n    api_token: Optional runtime API token override.\n\nReturns:\n    LLM-friendly summary of the closed launch.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "launch_id": {
+          "description": "Launch ID (required).",
+          "type": "integer"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional override for the default Project ID."
+        },
+        "api_token": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional runtime API token override."
+        }
+      },
+      "required": [
+        "launch_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'launch'}",
+    "annotations": "title='Close Launch' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "reopen_launch": {
+    "name": "reopen_launch",
+    "description": "Reopen a launch and return updated launch details.\n\nArgs:\n    launch_id: The unique ID of the launch.\n    project_id: Optional override for the default Project ID.\n    api_token: Optional runtime API token override.\n\nReturns:\n    LLM-friendly summary of the reopened launch.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "launch_id": {
+          "description": "Launch ID (required).",
+          "type": "integer"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional override for the default Project ID."
+        },
+        "api_token": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional runtime API token override."
+        }
+      },
+      "required": [
+        "launch_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'launch'}",
+    "annotations": "title='Reopen Launch' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "list_integrations": {
+    "name": "list_integrations",
+    "description": "List available integrations (issue trackers) in Allure TestOps.\n\nUse this tool to discover which integrations (Jira, GitHub, etc.) are\nconfigured and available for linking issues to test cases.\n\nArgs:\n    project_id: Optional override for the default Project ID.\n        When provided (or from environment default), integrations are filtered\n        to those available for that project.\n\nReturns:\n    A formatted list of available integrations with their IDs and names.\n    If no integrations are configured, returns an informative message.\n\nExamples:\n    >>> list_integrations()\n    \"\ud83d\udccb Available Integrations (3 found):\n     \u2022 Github Integration (ID: 1) [github]\n     \u2022 Noxtua Jira Integration (ID: 2) [jira]\n     \u2022 TestOps TMS (ID: 3) [tms]\n\n     Hint: Use 'integration_id' or 'integration_name' when creating/updating\n     test cases with issues to specify which integration to use.\"",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional override for the default Project ID. When provided (or from environment default), integrations are filtered to those available for that project."
+        }
+      },
+      "type": "object"
+    },
+    "tags": "{'integration'}",
+    "annotations": "title='List Integrations' readOnlyHint=True destructiveHint=False idempotentHint=True openWorldHint=None"
+  },
+  "create_shared_step": {
+    "name": "create_shared_step",
+    "description": "Create a new reusable Shared Step.\n\nArgs:\n    name: The name of the shared step (e.g., \"Login as Admin\").\n    steps: Optional list of steps. Each step is a dictionary with:\n           - action (str): The step description (e.g., \"Enter username\").\n           - expected (str, optional): The expected result.\n           - attachments (list[dict], optional): List of attachments containing:\n             - content (str): Base64 encoded content.\n             - name (str): Filename.\n           - steps (list[dict], optional): Nested steps (recursive structure).\n    project_id: Optional override for the default Project ID.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "The name of the shared step (e.g., \"Login as Admin\").",
+          "type": "string"
+        },
+        "steps": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional list of steps. Each step is a dictionary with: - action (str): The step description (e.g., \"Enter username\"). - expected (str, optional): The expected result. - attachments (list[dict], optional): List of attachments containing:   - content (str): Base64 encoded content.   - name (str): Filename. - steps (list[dict], optional): Nested steps (recursive structure)."
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional override for the default Project ID."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "tags": "{'shared-step'}",
+    "annotations": "title='Create Shared Step' readOnlyHint=False destructiveHint=False idempotentHint=False openWorldHint=None"
+  },
+  "list_shared_steps": {
+    "name": "list_shared_steps",
+    "description": "List shared steps in a project to find existing ones.\n\nArgs:\n    page: Page number (0-based, default 0).\n    size: Number of items per page (default 100).\n    search: Optional search query to filter by name.\n    archived: Whether to include archived steps (default False).\n    project_id: Optional override for the default Project ID.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "default": 0,
+          "description": "Page number (0-based, default 0).",
+          "type": "integer"
+        },
+        "size": {
+          "default": 100,
+          "description": "Number of items per page (default 100).",
+          "type": "integer"
+        },
+        "search": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional search query to filter by name."
+        },
+        "archived": {
+          "default": false,
+          "description": "Whether to include archived steps (default False).",
+          "type": "boolean"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional override for the default Project ID."
+        }
+      },
+      "type": "object"
+    },
+    "tags": "{'shared-step'}",
+    "annotations": "title='List Shared Steps' readOnlyHint=True destructiveHint=False idempotentHint=True openWorldHint=None"
+  },
+  "update_shared_step": {
+    "name": "update_shared_step",
+    "description": "Update an existing shared step.\n\u26a0\ufe0f CAUTION: Destructive.\n\n\u26a0\ufe0f IMPORTANT: Changes propagate to ALL test cases using this shared step.\n\nOnly provided fields will be updated. Omitted fields remain unchanged.\nRepeated calls with the same data are idempotent.\n\nArgs:\n    step_id: The shared step ID to update (required).\n        Found via list_shared_steps or in the Allure URL.\n    name: New name for the shared step (optional).\n    description: New description (optional).\n    confirm: Must be set to True to proceed with update.\n        This is a safety measure to prevent accidental updates.\n    project_id: Optional override for the default Project ID.\n\nReturns:\n    Confirmation message with summary of changes.\n\nExample:\n    update_shared_step(\n        step_id=789,\n        name=\"Login as Admin (Updated)\",\n        confirm=True\n    )",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "step_id": {
+          "description": "The shared step ID to update (required).",
+          "type": "integer"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "New name for the shared step (optional)."
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "New description (optional)."
+        },
+        "confirm": {
+          "default": false,
+          "description": "Must be set to True to proceed with update. Safety measure.",
+          "type": "boolean"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional override for the default Project ID."
+        }
+      },
+      "required": [
+        "step_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'shared-step'}",
+    "annotations": "title='Update Shared Step' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "delete_shared_step": {
+    "name": "delete_shared_step",
+    "description": "Delete a shared step from the library.\n\u26a0\ufe0f CAUTION: Destructive.\n\n\u26a0\ufe0f CAUTION: If this shared step is used by test cases, deleting it\nwill break those references.\n\nArgs:\n    step_id: The shared step ID to delete (required).\n    confirm: Must be True to proceed (safety measure).\n    project_id: Optional override for the default Project ID.\n\nReturns:\n    Confirmation message.\n\nExample (safe delete):\n    delete_shared_step(step_id=789, confirm=True)\n    \u2192 \"\ud83d\uddd1\ufe0f  Archived Shared Step 789\"\n\nNote:\n    This performs a soft delete by archiving the shared step.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "step_id": {
+          "description": "The shared step ID to delete (required).",
+          "type": "integer"
+        },
+        "confirm": {
+          "default": false,
+          "description": "Must be True to proceed (safety measure).",
+          "type": "boolean"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional override for the default Project ID."
+        }
+      },
+      "required": [
+        "step_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'shared-step'}",
+    "annotations": "title='Delete Shared Step' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "delete_archived_shared_steps": {
+    "name": "delete_archived_shared_steps",
+    "description": "Permanently delete all archived shared steps in the current project.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "confirm": {
+          "default": false,
+          "description": "Must be set to True to proceed.",
+          "type": "boolean"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional Allure TestOps project ID override."
+        }
+      },
+      "type": "object"
+    },
+    "tags": "{'shared-step'}",
+    "annotations": "title='Delete Archived Shared Steps' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "link_shared_step": {
+    "name": "link_shared_step",
+    "description": "Link a shared step to a test case.\n\u26a0\ufe0f CAUTION: Destructive.\n\nAdds a reference to the shared step in the test case's step list.\nThe shared step's actions will expand at execution time.\n\nArgs:\n    test_case_id: The ID of test case to modify.\n        Found in URL: /testcase/12345\n    shared_step_id: The ID of shared step to link.\n        Found via list_shared_steps or in Allure UI.\n    position: Where to insert the shared step (0-indexed, optional).\n        - 0 = Insert at beginning\n        - None = Append to end (default)\n        - N = Insert after step N (so it becomes the (N+1)th step)\n    project_id: Optional override for the default Project ID.\n    confirm: Must be set to True to proceed with linking.\n        This is a safety measure to prevent accidental linking.\n\nReturns:\n    Confirmation with updated step list preview.\n\nExample:\n    link_shared_step(\n        test_case_id=12345,\n        shared_step_id=789,  # \"Login as Admin\"\n        position=0,\n        confirm=True\n    )",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "test_case_id": {
+          "description": "The ID of test case to modify.",
+          "type": "integer"
+        },
+        "shared_step_id": {
+          "description": "The ID of shared step to link.",
+          "type": "integer"
+        },
+        "position": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Where to insert the shared step (0-indexed, optional). 0 = Insert at beginning None = Append to end (default) N = Insert after step N (so it becomes the (N+1)th step)"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional override for the default Project ID."
+        },
+        "confirm": {
+          "default": false,
+          "description": "Must be set to True to proceed with linking. Safety measure.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "test_case_id",
+        "shared_step_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'shared-step', 'test-case'}",
+    "annotations": "title='Link Shared Step' readOnlyHint=False destructiveHint=False idempotentHint=False openWorldHint=None"
+  },
+  "unlink_shared_step": {
+    "name": "unlink_shared_step",
+    "description": "Remove a shared step reference from a test case.\n\u26a0\ufe0f CAUTION: Destructive.\n\nRemoves the link to the shared step. The test case will no longer\ninclude those steps at execution time.\n\nArgs:\n    test_case_id: The test case to modify.\n    shared_step_id: The shared step to unlink.\n    project_id: Optional override for the default Project ID.\n    confirm: Must be set to True to proceed with unlinking.\n        This is a safety measure to prevent accidental unlinking.\n\nReturns:\n    Confirmation with updated step list.\n\nNote: This only removes the REFERENCE. The shared step itself\nremains in the library and other test cases are unaffected.\n\nExample:\n    unlink_shared_step(test_case_id=12345, shared_step_id=789, confirm=True)",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "test_case_id": {
+          "description": "The test case to modify.",
+          "type": "integer"
+        },
+        "shared_step_id": {
+          "description": "The shared step to unlink.",
+          "type": "integer"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional override for the default Project ID."
+        },
+        "confirm": {
+          "default": false,
+          "description": "Must be set to True to proceed with unlinking. Safety measure.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "test_case_id",
+        "shared_step_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'shared-step', 'test-case'}",
+    "annotations": "title='Unlink Shared Step' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "list_test_layers": {
+    "name": "list_test_layers",
+    "description": "List test layers to discover available test layer taxonomy.\n\nTest layers define the taxonomy for categorizing test cases (e.g., Unit, Integration, E2E).\nUse this to find layer IDs and names before creating or updating test cases.\n\nArgs:\n    page: Page number (0-based)\n    size: Page size (max 100)\n\nReturns:\n    List of test layers with their IDs and names",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "default": 0,
+          "description": "Page number (0-based). Default is 0.",
+          "type": "integer"
+        },
+        "size": {
+          "default": 100,
+          "description": "Page size (max 100). Default is 100.",
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "tags": "{'test-layer'}",
+    "annotations": "title='List Test Layers' readOnlyHint=True destructiveHint=False idempotentHint=True openWorldHint=None"
+  },
+  "create_test_layer": {
+    "name": "create_test_layer",
+    "description": "Create a new test layer in Allure TestOps.\n\nTest layers define taxonomy for categorizing test cases. Common examples include\n'Unit', 'Integration', 'E2E', 'UI', 'API', etc.\n\nArgs:\n    name: Name of the test layer\n    project_id: Optional project ID override\n\nReturns:\n    Confirmation message with the created layer's ID and name",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "Name of the test layer (e.g., 'Unit', 'Integration', 'E2E').",
+          "type": "string"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Allure TestOps project ID to create the test layer in."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "tags": "{'test-layer'}",
+    "annotations": "title='Create Test Layer' readOnlyHint=False destructiveHint=False idempotentHint=False openWorldHint=None"
+  },
+  "update_test_layer": {
+    "name": "update_test_layer",
+    "description": "Update an existing test layer's name.\n\u26a0\ufe0f CAUTION: Destructive.\n\nArgs:\n    layer_id: ID of the test layer to update.\n    name: New name for the test layer.\n    project_id: Optional Allure TestOps project ID override.\n    confirm: Must be set to True to proceed with update.\n        This is a safety measure to prevent accidental updates.\n\nReturns:\n    Confirmation message indicating whether changes were made.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "layer_id": {
+          "description": "ID of the test layer to update.",
+          "type": "integer"
+        },
+        "name": {
+          "description": "New name for the test layer.",
+          "type": "string"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Allure TestOps project ID."
+        },
+        "confirm": {
+          "default": false,
+          "description": "Must be set to True to proceed with update. Safety measure.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "layer_id",
+        "name"
+      ],
+      "type": "object"
+    },
+    "tags": "{'test-layer'}",
+    "annotations": "title='Update Test Layer' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "delete_test_layer": {
+    "name": "delete_test_layer",
+    "description": "Delete a test layer from Allure TestOps.\n\u26a0\ufe0f CAUTION: Destructive.\n\nArgs:\n    layer_id: ID of the test layer to delete.\n    project_id: Optional Allure TestOps project ID override.\n    confirm: Must be set to True to proceed with deletion.\n        This is a safety measure to prevent accidental deletions.\n\nReturns:\n    Confirmation message.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "layer_id": {
+          "description": "ID of the test layer to delete.",
+          "type": "integer"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Allure TestOps project ID."
+        },
+        "confirm": {
+          "default": false,
+          "description": "Must be set to True to proceed with deletion. Safety measure.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "layer_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'test-layer'}",
+    "annotations": "title='Delete Test Layer' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "list_test_layer_schemas": {
+    "name": "list_test_layer_schemas",
+    "description": "List test layer schemas for a project.\n\nTest layer schemas map custom field keys to test layers within a project.\nThey determine which test layer is assigned when a specific custom field value is used.\n\nArgs:\n    project_id: Optional project ID override\n    page: Page number (0-based)\n    size: Page size (max 100)\n\nReturns:\n    List of test layer schemas with their IDs, keys, and linked test layers",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Allure TestOps project ID to fetch test layer schemas from."
+        },
+        "page": {
+          "default": 0,
+          "description": "Page number (0-based). Default is 0.",
+          "type": "integer"
+        },
+        "size": {
+          "default": 100,
+          "description": "Page size (max 100). Default is 100.",
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "tags": "{'test-layer-schema', 'test-layer'}",
+    "annotations": "title='List Test Layer Schemas' readOnlyHint=True destructiveHint=False idempotentHint=True openWorldHint=None"
+  },
+  "create_test_layer_schema": {
+    "name": "create_test_layer_schema",
+    "description": "Create a new test layer schema to map a custom field key to a test layer.\n\nTest layer schemas define the mapping between custom field keys and test layers.\nThis allows test cases with specific custom field values to be automatically\nassigned to the correct test layer.\n\nArgs:\n    key: Schema key (typically a custom field name)\n    test_layer_id: ID of the test layer to link\n    project_id: Project ID\n\nReturns:\n    Confirmation message with the created schema's details",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "description": "The schema key (e.g., custom field name like 'layer' or 'test_layer').",
+          "type": "string"
+        },
+        "test_layer_id": {
+          "description": "ID of the test layer to link to this schema.",
+          "type": "integer"
+        },
+        "project_id": {
+          "description": "Allure TestOps project ID to create the schema in.",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "key",
+        "test_layer_id",
+        "project_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'test-layer-schema', 'test-layer'}",
+    "annotations": "title='Create Test Layer Schema' readOnlyHint=False destructiveHint=False idempotentHint=False openWorldHint=None"
+  },
+  "update_test_layer_schema": {
+    "name": "update_test_layer_schema",
+    "description": "Update an existing test layer schema.\n\u26a0\ufe0f CAUTION: Destructive.\n\nArgs:\n    schema_id: ID of the schema to update.\n    test_layer_id: Optional new test layer ID to link to.\n    key: Optional new schema key.\n    project_id: Optional Allure TestOps project ID override.\n    confirm: Must be set to True to proceed with update.\n        This is a safety measure to prevent accidental updates.\n\nReturns:\n    Confirmation message indicating whether changes were made.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_id": {
+          "description": "ID of the test layer schema to update.",
+          "type": "integer"
+        },
+        "test_layer_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "New test layer ID to link to."
+        },
+        "key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "New schema key."
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Allure TestOps project ID."
+        },
+        "confirm": {
+          "default": false,
+          "description": "Must be set to True to proceed with update. Safety measure.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "schema_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'test-layer-schema', 'test-layer'}",
+    "annotations": "title='Update Test Layer Schema' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "delete_test_layer_schema": {
+    "name": "delete_test_layer_schema",
+    "description": "Delete a test layer schema from the project.\n\u26a0\ufe0f CAUTION: Destructive.\n\nArgs:\n    schema_id: ID of the schema to delete.\n    project_id: Optional Allure TestOps project ID override.\n    confirm: Must be set to True to proceed with deletion.\n        This is a safety measure to prevent accidental deletions.\n\nReturns:\n    Confirmation message.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_id": {
+          "description": "ID of the test layer schema to delete.",
+          "type": "integer"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Allure TestOps project ID."
+        },
+        "confirm": {
+          "default": false,
+          "description": "Must be set to True to proceed with deletion. Safety measure.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "schema_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'test-layer-schema', 'test-layer'}",
+    "annotations": "title='Delete Test Layer Schema' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "create_test_suite": {
+    "name": "create_test_suite",
+    "description": "Create a new test suite node in the hierarchy tree.\n\nArgs:\n    name: Suite name to create.\n    project_id: Optional project override. If omitted, use default project from environment.\n    tree_id: Optional hierarchy tree ID. If omitted, the default project tree is used.\n    parent_suite_id: Optional parent suite ID. Provide to create a nested suite.\n\nReturns:\n    Success message containing created suite ID and name.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "Suite name to create in hierarchy.",
+          "type": "string"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Allure TestOps project ID."
+        },
+        "tree_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Target hierarchy tree ID. If omitted, default project tree is used."
+        },
+        "parent_suite_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Parent suite/group node ID for nested suite creation."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "tags": "{'test-suite'}",
+    "annotations": "title='Create Test Suite' readOnlyHint=False destructiveHint=False idempotentHint=False openWorldHint=None"
+  },
+  "list_test_suites": {
+    "name": "list_test_suites",
+    "description": "List hierarchy suites for a project tree.\n\nArgs:\n    project_id: Optional project override. If omitted, use default project from environment.\n    tree_id: Optional hierarchy tree ID. If omitted, the default project tree is used.\n    include_empty: Whether to include suites without nested child suites.\n\nReturns:\n    Hierarchical text output with tree info and suite nodes.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Allure TestOps project ID."
+        },
+        "tree_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Target hierarchy tree ID. If omitted, default project tree is used."
+        },
+        "include_empty": {
+          "default": true,
+          "description": "Whether to include suites that have no nested child suites. Default is True.",
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "tags": "{'test-suite'}",
+    "annotations": "title='List Test Suites' readOnlyHint=True destructiveHint=False idempotentHint=True openWorldHint=None"
+  },
+  "assign_test_cases_to_suite": {
+    "name": "assign_test_cases_to_suite",
+    "description": "Assign test cases to a suite path in hierarchy.\n\n\u26a0\ufe0f CAUTION: Destructive.\nReassigning test cases changes their hierarchy location.\n\nArgs:\n    suite_id: Target suite/group node ID.\n    test_case_ids: List of test case IDs to assign.\n    project_id: Optional project override. If omitted, use default project from environment.\n    tree_id: Optional hierarchy tree ID. If omitted, the default project tree is used.\n\nReturns:\n    Success message with the number of assigned test cases.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "suite_id": {
+          "description": "Target suite/group node ID for assignment.",
+          "type": "integer"
+        },
+        "test_case_ids": {
+          "description": "List of test case IDs to assign to the suite.",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Allure TestOps project ID."
+        },
+        "tree_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Target hierarchy tree ID. If omitted, default project tree is used."
+        }
+      },
+      "required": [
+        "suite_id",
+        "test_case_ids"
+      ],
+      "type": "object"
+    },
+    "tags": "{'test-case', 'test-suite'}",
+    "annotations": "title='Assign Test Cases To Suite' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "delete_test_suite": {
+    "name": "delete_test_suite",
+    "description": "Delete a test suite node from hierarchy.\n\u26a0\ufe0f CAUTION: Destructive.\n\nThis operation removes a hierarchy suite/group node. Allure TestOps handles\nnested entities according to its API behavior for tree groups.\n\nArgs:\n    suite_id: Existing suite (tree node) ID to delete.\n    confirm: Must be set to True to proceed.\n        This safety flag prevents accidental destructive actions.\n    project_id: Optional Allure TestOps project override.\n\nReturns:\n    A confirmation or safety warning message.\n\nExample:\n    delete_test_suite(suite_id=12345, confirm=True)\n    -> \"\u2705 Test suite 12345 deleted successfully (idempotent).\"",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "suite_id": {
+          "description": "Suite/group node ID to delete from hierarchy.",
+          "type": "integer"
+        },
+        "confirm": {
+          "default": false,
+          "description": "Must be set to True to proceed with deletion. Safety measure.",
+          "type": "boolean"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional Allure TestOps project ID override."
+        }
+      },
+      "required": [
+        "suite_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'test-suite'}",
+    "annotations": "title='Delete Test Suite' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "create_test_plan": {
+    "name": "create_test_plan",
+    "description": "Create a new Test Plan in Allure TestOps.\n\nThis tool allows creating a Test Plan, which is a collection of Test Cases\nto be executed. You can define the content of the plan either by:\n1. Explicitly listing Test Case IDs (`test_case_ids`).\n2. Providing an AQL (Allure Query Language) filter (`aql_filter`).\n3. Both (explicit selection + dynamic filter).\n\nArgs:\n    name: The display name for the new Test Plan.\n    test_case_ids: Optional list of numeric Test Case IDs to include initially.\n    aql_filter: Optional AQL query string to dynamically select test cases\n        (e.g., 'tag in [\"smoke\", \"regression\"]').\n\nReturns:\n    A success message containing the ID and Name of the created plan.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "Name of the test plan",
+          "type": "string"
+        },
+        "test_case_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of Test Case IDs to include"
+        },
+        "aql_filter": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "AQL query to select test cases"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "tags": "{'test-plan'}",
+    "annotations": "title='Create Test Plan' readOnlyHint=False destructiveHint=False idempotentHint=False openWorldHint=None"
+  },
+  "update_test_plan": {
+    "name": "update_test_plan",
+    "description": "Update the metadata of an existing Test Plan.\n\nCurrently, supports updating the name of the plan.\n\nArgs:\n    plan_id: The numeric ID of the Test Plan to update.\n    name: The new name for the Test Plan.\n\nReturns:\n    A success message confirming the update with the Plan ID and new Name.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "plan_id": {
+          "description": "ID of the test plan",
+          "type": "integer"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "New name"
+        }
+      },
+      "required": [
+        "plan_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'test-plan'}",
+    "annotations": "title='Update Test Plan' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "manage_test_plan_content": {
+    "name": "manage_test_plan_content",
+    "description": "Modify the content (Test Cases) of an existing Test Plan.\n\nAllows adding or removing specific Test Cases by ID, or updating the\nunderlying AQL filter query.\n\nArgs:\n    plan_id: The numeric ID of the Test Plan to modify.\n    add_test_case_ids: List of Test Case IDs to add to the plan.\n    remove_test_case_ids: List of Test Case IDs to remove from the plan.\n    update_aql_filter: New AQL query string to replace the existing one.\n        Use this to change the dynamic criteria for test case selection.\n\nReturns:\n    A success message confirming the content update.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "plan_id": {
+          "description": "ID of the test plan",
+          "type": "integer"
+        },
+        "add_test_case_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of Test Case IDs to add"
+        },
+        "remove_test_case_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of Test Case IDs to remove"
+        },
+        "update_aql_filter": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Update the AQL filter string"
+        }
+      },
+      "required": [
+        "plan_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'test-case', 'test-plan'}",
+    "annotations": "title='Manage Test Plan Content' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "list_test_plans": {
+    "name": "list_test_plans",
+    "description": "List Test Plans for the current project.\n\nRetrieves a paginated list of Test Plans, showing their IDs, names,\nand the number of test cases they contain.\n\nArgs:\n    page: The page number to retrieve (0-based index). Defaults to 0.\n    size: The number of items per page. Defaults to 100.\n\nReturns:\n    A formatted string listing the Test Plans found, or a message indicating\n    no plans were found.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "default": 0,
+          "description": "Page number (0-based)",
+          "type": "integer"
+        },
+        "size": {
+          "default": 100,
+          "description": "Page size",
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "tags": "{'test-plan'}",
+    "annotations": "title='List Test Plans' readOnlyHint=True destructiveHint=False idempotentHint=True openWorldHint=None"
+  },
+  "create_defect": {
+    "name": "create_defect",
+    "description": "Create a new defect in the current project.\n\nUse this tool to register a known defect that can later be linked\nto failing test results through defect matchers (automation rules).\n\nArgs:\n    name: Human-readable defect title. Must be non-empty.\n    description: Optional markdown description providing context\n        about the defect (root cause, impact, workaround, etc.).\n\nReturns:\n    A success message containing the ID and name of the created defect.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "Name / title of the defect",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional markdown description"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "tags": "{'defect'}",
+    "annotations": "title='Create Defect' readOnlyHint=False destructiveHint=False idempotentHint=False openWorldHint=None"
+  },
+  "get_defect": {
+    "name": "get_defect",
+    "description": "Retrieve detailed information about a specific defect.\n\nArgs:\n    defect_id: Numeric ID of the defect.\n\nReturns:\n    Formatted defect details: ID, name, status, description.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "defect_id": {
+          "description": "ID of the defect to retrieve",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "defect_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'defect'}",
+    "annotations": "title='Get Defect' readOnlyHint=True destructiveHint=False idempotentHint=True openWorldHint=None"
+  },
+  "link_defect_to_test_case": {
+    "name": "link_defect_to_test_case",
+    "description": "Link a defect to a test case through a shared issue mapping.\n\nThis operation ensures defect governance and test coverage are connected:\nthe issue is linked to the defect and to the specified test case.\n\nArgs:\n    defect_id: Numeric ID of the defect.\n    test_case_id: Numeric ID of the test case.\n    issue_key: Optional issue key. If omitted, uses existing defect issue mapping.\n    integration_id: Optional integration ID for issue mapping.\n    integration_name: Optional integration name for issue mapping.\n\nReturns:\n    Confirmation message including defect, test case, and issue mapping details.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "defect_id": {
+          "description": "ID of the defect to link",
+          "type": "integer"
+        },
+        "test_case_id": {
+          "description": "ID of the test case to link",
+          "type": "integer"
+        },
+        "issue_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Issue key to use for linking (for example, PROJ-123). If omitted, the defect's existing issue mapping is reused."
+        },
+        "integration_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional integration ID for issue mapping. Mutually exclusive with integration_name."
+        },
+        "integration_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional integration name for issue mapping. Mutually exclusive with integration_id."
+        }
+      },
+      "required": [
+        "defect_id",
+        "test_case_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'defect', 'integration', 'test-case'}",
+    "annotations": "title='Link Defect To Test Case' readOnlyHint=False destructiveHint=False idempotentHint=True openWorldHint=None"
+  },
+  "list_defect_test_cases": {
+    "name": "list_defect_test_cases",
+    "description": "List test cases currently linked to a defect.\n\nArgs:\n    defect_id: Numeric ID of the defect.\n    page: Zero-based page index.\n    size: Page size (1..100).\n\nReturns:\n    Paginated list of linked test cases with ID, name, and status.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "defect_id": {
+          "description": "ID of the defect whose linked test cases should be listed",
+          "type": "integer"
+        },
+        "page": {
+          "default": 0,
+          "description": "Zero-based page index",
+          "type": "integer"
+        },
+        "size": {
+          "default": 20,
+          "description": "Page size (1..100)",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "defect_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'defect', 'test-case'}",
+    "annotations": "title='List Defect Test Cases' readOnlyHint=True destructiveHint=False idempotentHint=True openWorldHint=None"
+  },
+  "update_defect": {
+    "name": "update_defect",
+    "description": "Update an existing defect's name, description, or status.\n\nAt least one field must be provided. Fields set to null/None are\nleft unchanged.\n\nArgs:\n    defect_id: Numeric ID of the defect to update.\n    name: New defect title (optional).\n    description: New markdown description (optional).\n    closed: Set to true to close the defect, false to reopen (optional).\n\nReturns:\n    A success message with the updated defect ID and current status.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "defect_id": {
+          "description": "ID of the defect to update",
+          "type": "integer"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "New defect name"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "New markdown description"
+        },
+        "closed": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Set to true to close, false to reopen"
+        }
+      },
+      "required": [
+        "defect_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'defect'}",
+    "annotations": "title='Update Defect' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "delete_defect": {
+    "name": "delete_defect",
+    "description": "Permanently delete a defect and all its associated matchers.\n\nThis is a destructive operation. The ``confirm`` parameter must be\nset to ``true`` to actually perform the deletion.\n\nArgs:\n    defect_id: Numeric ID of the defect to delete.\n    confirm: Must be explicitly set to true. Prevents accidental\n        deletion when the agent misinterprets the user's intent.\n\nReturns:\n    Confirmation or rejection message.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "defect_id": {
+          "description": "ID of the defect to delete",
+          "type": "integer"
+        },
+        "confirm": {
+          "default": false,
+          "description": "Safety flag \u2014 must be set to true to confirm deletion",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "defect_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'defect'}",
+    "annotations": "title='Delete Defect' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "list_defects": {
+    "name": "list_defects",
+    "description": "List all defects in the current project.\n\nReturns:\n    A formatted list of defects with their IDs, names, and status.\n    Returns a message if no defects exist.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "tags": "{'defect'}",
+    "annotations": "title='List Defects' readOnlyHint=True destructiveHint=False idempotentHint=True openWorldHint=None"
+  },
+  "create_defect_matcher": {
+    "name": "create_defect_matcher",
+    "description": "Create a defect matcher (automation rule) for a defect.\n\nMatchers automatically link future failing test results to a defect\nwhen the test failure's error message or stack trace matches the\nprovided regex patterns.\n\nAt least one of ``message_regex`` or ``trace_regex`` must be\nsupplied.\n\nArgs:\n    defect_id: Numeric ID of the parent defect.\n    name: Short descriptive name for the matcher rule.\n    message_regex: Regular expression matched against error messages\n        of failing test results. Optional if trace_regex is given.\n    trace_regex: Regular expression matched against stack traces of\n        failing test results. Optional if message_regex is given.\n\nReturns:\n    A success message with the created matcher ID.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "defect_id": {
+          "description": "ID of the parent defect",
+          "type": "integer"
+        },
+        "name": {
+          "description": "Human-readable matcher rule name",
+          "type": "string"
+        },
+        "message_regex": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Regex to match against error messages"
+        },
+        "trace_regex": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Regex to match against stack traces"
+        }
+      },
+      "required": [
+        "defect_id",
+        "name"
+      ],
+      "type": "object"
+    },
+    "tags": "{'defect', 'defect-matcher'}",
+    "annotations": "title='Create Defect Matcher' readOnlyHint=False destructiveHint=False idempotentHint=False openWorldHint=None"
+  },
+  "update_defect_matcher": {
+    "name": "update_defect_matcher",
+    "description": "Update a defect matcher's name or regex patterns.\n\nAt least one field must be provided.\n\nArgs:\n    matcher_id: Numeric ID of the matcher to update.\n    name: New matcher name (optional).\n    message_regex: New error message regex (optional).\n    trace_regex: New stack trace regex (optional).\n\nReturns:\n    A success message with the updated matcher ID.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "matcher_id": {
+          "description": "ID of the matcher to update",
+          "type": "integer"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "New matcher name"
+        },
+        "message_regex": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "New message regex"
+        },
+        "trace_regex": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "New trace regex"
+        }
+      },
+      "required": [
+        "matcher_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'defect', 'defect-matcher'}",
+    "annotations": "title='Update Defect Matcher' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "delete_defect_matcher": {
+    "name": "delete_defect_matcher",
+    "description": "Permanently delete a defect matcher (automation rule).\n\nThis is a destructive operation. The ``confirm`` parameter must be\nset to ``true`` to actually perform the deletion.\n\nArgs:\n    matcher_id: Numeric ID of the matcher to delete.\n    confirm: Must be explicitly set to true. Prevents accidental\n        deletion when the agent misinterprets the user's intent.\n\nReturns:\n    Confirmation or rejection message.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "matcher_id": {
+          "description": "ID of the matcher to delete",
+          "type": "integer"
+        },
+        "confirm": {
+          "default": false,
+          "description": "Safety flag \u2014 must be set to true to confirm deletion",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "matcher_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'defect', 'defect-matcher'}",
+    "annotations": "title='Delete Defect Matcher' readOnlyHint=False destructiveHint=True idempotentHint=True openWorldHint=None"
+  },
+  "list_defect_matchers": {
+    "name": "list_defect_matchers",
+    "description": "List all matchers (automation rules) for a given defect.\n\nArgs:\n    defect_id: Numeric ID of the parent defect.\n\nReturns:\n    Formatted list of matchers with names and regex patterns.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "defect_id": {
+          "description": "ID of the parent defect",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "defect_id"
+      ],
+      "type": "object"
+    },
+    "tags": "{'defect', 'defect-matcher'}",
+    "annotations": "title='List Defect Matchers' readOnlyHint=True destructiveHint=False idempotentHint=True openWorldHint=None"
+  }
+}

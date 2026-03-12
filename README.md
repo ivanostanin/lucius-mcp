@@ -57,6 +57,36 @@ claude mcp add testops-mcp --transport stdio \
 
 For detailed setup, including Claude Desktop (MCPB) integration, see [Setup Guide](docs/setup.md).
 
+### 💻 Command-Line Interface (CLI)
+
+Lucius also provides a universal CLI entry point for direct tool execution from the command line:
+
+```bash
+# Download pre-built binary for your platform
+wget https://github.com/ivanostanin/lucius-mcp/releases/latest/download/lucius-linux-x86_64
+chmod +x lucius-linux-x86_64
+./lucius-linux-x86_64 --help
+
+# List all available tools
+./lucius-linux-x86_64 list
+
+# Call a tool
+./lucius-linux-x86_64 call get_test_case --args '{"id": 1234}'
+
+# Show help for a specific tool
+./lucius-linux-x86_64 call get_test_case --show-help
+```
+
+**CLI Features:**
+- 🚀 Fast startup (< 1s) with lazy initialization
+- 🎯 Type-safe tool invocation with validation
+- 📊 Multiple output formats (JSON, table, plain)
+- 🔍 Individual tool help with parameters and examples
+- 🛡️ Clean error messages with guidance
+- 📦 Standalone binaries for Linux, macOS, and Windows
+
+For full CLI documentation and installation instructions, see [CLI Guide](docs/CLI.md).
+
 ## 🔐 Telemetry & Privacy
 
 Lucius includes privacy-preserving telemetry to help maintainers understand runtime and tool usage trends.

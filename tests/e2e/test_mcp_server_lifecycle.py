@@ -49,7 +49,7 @@ def mcpb_python_bundle_path() -> Path:
     script_path = repo_root / "deployment/scripts/build-mcpb.sh"
 
     bash_path = shutil.which("bash") or "/bin/bash"
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [bash_path, str(script_path)],
         capture_output=True,
         text=True,
@@ -149,7 +149,7 @@ async def run_server_stdio():
     env["MCP_MODE"] = "stdio"
     env["LOG_LEVEL"] = "ERROR"  # Reduce noise
 
-    process = subprocess.Popen(  # noqa: S603
+    process = subprocess.Popen(
         [sys.executable, "-m", SERVER_SCRIPT],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
@@ -178,7 +178,7 @@ async def run_server_http(port: int):
     env["HOST"] = "127.0.0.1"
     env["LOG_LEVEL"] = "INFO"
 
-    process = subprocess.Popen(  # noqa: S603
+    process = subprocess.Popen(
         [sys.executable, "-m", SERVER_SCRIPT],
         env=env,
         stdout=sys.stdout,
@@ -215,7 +215,7 @@ async def run_server_from_bundle_http(bundle_root: Path, port: int):
     env["HOST"] = "127.0.0.1"
     env["LOG_LEVEL"] = "INFO"
 
-    process = subprocess.Popen(  # noqa: S603
+    process = subprocess.Popen(
         [command, *args],
         cwd=str(bundle_root),
         env=env,
