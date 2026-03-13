@@ -214,18 +214,18 @@ jobs:
           fi
         shell: bash
 
-      - name: Test binary list command
+      - name: Test binary entity command
         run: |
           if [ "$RUNNER_OS" == "Windows" ]; then
-            ./dist/cli/${{ matrix.artifact_name }} list --format json
+            ./dist/cli/${{ matrix.artifact_name }} test_case
           else
-            ./dist/cli/${{ matrix.artifact_name }} list --format json
+            ./dist/cli/${{ matrix.artifact_name }} test_case
           fi
         shell: bash
 
       - name: Run CLI tests
         run: |
-          uv run pytest tests/cli/ -v --tb=short
+          uv run pytest tests/cli/ --cov=src/cli --cov-report=term-missing -v --tb=short
         shell: bash
 
       - name: Run packaging tests

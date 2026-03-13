@@ -1,26 +1,29 @@
 """
-E2E tests for CLI with mocked API responses.
-
-These tests verify CLI tool invocation with Allure API responses mocked
-using pytest-asyncio and direct function calls (not subprocess).
+E2E-style CLI unit tests with mocked command execution.
 """
 
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+import sys
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from rich.console import Console
 
 from src.cli.cli_entry import (
+    ActionSpec,
     CLIError,
-    call_tool_mcp,
+    build_command_registry,
+    call_tool_function,
     format_as_plain,
     format_as_table,
     format_json,
     load_tool_schemas,
-    print_tool_help,
+    print_action_help,
+    resolve_action_name,
+    resolve_entity_name,
+    run_cli,
     validate_args_against_schema,
 )
 
@@ -32,471 +35,291 @@ def render_table(table: object) -> str:
     return console.export_text()
 
 
-class TestE2EToolCallsWithMockedAPI:
-    """
-    E2E tests for tool calls with mocked Allure API responses.
+class TestE2ECommandRegistry:
+    """Validate entity/action registry mapping."""
 
-    Tests mock the MCP layer to verify CLI handles API responses correctly.
-    """
+    def test_build_registry_contains_expected_mappings(self) -> None:
+        schemas = load_tool_schemas()
+        registry = build_command_registry(schemas)
 
-    @pytest.mark.asyncio
-    async def test_get_test_case_mocked_success(self) -> None:
-        """Test get_test_case with mocked successful API response."""
-        # Mock the MCP server
-        mock_tool = MagicMock()
-        mock_tool.name = "get_test_case"
+        assert registry["test_case"]["list"].tool_name == "list_test_cases"
+        assert registry["test_case"]["get"].tool_name == "get_test_case_details"
+        assert registry["test_case"]["create"].tool_name == "create_test_case"
+        assert registry["test_case"]["update"].tool_name == "update_test_case"
+        assert registry["test_case"]["delete"].tool_name == "delete_test_case"
+        assert registry["test_case"]["search"].tool_name == "search_test_cases"
+        assert registry["launch"]["create"].tool_name == "create_launch"
+        assert registry["launch"]["close"].tool_name == "close_launch"
+        assert registry["launch"]["reopen"].tool_name == "reopen_launch"
+        assert registry["integration"]["list"].tool_name == "list_integrations"
+        assert registry["shared_step"]["delete_archived"].tool_name == "delete_archived_shared_steps"
+        assert registry["shared_step"]["link_test_case"].tool_name == "link_shared_step"
+        assert registry["shared_step"]["unlink_test_case"].tool_name == "unlink_shared_step"
+        assert registry["defect"]["link_test_case"].tool_name == "link_defect_to_test_case"
+        assert registry["test_plan"]["delete"].tool_name == "delete_test_plan"
 
-        mock_result = MagicMock()
-        mock_result.content = [
-            MagicMock(
-                text=json.dumps(
-                    {
-                        "id": 1234,
-                        "name": "Test Login",
-                        "description": "Login test case",
-                        "status": "active",
-                    }
-                )
-            )
-        ]
+    def test_resolve_entity_plural_alias(self) -> None:
+        schemas = load_tool_schemas()
+        registry = build_command_registry(schemas)
+        assert resolve_entity_name("integrations", registry) == "integration"
+        assert resolve_entity_name("test-cases", registry) == "test_case"
 
-        with patch("src.main.mcp") as mock_mcp:
-            mock_mcp.get_tool = AsyncMock(return_value=mock_tool)
-            mock_mcp.call_tool = AsyncMock(return_value=mock_result)
+    def test_resolve_entity_unknown(self) -> None:
+        schemas = load_tool_schemas()
+        registry = build_command_registry(schemas)
+        with pytest.raises(CLIError) as exc_info:
+            resolve_entity_name("unknown_entity", registry)
+        assert "Unknown entity" in exc_info.value.message
+        assert exc_info.value.hint
+        assert "Canonical entities:" in exc_info.value.hint
+        assert "test_case" in exc_info.value.hint
 
-            # Call the tool
-            result = await call_tool_mcp("get_test_case", {"id": 1234})
+    def test_resolve_action_alias(self) -> None:
+        schemas = load_tool_schemas()
+        registry = build_command_registry(schemas)
+        actions = registry["custom_field"]
+        assert resolve_action_name("custom_field", "list", actions) == "get"
+        assert resolve_action_name("custom_field", "delete-unused", actions) == "delete_unused"
 
-            # Verify result
-            assert isinstance(result, dict)
-            assert result["id"] == 1234
-            assert result["name"] == "Test Login"
+    def test_resolve_action_unknown(self) -> None:
+        schemas = load_tool_schemas()
+        registry = build_command_registry(schemas)
+        actions = registry["test_case"]
+        with pytest.raises(CLIError) as exc_info:
+            resolve_action_name("test_case", "bad_action", actions)
+        assert "Unknown action" in exc_info.value.message
 
-            # Verify MCP was called correctly
-            mock_mcp.get_tool.assert_called_once_with("get_test_case")
-            mock_mcp.call_tool.assert_called_once_with("get_test_case", arguments={"id": 1234})
 
-    @pytest.mark.asyncio
-    async def test_list_test_cases_mocked_success(self) -> None:
-        """Test list_test_cases with mocked paginated response."""
-        mock_tool = MagicMock()
-        mock_tool.name = "list_test_cases"
-
-        mock_result = MagicMock()
-        mock_result.content = [
-            MagicMock(
-                text=json.dumps(
-                    {
-                        "total": 150,
-                        "page": 1,
-                        "size": 50,
-                        "items": [
-                            {"id": 1, "name": "Test 1"},
-                            {"id": 2, "name": "Test 2"},
-                            {"id": 3, "name": "Test 3"},
-                        ],
-                    }
-                )
-            )
-        ]
-
-        with patch("src.main.mcp") as mock_mcp:
-            mock_mcp.get_tool = AsyncMock(return_value=mock_tool)
-            mock_mcp.call_tool = AsyncMock(return_value=mock_result)
-
-            result = await call_tool_mcp("list_test_cases", {"page": 1, "size": 50})
-
-            assert isinstance(result, dict)
-            assert result["total"] == 150
-            assert result["page"] == 1
-            assert len(result["items"]) == 3
+class TestE2EDirectToolExecution:
+    """Validate direct execution of service-backed tool functions."""
 
     @pytest.mark.asyncio
-    async def test_create_test_case_mocked_success(self) -> None:
-        """Test create_test_case with mocked success response."""
-        mock_tool = MagicMock()
-        mock_tool.name = "create_test_case"
-
-        mock_result = MagicMock()
-        mock_result.content = [
-            MagicMock(
-                text=json.dumps(
-                    {
-                        "message": "Test case created successfully",
-                        "id": 5678,
-                        "name": "New Test Case",
-                    }
-                )
-            )
-        ]
-
-        with patch("src.main.mcp") as mock_mcp:
-            mock_mcp.get_tool = AsyncMock(return_value=mock_tool)
-            mock_mcp.call_tool = AsyncMock(return_value=mock_result)
-
-            args = {
-                "name": "New Test Case",
-                "description": "Test description",
-                "steps": [{"action": "Step 1", "expected": "Result 1"}],
-            }
-
-            result = await call_tool_mcp("create_test_case", args)
-
-            assert result["id"] == 5678
-            assert result["name"] == "New Test Case"
-            assert "message" in result
+    async def test_call_tool_function_success(self) -> None:
+        mock_tool = AsyncMock(return_value={"id": 123, "name": "ok"})
+        with patch("src.cli.cli_entry._load_tool_function", return_value=mock_tool):
+            result = await call_tool_function("list_test_cases", {"page": 0})
+        assert result["id"] == 123
+        mock_tool.assert_awaited_once_with(page=0)
 
     @pytest.mark.asyncio
-    async def test_tool_not_found_error(self) -> None:
-        """Test error handling when tool doesn't exist."""
-        mock_tool1 = MagicMock()
-        mock_tool1.name = "get_test_case"
-        mock_tool2 = MagicMock()
-        mock_tool2.name = "list_test_cases"
-
-        with patch("src.main.mcp") as mock_mcp:
-            mock_mcp.get_tool = AsyncMock(return_value=None)
-            mock_mcp.list_tools = AsyncMock(return_value=[mock_tool1, mock_tool2])
-
+    async def test_call_tool_function_type_error(self) -> None:
+        mock_tool = AsyncMock(side_effect=TypeError("unexpected keyword argument"))
+        with patch("src.cli.cli_entry._load_tool_function", return_value=mock_tool):
             with pytest.raises(CLIError) as exc_info:
-                await call_tool_mcp("nonexistent_tool", {})
-
-            error = exc_info.value
-            assert "not found" in error.message.lower()
-            assert "Available tools:" in error.hint
-            assert error.exit_code == 1
+                await call_tool_function("list_test_cases", {"bad": 1})
+        assert "Invalid parameters" in exc_info.value.message
 
     @pytest.mark.asyncio
-    async def test_tool_api_error_with_guidance(self) -> None:
-        """Test API error provides guiding message."""
-        mock_tool = MagicMock()
-        mock_tool.name = "get_test_case"
-
-        # Simulate API error
-        with patch("src.main.mcp") as mock_mcp:
-            mock_mcp.get_tool = AsyncMock(return_value=mock_tool)
-            mock_mcp.call_tool = AsyncMock(side_effect=Exception("401 Unauthorized: Invalid API token"))
-
+    async def test_call_tool_function_runtime_error(self) -> None:
+        mock_tool = AsyncMock(side_effect=Exception("401 Unauthorized"))
+        with patch("src.cli.cli_entry._load_tool_function", return_value=mock_tool):
             with pytest.raises(CLIError) as exc_info:
-                await call_tool_mcp("get_test_case", {"id": 1234})
-
-            error = exc_info.value
-            assert "Error" in error.message
-            assert "401" in error.message
-            assert error.hint
-            assert error.exit_code == 1
-
-    @pytest.mark.asyncio
-    async def test_tool_validation_error(self) -> None:
-        """Test validation error provides guiding message."""
-        mock_tool = MagicMock()
-        mock_tool.name = "get_test_case"
-
-        # Simulate validation error
-        with patch("src.main.mcp") as mock_mcp:
-            mock_mcp.get_tool = AsyncMock(return_value=mock_tool)
-            mock_mcp.call_tool = AsyncMock(side_effect=Exception("ValidationError: field required"))
-
-            with pytest.raises(CLIError) as exc_info:
-                await call_tool_mcp("get_test_case", {})
-
-            error = exc_info.value
-            assert "Error" in error.message
-            assert error.exit_code == 1
+                await call_tool_function("list_test_cases", {"page": 0})
+        assert "Error executing" in exc_info.value.message
+        assert exc_info.value.hint
 
 
-class TestE2EMultipleOutputFormats:
-    """Test output formatting with various data types."""
+class TestE2ERouting:
+    """Validate top-level command routing behavior."""
+
+    def test_run_cli_entity_prints_actions(self, capsys: pytest.CaptureFixture[str]) -> None:
+        run_cli(["test_case"])
+        output = capsys.readouterr().out
+        assert "Actions for test_case" in output
+        assert "list" in output
+
+    def test_run_cli_action_help(self, capsys: pytest.CaptureFixture[str]) -> None:
+        run_cli(["test_case", "list", "--help"])
+        output = capsys.readouterr().out
+        assert "Command:" in output
+        assert "lucius test_case list" in output
+
+    def test_run_cli_legacy_call_rejected(self) -> None:
+        with pytest.raises(CLIError) as exc_info:
+            run_cli(["call", "list_test_cases", "--args", "{}"])
+        assert "Legacy command style" in exc_info.value.message
+
+    def test_run_cli_executes_mapped_action(self) -> None:
+        with (
+            patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value={"ok": True})) as mock_call,
+            patch("src.cli.cli_entry.format_output_data") as mock_format,
+        ):
+            run_cli(["test_case", "list", "--args", "{}", "--format", "json"])
+
+        mock_call.assert_awaited_once_with("list_test_cases", {})
+        mock_format.assert_called_once_with({"ok": True}, "json")
+
+    def test_run_cli_invalid_json(self) -> None:
+        with pytest.raises(CLIError) as exc_info:
+            run_cli(["test_case", "list", "--args", "{invalid}"])
+        assert "Invalid JSON" in exc_info.value.message
+
+
+class TestCLIImportBoundary:
+    """Ensure CLI execution path doesn't import FastMCP runtime modules."""
+
+    def test_help_path_does_not_import_fastmcp_or_src_main(self, capsys: pytest.CaptureFixture[str]) -> None:
+        sys.modules.pop("fastmcp", None)
+        sys.modules.pop("src.main", None)
+        run_cli(["--help"])
+        _ = capsys.readouterr()
+        assert "fastmcp" not in sys.modules
+        assert "src.main" not in sys.modules
+
+    def test_action_path_does_not_import_fastmcp_or_src_main(self) -> None:
+        sys.modules.pop("fastmcp", None)
+        sys.modules.pop("src.main", None)
+        with (
+            patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value={"ok": True})),
+            patch("src.cli.cli_entry.format_output_data"),
+        ):
+            run_cli(["test_case", "list", "--args", "{}"])
+        assert "fastmcp" not in sys.modules
+        assert "src.main" not in sys.modules
+
+
+class TestE2EFormatting:
+    """Test output formatting helpers."""
 
     def test_format_json_dict(self) -> None:
-        """Test JSON formatting of dictionary."""
         data = {"id": 1, "name": "Test", "nested": {"key": "value"}}
         result = format_json(data)
-
         parsed = json.loads(result)
         assert parsed["id"] == 1
-        assert parsed["name"] == "Test"
         assert parsed["nested"]["key"] == "value"
 
-    def test_format_json_list(self) -> None:
-        """Test JSON formatting of list."""
-        data = [
-            {"id": 1, "name": "Test 1"},
-            {"id": 2, "name": "Test 2"},
-        ]
-        result = format_json(data)
-
-        parsed = json.loads(result)
-        assert len(parsed) == 2
-        assert parsed[0]["id"] == 1
-
     def test_format_table_tools(self) -> None:
-        """Test table formatting of tools list."""
         tools = {
             "create_test_case": {
                 "name": "create_test_case",
                 "description": "Create a new test case",
-                "input_schema": {
-                    "properties": {
-                        "name": {"type": "string"},
-                        "description": {"type": "string"},
-                    },
-                },
+                "input_schema": {"properties": {"name": {"type": "string"}}},
             },
-            "get_test_case": {
-                "name": "get_test_case",
-                "description": "Get test case details",
-                "input_schema": {
-                    "properties": {
-                        "id": {"type": "number"},
-                    },
-                },
+            "get_test_case_details": {
+                "name": "get_test_case_details",
+                "description": "Get details",
+                "input_schema": {"properties": {"test_case_id": {"type": "integer"}}},
             },
         }
-
-        result = format_as_table(tools)
-        rendered = render_table(result)
+        rendered = render_table(format_as_table(tools))
         assert "create_test_case" in rendered
-        assert "get_test_case" in rendered
         assert "Tool Name" in rendered
-        assert "Parameters" in rendered
-
-    def test_format_table_empty_params(self) -> None:
-        """Test table formatting with tools without parameters."""
-        tools = {
-            "no_params_tool": {
-                "name": "no_params_tool",
-                "description": "Tool with no params",
-                "input_schema": {"properties": {}},
-            }
-        }
-
-        result = format_as_table(tools)
-        rendered = render_table(result)
-        assert "no_params_tool" in rendered
-        assert "(no parameters)" in rendered
 
     def test_format_table_generic_result_dict(self) -> None:
-        """Test table formatting for normal command result dictionaries."""
-        result = format_as_table({"id": 123, "name": "Sample"})
-        rendered = render_table(result)
+        rendered = render_table(format_as_table({"id": 123, "name": "Sample"}))
         assert "id" in rendered
         assert "123" in rendered
-        assert "name" in rendered
         assert "Sample" in rendered
 
-    def test_format_plain_dict(self) -> None:
-        """Test plain text formatting of dictionary."""
-        data = {"id": 1, "name": "Test", "status": "active"}
-        result = format_as_plain(data)
-
+    def test_format_plain(self) -> None:
+        result = format_as_plain({"id": 1, "name": "Test"})
         assert "id: 1" in result
         assert "name: Test" in result
-        assert "status: active" in result
-
-    def test_format_plain_list(self) -> None:
-        """Test plain text formatting of list."""
-        data = ["Item 1", "Item 2", "Item 3"]
-        result = format_as_plain(data)
-
-        assert "Item 1" in result
-        assert "Item 2" in result
-        assert "Item 3" in result
-
-    def test_format_plain_string(self) -> None:
-        """Test plain text formatting of string."""
-        data = "Just a string"
-        result = format_as_plain(data)
-
-        assert result == "Just a string"
 
 
-class TestE2EValidationAndSchemas:
-    """Test schema validation and argument handling."""
+class TestE2EValidationAndHelp:
+    """Test schema validation and help rendering."""
 
     def test_validate_args_required_param_missing(self) -> None:
-        """Test validation fails when required parameter missing."""
-        tool_schema = {
-            "name": "get_test_case",
+        schema = {
+            "name": "get_test_case_details",
             "input_schema": {
                 "type": "object",
-                "properties": {
-                    "id": {"type": "number"},
-                },
-                "required": ["id"],
+                "properties": {"test_case_id": {"type": "integer"}},
+                "required": ["test_case_id"],
             },
         }
-
         with pytest.raises(CLIError) as exc_info:
-            validate_args_against_schema({}, "get_test_case", tool_schema)
-
-        error = exc_info.value
-        assert "requires parameter 'id'" in error.message
-        assert "--args" in error.hint
-        assert error.exit_code == 1
+            validate_args_against_schema({}, "test_case get", schema)
+        assert "requires parameter 'test_case_id'" in exc_info.value.message
 
     def test_validate_args_unknown_param(self) -> None:
-        """Test validation fails with unknown parameter."""
-        tool_schema = {
-            "name": "get_test_case",
+        schema = {
+            "name": "list_test_cases",
             "input_schema": {
                 "type": "object",
-                "properties": {
-                    "id": {"type": "number"},
-                },
-                "required": ["id"],
+                "properties": {"page": {"type": "integer"}},
+                "required": [],
             },
         }
-
         with pytest.raises(CLIError) as exc_info:
-            validate_args_against_schema(
-                {"id": 123, "unknown_param": "value"},
-                "get_test_case",
-                tool_schema,
-            )
-
-        error = exc_info.value
-        assert "Unknown parameter 'unknown_param'" in error.message
-        assert "Valid parameters:" in error.hint
-        assert error.exit_code == 1
+            validate_args_against_schema({"bad": 1}, "test_case list", schema)
+        assert "Unknown parameter 'bad'" in exc_info.value.message
 
     def test_validate_args_success(self) -> None:
-        """Test validation succeeds with valid arguments."""
-        tool_schema = {
-            "name": "get_test_case",
+        schema = {
+            "name": "list_test_cases",
             "input_schema": {
                 "type": "object",
-                "properties": {
-                    "id": {"type": "number"},
-                    "name": {"type": "string"},
-                },
-                "required": ["id"],
+                "properties": {"page": {"type": "integer"}},
+                "required": [],
             },
         }
+        validate_args_against_schema({"page": 0}, "test_case list", schema)
 
-        # Should not raise
-        validate_args_against_schema({"id": 123, "name": "Test"}, "get_test_case", tool_schema)
-
-    def test_load_tool_schemas(self) -> None:
-        """Test loading tool schemas from static JSON."""
-        schemas = load_tool_schemas()
-
-        assert isinstance(schemas, dict)
-        assert len(schemas) > 0
-
-        # Verify schema structure
-        for _tool_name, schema in schemas.items():
-            assert "name" in schema
-            assert "description" in schema
-            assert "input_schema" in schema
-
-
-class TestE2EToolHelpIsolation:
-    """Test isolated tool help generation."""
-
-    def test_print_tool_help_basic(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """Test tool help prints correct information."""
-        tool_schema = {
-            "name": "get_test_case",
-            "description": "Get test case details by ID",
+    def test_validate_args_type_mismatch(self) -> None:
+        schema = {
+            "name": "list_test_cases",
             "input_schema": {
                 "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "number",
-                        "description": "Test case ID",
-                    },
-                    "project_id": {
-                        "type": "number",
-                        "description": "Project ID (optional)",
-                    },
-                },
-                "required": ["id"],
+                "properties": {"page": {"type": "integer"}},
+                "required": [],
             },
         }
-
-        print_tool_help("get_test_case", tool_schema)
-
-        captured = capsys.readouterr()
-        output = captured.out
-
-        assert "Tool: get_test_case" in output
-        assert "Get test case details by ID" in output
-        assert "Parameters:" in output
-        assert "id" in output
-        assert "Test case ID" in output
-        assert "(required)" in output
-        assert "Example usage:" in output
-
-    def test_print_tool_help_no_params(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """Test tool help with no parameters."""
-        tool_schema = {
-            "name": "list_projects",
-            "description": "List all projects",
-            "input_schema": {
-                "type": "object",
-                "properties": {},
-            },
-        }
-
-        print_tool_help("list_projects", tool_schema)
-
-        captured = capsys.readouterr()
-        output = captured.out
-
-        assert "(no parameters)" in output
-        assert "Example usage:" in output
-
-    def test_print_tool_help_with_nested_params(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """Test tool help with complex nested parameters."""
-        tool_schema = {
-            "name": "create_test_case",
-            "description": "Create a new test case",
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string", "description": "Test case name"},
-                    "steps": {
-                        "type": "array",
-                        "description": "Test steps",
-                    },
-                },
-                "required": ["name"],
-            },
-        }
-
-        print_tool_help("create_test_case", tool_schema)
-
-        captured = capsys.readouterr()
-        output = captured.out
-
-        assert "name" in output
-        assert "steps" in output
-        assert "(required)" in output  # for name
-
-
-class TestE2EErrorMessagesWithGuidance:
-    """Test user-friendly error messages with hints."""
-
-    def test_cli_error_with_hint(self) -> None:
-        """Test CLIError includes hint."""
-        error = CLIError(
-            "Tool not found",
-            hint="Available tools: get_test_case, list_test_cases",
-            exit_code=1,
-        )
-
-        assert error.message == "Tool not found"
-        assert "Available tools:" in error.hint
-        assert error.exit_code == 1
-
-    def test_format_output_invalid_format(self, capsys: pytest.CaptureFixture[str]):
-        """Test invalid format shows helpful error."""
-        from src.cli.cli_entry import format_output_data
-
         with pytest.raises(CLIError) as exc_info:
-            format_output_data({}, "invalid_format")
+            validate_args_against_schema({"page": "zero"}, "test_case list", schema)
+        assert "Invalid value for parameter 'page'" in exc_info.value.message
 
-        error = exc_info.value
-        assert "Invalid output format" in error.message
-        assert "json|table|plain" in error.hint
+    def test_validate_args_enum_and_numeric_constraints(self) -> None:
+        schema = {
+            "name": "search_test_cases",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string", "enum": ["active", "draft"]},
+                    "size": {"type": "integer", "minimum": 1, "maximum": 100},
+                },
+                "required": [],
+            },
+        }
+        with pytest.raises(CLIError) as enum_error:
+            validate_args_against_schema({"status": "archived"}, "test_case search", schema)
+        assert "must be one of" in enum_error.value.message
+
+        with pytest.raises(CLIError) as range_error:
+            validate_args_against_schema({"size": 0}, "test_case search", schema)
+        assert "must be >=" in range_error.value.message
+
+    def test_validate_args_anyof_accepts_nullable(self) -> None:
+        schema = {
+            "name": "list_launches",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "project_id": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                },
+                "required": [],
+            },
+        }
+        validate_args_against_schema({"project_id": None}, "launch list", schema)
+        validate_args_against_schema({"project_id": "123"}, "launch list", schema)
+
+    def test_print_action_help(self, capsys: pytest.CaptureFixture[str]) -> None:
+        spec = ActionSpec(
+            tool_name="list_test_cases",
+            entity="test_case",
+            action="list",
+            schema={
+                "description": "List all test cases.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {"page": {"type": "integer", "description": "Page index."}},
+                    "required": [],
+                },
+            },
+        )
+        print_action_help(spec)
+        output = capsys.readouterr().out
+        assert "lucius test_case list" in output
+        assert "List all test cases." in output
+        assert "page" in output

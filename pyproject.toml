@@ -136,3 +136,9 @@ markers = [
     "priority: Test execution priority",
     "e2e: End-to-end tests that validate runtime lifecycle and bundle execution"
 ]
+
+[tool.coverage.run]
+source = ["src/cli"]
+
+[tool.coverage.report]
+fail_under = 90

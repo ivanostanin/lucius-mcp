@@ -2,7 +2,7 @@
 CLI module for lucius-mcp command-line interface.
 
 IMPORTANT: No HTTP server imports allowed in CLI module.
-CLI uses stdio transport only for MCP communication.
+CLI does not depend on FastMCP runtime; it calls service-backed tool functions directly.
 """
 
 from __future__ import annotations

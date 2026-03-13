@@ -40,7 +40,8 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 ### Technical Constraints & Dependencies
 
 *   **Stack:** Python, `uv`, `starlette`.
-*   **Core Library:** `mcp` (Python SDK) - leveraging built-in `FastMCP` or `Server` classes.
+*   **Core Library (Server Runtime):** `mcp` (Python SDK) - leveraging built-in `FastMCP` or `Server` classes.
+*   **CLI Runtime Constraint:** CLI command execution must not depend on FastMCP runtime wiring (`src.main` import path).
 *   **Validation:** `pydantic` models generated strictly from Allure OpenAPI 3.1.
 *   **Transport:**
     *   `stdio` (Default for CLI/Desktop apps).
@@ -120,6 +121,13 @@ uv add "mcp[cli,fastapi]" pydantic starlette uvicorn
 *   **Transport:** `fastmcp` mounted on `Starlette` app to support Streamable HTTP.
 *   **Error Handling:** Global Exception Handler converting `AllureAPIError` to informative text responses.
 
+### CLI Architecture (Service-First Course Correction)
+*   **Command Model:** `lucius <entity> <action>` is the primary CLI grammar.
+*   **Entity Discovery:** `lucius <entity>` returns available actions for that entity.
+*   **Action Help:** `lucius <entity> <action> --help` shows description, parameters, and examples.
+*   **Execution Path:** CLI routes entity/action commands to existing service behavior while preserving current tool semantics.
+*   **Layering Rule:** Thick Service -> Thin CLI adapter. No new business layer and no new tool layer are introduced for CLI migration.
+
 ### Infrastructure & Deployment
 *   **Runtime:** Python 3.14 (managed via `uv`).
 *   **Dependency Management:** `pyproject.toml` managed by `uv`.
@@ -138,6 +146,8 @@ uv add "mcp[cli,fastapi]" pydantic starlette uvicorn
 *   **Variables:** `snake_case` (e.g., `test_case_id`).
 *   **Files:** `snake_case` (e.g., `test_ops_client.py`).
 *   **Tools:** `snake_case` with explicit verb-noun (e.g., `create_test_case`, not `add_case`).
+*   **CLI Entities:** `snake_case` singular canonical names (e.g., `test_case`, `test_plan`, `custom_field_value`) with optional plural aliases.
+*   **CLI Actions:** `snake_case` verbs or verb phrases matching existing behavior (e.g., `create`, `list`, `delete_archived`, `manage_content`).
 
 ### Structure Patterns
 
@@ -150,6 +160,7 @@ uv add "mcp[cli,fastapi]" pydantic starlette uvicorn
 **Tool Prompts:**
 *   All tools MUST return simple, text-based success messages ("Successfully created X") or informative error explanations.
 *   NO raw JSON dumps unless specifically requested by the tool contract.
+*   CLI actions MUST preserve equivalent behavior and support `json|table|plain` output formats (`json` default).
 
 **Error Handling:**
 *   `try/except` blocks in tools are **FORBIDDEN**.
@@ -221,6 +232,7 @@ lucius-mcp/
 
 **Component Boundaries:**
 *   **Tools vs Services:** Tools (`src/tools/`) are strictly parsing/validation layers. They MUST delegate all logic to Services (`src/services/`).
+*   **CLI vs Services:** CLI (`src/cli/`) is a command adapter/formatter. It MUST delegate operational behavior to existing services and must not import MCP server runtime to execute commands.
 *   **Deployment:** `deployment/` defines the infrastructure boundary. The app must run identically in Docker (`deployment/Dockerfile`) as it does locally via `uv`.
 
 ### Requirements to Structure Mapping
@@ -229,6 +241,7 @@ lucius-mcp/
 *   **Test Case Management:** `src/tools/cases.py` + `src/services/case_service.py`
 *   **Shared Steps:** `src/tools/shared_steps.py`
 *   **Search/Discovery:** `src/tools/search.py`
+*   **CLI Entity/Action Routing:** `src/cli/cli_entry.py` + static route metadata (`src/cli/data/tool_schemas.json`) mapped to existing `src/services/*`.
 
 **Cross-Cutting Concerns:**
 *   **Authentication:** `src/utils/auth.py` (Middleware) + `src/services/auth_service.py`
@@ -255,6 +268,28 @@ lucius-mcp/
 **Deployment Structure:**
 *   **Docker:** Multi-stage build to keep image size small (no build tools in final image).
 *   **Helm:** Standard chart structure in `deployment/charts/`.
+
+### Automated Test Coverage Strategy
+
+**CLI Coverage Model:**
+*   **Unit Tests (`tests/cli/test_cli_basics.py`):**
+    *   command grammar parsing for `lucius <entity> <action>`
+    *   entity-only action listing behavior
+    *   action help rendering shape and required sections
+    *   output formatter behavior (`json|table|plain`)
+*   **Mocked Integration Tests (`tests/cli/test_e2e_mocked.py`):**
+    *   route-to-service invocation parity with representative action flows
+    *   validation and confirm-gate behavior parity
+    *   error hint parity and non-traceback guarantees
+*   **E2E CLI Execution Tests:**
+    *   real CLI process invocation for key entity/action flows
+    *   startup/help/discovery latency and correctness checks
+    *   FastMCP-decoupling guard (CLI path must not require `src.main` import)
+
+**Coverage Gates:**
+*   **Global:** maintain project threshold (>85%).
+*   **CLI-specific:** enforce >=90% line coverage for `src/cli/`.
+*   **Route coverage:** canonical CLI route table must have 100% automated test representation (at least one test per canonical `entity/action` command).
 
 ## Architecture Validation Results
 
@@ -344,5 +379,3 @@ Initialize project using `uv` and scaffold the directory tree.
 **Architecture Status:** READY FOR IMPLEMENTATION ✅
 
 **Next Phase:** Begin implementation using the architectural decisions and patterns documented herein.
-
-

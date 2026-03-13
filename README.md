@@ -67,21 +67,21 @@ wget https://github.com/ivanostanin/lucius-mcp/releases/latest/download/lucius-l
 chmod +x lucius-linux-x86_64
 ./lucius-linux-x86_64 --help
 
-# List all available tools
-./lucius-linux-x86_64 list
+# List available actions for an entity
+./lucius-linux-x86_64 test_case
 
-# Call a tool
-./lucius-linux-x86_64 call get_test_case --args '{"id": 1234}'
+# Execute an action
+./lucius-linux-x86_64 test_case get --args '{"test_case_id": 1234}'
 
-# Show help for a specific tool
-./lucius-linux-x86_64 call get_test_case --show-help
+# Show help for a specific entity/action
+./lucius-linux-x86_64 test_case get --help
 ```
 
 **CLI Features:**
 - 🚀 Fast startup (< 1s) with lazy initialization
-- 🎯 Type-safe tool invocation with validation
+- 🎯 Type-safe entity/action invocation with validation
 - 📊 Multiple output formats (JSON, table, plain)
-- 🔍 Individual tool help with parameters and examples
+- 🔍 Per-action help with parameters and examples
 - 🛡️ Clean error messages with guidance
 - 📦 Standalone binaries for Linux, macOS, and Windows
 

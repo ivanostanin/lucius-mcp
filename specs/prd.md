@@ -78,6 +78,7 @@ Unlike generic API wrappers, **lucius-mcp** is built with an **LLM-First Design*
 *   **Discovery:** Rich Test Search and Hierarchy navigation.
 *   **Execution:** Launches CRUD.
 *   **Ops:** Docker containerization, Helm charts, and GitHub CI/CD workflows.
+*   **CLI UX Evolution:** Service-first CLI command model using `lucius <entity> <action>` semantics (example: `lucius test_case create`) with entity-level action discovery and per-action help.
 
 ### Vision (Future)
 
@@ -173,6 +174,16 @@ He tries to make his agent create a test case with a missing required field. The
     *   `delete_shared_step`: Remove obsolete steps.
     *   `list_shared_steps`: Discovery for reuse.
 
+### CLI Interaction Model
+
+The product provides a direct CLI interface in addition to MCP transport. CLI command semantics are entity-oriented and mirror existing tool behavior:
+
+*   **Command Grammar:** `lucius <testops_entity_type> <action> [--args <json>] [--format json|table|plain]`.
+*   **Entity Discovery:** `lucius <testops_entity_type>` lists available actions for that entity.
+*   **Action Help:** `lucius <testops_entity_type> <action> --help` shows action description, parameters, and examples.
+*   **Behavior Parity:** Each CLI action must preserve existing tool behavior (validation, confirmation gates, idempotency, and user-facing error hints).
+*   **Architecture Constraint:** CLI must follow a thick service -> thin CLI adapter pattern and must not introduce new tools or new business layers.
+
 ### Authentication Model
 
 *   **Token Exchange:** API tokens (`ALLURE_TOKEN`) are exchanged for JWT Bearer tokens via the `/api/uaa/oauth/token` endpoint at client initialization.
@@ -263,6 +274,17 @@ He tries to make his agent create a test case with a missing required field. The
 *   **FR16:** The system provides descriptive error hints when validation fails (e.g., "Missing field X").
 *   **FR17:** All automated agents and tools using destructive functions (update, delete, link, unlink) MUST include `confirm=True` to proceed with modifications.
 
+### CLI Functional Requirements
+
+*   **FR18:** The CLI MUST support command structure `lucius <entity> <action>` as the primary invocation model.
+*   **FR19:** Running only `lucius <entity>` MUST print available actions for that entity.
+*   **FR20:** Every `lucius <entity> <action>` command MUST support `--help` with description, parameters, and examples.
+*   **FR21:** Each `entity/action` command MUST map to existing service behavior and mimic existing tool semantics without adding new tools/layers.
+*   **FR22:** CLI output formats MUST remain `json` (default), `table`, and `plain`.
+*   **FR23:** Automated tests MUST validate command parsing and routing for all supported CLI entities and actions.
+*   **FR24:** Automated tests MUST validate entity-only action discovery (`lucius <entity>`) and action help rendering (`lucius <entity> <action> --help`).
+*   **FR25:** Automated tests MUST verify behavior parity for representative create/read/update/delete/search/link/close/reopen flows.
+
 ## Non-Functional Requirements
 
 ### Performance (Latency & Throughput)
@@ -283,13 +305,17 @@ He tries to make his agent create a test case with a missing required field. The
 *   **NFR9:** Code style and strict linting enforced via `ruff`.
 *   **NFR10:** LLM-optimized docstrings for all Tools.
 *   **NFR11:** End-to-End Tests: Implemented involving verification of tool execution results in sandbox TestOps instance or project.
+*   **NFR12:** CLI execution path must be decoupled from FastMCP runtime imports; command execution cannot require `fastmcp` or `src.main`.
+*   **NFR13:** CLI automation test suite MUST include unit, mocked integration, and end-to-end command invocation coverage.
+*   **NFR14:** CLI route coverage requirement: 100% of canonical `entity/action` routes must be represented by at least one automated test.
+*   **NFR15:** CLI module coverage target: at least 90% line coverage for `src/cli/`.
 
 ### Observability & Metrics
-*   **NFR12:** **Structured Logging:** All events must be logged in structured JSON format (level, timestamp, logger, message, context).
-*   **NFR13:** **Traffic Inspection:** Logs must capture Tool Input arguments and (truncated) Output results for debugging.
-*   **NFR14:** **Correlation:** Every tool call should generate a Request ID.
-*   **NFR15:** **Operational Metrics:** The server must expose metrics (via logs or generic endpoint) measuring:
+*   **NFR16:** **Structured Logging:** All events must be logged in structured JSON format (level, timestamp, logger, message, context).
+*   **NFR17:** **Traffic Inspection:** Logs must capture Tool Input arguments and (truncated) Output results for debugging.
+*   **NFR18:** **Correlation:** Every tool call should generate a Request ID.
+*   **NFR19:** **Operational Metrics:** The server must expose metrics (via logs or generic endpoint) measuring:
     *   `mcp_tool_usage_count` (labeled by tool name)
     *   `mcp_tool_error_count` (labeled by error type)
     *   `mcp_tool_latency_ms` (histogram)
-*   **NFR16:** All new and changed tools must be covered by manual validation scenarios in `tests/agentic/agentic-tool-calls-tests.md`.
+*   **NFR20:** All new and changed tools must be covered by manual validation scenarios in `tests/agentic/agentic-tool-calls-tests.md`.

@@ -4,7 +4,6 @@ Packaging tests for CLI binaries across all platforms.
 Tests verify binary size, functionality, and standalone execution.
 """
 
-import json
 import platform
 import subprocess
 from pathlib import Path
@@ -23,6 +22,42 @@ BINARIES = {
     "windows-arm64": "lucius-windows-arm64.exe",
     "windows-x86_64": "lucius-windows-x86_64.exe",
 }
+
+
+def _platform_name() -> str:
+    system = platform.system().lower()
+    if system == "darwin":
+        return "macos"
+    return system
+
+
+def _machine_name() -> str:
+    return "arm64" if platform.machine().lower() in {"arm64", "aarch64"} else "x86_64"
+
+
+def _select_current_binary() -> Path | None:
+    binaries = [binary for binary in DIST_DIR.glob("lucius-*") if binary.is_file()]
+    if not binaries:
+        return None
+
+    platform_name = _platform_name()
+    machine_name = _machine_name()
+    expected_name = BINARIES.get(f"{platform_name}-{machine_name}")
+    if expected_name and (DIST_DIR / expected_name).exists():
+        return DIST_DIR / expected_name
+
+    system_name = platform.system().lower()
+    for binary in binaries:
+        lower_name = binary.name.lower()
+        if machine_name in lower_name and (platform_name in lower_name or system_name in lower_name):
+            return binary
+
+    for binary in binaries:
+        lower_name = binary.name.lower()
+        if platform_name in lower_name or system_name in lower_name:
+            return binary
+
+    return binaries[0]
 
 
 class TestBinaryPresence:
@@ -46,8 +81,8 @@ class TestBinaryPresence:
         # For dev builds, skip if not all platforms are available
         if platform.system() in ["Linux", "Darwin"]:
             # On Linux/macOS, expect at least the current platform binary
-            machine = "arm64" if platform.machine() == "arm64" else "x86_64"
-            current_binary = BINARIES.get(f"{platform.system().lower()}-{machine}")
+            machine = _machine_name()
+            current_binary = BINARIES.get(f"{_platform_name()}-{machine}")
 
             if current_binary:
                 assert (DIST_DIR / current_binary).exists(), f"Current platform binary not found: {current_binary}"
@@ -100,29 +135,9 @@ class TestBinaryExecution:
     @pytest.mark.skipif(not DIST_DIR.exists(), reason="dist/cli not found")
     def test_binary_version_command(self) -> None:
         """Test binary responds to --version command."""
-        # Find current platform binary
-        binaries = list(DIST_DIR.glob("lucius-*"))
-
-        if not binaries:
-            pytest.skip("No binaries found to test")
-
-        # Try to run the binary most likely for current platform
-        current_platform = platform.system().lower()
-        machine = "arm64" if platform.machine() in ["arm64", "aarch64"] else "x86_64"
-        expected_name = BINARIES.get(f"{current_platform}-{machine}")
-
-        binary_to_test = None
-        if expected_name and (DIST_DIR / expected_name).exists():
-            binary_to_test = DIST_DIR / expected_name
-        else:
-            # Try to find a matching binary
-            for binary in binaries:
-                if current_platform in binary.name.lower():
-                    binary_to_test = binary
-                    break
-
+        binary_to_test = _select_current_binary()
         if not binary_to_test:
-            pytest.skip(f"No suitable binary found for {platform.system()} {platform.machine()}")
+            pytest.skip("No binaries found to test")
 
         print(f"\\nTesting binary: {binary_to_test.name}")
 
@@ -156,26 +171,9 @@ class TestBinaryExecution:
     @pytest.mark.skipif(not DIST_DIR.exists(), reason="dist/cli not found")
     def test_binary_help_command(self) -> None:
         """Test binary responds to --help command."""
-        binaries = list(DIST_DIR.glob("lucius-*"))
-
-        if not binaries:
-            pytest.skip("No binaries found to test")
-
-        current_platform = platform.system().lower()
-        machine = "arm64" if platform.machine() in ["arm64", "aarch64"] else "x86_64"
-        expected_name = BINARIES.get(f"{current_platform}-{machine}")
-
-        binary_to_test = None
-        if expected_name and (DIST_DIR / expected_name).exists():
-            binary_to_test = DIST_DIR / expected_name
-        else:
-            for binary in binaries:
-                if current_platform in binary.name.lower():
-                    binary_to_test = binary
-                    break
-
+        binary_to_test = _select_current_binary()
         if not binary_to_test:
-            pytest.skip(f"No suitable binary found for {platform.system()} {platform.machine()}")
+            pytest.skip("No binaries found to test")
 
         print(f"\\nTesting help for: {binary_to_test.name}")
 
@@ -202,9 +200,9 @@ class TestBinaryExecution:
 
         # Should show help content
         output = result.stdout + result.stderr
-        assert "COMMAND" in output, "Help output missing COMMAND section"
-        assert "list" in output.lower(), "Help output missing 'list' command"
-        assert "call" in output.lower(), "Help output missing 'call' command"
+        assert "Usage:" in output, "Help output missing usage section"
+        assert "lucius <entity>" in output, "Help output missing entity/action usage"
+        assert "Available Entities" in output, "Help output missing entity list"
 
 
 class TestBinaryStandaloneExecution:
@@ -213,26 +211,9 @@ class TestBinaryStandaloneExecution:
     @pytest.mark.skipif(not DIST_DIR.exists(), reason="dist/cli not found")
     def test_binary_standalone_no_python(self) -> None:
         """Test binary doesn't require Python to be in PATH."""
-        binaries = list(DIST_DIR.glob("lucius-*"))
-
-        if not binaries:
-            pytest.skip("No binaries found to test")
-
-        current_platform = platform.system().lower()
-        machine = "arm64" if platform.machine() in ["arm64", "aarch64"] else "x86_64"
-        expected_name = BINARIES.get(f"{current_platform}-{machine}")
-
-        binary_to_test = None
-        if expected_name and (DIST_DIR / expected_name).exists():
-            binary_to_test = DIST_DIR / expected_name
-        else:
-            for binary in binaries:
-                if current_platform in binary.name.lower():
-                    binary_to_test = binary
-                    break
-
+        binary_to_test = _select_current_binary()
         if not binary_to_test:
-            pytest.skip(f"No suitable binary found for {platform.system()} {platform.machine()}")
+            pytest.skip("No binaries found to test")
 
         print(f"\\nTesting standalone execution for: {binary_to_test.name}")
 
@@ -259,45 +240,28 @@ class TestBinaryStandaloneExecution:
 
 
 class TestBinaryToolSchemaEmbedded:
-    """Test binary has embedded tool schemas for fast list command."""
+    """Test binary contains embedded command metadata for entity/action discovery."""
 
     @pytest.mark.skipif(not DIST_DIR.exists(), reason="dist/cli not found")
     def test_binary_has_schemas(self) -> None:
-        """Test binary includes tool schemas (for fast list command)."""
-        binaries = list(DIST_DIR.glob("lucius-*"))
-
-        if not binaries:
-            pytest.skip("No binaries found to test")
-
-        current_platform = platform.system().lower()
-        machine = "arm64" if platform.machine() in ["arm64", "aarch64"] else "x86_64"
-        expected_name = BINARIES.get(f"{current_platform}-{machine}")
-
-        binary_to_test = None
-        if expected_name and (DIST_DIR / expected_name).exists():
-            binary_to_test = DIST_DIR / expected_name
-        else:
-            for binary in binaries:
-                if current_platform in binary.name.lower():
-                    binary_to_test = binary
-                    break
-
+        """Test binary supports entity discovery without runtime MCP dependency."""
+        binary_to_test = _select_current_binary()
         if not binary_to_test:
-            pytest.skip(f"No suitable binary found for {platform.system()} {platform.machine()}")
+            pytest.skip("No binaries found to test")
 
         print(f"\\nTesting tool schemas for: {binary_to_test.name}")
 
-        # Run list command
+        # Run entity discovery command
         if platform.system() == "Windows":
             result = subprocess.run(
-                [str(binary_to_test), "list"],
+                [str(binary_to_test), "test_case"],
                 capture_output=True,
                 text=True,
                 timeout=10,
             )
         else:
             result = subprocess.run(
-                [str(binary_to_test), "list"],
+                [str(binary_to_test), "test_case"],
                 capture_output=True,
                 text=True,
                 timeout=10,
@@ -308,14 +272,9 @@ class TestBinaryToolSchemaEmbedded:
         # Should succeed
         assert result.returncode == 0, f"List command failed: {result.stderr}"
 
-        # Should output JSON with tool list
-        try:
-            tools = json.loads(result.stdout)
-            assert isinstance(tools, dict), "Output is not a dictionary"
-            assert len(tools) > 0, "No tools found in output"
-            print(f"✓ Found {len(tools)} tools in binary")
-        except json.JSONDecodeError:
-            pytest.fail(f"List command didn't return valid JSON: {result.stdout[:200]}")
+        output = result.stdout + result.stderr
+        assert "Actions for test_case" in output, "Entity discovery output missing action table"
+        assert "list_test_cases" in output, "Entity discovery output missing mapped tool metadata"
 
 
 class TestBinaryNoHTTPComponents:
