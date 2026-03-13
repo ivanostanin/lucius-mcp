@@ -11,11 +11,13 @@ import pytest
 def build_artifacts():
     # Setup: Run uv build
     dist_dir = Path("dist")
-    if dist_dir.exists():
-        shutil.rmtree(dist_dir)
+    dist_dir.mkdir(exist_ok=True)
+    for pattern in ("lucius_mcp-*.whl", "lucius_mcp-*.tar.gz"):
+        for artifact in dist_dir.glob(pattern):
+            artifact.unlink()
 
     uv_path = shutil.which("uv") or "uv"
-    result = subprocess.run([uv_path, "build"], capture_output=True, text=True)  # noqa: S603
+    result = subprocess.run([uv_path, "build"], capture_output=True, text=True)
     assert result.returncode == 0, f"uv build failed: {result.stderr}"
 
     # Get version from pyproject.toml

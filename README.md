@@ -57,6 +57,52 @@ claude mcp add testops-mcp --transport stdio \
 
 For detailed setup, including Claude Desktop (MCPB) integration, see [Setup Guide](docs/setup.md).
 
+### 💻 Command-Line Interface (CLI)
+
+Lucius also provides a universal CLI entry point for direct tool execution from the command line:
+
+```bash
+# Download pre-built binary for your platform
+wget https://github.com/ivanostanin/lucius-mcp/releases/latest/download/lucius-linux-x86_64
+chmod +x lucius-linux-x86_64
+./lucius-linux-x86_64 --help
+
+# List available actions for an entity
+./lucius-linux-x86_64 test_case
+
+# Execute an action
+./lucius-linux-x86_64 test_case get --args '{"test_case_id": 1234}'
+
+# Show help for a specific entity/action
+./lucius-linux-x86_64 test_case get --help
+```
+
+**CLI Features:**
+- 🚀 Fast startup (< 1s) with lazy initialization
+- 🎯 Type-safe entity/action invocation with validation
+- 📊 Multiple output formats (JSON, table, plain)
+- 🔍 Per-action help with parameters and examples
+- 🛡️ Clean error messages with guidance
+- 📦 Standalone binaries for Linux, macOS, and Windows
+
+For full CLI documentation and installation instructions, see [CLI Guide](docs/CLI.md).
+
+### Shell Completions
+
+Pre-generated shell completions are available in `deployment/shell-completions/`
+for bash, zsh, fish, and PowerShell. They are generated from the current
+entity/action route matrix:
+
+```bash
+python3 deployment/scripts/generate_completions.py
+```
+
+Load one in your shell profile, for example:
+
+```bash
+source deployment/shell-completions/lucius.bash
+```
+
 ## 🔐 Telemetry & Privacy
 
 Lucius includes privacy-preserving telemetry to help maintainers understand runtime and tool usage trends.

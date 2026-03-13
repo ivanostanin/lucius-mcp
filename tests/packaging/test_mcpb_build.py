@@ -24,7 +24,7 @@ def mcpb_build_artifacts():
     # Note: we might have artifacts from test_python_build.py, but build-mcpb.sh cleans dist/*.mcpb
 
     bash_path = shutil.which("bash") or "/bin/bash"
-    result = subprocess.run([bash_path, str(script_path)], capture_output=True, text=True, cwd=str(repo_root))  # noqa: S603
+    result = subprocess.run([bash_path, str(script_path)], capture_output=True, text=True, cwd=str(repo_root))
 
     assert result.returncode == 0, f"build-mcpb.sh failed: {result.stdout}\n{result.stderr}"
 

@@ -1,0 +1,51 @@
+name: Setup Lucius Python Environment
+description: Setup Python, uv, optional platform build prerequisites, and project dependencies.
+
+inputs:
+  python-version:
+    description: Python version for actions/setup-python.
+    required: false
+    default: "3.14"
+  install-build-deps:
+    description: Install platform build prerequisites (Linux/macOS) when true.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v6.2.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install uv
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ "$RUNNER_OS" = "Windows" ]; then
+          powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+        else
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+        fi
+
+    - name: Install build prerequisites
+      if: ${{ inputs.install-build-deps == 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ "$RUNNER_OS" = "Linux" ]; then
+          sudo apt-get update
+          sudo apt-get install -y gcc python3-dev
+        elif [ "$RUNNER_OS" = "macOS" ]; then
+          xcode-select -p || xcode-select --install
+        fi
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        set -euo pipefail
+        # Recreate the venv on each CI run to avoid stale interpreter links
+        # from cached environments and to pin the requested Python version.
+        uv venv --clear --python "${{ inputs.python-version }}"
+        uv pip install -e ".[dev]"

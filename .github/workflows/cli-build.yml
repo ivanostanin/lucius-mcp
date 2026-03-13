@@ -1,0 +1,303 @@
+name: CLI Build and Test
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    paths:
+      - 'src/cli/**'
+      - 'tests/cli/**'
+      - 'tests/packaging/**'
+      - 'deployment/scripts/**'
+      - '.github/actions/setup-lucius-python/**'
+      - '.github/workflows/cli-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build CLI on ${{ matrix.platform }} ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux ARM64
+          - platform: linux
+            arch: arm64
+            runner: ubuntu-24.04-arm
+            artifact_name: lucius-linux-arm64
+            build_script: deployment/scripts/build_cli_unix.sh
+            build_args: --platform linux --arch arm64
+
+          # Linux x86_64
+          - platform: linux
+            arch: x86_64
+            runner: ubuntu-latest
+            artifact_name: lucius-linux-x86_64
+            build_script: deployment/scripts/build_cli_unix.sh
+            build_args: --platform linux --arch x86_64
+
+          # macOS ARM64
+          - platform: macos
+            arch: arm64
+            runner: macos-15
+            artifact_name: lucius-macos-arm64
+            build_script: deployment/scripts/build_cli_unix.sh
+            build_args: --platform macos --arch arm64
+
+          # macOS x86_64
+          - platform: macos
+            arch: x86_64
+            runner: macos-15-intel
+            artifact_name: lucius-macos-x86_64
+            build_script: deployment/scripts/build_cli_unix.sh
+            build_args: --platform macos --arch x86_64
+
+          # Windows x86_64
+          - platform: windows
+            arch: x86_64
+            runner: windows-latest
+            artifact_name: lucius-windows-x86_64.exe
+            build_script: deployment/scripts/build_cli_windows.bat
+            build_args: --arch x86_64
+
+          # Windows ARM64
+          - platform: windows
+            arch: arm64
+            runner: windows-11-arm
+            artifact_name: lucius-windows-arm64.exe
+            build_script: deployment/scripts/build_cli_windows.bat
+            build_args: --arch arm64
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Validate runner platform and architecture
+        shell: pwsh
+        run: |
+          $expectedPlatform = '${{ matrix.platform }}'
+          $expectedArch = '${{ matrix.arch }}'
+
+          $runnerOs = $env:RUNNER_OS.ToLower()
+          if ($runnerOs -eq 'windows') {
+            $actualPlatform = 'windows'
+          } elseif ($runnerOs -eq 'macos') {
+            $actualPlatform = 'macos'
+          } elseif ($runnerOs -eq 'linux') {
+            $actualPlatform = 'linux'
+          } else {
+            $actualPlatform = $runnerOs
+          }
+
+          if ($env:RUNNER_OS -eq 'Windows') {
+            $rawArch = $env:PROCESSOR_ARCHITECTURE.ToLower()
+          } else {
+            $rawArch = (uname -m).Trim().ToLower()
+          }
+
+          if ($rawArch -in @('amd64', 'x86_64')) {
+            $actualArch = 'x86_64'
+          } elseif ($rawArch -in @('arm64', 'aarch64')) {
+            $actualArch = 'arm64'
+          } else {
+            $actualArch = $rawArch
+          }
+
+          Write-Host "Expected platform/arch: $expectedPlatform/$expectedArch"
+          Write-Host "Detected platform/arch: $actualPlatform/$actualArch"
+
+          if ($actualPlatform -ne $expectedPlatform) {
+            throw "Runner platform mismatch: expected '$expectedPlatform', got '$actualPlatform'"
+          }
+
+          if ($actualArch -ne $expectedArch) {
+            throw "Runner architecture mismatch: expected '$expectedArch', got '$actualArch'"
+          }
+
+      - name: Setup Python and dependencies
+        uses: ./.github/actions/setup-lucius-python
+        with:
+          python-version: '3.14'
+          install-build-deps: 'true'
+
+      - name: Generate tool schemas
+        run: |
+          uv run python scripts/build_tool_schema.py
+        shell: bash
+
+      - name: Generate shell completions
+        run: |
+          uv run python deployment/scripts/generate_completions.py
+        shell: bash
+
+      - name: Build CLI binary (Unix)
+        if: runner.os != 'Windows'
+        run: bash "${{ matrix.build_script }}" ${{ matrix.build_args }}
+        shell: bash
+
+      - name: Build CLI binary (Windows)
+        if: runner.os == 'Windows'
+        run: call "${{ matrix.build_script }}" ${{ matrix.build_args }}
+        shell: cmd
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v7.0.0
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: dist/cli/${{ matrix.artifact_name }}
+          retention-days: 30
+
+  test-cli:
+    name: Test CLI functionality
+    needs: build
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            arch: x86_64
+            runner: ubuntu-latest
+            artifact_name: lucius-linux-x86_64
+
+          - platform: macos
+            arch: arm64
+            runner: macos-15
+            artifact_name: lucius-macos-arm64
+
+          - platform: windows
+            arch: x86_64
+            runner: windows-latest
+            artifact_name: lucius-windows-x86_64.exe
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Setup Python and dependencies
+        uses: ./.github/actions/setup-lucius-python
+        with:
+          python-version: '3.14'
+
+      - name: Download binary artifact
+        uses: actions/download-artifact@v8.0.1
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: dist/cli/
+
+      - name: Make binary executable (Unix)
+        if: runner.os != 'Windows'
+        run: chmod +x dist/cli/${{ matrix.artifact_name }}
+
+      - name: Test binary --version
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            ./dist/cli/${{ matrix.artifact_name }} --version
+          else
+            ./dist/cli/${{ matrix.artifact_name }} --version
+          fi
+        shell: bash
+
+      - name: Test binary --help
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            ./dist/cli/${{ matrix.artifact_name }} --help
+          else
+            ./dist/cli/${{ matrix.artifact_name }} --help
+          fi
+        shell: bash
+
+      - name: Test binary entity command
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            ./dist/cli/${{ matrix.artifact_name }} test_case
+          else
+            ./dist/cli/${{ matrix.artifact_name }} test_case
+          fi
+        shell: bash
+
+      - name: Run CLI tests
+        run: |
+          uv run pytest tests/cli/ --cov=src/cli --cov-report=term-missing -v --tb=short
+        shell: bash
+
+      - name: Run packaging tests
+        run: |
+          uv run pytest tests/packaging/test_cli_binaries.py -v --tb=short
+        shell: bash
+        continue-on-error: true  # May fail if not all binaries are present
+
+  test-e2e-mocked:
+    name: E2E tests with mocked API
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Setup Python and dependencies
+        uses: ./.github/actions/setup-lucius-python
+        with:
+          python-version: '3.14'
+
+      - name: Generate tool schemas
+        run: uv run python scripts/build_tool_schema.py
+
+      - name: Run E2E mocked tests
+        run: uv run pytest tests/cli/test_e2e_mocked.py -v --tb=short
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build, test-cli, test-e2e-mocked]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8.0.1
+        with:
+          path: dist/cli/
+          merge-multiple: true
+
+      - name: Setup Python and dependencies
+        uses: ./.github/actions/setup-lucius-python
+        with:
+          python-version: '3.14'
+
+      - name: Validate full release artifact set
+        env:
+          REQUIRE_ALL_CLI_BINARIES: "1"
+        run: |
+          uv run pytest tests/packaging/test_cli_binaries.py::TestBinaryPresence::test_all_platform_binaries_exist -v --tb=short
+
+      - name: Create checksums
+        run: |
+          cd dist/cli
+          for file in lucius-*; do
+            if [ -f "$file" ]; then
+              sha256sum "$file" > "$file.sha256"
+            fi
+          done
+          cat *.sha256 > SHA256SUMS
+
+      - name: Release
+        uses: softprops/action-gh-release@v2.5.0
+        with:
+          files: dist/cli/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
