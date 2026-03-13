@@ -1,7 +1,7 @@
 #!/bin/bash
 # Master build script for lucius CLI - builds all 6 platform binaries
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -27,12 +27,29 @@ if ! command -v uv &> /dev/null; then
     exit 1
 fi
 
-if ! command -v python3 &> /dev/null; then
-    echo -e "${RED}Error: python3 not found${NC}"
+if ! command -v python3 &> /dev/null && ! command -v python &> /dev/null; then
+    echo -e "${RED}Error: Python not found${NC}"
     exit 1
 fi
 
 echo -e "${GREEN}✓ Prerequisites met${NC}"
+
+normalize_platform() {
+    case "$1" in
+        Linux) echo "linux" ;;
+        Darwin) echo "macos" ;;
+        MINGW*|MSYS*|CYGWIN*) echo "windows" ;;
+        *) echo "$1" | tr '[:upper:]' '[:lower:]' ;;
+    esac
+}
+
+normalize_arch() {
+    case "$1" in
+        aarch64|arm64) echo "arm64" ;;
+        x86_64|amd64) echo "x86_64" ;;
+        *) echo "$1" ;;
+    esac
+}
 
 # Clean previous builds
 echo ""
@@ -44,13 +61,13 @@ echo -e "${GREEN}✓ Cleaned dist/cli${NC}"
 # Generate tool schemas
 echo ""
 echo "Generating tool schemas..."
-.venv/bin/python scripts/build_tool_schema.py
+uv run python scripts/build_tool_schema.py
 echo -e "${GREEN}✓ Tool schemas generated${NC}"
 
 # Generate shell completions
 echo ""
 echo "Generating shell completions..."
-.venv/bin/python deployment/scripts/generate_completions.py
+uv run python deployment/scripts/generate_completions.py
 echo -e "${GREEN}✓ Shell completions generated${NC}"
 
 # Count successful builds
@@ -67,63 +84,93 @@ declare -a BUILD_MATRIX=(
 
 # Run Unix builds
 echo ""
-echo "Building Unix binaries..."
-echo "==========================================================================="
+current_platform="$(normalize_platform "$(uname -s)")"
+current_arch="$(normalize_arch "$(uname -m)")"
 
-current_platform=$(uname -s | tr '[:upper:]' '[:lower:]')
-current_arch=$(uname -m)
-
-for entry in "${BUILD_MATRIX[@]}"; do
-    read -r platform arch script <<< "$entry"
-
+if [[ "$current_platform" == "windows" ]]; then
     echo ""
     echo "---------------------------------------------------------------------------"
-    echo "Building for ${platform}-${arch}..."
+    echo "Building for windows-${current_arch}..."
     echo "---------------------------------------------------------------------------"
 
-    # Skip cross-platform builds (only build for current platform in dev mode)
-    # CI/CD systems should run this script on each target platform
-    if [[ "${CI}" != "true" ]]; then
-        # In development mode, only build for current architecture
-        if [[ "$current_platform" != "$platform" ]]; then
-            echo -e "${YELLOW}⚠ Skipping $platform-$arch (not current platform in dev mode)${NC}"
-            echo "  Run in CI/CD or on specific platform to build"
-            continue
-        fi
-
-        if [[ "$current_arch" == "aarch64" && "$arch" != "arm64" ]]; then
-            echo -e "${YELLOW}⚠ Skipping $platform-$arch (ARM64 can't build x86_64 natively)${NC}"
-            echo "  Use cross-compilation or CI/CD"
-            continue
-        fi
-
-        if [[ "$current_arch" == "x86_64" && "$arch" != "x86_64" ]]; then
-            echo -e "${YELLOW}⚠ Skipping $platform-$arch (x86_64 can't build ARM64 natively)${NC}"
-            echo "  Use cross-compilation or CI/CD"
-            continue
-        fi
+    win_arch_env="$(echo "${PROCESSOR_ARCHITECTURE:-}" | tr '[:lower:]' '[:upper:]')"
+    win_arch_wow="$(echo "${PROCESSOR_ARCHITEW6432:-}" | tr '[:lower:]' '[:upper:]')"
+    if [[ "$win_arch_env" == "ARM64" || "$win_arch_wow" == "ARM64" ]]; then
+        windows_arch="arm64"
+        windows_script="build_cli_windows_arm64.bat"
+    else
+        windows_arch="x86_64"
+        windows_script="build_cli_windows_x86_64.bat"
     fi
 
-    # Run build script
-    if bash deployment/scripts/"$script"; then
-        echo -e "${GREEN}✓ ${platform}-${arch} build successful${NC}"
+    if ! command -v cmd &> /dev/null; then
+        echo -e "${RED}Error: Windows cmd executable not found in PATH${NC}"
+        exit 1
+    fi
+
+    if cmd /c "deployment\\scripts\\${windows_script}"; then
+        echo -e "${GREEN}✓ windows-${windows_arch} build successful${NC}"
         ((successful_builds++))
     else
-        echo -e "${RED}✗ ${platform}-${arch} build failed${NC}"
+        echo -e "${RED}✗ windows-${windows_arch} build failed${NC}"
         ((failed_builds++))
     fi
-done
+else
+    echo "Building Unix binaries..."
+    echo "==========================================================================="
 
-# Note: Windows builds need to be run on Windows with .bat scripts
-echo ""
-echo "---------------------------------------------------------------------------"
-echo "Windows builds:"
-echo "---------------------------------------------------------------------------"
-echo -e "${YELLOW}Note: Windows builds must be run on Windows using:${NC}"
-echo "  - build_cli_windows_x86_64.bat"
-echo "  - build_cli_windows_arm64.bat"
-echo ""
-echo "These .bat files are in deployment/scripts/"
+    for entry in "${BUILD_MATRIX[@]}"; do
+        read -r platform arch script <<< "$entry"
+
+        echo ""
+        echo "---------------------------------------------------------------------------"
+        echo "Building for ${platform}-${arch}..."
+        echo "---------------------------------------------------------------------------"
+
+        # Skip cross-platform builds (only build for current platform in dev mode)
+        # CI/CD systems should run this script on each target platform
+        if [[ "${CI:-}" != "true" ]]; then
+            # In development mode, only build for current architecture
+            if [[ "$current_platform" != "$platform" ]]; then
+                echo -e "${YELLOW}⚠ Skipping $platform-$arch (not current platform in dev mode)${NC}"
+                echo "  Run in CI/CD or on specific platform to build"
+                continue
+            fi
+
+            if [[ "$current_arch" == "arm64" && "$arch" != "arm64" ]]; then
+                echo -e "${YELLOW}⚠ Skipping $platform-$arch (ARM64 can't build x86_64 natively)${NC}"
+                echo "  Use cross-compilation or CI/CD"
+                continue
+            fi
+
+            if [[ "$current_arch" == "x86_64" && "$arch" != "x86_64" ]]; then
+                echo -e "${YELLOW}⚠ Skipping $platform-$arch (x86_64 can't build ARM64 natively)${NC}"
+                echo "  Use cross-compilation or CI/CD"
+                continue
+            fi
+        fi
+
+        # Run build script
+        if bash deployment/scripts/"$script"; then
+            echo -e "${GREEN}✓ ${platform}-${arch} build successful${NC}"
+            ((successful_builds++))
+        else
+            echo -e "${RED}✗ ${platform}-${arch} build failed${NC}"
+            ((failed_builds++))
+        fi
+    done
+
+    # Note: Windows builds need to be run on Windows with .bat scripts
+    echo ""
+    echo "---------------------------------------------------------------------------"
+    echo "Windows builds:"
+    echo "---------------------------------------------------------------------------"
+    echo -e "${YELLOW}Note: Windows builds must be run on Windows using:${NC}"
+    echo "  - build_cli_windows_x86_64.bat"
+    echo "  - build_cli_windows_arm64.bat"
+    echo ""
+    echo "These .bat files are in deployment/scripts/"
+fi
 
 # Summary
 echo ""

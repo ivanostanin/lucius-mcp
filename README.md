@@ -87,6 +87,22 @@ chmod +x lucius-linux-x86_64
 
 For full CLI documentation and installation instructions, see [CLI Guide](docs/CLI.md).
 
+### Shell Completions
+
+Pre-generated shell completions are available in `deployment/shell-completions/`
+for bash, zsh, fish, and PowerShell. They are generated from the current
+entity/action route matrix:
+
+```bash
+python3 deployment/scripts/generate_completions.py
+```
+
+Load one in your shell profile, for example:
+
+```bash
+source deployment/shell-completions/lucius.bash
+```
+
 ## 🔐 Telemetry & Privacy
 
 Lucius includes privacy-preserving telemetry to help maintainers understand runtime and tool usage trends.

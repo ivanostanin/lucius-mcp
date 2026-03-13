@@ -74,6 +74,41 @@ lucius test_case list --args '{}' --format table
 lucius test_case list --args '{}' --format plain
 ```
 
+## Shell Completions
+
+Completion scripts for bash, zsh, fish, and PowerShell are generated for the
+entity/action CLI and stored in:
+
+- `deployment/shell-completions/lucius.bash`
+- `deployment/shell-completions/lucius.zsh`
+- `deployment/shell-completions/lucius.fish`
+- `deployment/shell-completions/lucius.ps1`
+
+Regenerate them after route or alias changes:
+
+```bash
+python3 deployment/scripts/generate_completions.py
+```
+
+Load completion in your shell:
+
+```bash
+# Bash
+source deployment/shell-completions/lucius.bash
+
+# Zsh
+source deployment/shell-completions/lucius.zsh
+
+# Fish
+source deployment/shell-completions/lucius.fish
+```
+
+PowerShell:
+
+```powershell
+. .\deployment\shell-completions\lucius.ps1
+```
+
 ## Migration Notes
 
 Legacy command style is not the primary UX anymore:

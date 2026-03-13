@@ -17,6 +17,13 @@ uv sync --all-extras
    Ensure it follows the "Thin Tool" pattern.
 3. **Register the Tool**: Once added to `src/tools/__init__.py`, new tool will be registered automatically .
 
+If the tool introduces or changes CLI entity/action routes or aliases, regenerate
+shell completion scripts:
+
+```bash
+python3 deployment/scripts/generate_completions.py
+```
+
 ## 🔄 Regenerating the API Client
 
 We use a filtered OpenAPI spec to keep the client lightweight.

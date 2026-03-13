@@ -6,6 +6,7 @@ Tests verify binary size, functionality, and standalone execution.
 
 import platform
 import subprocess
+from os import environ
 from pathlib import Path
 
 import pytest
@@ -60,6 +61,11 @@ def _select_current_binary() -> Path | None:
     return binaries[0]
 
 
+def _is_release_binary_validation_enabled() -> bool:
+    explicit = environ.get("REQUIRE_ALL_CLI_BINARIES", "").strip().lower()
+    return explicit in {"1", "true", "yes", "on"}
+
+
 class TestBinaryPresence:
     """Test that expected binaries exist."""
 
@@ -77,13 +83,16 @@ class TestBinaryPresence:
 
         print(f"Found binaries: {sorted(found_binaries)}")
 
-        # Check all expected binaries exist (in CI/CD environment)
-        # For dev builds, skip if not all platforms are available
+        # Release packaging jobs can enforce full cross-platform artifact set.
+        if _is_release_binary_validation_enabled():
+            missing = sorted(set(BINARIES.values()) - found_binaries)
+            assert not missing, f"Release build is missing platform binaries: {missing}"
+            return
+
+        # Default/dev behavior: only require current-platform binary.
         if platform.system() in ["Linux", "Darwin"]:
-            # On Linux/macOS, expect at least the current platform binary
             machine = _machine_name()
             current_binary = BINARIES.get(f"{_platform_name()}-{machine}")
-
             if current_binary:
                 assert (DIST_DIR / current_binary).exists(), f"Current platform binary not found: {current_binary}"
 

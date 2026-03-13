@@ -22,6 +22,7 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 from src.cli.route_matrix import CANONICAL_ROUTE_MATRIX, all_canonical_routes, all_route_tool_names  # noqa: E402
+from src.cli.tool_resolver import resolve_tool_function  # noqa: E402
 
 
 def _normalize_json_type(value: object) -> str:
@@ -119,26 +120,6 @@ def _type_to_schema(annotation: object) -> dict[str, typing.Any]:
     return {"type": "object"}
 
 
-def _load_tool_function(tool_name: str) -> typing.Callable[..., typing.Any]:
-    """Find existing tool function by name in src.tools package."""
-    import importlib
-    import pkgutil
-
-    tools_module = importlib.import_module("src.tools")
-    top_level = getattr(tools_module, tool_name, None)
-    if callable(top_level):
-        return typing.cast(typing.Callable[..., typing.Any], top_level)
-
-    package_path = getattr(tools_module, "__path__", [])
-    for module_info in pkgutil.iter_modules(package_path):
-        module = importlib.import_module(f"src.tools.{module_info.name}")
-        candidate = getattr(module, tool_name, None)
-        if callable(candidate):
-            return typing.cast(typing.Callable[..., typing.Any], candidate)
-
-    raise RuntimeError(f"Unable to locate tool function '{tool_name}' in src.tools package")
-
-
 def _build_input_schema(function: typing.Callable[..., typing.Any]) -> dict[str, typing.Any]:
     """Build JSON schema for function signature."""
     signature = inspect.signature(function)
@@ -177,7 +158,7 @@ def extract_tool_schemas() -> dict[str, dict[str, typing.Any]]:
     tool_schemas: dict[str, dict[str, typing.Any]] = {}
 
     for entity, action, tool_name in all_canonical_routes():
-        function = _load_tool_function(tool_name)
+        function = resolve_tool_function(tool_name)
         doc = inspect.getdoc(function) or ""
         input_schema = _build_input_schema(function)
         example_args: dict[str, typing.Any] = {}

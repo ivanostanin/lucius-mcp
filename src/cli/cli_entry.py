@@ -12,10 +12,8 @@ Design:
 from __future__ import annotations
 
 import asyncio
-import importlib
 import json
 import logging
-import pkgutil
 import sys
 import typing
 from dataclasses import dataclass
@@ -24,6 +22,9 @@ from pathlib import Path
 import rich.console
 
 from src.cli.route_matrix import ACTION_ALIASES, CANONICAL_ROUTE_MATRIX, all_entities_with_aliases, normalize_token
+from src.cli.schema_validation import SchemaValidationError
+from src.cli.schema_validation import validate_args_against_schema as validate_schema_args
+from src.cli.tool_resolver import resolve_tool_function
 from src.version import __version__
 
 console_err = rich.console.Console(stderr=True)
@@ -462,147 +463,23 @@ def validate_args_against_schema(
     tool_schema: dict[str, typing.Any],
 ) -> None:
     """Validate JSON arguments against a tool input schema."""
-
-    def _matches_type(value: typing.Any, expected_type: str) -> bool:
-        if expected_type == "string":
-            return isinstance(value, str)
-        if expected_type == "integer":
-            return isinstance(value, int) and not isinstance(value, bool)
-        if expected_type == "number":
-            return (isinstance(value, int) or isinstance(value, float)) and not isinstance(value, bool)
-        if expected_type == "boolean":
-            return isinstance(value, bool)
-        if expected_type == "array":
-            return isinstance(value, list)
-        if expected_type == "object":
-            return isinstance(value, dict)
-        if expected_type == "null":
-            return value is None
-        return True
-
-    def _describe_expected_type(schema: dict[str, typing.Any]) -> str:
-        expected = schema.get("type")
-        if isinstance(expected, str):
-            return expected
-        any_of = schema.get("anyOf")
-        if isinstance(any_of, list):
-            types = [
-                typing.cast(str, entry.get("type"))
-                for entry in any_of
-                if isinstance(entry, dict) and isinstance(entry.get("type"), str)
-            ]
-            if types:
-                return "|".join(types)
-        return "valid schema type"
-
-    def _validate_value_against_schema(value: typing.Any, schema: dict[str, typing.Any], path: str) -> str | None:
-        any_of = schema.get("anyOf")
-        if isinstance(any_of, list) and any_of:
-            for candidate in any_of:
-                if isinstance(candidate, dict) and _validate_value_against_schema(value, candidate, path) is None:
-                    return None
-            return f"expected type {_describe_expected_type(schema)}, got {type(value).__name__}"
-
-        enum_values = schema.get("enum")
-        if isinstance(enum_values, list) and value not in enum_values:
-            return f"must be one of {enum_values!r}"
-
-        expected_type = schema.get("type")
-        if isinstance(expected_type, str) and not _matches_type(value, expected_type):
-            return f"expected type {expected_type}, got {type(value).__name__}"
-
-        if isinstance(value, str):
-            min_length = schema.get("minLength")
-            max_length = schema.get("maxLength")
-            if isinstance(min_length, int) and len(value) < min_length:
-                return f"length must be >= {min_length}"
-            if isinstance(max_length, int) and len(value) > max_length:
-                return f"length must be <= {max_length}"
-
-        if (isinstance(value, int) or isinstance(value, float)) and not isinstance(value, bool):
-            minimum = schema.get("minimum")
-            exclusive_minimum = schema.get("exclusiveMinimum")
-            maximum = schema.get("maximum")
-            exclusive_maximum = schema.get("exclusiveMaximum")
-            if isinstance(minimum, (int, float)) and value < minimum:
-                return f"must be >= {minimum}"
-            if isinstance(exclusive_minimum, (int, float)) and value <= exclusive_minimum:
-                return f"must be > {exclusive_minimum}"
-            if isinstance(maximum, (int, float)) and value > maximum:
-                return f"must be <= {maximum}"
-            if isinstance(exclusive_maximum, (int, float)) and value >= exclusive_maximum:
-                return f"must be < {exclusive_maximum}"
-
-        if isinstance(value, list):
-            item_schema = schema.get("items")
-            if isinstance(item_schema, dict):
-                for index, item in enumerate(value):
-                    nested_path = f"{path}[{index}]"
-                    nested_error = _validate_value_against_schema(item, item_schema, nested_path)
-                    if nested_error:
-                        return f"{nested_path}: {nested_error}"
-
-        if isinstance(value, dict):
-            additional = schema.get("additionalProperties", True)
-            if isinstance(additional, dict):
-                for key, nested_value in value.items():
-                    nested_path = f"{path}.{key}"
-                    nested_error = _validate_value_against_schema(nested_value, additional, nested_path)
-                    if nested_error:
-                        return f"{nested_path}: {nested_error}"
-
-        return None
-
-    input_schema = tool_schema.get("input_schema", {})
-    required = input_schema.get("required", [])
-    properties = input_schema.get("properties", {})
-
-    for param_name in required:
-        if param_name not in args:
-            raise CLIError(
-                f"Command '{command_name}' requires parameter '{param_name}'",
-                hint=f"Provide: --args '{{\"{param_name}\": <value>}}'",
-                exit_code=1,
-            )
-
-    for param_name in args:
-        if param_name not in properties:
-            valid = ", ".join(properties.keys()) if properties else "(none)"
-            raise CLIError(
-                f"Unknown parameter '{param_name}' for command '{command_name}'",
-                hint=f"Valid parameters: {valid}",
-                exit_code=1,
-            )
-        schema = properties.get(param_name)
-        if isinstance(schema, dict):
-            error = _validate_value_against_schema(args[param_name], schema, param_name)
-            if error:
-                raise CLIError(
-                    f"Invalid value for parameter '{param_name}' in command '{command_name}': {error}",
-                    hint="Check parameter types and constraints with: lucius <entity> <action> --help.",
-                    exit_code=1,
-                )
+    try:
+        validate_schema_args(args, command_name, tool_schema)
+    except SchemaValidationError as error:
+        raise CLIError(error.message, hint=error.hint, exit_code=error.exit_code) from None
 
 
 def _load_tool_function(tool_name: str) -> typing.Callable[..., typing.Awaitable[typing.Any]]:
     """Lazy-load a tool function by name from src.tools package."""
-    tools_module = importlib.import_module("src.tools")
-    tool_function = getattr(tools_module, tool_name, None)
-    if callable(tool_function):
-        return typing.cast(typing.Callable[..., typing.Awaitable[typing.Any]], tool_function)
-
-    package_path = getattr(tools_module, "__path__", [])
-    for module_info in pkgutil.iter_modules(package_path):
-        module = importlib.import_module(f"src.tools.{module_info.name}")
-        fallback = getattr(module, tool_name, None)
-        if callable(fallback):
-            return typing.cast(typing.Callable[..., typing.Awaitable[typing.Any]], fallback)
-
-    raise CLIError(
-        f"Implementation for tool '{tool_name}' not found",
-        hint="Ensure the existing tool function exists in src/tools/*.py.",
-        exit_code=2,
-    )
+    try:
+        resolved = resolve_tool_function(tool_name)
+    except RuntimeError:
+        raise CLIError(
+            f"Implementation for tool '{tool_name}' not found",
+            hint="Ensure the existing tool function exists in src/tools/*.py.",
+            exit_code=2,
+        ) from None
+    return typing.cast(typing.Callable[..., typing.Awaitable[typing.Any]], resolved)
 
 
 async def call_tool_function(tool_name: str, args: dict[str, typing.Any]) -> typing.Any:
