@@ -20,6 +20,7 @@ from src.cli.cli_entry import (
     _build_example_args,
     _error_hint_from_exception,
     _first_line,
+    _format_action_list,
     _load_tool_function,
     all_entities_with_aliases,
     build_command_registry,
@@ -112,6 +113,9 @@ class TestCLICoverageHelpers:
     def test_first_line_and_example_args(self) -> None:
         assert _first_line("one\ntwo") == "one"
         assert _first_line("   ") == "No description"
+        assert _format_action_list(["list", "get"]) == "get, list"
+        assert _format_action_list(["list", "get", "create", "delete", "search"]) == "create, delete, get, list, search"
+        assert _format_action_list([]) == "-"
 
         schema = {
             "input_schema": {

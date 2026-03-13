@@ -106,6 +106,7 @@ fi
 # Including static tool schemas for fast startup
 # Destination path: data/tool_schemas.json (relative to module location)
 NUITKA_FLAGS="--standalone --assume-yes-for-downloads --macos-create-app-bundle --output-dir=dist/cli --output-filename=lucius-macos-arm64
+  --include-package=rich._unicode_data
   --include-data-files=src/cli/data/tool_schemas.json=data/tool_schemas.json"
 
 if [ "$ONEFILE" = true ]; then

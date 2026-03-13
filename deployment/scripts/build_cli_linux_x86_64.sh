@@ -37,6 +37,7 @@ uv run nuitka \
     --assume-yes-for-downloads \
     --output-dir=dist/cli \
     --output-filename=lucius-linux-x86_64 \
+    --include-package=rich._unicode_data \
     --include-data-files=src/cli/data/tool_schemas.json=data/tool_schemas.json \
     src/cli/cli_entry.py
 

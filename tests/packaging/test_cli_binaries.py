@@ -4,6 +4,7 @@ Packaging tests for CLI binaries across all platforms.
 Tests verify binary size, functionality, and standalone execution.
 """
 
+import ast
 import platform
 import subprocess
 from os import environ
@@ -289,44 +290,28 @@ class TestBinaryToolSchemaEmbedded:
 class TestBinaryNoHTTPComponents:
     """Test binary doesn't include HTTP server components."""
 
-    @pytest.mark.skipif(not DIST_DIR.exists(), reason="dist/cli not found")
-    def test_binary_no_http_imports(self) -> None:
-        """Test binary doesn't contain HTTP-related imports."""
-        binaries = list(DIST_DIR.glob("lucius-*"))
+    FORBIDDEN_IMPORT_PREFIXES = ("starlette", "uvicorn", "http.server", "wsgiref")
 
-        if not binaries:
-            pytest.skip("No binaries found to test")
+    def test_cli_source_has_no_http_imports(self) -> None:
+        """CLI module must not import HTTP server components."""
+        cli_root = Path(__file__).parent.parent.parent / "src" / "cli"
+        assert cli_root.exists(), f"CLI source directory not found: {cli_root}"
 
-        for binary in binaries[:1]:  # Just test first binary
-            print(f"\\nChecking for HTTP components in: {binary.name}")
+        violations: list[str] = []
+        for path in sorted(cli_root.rglob("*.py")):
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        imported = alias.name
+                        if imported.startswith(self.FORBIDDEN_IMPORT_PREFIXES):
+                            violations.append(f"{path}:{node.lineno} import {imported}")
+                elif isinstance(node, ast.ImportFrom):
+                    module = node.module or ""
+                    if module.startswith(self.FORBIDDEN_IMPORT_PREFIXES):
+                        violations.append(f"{path}:{node.lineno} from {module} import ...")
 
-            # Read binary as text and search for HTTP-related strings
-            try:
-                binary_content = binary.read_bytes().decode("utf-8", errors="ignore")
-
-                # Check for HTTP server imports (should NOT be present)
-                http_indicators = [
-                    "import starlette",
-                    "from starlette",
-                    "import uvicorn",
-                    "from uvicorn",
-                    "from http.server",
-                    "from wsgiref",
-                ]
-
-                found_http = []
-                for indicator in http_indicators:
-                    if indicator in binary_content:
-                        found_http.append(indicator)
-
-                if found_http:
-                    pytest.fail(f"Binary {binary.name} contains HTTP server imports: {found_http}")
-                else:
-                    print(f"✓ No HTTP server components found in {binary.name}")
-
-            except Exception as e:
-                # Binary read failed, skip test
-                print(f"Could not read binary content: {e}")
+        assert not violations, "Forbidden HTTP imports found in CLI source:\n" + "\n".join(violations)
 
 
 class TestCrossPlatformCompatibility:
@@ -354,3 +339,29 @@ class TestCrossPlatformCompatibility:
             name_parts = binary.name.lower().split("-")
             assert len(name_parts) >= 3, f"Binary name doesn't follow pattern: {binary.name}"
             assert name_parts[0] == "lucius", f"Binary name should start with 'lucius': {binary.name}"
+
+
+class TestBinaryBuildScriptConfiguration:
+    """Validate CLI build script configuration needed for runtime stability."""
+
+    def test_rich_unicode_data_included_in_nuitka_builds(self) -> None:
+        """All platform build scripts must include rich unicode data package."""
+        project_root = Path(__file__).parent.parent.parent
+        scripts = [
+            project_root / "deployment/scripts/build_cli_linux_arm64.sh",
+            project_root / "deployment/scripts/build_cli_linux_x86_64.sh",
+            project_root / "deployment/scripts/build_cli_macos_arm64.sh",
+            project_root / "deployment/scripts/build_cli_macos_x86_64.sh",
+            project_root / "deployment/scripts/build_cli_windows_arm64.bat",
+            project_root / "deployment/scripts/build_cli_windows_x86_64.bat",
+        ]
+
+        missing: list[str] = []
+        for script_path in scripts:
+            content = script_path.read_text(encoding="utf-8")
+            if "--include-package=rich._unicode_data" not in content:
+                missing.append(str(script_path))
+
+        assert not missing, "Nuitka build scripts missing rich unicode data include flag:\n" + "\n".join(
+            sorted(missing)
+        )

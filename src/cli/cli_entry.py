@@ -318,6 +318,14 @@ def _first_line(text: str) -> str:
     return stripped.splitlines()[0] if stripped else "No description"
 
 
+def _format_action_list(actions: typing.Iterable[str]) -> str:
+    """Render action names for entity overview table."""
+    sorted_actions = sorted(actions)
+    if not sorted_actions:
+        return "-"
+    return ", ".join(sorted_actions)
+
+
 def _build_example_args(schema: dict[str, typing.Any]) -> dict[str, typing.Any]:
     input_schema = schema.get("input_schema", {})
     properties = input_schema.get("properties", {})
@@ -357,7 +365,7 @@ def print_global_help(registry: dict[str, dict[str, ActionSpec]]) -> None:
 
     table = Table(title="Available Entities")
     table.add_column("Entity", style="cyan", no_wrap=True)
-    table.add_column("Actions", style="green", justify="right")
+    table.add_column("Actions", style="green")
     table.add_column("Examples", style="yellow")
     entity_aliases = all_entities_with_aliases()
     for entity in sorted(registry.keys()):
@@ -367,7 +375,7 @@ def print_global_help(registry: dict[str, dict[str, ActionSpec]]) -> None:
             if alias != entity and "_" not in alias and "-" not in alias
         )
         alias_text = f" ({', '.join(aliases)})" if aliases else ""
-        table.add_row(entity + alias_text, str(len(registry[entity])), f"lucius {entity}")
+        table.add_row(entity + alias_text, _format_action_list(registry[entity].keys()), f"lucius {entity}")
     console_out.print(table)
 
 
