@@ -2,13 +2,11 @@ name: CLI Build and Test
 
 on:
   push:
-    branches: [main]
     tags: ['v*']
   pull_request:
     paths:
       - 'src/cli/**'
       - 'tests/cli/**'
-      - 'tests/packaging/**'
       - 'deployment/scripts/**'
       - '.github/actions/setup-lucius-python/**'
       - '.github/workflows/cli-build.yml'
@@ -24,6 +22,8 @@ jobs:
   build:
     name: Build CLI on ${{ matrix.platform }} ${{ matrix.arch }}
     runs-on: ${{ matrix.runner }}
+    env:
+      NUITKA_CACHE_DIR: ${{ github.workspace }}/.nuitka-cache
     strategy:
       fail-fast: false
       matrix:
@@ -127,6 +127,15 @@ jobs:
         with:
           python-version: '${{ env.CLI_BUILD_PYTHON_VERSION }}'
           install-build-deps: 'true'
+
+      - name: Restore Nuitka build cache
+        uses: actions/cache@v5.0.3
+        with:
+          path: ${{ env.NUITKA_CACHE_DIR }}
+          key: nuitka-${{ runner.os }}-${{ matrix.arch }}-py${{ env.CLI_BUILD_PYTHON_VERSION }}-${{ hashFiles('uv.lock', 'deployment/scripts/build_cli_unix.sh', 'deployment/scripts/build_cli_windows.bat') }}
+          restore-keys: |
+            nuitka-${{ runner.os }}-${{ matrix.arch }}-py${{ env.CLI_BUILD_PYTHON_VERSION }}-
+            nuitka-${{ runner.os }}-${{ matrix.arch }}-
 
       - name: Generate tool schemas
         run: |
