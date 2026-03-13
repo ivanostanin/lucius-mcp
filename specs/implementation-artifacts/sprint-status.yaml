@@ -125,7 +125,7 @@ development_status:
   # Epic 9: Documentation & Knowledge Base & CLI
   epic-9: in-progress
   9-1-comprehensive-project-documentation: done
-  9-2-fastmcp-cli-integration: in-progress
   9-2-fastmcp-cli-integration: done
   9-3-service-first-cli-entity-action: done
+  9-4-python-3-13-compatibility-for-nuitka-cli-builds: ready-for-dev
   epic-9-retrospective: optional
