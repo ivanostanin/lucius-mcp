@@ -126,7 +126,7 @@ if [[ "${CLEAN}" == true ]]; then
 fi
 
 echo "Generating tool schemas..."
-uv --quiet run python scripts/build_tool_schema.py
+uv --quiet run --python 3.13 --extra dev python scripts/build_tool_schema.py
 
 if [[ ! -f "src/cli/data/tool_schemas.json" ]]; then
     echo "Error: tool_schemas.json not found after generation"
@@ -154,7 +154,7 @@ if [[ -n "${JOBS}" ]]; then
     nuitka_args+=(--jobs="${JOBS}")
 fi
 
-uv run nuitka "${nuitka_args[@]}" src/cli/cli_entry.py
+uv run --python 3.13 --extra dev nuitka "${nuitka_args[@]}" src/cli/cli_entry.py
 
 echo "Built: ${OUTPUT_FILE}"
 echo "${TARGET_PLATFORM} ${TARGET_ARCH} build complete"

@@ -36,7 +36,7 @@ Telemetry sends best-effort runtime and tool usage metadata to Umami and never b
 | Field | Purpose | Sample | Sensitive/Hashed |
 |:------|:--------|:-------|:-----------------|
 | `server_version` | Version trend | `0.6.1` | No |
-| `python_version` | Runtime compatibility | `3.14.0` | No |
+| `python_version` | Runtime compatibility | `3.13.0` | No |
 | `platform` | OS/arch distribution | `darwin-arm64` | No |
 | `mcp_mode` | Transport usage | `stdio` | No |
 | `deployment_method` | Deployment footprint | `docker` | No |
@@ -97,7 +97,7 @@ Alternatively, you can manually add it to your `~/.claude.json`:
 
 ### Prerequisites
 
-- Python 3.14 or later.
+- Python 3.13 or later.
 - [uv](https://astral.sh/uv/) for dependency management.
 
 ### Steps

@@ -128,7 +128,7 @@ class SharedStepService:
         """
         try:
             return await self._client.get_shared_step(step_id)
-        except AllureNotFoundError, AllureValidationError, AllureAPIError:
+        except (AllureNotFoundError, AllureValidationError, AllureAPIError):
             raise
         except Exception as e:
             raise AllureAPIError(f"Failed to get shared step {step_id}: {e}") from e
