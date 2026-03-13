@@ -90,11 +90,6 @@ Build local CLI binaries with:
 ./scripts/build_all_cli.sh
 ```
 
-By default, existing `dist/cli` binaries are preserved. To force a clean rebuild:
-
-```bash
-CLEAN_CLI_DIST=1 ./scripts/build_all_cli.sh
-```
 
 ### MCP Bundles
 
