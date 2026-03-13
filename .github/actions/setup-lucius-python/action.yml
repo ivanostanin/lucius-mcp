@@ -5,7 +5,7 @@ inputs:
   python-version:
     description: Python version for actions/setup-python.
     required: false
-    default: "3.13"
+    default: "3.14"
   install-build-deps:
     description: Install platform build prerequisites (Linux/macOS) when true.
     required: false
@@ -45,9 +45,7 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        if [ -d ".venv" ]; then
-          echo "Using existing virtual environment at .venv"
-        else
-          uv venv
-        fi
+        # Recreate the venv on each CI run to avoid stale interpreter links
+        # from cached environments and to pin the requested Python version.
+        uv venv --clear --python "${{ inputs.python-version }}"
         uv pip install -e ".[dev]"

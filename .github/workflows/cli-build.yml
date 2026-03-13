@@ -2,7 +2,7 @@ name: CLI Build and Test
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
     tags: ['v*']
   pull_request:
     paths:
@@ -113,19 +113,10 @@ jobs:
             throw "Runner architecture mismatch: expected '$expectedArch', got '$actualArch'"
           }
 
-      - name: Cache virtual environment
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.arch }}-${{ hashFiles('pyproject.toml') }}
-          restore-keys: |
-            venv-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.arch }}-
-            venv-${{ runner.os }}-
-
       - name: Setup Python and dependencies
         uses: ./.github/actions/setup-lucius-python
         with:
-          python-version: '3.13'  # Nuitka requires Python 3.13
+          python-version: '3.14'
           install-build-deps: 'true'
 
       - name: Generate tool schemas
@@ -191,7 +182,7 @@ jobs:
       - name: Setup Python and dependencies
         uses: ./.github/actions/setup-lucius-python
         with:
-          python-version: '3.13'
+          python-version: '3.14'
 
       - name: Download binary artifact
         uses: actions/download-artifact@v4
@@ -253,7 +244,7 @@ jobs:
       - name: Setup Python and dependencies
         uses: ./.github/actions/setup-lucius-python
         with:
-          python-version: '3.13'
+          python-version: '3.14'
 
       - name: Generate tool schemas
         run: uv run python scripts/build_tool_schema.py
@@ -283,7 +274,7 @@ jobs:
       - name: Setup Python and dependencies
         uses: ./.github/actions/setup-lucius-python
         with:
-          python-version: '3.13'
+          python-version: '3.14'
 
       - name: Validate full release artifact set
         env:
