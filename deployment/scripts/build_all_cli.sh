@@ -17,6 +17,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+REQUIRED_PYTHON="3.13"
 
 # Check prerequisites
 echo "Checking prerequisites..."
@@ -32,7 +33,14 @@ if ! command -v python3 &> /dev/null && ! command -v python &> /dev/null; then
     exit 1
 fi
 
+if ! uv python find 3.13 >/dev/null 2>&1; then
+    echo -e "${RED}Error: Python 3.13 is required for CLI Nuitka builds${NC}"
+    echo "Install it with: uv python install ${REQUIRED_PYTHON}"
+    exit 1
+fi
+
 echo -e "${GREEN}✓ Prerequisites met${NC}"
+echo -e "${GREEN}✓ Python ${REQUIRED_PYTHON} available for schema generation and Nuitka builds${NC}"
 
 normalize_platform() {
     case "$1" in
@@ -51,7 +59,8 @@ normalize_arch() {
     esac
 }
 
-# Clean previous builds
+# Preserve existing binaries by default.
+# Set CLEAN_CLI_DIST=1 to force a full cleanup before building.
 echo ""
 echo "Cleaning previous builds..."
 rm -rf dist/cli
@@ -61,13 +70,13 @@ echo -e "${GREEN}✓ Cleaned dist/cli${NC}"
 # Generate tool schemas
 echo ""
 echo "Generating tool schemas..."
-uv run python scripts/build_tool_schema.py
+uv run --python "${REQUIRED_PYTHON}" python scripts/build_tool_schema.py
 echo -e "${GREEN}✓ Tool schemas generated${NC}"
 
 # Generate shell completions
 echo ""
 echo "Generating shell completions..."
-uv run python deployment/scripts/generate_completions.py
+uv run --python "${REQUIRED_PYTHON}" python deployment/scripts/generate_completions.py
 echo -e "${GREEN}✓ Shell completions generated${NC}"
 
 # Count successful builds

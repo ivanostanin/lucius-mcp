@@ -82,6 +82,20 @@ uv run pytest tests/packaging
 
 ## Building Distribution Packages
 
+### CLI Binaries
+
+Build local CLI binaries with:
+
+```bash
+./scripts/build_all_cli.sh
+```
+
+By default, existing `dist/cli` binaries are preserved. To force a clean rebuild:
+
+```bash
+CLEAN_CLI_DIST=1 ./scripts/build_all_cli.sh
+```
+
 ### MCP Bundles
 
 Lucius can be packaged as an MCP Bundle (`.mcpb`) for easy installation in Claude Desktop.

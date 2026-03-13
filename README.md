@@ -85,6 +85,9 @@ chmod +x lucius-linux-x86_64
 - 🛡️ Clean error messages with guidance
 - 📦 Standalone binaries for Linux, macOS, and Windows
 
+For local CLI binary builds with Nuitka, use Python 3.13 (the build scripts and CI workflow enforce this).
+CLI builds preserve existing `dist/cli` binaries by default. Set `CLEAN_CLI_DIST=1` to force a full cleanup before running `./scripts/build_all_cli.sh`.
+
 For full CLI documentation and installation instructions, see [CLI Guide](docs/CLI.md).
 
 ### Shell Completions
@@ -120,7 +123,7 @@ Lucius includes privacy-preserving telemetry to help maintainers understand runt
 | Field | Purpose | Example | Sensitive/Hashed |
 |:------|:--------|:--------|:-----------------|
 | `server_version` | Server version trend | `0.6.1` | No |
-| `python_version` | Runtime compatibility insight | `3.14.0` | No |
+| `python_version` | Runtime compatibility insight | `3.13.0` | No |
 | `platform` | OS/arch distribution | `darwin-arm64` | No |
 | `mcp_mode` | Transport usage | `stdio` | No |
 | `deployment_method` | Install/run footprint | `uvx+pypi` | No |

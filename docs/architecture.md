@@ -24,7 +24,7 @@ Handler" (`src/utils/error.py`) that converts technical errors into **Agent Hint
 
 ## 🛠️ Technology Stack
 
-- **Core**: Python 3.14+
+- **Core**: Python 3.13+ (CLI Nuitka builds are pinned to Python 3.13 for compatibility)
 - **Frameworks**: FastMCP (MCP implementation), Starlette (HTTP transport).
 - **Client**: **Accurate and Up-to-Date**: The API client is generated directly from the latest Allure TestOps
   definitions, so you can trust that it works correctly with the real platform.

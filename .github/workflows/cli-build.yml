@@ -2,7 +2,7 @@ name: CLI Build and Test
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
     tags: ['v*']
   pull_request:
     paths:
@@ -13,6 +13,12 @@ on:
       - '.github/actions/setup-lucius-python/**'
       - '.github/workflows/cli-build.yml'
   workflow_dispatch:
+
+env:
+  CLI_BUILD_PYTHON_VERSION: '3.13' # Nuitka requires Python 3.13
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -25,72 +31,120 @@ jobs:
           # Linux ARM64
           - platform: linux
             arch: arm64
-            runner: ubuntu-latest-arm64
+            runner: ubuntu-24.04-arm
             artifact_name: lucius-linux-arm64
-            build_script: deployment/scripts/build_cli_linux_arm64.sh
+            build_script: deployment/scripts/build_cli_unix.sh
+            build_args: --platform linux --arch arm64
 
           # Linux x86_64
           - platform: linux
             arch: x86_64
             runner: ubuntu-latest
             artifact_name: lucius-linux-x86_64
-            build_script: deployment/scripts/build_cli_linux_x86_64.sh
+            build_script: deployment/scripts/build_cli_unix.sh
+            build_args: --platform linux --arch x86_64
 
           # macOS ARM64
           - platform: macos
             arch: arm64
-            runner: macos-latest-arm64
+            runner: macos-15
             artifact_name: lucius-macos-arm64
-            build_script: deployment/scripts/build_cli_macos_arm64.sh
+            build_script: deployment/scripts/build_cli_unix.sh
+            build_args: --platform macos --arch arm64
 
           # macOS x86_64
           - platform: macos
             arch: x86_64
-            runner: macos-latest-x86_64
+            runner: macos-15-intel
             artifact_name: lucius-macos-x86_64
-            build_script: deployment/scripts/build_cli_macos_x86_64.sh
+            build_script: deployment/scripts/build_cli_unix.sh
+            build_args: --platform macos --arch x86_64
 
           # Windows x86_64
           - platform: windows
             arch: x86_64
             runner: windows-latest
             artifact_name: lucius-windows-x86_64.exe
-            build_script: deployment/scripts/build_cli_windows_x86_64.bat
+            build_script: deployment/scripts/build_cli_windows.bat
+            build_args: --arch x86_64
 
           # Windows ARM64
           - platform: windows
             arch: arm64
-            runner: windows-latest-arm64
+            runner: windows-11-arm
             artifact_name: lucius-windows-arm64.exe
-            build_script: deployment/scripts/build_cli_windows_arm64.bat
+            build_script: deployment/scripts/build_cli_windows.bat
+            build_args: --arch arm64
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
+
+      - name: Validate runner platform and architecture
+        shell: pwsh
+        run: |
+          $expectedPlatform = '${{ matrix.platform }}'
+          $expectedArch = '${{ matrix.arch }}'
+
+          $runnerOs = $env:RUNNER_OS.ToLower()
+          if ($runnerOs -eq 'windows') {
+            $actualPlatform = 'windows'
+          } elseif ($runnerOs -eq 'macos') {
+            $actualPlatform = 'macos'
+          } elseif ($runnerOs -eq 'linux') {
+            $actualPlatform = 'linux'
+          } else {
+            $actualPlatform = $runnerOs
+          }
+
+          if ($env:RUNNER_OS -eq 'Windows') {
+            $rawArch = $env:PROCESSOR_ARCHITECTURE.ToLower()
+          } else {
+            $rawArch = (uname -m).Trim().ToLower()
+          }
+
+          if ($rawArch -in @('amd64', 'x86_64')) {
+            $actualArch = 'x86_64'
+          } elseif ($rawArch -in @('arm64', 'aarch64')) {
+            $actualArch = 'arm64'
+          } else {
+            $actualArch = $rawArch
+          }
+
+          Write-Host "Expected platform/arch: $expectedPlatform/$expectedArch"
+          Write-Host "Detected platform/arch: $actualPlatform/$actualArch"
+
+          if ($actualPlatform -ne $expectedPlatform) {
+            throw "Runner platform mismatch: expected '$expectedPlatform', got '$actualPlatform'"
+          }
+
+          if ($actualArch -ne $expectedArch) {
+            throw "Runner architecture mismatch: expected '$expectedArch', got '$actualArch'"
+          }
 
       - name: Cache virtual environment
         uses: actions/cache@v4
         with:
           path: .venv
-          key: venv-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.arch }}-${{ hashFiles('pyproject.toml') }}
+          key: venv-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.arch }}-py${{ env.CLI_BUILD_PYTHON_VERSION }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: |
-            venv-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.arch }}-
+            venv-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.arch }}-py${{ env.CLI_BUILD_PYTHON_VERSION }}-
             venv-${{ runner.os }}-
 
       - name: Setup Python and dependencies
         uses: ./.github/actions/setup-lucius-python
         with:
-          python-version: '3.13'  # Nuitka requires Python 3.13
+          python-version: '${{ env.CLI_BUILD_PYTHON_VERSION }}'
           install-build-deps: 'true'
 
       - name: Generate tool schemas
         run: |
-          uv run python scripts/build_tool_schema.py
+          uv run --python ${{ env.CLI_BUILD_PYTHON_VERSION }} python scripts/build_tool_schema.py
         shell: bash
 
       - name: Generate shell completions
         run: |
-          uv run python deployment/scripts/generate_completions.py
+          uv run --python ${{ env.CLI_BUILD_PYTHON_VERSION }} python deployment/scripts/generate_completions.py
         shell: bash
 
       - name: Build CLI binary
@@ -104,12 +158,19 @@ jobs:
 
       - name: Verify no HTTP components
         run: |
-          uv run python deployment/scripts/verify_no_http.py
+          uv run --python ${{ env.CLI_BUILD_PYTHON_VERSION }} python deployment/scripts/verify_no_http.py
+      - name: Build CLI binary (Unix)
+        if: runner.os != 'Windows'
+        run: bash "${{ matrix.build_script }}" ${{ matrix.build_args }}
         shell: bash
-        continue-on-error: true  # Don't fail build if verification script has issues
+
+      - name: Build CLI binary (Windows)
+        if: runner.os == 'Windows'
+        run: call "${{ matrix.build_script }}" ${{ matrix.build_args }}
+        shell: cmd
 
       - name: Upload binary artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.0
         with:
           name: ${{ matrix.artifact_name }}
           path: dist/cli/${{ matrix.artifact_name }}
@@ -130,7 +191,7 @@ jobs:
 
           - platform: macos
             arch: arm64
-            runner: macos-latest-arm64
+            runner: macos-15
             artifact_name: lucius-macos-arm64
 
           - platform: windows
@@ -140,15 +201,15 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Setup Python and dependencies
         uses: ./.github/actions/setup-lucius-python
         with:
-          python-version: '3.13'
+          python-version: '${{ env.CLI_BUILD_PYTHON_VERSION }}'
 
       - name: Download binary artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.1
         with:
           name: ${{ matrix.artifact_name }}
           path: dist/cli/
@@ -186,12 +247,12 @@ jobs:
 
       - name: Run CLI tests
         run: |
-          uv run pytest tests/cli/ --cov=src/cli --cov-report=term-missing -v --tb=short
+          uv run --python ${{ env.CLI_BUILD_PYTHON_VERSION }} pytest tests/cli/ --cov=src/cli --cov-report=term-missing -v --tb=short
         shell: bash
 
       - name: Run packaging tests
         run: |
-          uv run pytest tests/packaging/test_cli_binaries.py -v --tb=short
+          uv run --python ${{ env.CLI_BUILD_PYTHON_VERSION }} pytest tests/packaging/test_cli_binaries.py -v --tb=short
         shell: bash
         continue-on-error: true  # May fail if not all binaries are present
 
@@ -202,18 +263,18 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Setup Python and dependencies
         uses: ./.github/actions/setup-lucius-python
         with:
-          python-version: '3.13'
+          python-version: '${{ env.CLI_BUILD_PYTHON_VERSION }}'
 
       - name: Generate tool schemas
-        run: uv run python scripts/build_tool_schema.py
+        run: uv run --python ${{ env.CLI_BUILD_PYTHON_VERSION }} python scripts/build_tool_schema.py
 
       - name: Run E2E mocked tests
-        run: uv run pytest tests/cli/test_e2e_mocked.py -v --tb=short
+        run: uv run --python ${{ env.CLI_BUILD_PYTHON_VERSION }} pytest tests/cli/test_e2e_mocked.py -v --tb=short
 
   create-release:
     name: Create GitHub Release
@@ -226,10 +287,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.1
         with:
           path: dist/cli/
           merge-multiple: true
@@ -237,13 +298,13 @@ jobs:
       - name: Setup Python and dependencies
         uses: ./.github/actions/setup-lucius-python
         with:
-          python-version: '3.13'
+          python-version: '${{ env.CLI_BUILD_PYTHON_VERSION }}'
 
       - name: Validate full release artifact set
         env:
           REQUIRE_ALL_CLI_BINARIES: "1"
         run: |
-          uv run pytest tests/packaging/test_cli_binaries.py::TestBinaryPresence::test_all_platform_binaries_exist -v --tb=short
+          uv run --python ${{ env.CLI_BUILD_PYTHON_VERSION }} pytest tests/packaging/test_cli_binaries.py::TestBinaryPresence::test_all_platform_binaries_exist -v --tb=short
 
       - name: Create checksums
         run: |
@@ -256,7 +317,7 @@ jobs:
           cat *.sha256 > SHA256SUMS
 
       - name: Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2.5.0
         with:
           files: dist/cli/*
           generate_release_notes: true

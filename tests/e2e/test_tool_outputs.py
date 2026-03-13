@@ -35,7 +35,7 @@ async def test_create_tool_success_output(
         id_part = result.split("ID:")[1].split("Name:")[0].strip()
         test_case_id = int(id_part)
         cleanup_tracker.track_test_case(test_case_id)
-    except IndexError, ValueError:
+    except (IndexError, ValueError):
         pytest.fail(f"Could not parse ID from tool output: {result}")
 
 
