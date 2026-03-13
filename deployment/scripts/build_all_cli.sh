@@ -17,6 +17,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+REQUIRED_PYTHON="3.13"
 
 # Check prerequisites
 echo "Checking prerequisites..."
@@ -32,7 +33,14 @@ if ! command -v python3 &> /dev/null && ! command -v python &> /dev/null; then
     exit 1
 fi
 
+if ! uv python find 3.13 >/dev/null 2>&1; then
+    echo -e "${RED}Error: Python 3.13 is required for CLI Nuitka builds${NC}"
+    echo "Install it with: uv python install ${REQUIRED_PYTHON}"
+    exit 1
+fi
+
 echo -e "${GREEN}✓ Prerequisites met${NC}"
+echo -e "${GREEN}✓ Python ${REQUIRED_PYTHON} available for schema generation and Nuitka builds${NC}"
 
 normalize_platform() {
     case "$1" in
@@ -54,6 +62,7 @@ normalize_arch() {
 # Clean previous builds
 echo ""
 echo "Cleaning previous builds..."
+rm -rf dist/cli
 mkdir -p dist/cli
 shopt -s nullglob
 cli_artifacts=(dist/cli/lucius-*)
@@ -66,13 +75,13 @@ echo -e "${GREEN}✓ Cleaned CLI binaries in dist/cli${NC}"
 # Generate tool schemas
 echo ""
 echo "Generating tool schemas..."
-uv run python scripts/build_tool_schema.py
+uv run --python "${REQUIRED_PYTHON}" python scripts/build_tool_schema.py
 echo -e "${GREEN}✓ Tool schemas generated${NC}"
 
 # Generate shell completions
 echo ""
 echo "Generating shell completions..."
-uv run python deployment/scripts/generate_completions.py
+uv run --python "${REQUIRED_PYTHON}" python deployment/scripts/generate_completions.py
 echo -e "${GREEN}✓ Shell completions generated${NC}"
 
 # Count successful builds
@@ -102,8 +111,10 @@ if [[ "$current_platform" == "windows" ]]; then
     win_arch_wow="$(echo "${PROCESSOR_ARCHITEW6432:-}" | tr '[:lower:]' '[:upper:]')"
     if [[ "$win_arch_env" == "ARM64" || "$win_arch_wow" == "ARM64" ]]; then
         windows_arch="arm64"
+        windows_script="build_cli_windows_arm64.bat"
     else
         windows_arch="x86_64"
+        windows_script="build_cli_windows_x86_64.bat"
     fi
 
     if ! command -v cmd &> /dev/null; then

@@ -11,7 +11,7 @@ import pytest
 def build_artifacts():
     # Setup: Run uv build
     dist_dir = Path("dist")
-    dist_dir.mkdir(exist_ok=True)
+    dist_dir.mkdir(parents=True, exist_ok=True)
     for pattern in ("lucius_mcp-*.whl", "lucius_mcp-*.tar.gz"):
         for artifact in dist_dir.glob(pattern):
             artifact.unlink()

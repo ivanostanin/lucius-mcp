@@ -152,7 +152,7 @@ def _find_models_for_hint(exc: PydanticValidationError, request: Request) -> lis
                 # Check if annotation is a Pydantic Model
                 if inspect.isclass(param.annotation) and issubclass(param.annotation, BaseModel):
                     found_models.append(param.annotation)
-        except ValueError, TypeError:
+        except (ValueError, TypeError):
             # Introspection might fail on some adjustables/wrappers, e.g. built-ins
             pass
 

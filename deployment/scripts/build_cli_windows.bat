@@ -57,14 +57,14 @@ if /I "%CLEAN%"=="true" (
 )
 
 echo Generating tool schemas...
-uv --quiet run python scripts\build_tool_schema.py
+uv --quiet run --python 3.13 --extra dev python scripts\build_tool_schema.py
 
 if not exist "src\cli\data\tool_schemas.json" (
     echo Error: tool_schemas.json not found after generation
     exit /b 1
 )
 
-uv run nuitka ^
+uv run --python 3.13 --extra dev nuitka ^
     --standalone ^
     --onefile ^
     --assume-yes-for-downloads ^

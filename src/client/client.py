@@ -5,6 +5,8 @@ client, adding features like token management, automatic refresh, and
 standardized error handling.
 """
 
+from __future__ import annotations
+
 import json
 import time
 from collections.abc import Awaitable
