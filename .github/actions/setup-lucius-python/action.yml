@@ -45,5 +45,9 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        uv venv
+        if [ -d ".venv" ]; then
+          echo "Using existing virtual environment at .venv"
+        else
+          uv venv
+        fi
         uv pip install -e ".[dev]"
