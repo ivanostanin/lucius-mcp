@@ -299,6 +299,9 @@ The product provides a direct CLI interface in addition to MCP transport. CLI co
 *   **NFR5:** API Tokens passed via environment variables must be masked in all logs.
 *   **NFR6:** Input content is sanitized to prevent injection attacks.
 
+### CI/CD Security
+*   **NFR21:** Every GitHub Actions workflow MUST define explicit `permissions` for `GITHUB_TOKEN` using least privilege (`contents: read` by default), and jobs may elevate only the specific scopes they require (for example, `contents: write` only for release publishing).
+
 ### Quality & Maintainability
 *   **NFR7:** Unit Test coverage > 85%.
 *   **NFR8:** 100% `mypy` strict type checking compliance.

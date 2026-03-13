@@ -52,6 +52,7 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 1.  **Authentication Context:** Handling static (Env) and dynamic (Tool Arg) auth transparently.
 2.  **Agent-Optimized Error Handling:** Global translation of faults into "Agent Hints".
 3.  **Schema Consistency:** Preventing runtime failures by strictly adhering to the generated spec.
+4.  **CI Token Least Privilege:** GitHub Actions workflows must explicitly scope `GITHUB_TOKEN` permissions and only elevate per job when required.
 
 ## Starter Template Evaluation
 
@@ -264,6 +265,7 @@ lucius-mcp/
 **Build Process Structure:**
 *   `uv` manages local venv.
 *   `deployment/Dockerfile` uses `uv` for reproducible builds in production.
+*   GitHub Actions workflows must declare explicit `permissions` with least privilege (`contents: read` default), escalating only in jobs that require broader access.
 
 **Deployment Structure:**
 *   **Docker:** Multi-stage build to keep image size small (no build tools in final image).
