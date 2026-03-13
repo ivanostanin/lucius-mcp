@@ -28,7 +28,7 @@ jobs:
           # Linux ARM64
           - platform: linux
             arch: arm64
-            runner: ubuntu-latest-arm64
+            runner: ubuntu-24.04-arm
             artifact_name: lucius-linux-arm64
             build_script: deployment/scripts/build_cli_linux_arm64.sh
 
@@ -42,14 +42,14 @@ jobs:
           # macOS ARM64
           - platform: macos
             arch: arm64
-            runner: macos-latest-arm64
+            runner: macos-15
             artifact_name: lucius-macos-arm64
             build_script: deployment/scripts/build_cli_macos_arm64.sh
 
           # macOS x86_64
           - platform: macos
             arch: x86_64
-            runner: macos-latest-x86_64
+            runner: macos-15-intel
             artifact_name: lucius-macos-x86_64
             build_script: deployment/scripts/build_cli_macos_x86_64.sh
 
@@ -63,13 +63,55 @@ jobs:
           # Windows ARM64
           - platform: windows
             arch: arm64
-            runner: windows-latest-arm64
+            runner: windows-11-arm
             artifact_name: lucius-windows-arm64.exe
             build_script: deployment/scripts/build_cli_windows_arm64.bat
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Validate runner platform and architecture
+        shell: pwsh
+        run: |
+          $expectedPlatform = '${{ matrix.platform }}'
+          $expectedArch = '${{ matrix.arch }}'
+
+          $runnerOs = $env:RUNNER_OS.ToLower()
+          if ($runnerOs -eq 'windows') {
+            $actualPlatform = 'windows'
+          } elseif ($runnerOs -eq 'macos') {
+            $actualPlatform = 'macos'
+          } elseif ($runnerOs -eq 'linux') {
+            $actualPlatform = 'linux'
+          } else {
+            $actualPlatform = $runnerOs
+          }
+
+          if ($env:RUNNER_OS -eq 'Windows') {
+            $rawArch = $env:PROCESSOR_ARCHITECTURE.ToLower()
+          } else {
+            $rawArch = (uname -m).Trim().ToLower()
+          }
+
+          if ($rawArch -in @('amd64', 'x86_64')) {
+            $actualArch = 'x86_64'
+          } elseif ($rawArch -in @('arm64', 'aarch64')) {
+            $actualArch = 'arm64'
+          } else {
+            $actualArch = $rawArch
+          }
+
+          Write-Host "Expected platform/arch: $expectedPlatform/$expectedArch"
+          Write-Host "Detected platform/arch: $actualPlatform/$actualArch"
+
+          if ($actualPlatform -ne $expectedPlatform) {
+            throw "Runner platform mismatch: expected '$expectedPlatform', got '$actualPlatform'"
+          }
+
+          if ($actualArch -ne $expectedArch) {
+            throw "Runner architecture mismatch: expected '$expectedArch', got '$actualArch'"
+          }
 
       - name: Cache virtual environment
         uses: actions/cache@v4
@@ -96,14 +138,15 @@ jobs:
           uv run python deployment/scripts/generate_completions.py
         shell: bash
 
-      - name: Build CLI binary
-        run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            cmd /c "${{ matrix.build_script }}"
-          else
-            bash "${{ matrix.build_script }}"
-          fi
+      - name: Build CLI binary (Unix)
+        if: runner.os != 'Windows'
+        run: bash "${{ matrix.build_script }}"
         shell: bash
+
+      - name: Build CLI binary (Windows)
+        if: runner.os == 'Windows'
+        run: call "${{ matrix.build_script }}"
+        shell: cmd
 
       - name: Verify no HTTP components
         run: |
@@ -133,7 +176,7 @@ jobs:
 
           - platform: macos
             arch: arm64
-            runner: macos-latest-arm64
+            runner: macos-15
             artifact_name: lucius-macos-arm64
 
           - platform: windows
