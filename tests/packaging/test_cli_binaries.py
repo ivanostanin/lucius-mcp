@@ -348,12 +348,8 @@ class TestBinaryBuildScriptConfiguration:
         """All platform build scripts must include rich unicode data package."""
         project_root = Path(__file__).parent.parent.parent
         scripts = [
-            project_root / "deployment/scripts/build_cli_linux_arm64.sh",
-            project_root / "deployment/scripts/build_cli_linux_x86_64.sh",
-            project_root / "deployment/scripts/build_cli_macos_arm64.sh",
-            project_root / "deployment/scripts/build_cli_macos_x86_64.sh",
-            project_root / "deployment/scripts/build_cli_windows_arm64.bat",
-            project_root / "deployment/scripts/build_cli_windows_x86_64.bat",
+            project_root / "deployment/scripts/build_cli_unix.sh",
+            project_root / "deployment/scripts/build_cli_windows.bat",
         ]
 
         missing: list[str] = []

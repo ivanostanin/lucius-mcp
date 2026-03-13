@@ -30,42 +30,48 @@ jobs:
             arch: arm64
             runner: ubuntu-24.04-arm
             artifact_name: lucius-linux-arm64
-            build_script: deployment/scripts/build_cli_linux_arm64.sh
+            build_script: deployment/scripts/build_cli_unix.sh
+            build_args: --platform linux --arch arm64
 
           # Linux x86_64
           - platform: linux
             arch: x86_64
             runner: ubuntu-latest
             artifact_name: lucius-linux-x86_64
-            build_script: deployment/scripts/build_cli_linux_x86_64.sh
+            build_script: deployment/scripts/build_cli_unix.sh
+            build_args: --platform linux --arch x86_64
 
           # macOS ARM64
           - platform: macos
             arch: arm64
             runner: macos-15
             artifact_name: lucius-macos-arm64
-            build_script: deployment/scripts/build_cli_macos_arm64.sh
+            build_script: deployment/scripts/build_cli_unix.sh
+            build_args: --platform macos --arch arm64
 
           # macOS x86_64
           - platform: macos
             arch: x86_64
             runner: macos-15-intel
             artifact_name: lucius-macos-x86_64
-            build_script: deployment/scripts/build_cli_macos_x86_64.sh
+            build_script: deployment/scripts/build_cli_unix.sh
+            build_args: --platform macos --arch x86_64
 
           # Windows x86_64
           - platform: windows
             arch: x86_64
             runner: windows-latest
             artifact_name: lucius-windows-x86_64.exe
-            build_script: deployment/scripts/build_cli_windows_x86_64.bat
+            build_script: deployment/scripts/build_cli_windows.bat
+            build_args: --arch x86_64
 
           # Windows ARM64
           - platform: windows
             arch: arm64
             runner: windows-11-arm
             artifact_name: lucius-windows-arm64.exe
-            build_script: deployment/scripts/build_cli_windows_arm64.bat
+            build_script: deployment/scripts/build_cli_windows.bat
+            build_args: --arch arm64
 
     steps:
       - name: Checkout repository
@@ -131,12 +137,12 @@ jobs:
 
       - name: Build CLI binary (Unix)
         if: runner.os != 'Windows'
-        run: bash "${{ matrix.build_script }}"
+        run: bash "${{ matrix.build_script }}" ${{ matrix.build_args }}
         shell: bash
 
       - name: Build CLI binary (Windows)
         if: runner.os == 'Windows'
-        run: call "${{ matrix.build_script }}"
+        run: call "${{ matrix.build_script }}" ${{ matrix.build_args }}
         shell: cmd
 
       - name: Upload binary artifact

@@ -54,9 +54,14 @@ normalize_arch() {
 # Clean previous builds
 echo ""
 echo "Cleaning previous builds..."
-rm -rf dist/cli
 mkdir -p dist/cli
-echo -e "${GREEN}✓ Cleaned dist/cli${NC}"
+shopt -s nullglob
+cli_artifacts=(dist/cli/lucius-*)
+if (( ${#cli_artifacts[@]} > 0 )); then
+    rm -rf "${cli_artifacts[@]}"
+fi
+shopt -u nullglob
+echo -e "${GREEN}✓ Cleaned CLI binaries in dist/cli${NC}"
 
 # Generate tool schemas
 echo ""
@@ -74,12 +79,12 @@ echo -e "${GREEN}✓ Shell completions generated${NC}"
 successful_builds=0
 failed_builds=0
 
-# Define build matrix (platform, arch, script_name)
+# Define build matrix (platform, arch)
 declare -a BUILD_MATRIX=(
-    "linux arm64 build_cli_linux_arm64.sh"
-    "linux x86_64 build_cli_linux_x86_64.sh"
-    "macos arm64 build_cli_macos_arm64.sh"
-    "macos x86_64 build_cli_macos_x86_64.sh"
+    "linux arm64"
+    "linux x86_64"
+    "macos arm64"
+    "macos x86_64"
 )
 
 # Run Unix builds
@@ -97,10 +102,8 @@ if [[ "$current_platform" == "windows" ]]; then
     win_arch_wow="$(echo "${PROCESSOR_ARCHITEW6432:-}" | tr '[:lower:]' '[:upper:]')"
     if [[ "$win_arch_env" == "ARM64" || "$win_arch_wow" == "ARM64" ]]; then
         windows_arch="arm64"
-        windows_script="build_cli_windows_arm64.bat"
     else
         windows_arch="x86_64"
-        windows_script="build_cli_windows_x86_64.bat"
     fi
 
     if ! command -v cmd &> /dev/null; then
@@ -108,7 +111,7 @@ if [[ "$current_platform" == "windows" ]]; then
         exit 1
     fi
 
-    if cmd /c "deployment\\scripts\\${windows_script}"; then
+    if cmd /c "deployment\\scripts\\build_cli_windows.bat --arch ${windows_arch}"; then
         echo -e "${GREEN}✓ windows-${windows_arch} build successful${NC}"
         ((successful_builds++))
     else
@@ -120,7 +123,7 @@ else
     echo "==========================================================================="
 
     for entry in "${BUILD_MATRIX[@]}"; do
-        read -r platform arch script <<< "$entry"
+        read -r platform arch <<< "$entry"
 
         echo ""
         echo "---------------------------------------------------------------------------"
@@ -151,7 +154,7 @@ else
         fi
 
         # Run build script
-        if bash deployment/scripts/"$script"; then
+        if bash deployment/scripts/build_cli_unix.sh --platform "$platform" --arch "$arch"; then
             echo -e "${GREEN}✓ ${platform}-${arch} build successful${NC}"
             ((successful_builds++))
         else
@@ -166,8 +169,8 @@ else
     echo "Windows builds:"
     echo "---------------------------------------------------------------------------"
     echo -e "${YELLOW}Note: Windows builds must be run on Windows using:${NC}"
-    echo "  - build_cli_windows_x86_64.bat"
-    echo "  - build_cli_windows_arm64.bat"
+    echo "  - deployment\\scripts\\build_cli_windows.bat --arch x86_64"
+    echo "  - deployment\\scripts\\build_cli_windows.bat --arch arm64"
     echo ""
     echo "These .bat files are in deployment/scripts/"
 fi
