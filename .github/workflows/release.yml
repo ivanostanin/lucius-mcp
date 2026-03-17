@@ -100,7 +100,7 @@ jobs:
           path: ./CHANGELOG.md
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2.5.0
+        uses: softprops/action-gh-release@v2.6.1
         with:
           body: ${{ steps.changelog_reader.outputs.changes }}
           files: dist/*.mcpb

@@ -305,7 +305,7 @@ jobs:
           cat *.sha256 > SHA256SUMS
 
       - name: Release
-        uses: softprops/action-gh-release@v2.5.0
+        uses: softprops/action-gh-release@v2.6.1
         with:
           files: dist/cli/*
           generate_release_notes: true
