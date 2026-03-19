@@ -31,8 +31,17 @@ Lucius makes this easier by giving your AI tools that are simple to use and hard
 ## 🚀 Quick Start
 
 1. **Install uv**: `curl -LsSf https://astral.sh/uv/install.sh | sh`
-2. **Setup Credentials**: Create a `.env` file with `ALLURE_ENDPOINT`, `ALLURE_PROJECT_ID`, and `ALLURE_API_TOKEN`.
+2. **Setup Credentials**: Create a `.env` file with the variables below.
 3. **Run Server**: `uv run start`
+
+### Basic `.env` for Quick Start
+
+| Variable | Description | Example |
+|:---------|:------------|:--------|
+| `ALLURE_ENDPOINT` | Allure TestOps base URL | `https://example.testops.cloud` |
+| `ALLURE_PROJECT_ID` | Default Allure project ID | `123` |
+| `ALLURE_API_TOKEN` | Allure API token | `<your_api_token>` |
+| `MCP_MODE` | MCP transport mode for Lucius runtime | `stdio` |
 
 ### 🔌 Claude Desktop Integration
 
@@ -47,12 +56,64 @@ The easiest way to use Lucius in Claude Desktop is via the `.mcpb` bundle:
 To add Lucius to Claude Code, use the following command from within your project directory:
 
 ```bash
-claude mcp add testops-mcp --transport stdio \
-   --env ALLURE_ENDPOINT=https://example.testops.cloud\
-   --env ALLURE_PROJECT_ID=123 \
-   --env ALLURE_API_TOKEN=your_token \
-   --env MCP_MODE=stdio \
-   -- uvx --from lucius-mcp --refresh start
+claude mcp add --transport stdio --scope project \
+  --env ALLURE_ENDPOINT=https://example.testops.cloud \
+  --env ALLURE_PROJECT_ID=123 \
+  --env ALLURE_API_TOKEN=<your_api_token> \
+  --env MCP_MODE=stdio \
+  testops-mcp -- uvx --from lucius-mcp --refresh start
+```
+
+Project-scoped text config example (`.mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "testops-mcp": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "lucius-mcp",
+        "--refresh",
+        "start"
+      ],
+      "env": {
+        "ALLURE_ENDPOINT": "https://example.testops.cloud",
+        "ALLURE_PROJECT_ID": "123",
+        "ALLURE_API_TOKEN": "<your_api_token>",
+        "MCP_MODE": "stdio"
+      }
+    }
+  }
+}
+```
+
+### 🧠 Codex Integration
+
+To add Lucius to Codex (CLI or IDE extension), use:
+
+```bash
+codex mcp add testops-mcp \
+  --env ALLURE_ENDPOINT=https://example.testops.cloud \
+  --env ALLURE_PROJECT_ID=123 \
+  --env ALLURE_API_TOKEN=<your_api_token> \
+  --env MCP_MODE=stdio \
+  -- uvx --from lucius-mcp --refresh start
+```
+
+Text config example (`~/.codex/config.toml` or project `.codex/config.toml`):
+
+```toml
+[mcp_servers.testops-mcp]
+command = "uvx"
+args = ["--from", "lucius-mcp", "--refresh", "start"]
+
+[mcp_servers.testops-mcp.env]
+ALLURE_ENDPOINT = "https://example.testops.cloud"
+ALLURE_PROJECT_ID = "123"
+ALLURE_API_TOKEN = "<your_api_token>"
+MCP_MODE = "stdio"
 ```
 
 For detailed setup, including Claude Desktop (MCPB) integration, see [Setup Guide](docs/setup.md).
@@ -105,35 +166,6 @@ Load one in your shell profile, for example:
 source deployment/shell-completions/lucius.bash
 ```
 
-## 🔐 Telemetry & Privacy
-
-Lucius includes privacy-preserving telemetry to help maintainers understand runtime and tool usage trends.
-
-- Telemetry is enabled by default.
-- Telemetry runtime settings are defined in [`src/utils/config.py`](src/utils/config.py) via `TelemetryConfig`.
-- Umami is the single telemetry backend and events are sent via the `umami-python` client.
-- To disable telemetry at runtime without code edits, set `TELEMETRY_ENABLED=false`.
-- Payloads include runtime/tool metadata (version, platform, mode, deployment method, outcome, duration bucket).
-- Sensitive identifiers are hashed before sending (for example endpoint host and project id).
-- Tool arguments, test content, API tokens, and secret values are never sent.
-
-### Telemetry Data Dictionary
-
-| Field | Purpose | Example | Sensitive/Hashed |
-|:------|:--------|:--------|:-----------------|
-| `server_version` | Server version trend | `0.6.1` | No |
-| `python_version` | Runtime compatibility insight | `3.13.0` | No |
-| `platform` | OS/arch distribution | `darwin-arm64` | No |
-| `mcp_mode` | Transport usage | `stdio` | No |
-| `deployment_method` | Install/run footprint | `uvx+pypi` | No |
-| `tool_name` | Tool adoption | `create_test_case` | No |
-| `outcome` | Success/error ratio | `success` | No |
-| `duration_bucket` | Performance trend | `100-500ms` | No |
-| `error_category` | Failure classification | `validation` | No |
-| `endpoint_host_hash` | Installation grouping | `f8a2...` | Hashed |
-| `project_id_hash` | Project-level grouping | `9d71...` | Hashed |
-| `installation_id_hash` | Longitudinal installation metric | `b02e...` | Hashed |
-
 ## 📂 Documentation
 
 Full documentation is available in the [docs/](docs/index.md) folder:
@@ -141,6 +173,7 @@ Full documentation is available in the [docs/](docs/index.md) folder:
 - [Architecture & Design](docs/architecture.md)
 - [Tool Reference](docs/tools.md)
 - [Configuration & Setup](docs/setup.md)
+- [Telemetry & Privacy](docs/telemetry.md)
 - [Development Guide](docs/development.md)
 - [AI Agent Protocol](docs/agent-documentation-protocol.md)
 

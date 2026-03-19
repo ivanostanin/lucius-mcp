@@ -37,5 +37,6 @@ Lucius acts as a translator between your AI assistant and Allure TestOps.
 - [Tool Reference](tools.md): Complete guide to all available MCP tools.
 - [CLI Guide](CLI.md): Entity/action CLI usage, output formats, and shell completions.
 - [Configuration & Setup](setup.md): How to install and configure Lucius for your environment.
+- [Telemetry & Privacy](telemetry.md): Telemetry behavior, data dictionary, and privacy guarantees.
 - [Development Guide](development.md): Instructions for contributors and developers.
 - [AI Agent Documentation Protocol](agent-documentation-protocol.md): How AI agents should maintain this documentation.

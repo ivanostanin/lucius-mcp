@@ -18,36 +18,6 @@ The server is configured via environment variables or a `.env` file.
 | `TELEMETRY_WEBSITE_ID` | Optional Umami website ID override | `None` (uses config default) |
 | `TELEMETRY_HOSTNAME` | Optional Umami hostname override | `None` (uses config default) |
 
-## 🔐 Telemetry Behavior
-
-Telemetry sends best-effort runtime and tool usage metadata to Umami and never blocks tool results.
-
-- Telemetry defaults are code-defined in `src/utils/config.py` (`TelemetryConfig`).
-- Umami is the single telemetry backend and emission uses the `umami-python` API client.
-- Default mode is enabled (`TelemetryConfig.enabled = True`).
-- To disable telemetry globally in code, set `TelemetryConfig.enabled = False`.
-- To disable telemetry per runtime environment, set `TELEMETRY_ENABLED=false` (this env override takes precedence).
-- To override Umami destination identity at runtime, set `TELEMETRY_WEBSITE_ID` and/or `TELEMETRY_HOSTNAME`.
-- If `TelemetryConfig.umami_website_id` is unset, Lucius logs a concise warning and skips sending.
-- Failures to reach Umami are swallowed and logged without stack traces.
-
-### Telemetry Data Dictionary
-
-| Field | Purpose | Sample | Sensitive/Hashed |
-|:------|:--------|:-------|:-----------------|
-| `server_version` | Version trend | `0.6.1` | No |
-| `python_version` | Runtime compatibility | `3.13.0` | No |
-| `platform` | OS/arch distribution | `darwin-arm64` | No |
-| `mcp_mode` | Transport usage | `stdio` | No |
-| `deployment_method` | Deployment footprint | `docker` | No |
-| `tool_name` | Tool adoption | `search_test_cases` | No |
-| `outcome` | Success/error trend | `success` | No |
-| `duration_bucket` | Latency trend | `100-500ms` | No |
-| `error_category` | Error grouping | `api` | No |
-| `endpoint_host_hash` | Endpoint grouping | `1d75...` | Hashed |
-| `project_id_hash` | Project grouping | `7f03...` | Hashed |
-| `installation_id_hash` | Install grouping | `a8cc...` | Hashed |
-
 ## 🔌 Claude Desktop Integration
 
 The easiest way to use Lucius in Claude Desktop is via the `.mcpb` bundle:
@@ -61,36 +31,64 @@ The easiest way to use Lucius in Claude Desktop is via the `.mcpb` bundle:
 To add Lucius to Claude Code, use the following command from within your project directory:
 
 ```bash
-claude mcp add testops-mcp --transport stdio \
-   --env ALLURE_ENDPOINT=https://example.testops.cloud\
-   --env ALLURE_PROJECT_ID=123 \
-   --env ALLURE_API_TOKEN=your_token \
-   --env MCP_MODE=stdio \
-   -- uvx --from lucius-mcp --refresh start
+claude mcp add --transport stdio --scope project \
+  --env ALLURE_ENDPOINT=https://example.testops.cloud \
+  --env ALLURE_PROJECT_ID=123 \
+  --env ALLURE_API_TOKEN=<your_api_token> \
+  --env MCP_MODE=stdio \
+  testops-mcp -- uvx --from lucius-mcp --refresh start
 ```
 
-Alternatively, you can manually add it to your `~/.claude.json`:
+Project text config example (`.mcp.json`):
 
 ```json
 {
   "mcpServers": {
-    "lucius-mcp": {
+    "testops-mcp": {
       "type": "stdio",
       "command": "uvx",
       "args": [
         "--from",
         "lucius-mcp",
+        "--refresh",
         "start"
       ],
       "env": {
         "ALLURE_ENDPOINT": "https://example.testops.cloud",
         "ALLURE_PROJECT_ID": "123",
         "MCP_MODE": "stdio",
-        "ALLURE_API_TOKEN": "<your API token>"
+        "ALLURE_API_TOKEN": "<your_api_token>"
       }
     }
   }
 }
+```
+
+## 🧠 Codex Integration
+
+To add Lucius to Codex (CLI or IDE extension), use:
+
+```bash
+codex mcp add testops-mcp \
+  --env ALLURE_ENDPOINT=https://example.testops.cloud \
+  --env ALLURE_PROJECT_ID=123 \
+  --env ALLURE_API_TOKEN=<your_api_token> \
+  --env MCP_MODE=stdio \
+  -- uvx --from lucius-mcp --refresh start
+```
+
+Text config example (`~/.codex/config.toml` or project `.codex/config.toml`):
+
+```toml
+[mcp_servers.testops-mcp]
+command = "uvx"
+args = ["--from", "lucius-mcp", "--refresh", "start"]
+
+[mcp_servers.testops-mcp.env]
+ALLURE_ENDPOINT = "https://example.testops.cloud"
+ALLURE_PROJECT_ID = "123"
+ALLURE_API_TOKEN = "<your_api_token>"
+MCP_MODE = "stdio"
 ```
 
 ## 🛠️ Manual Installation
@@ -125,3 +123,8 @@ uv run --env-file .env start
 ```bash
 MCP_MODE=http uv run --env-file .env start
 ```
+
+## 🔐 Telemetry & Privacy
+
+Telemetry behavior, privacy guarantees, and the full data dictionary are documented in [Telemetry & Privacy](telemetry.md).
+
