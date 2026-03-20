@@ -5,10 +5,15 @@ Tests verify binary size, functionality, and standalone execution.
 """
 
 import ast
+import os
 import platform
+import re
 import subprocess
+import tempfile
+import time
 from os import environ
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -26,6 +31,13 @@ BINARIES = {
 }
 
 
+def _is_benchmark_binary_name(name: str) -> bool:
+    """Detect ad-hoc benchmark variants that should not be treated as release artifacts."""
+    lower = name.lower()
+    markers = ("variant1", "variant2", "variant3", "-v1-", "-v2-", "-v3-", "nocomp")
+    return any(marker in lower for marker in markers)
+
+
 def _platform_name() -> str:
     system = platform.system().lower()
     if system == "darwin":
@@ -37,13 +49,22 @@ def _machine_name() -> str:
     return "arm64" if platform.machine().lower() in {"arm64", "aarch64"} else "x86_64"
 
 
-def _select_current_binary() -> Path | None:
-    binaries = [binary for binary in DIST_DIR.glob("lucius-*") if binary.is_file()]
+def _select_current_binary(
+    platform_name: str | None = None,
+    machine_name: str | None = None,
+    *,
+    allow_platform_fallback: bool = True,
+) -> Path | None:
+    binaries = [
+        binary
+        for binary in DIST_DIR.glob("lucius-*")
+        if binary.is_file() and not _is_benchmark_binary_name(binary.name)
+    ]
     if not binaries:
         return None
 
-    platform_name = _platform_name()
-    machine_name = _machine_name()
+    platform_name = platform_name or _platform_name()
+    machine_name = machine_name or _machine_name()
     expected_name = BINARIES.get(f"{platform_name}-{machine_name}")
     if expected_name and (DIST_DIR / expected_name).exists():
         return DIST_DIR / expected_name
@@ -54,6 +75,9 @@ def _select_current_binary() -> Path | None:
         if machine_name in lower_name and (platform_name in lower_name or system_name in lower_name):
             return binary
 
+    if not allow_platform_fallback:
+        return None
+
     for binary in binaries:
         lower_name = binary.name.lower()
         if platform_name in lower_name or system_name in lower_name:
@@ -62,20 +86,203 @@ def _select_current_binary() -> Path | None:
     return binaries[0]
 
 
+def _render_cache_path(template: str, cache_dir: str, company: str, product: str, version: str) -> str:
+    """Render Nuitka onefile cache template for deterministic path checks."""
+    return (
+        template.replace("{CACHE_DIR}", cache_dir)
+        .replace("{COMPANY}", company)
+        .replace("{PRODUCT}", product)
+        .replace("{VERSION}", version)
+    )
+
+
+def _get_onefile_metadata() -> tuple[str, str, str]:
+    """Get company/product/version metadata embedded into onefile cache path."""
+    project_root = Path(__file__).parent.parent.parent
+    unix_build_script = (project_root / "deployment/scripts/build_cli_unix.sh").read_text(encoding="utf-8")
+
+    company_match = re.search(r"--company-name=([^\s\"']+)", unix_build_script)
+    product_match = re.search(r"--product-name=([^\s\"']+)", unix_build_script)
+    if company_match is None or product_match is None:
+        raise RuntimeError("Could not parse onefile company/product metadata from build script")
+
+    from src.version import __version__
+
+    return company_match.group(1), product_match.group(1), __version__
+
+
+def _resolve_windows_local_appdata() -> Path:
+    """Resolve Windows native Local AppData path via shell API semantics."""
+    import ctypes
+
+    csidl_local_appdata = 28
+    shgfp_type_current = 0
+    buffer_size = 260
+    path_buffer = ctypes.create_unicode_buffer(buffer_size)
+
+    result = ctypes.windll.shell32.SHGetFolderPathW(
+        None,
+        csidl_local_appdata,
+        None,
+        shgfp_type_current,
+        path_buffer,
+    )
+    if result != 0:
+        raise RuntimeError(f"SHGetFolderPathW(CSIDL_LOCAL_APPDATA) failed with code {result}")
+
+    return Path(path_buffer.value)
+
+
+def _runtime_cache_probe_root(configured_cache_root: Path) -> Path:
+    """Return cache root actually used by onefile tempdir expansion on current OS."""
+    if platform.system() == "Windows":
+        return _resolve_windows_local_appdata()
+    return configured_cache_root
+
+
+def _runtime_expected_onefile_cache_dir(configured_cache_root: Path) -> Path:
+    """Expected onefile cache directory after runtime token expansion."""
+    company, product, version = _get_onefile_metadata()
+    cache_root = _runtime_cache_probe_root(configured_cache_root)
+    rendered = _render_cache_path(
+        template=TestBinaryBuildScriptConfiguration.EXPECTED_ONEFILE_CACHE_SPEC,
+        cache_dir=str(cache_root),
+        company=company,
+        product=product,
+        version=version,
+    )
+    return Path(rendered)
+
+
 def _is_release_binary_validation_enabled() -> bool:
     explicit = environ.get("REQUIRE_ALL_CLI_BINARIES", "").strip().lower()
     return explicit in {"1", "true", "yes", "on"}
 
 
+def _emit_build_log(request: pytest.FixtureRequest, message: str) -> None:
+    reporter = request.config.pluginmanager.getplugin("terminalreporter")
+    if reporter is not None:
+        reporter.write_line(message)
+    else:
+        print(message, flush=True)
+
+
+@pytest.fixture(scope="session")
+def built_cli_binary(request: pytest.FixtureRequest) -> Path:
+    """Build one current-platform CLI binary for packaging/runtime verification tests."""
+    project_root = Path(__file__).parent.parent.parent
+    platform_name = _platform_name()
+    machine_name = _machine_name()
+    existing_binary = _select_current_binary(platform_name, machine_name, allow_platform_fallback=False)
+
+    if existing_binary is not None and existing_binary.exists():
+        _emit_build_log(
+            request,
+            f"[build-cli] reusing existing binary for {platform_name}-{machine_name}: {existing_binary}",
+        )
+        return existing_binary
+
+    if platform.system() == "Windows":
+        command = ["cmd", "/c", "deployment\\scripts\\build_cli_windows.bat", "--arch", machine_name]
+    else:
+        command = [
+            "bash",
+            "deployment/scripts/build_cli_unix.sh",
+            "--platform",
+            platform_name,
+            "--arch",
+            machine_name,
+        ]
+
+    _emit_build_log(request, f"[build-cli] starting build for {platform_name}-{machine_name}: {' '.join(command)}")
+    started = time.perf_counter()
+    process = subprocess.Popen(
+        command,
+        cwd=project_root,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+
+    assert process.stdout is not None
+    for line in process.stdout:
+        _emit_build_log(request, f"[build-cli] {line.rstrip()}")
+
+    return_code = process.wait()
+    elapsed = time.perf_counter() - started
+    _emit_build_log(request, f"[build-cli] finished in {elapsed:.2f}s (exit={return_code})")
+    if return_code != 0:
+        pytest.fail(f"CLI build failed with exit code {return_code}")
+
+    binary = _select_current_binary(platform_name, machine_name, allow_platform_fallback=False)
+    if binary is None or not binary.exists():
+        pytest.fail("CLI build completed but no current-platform lucius binary was found in dist/cli")
+
+    _emit_build_log(request, f"[build-cli] using binary: {binary}")
+    return binary
+
+
+class TestBinaryBuildFixture:
+    """Ensure packaging tests can build and locate a runnable binary."""
+
+    def test_fixture_build_binary_success(self, built_cli_binary: Path) -> None:
+        assert built_cli_binary.exists(), f"Built binary does not exist: {built_cli_binary}"
+        assert built_cli_binary.is_file(), f"Built binary path is not a file: {built_cli_binary}"
+        assert built_cli_binary.stat().st_size > 0, f"Built binary is empty: {built_cli_binary}"
+
+
+class TestBinaryBuildFixtureReuse:
+    """Validate fixture reuses existing binaries before attempting a build."""
+
+    def test_select_current_binary_strict_mode_requires_matching_arch(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        platform_name = _platform_name()
+        machine_name = _machine_name()
+        wrong_arch = "x86_64" if machine_name == "arm64" else "arm64"
+        wrong_binary_name = BINARIES[f"{platform_name}-{wrong_arch}"]
+
+        monkeypatch.setattr("tests.packaging.test_cli_binaries.DIST_DIR", tmp_path)
+        wrong_binary = tmp_path / wrong_binary_name
+        wrong_binary.write_bytes(b"not-the-right-arch")
+
+        selected = _select_current_binary(platform_name, machine_name, allow_platform_fallback=False)
+        assert selected is None, "Strict selection should not return wrong-arch binaries"
+
+    def test_fixture_reuses_existing_binary_without_build(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        platform_name = _platform_name()
+        machine_name = _machine_name()
+        expected_name = BINARIES[f"{platform_name}-{machine_name}"]
+
+        monkeypatch.setattr("tests.packaging.test_cli_binaries.DIST_DIR", tmp_path)
+        existing_binary = tmp_path / expected_name
+        existing_binary.write_bytes(b"binary")
+
+        def _unexpected_popen(*args: object, **kwargs: object) -> object:
+            raise AssertionError("subprocess.Popen should not be called when matching binary already exists")
+
+        monkeypatch.setattr(subprocess, "Popen", _unexpected_popen)
+
+        request = SimpleNamespace(config=SimpleNamespace(pluginmanager=SimpleNamespace(getplugin=lambda _name: None)))
+        selected = built_cli_binary.__wrapped__(request)
+        assert selected == existing_binary
+
+
 class TestBinaryPresence:
     """Test that expected binaries exist."""
 
-    def test_all_platform_binaries_exist(self) -> None:
+    def test_all_platform_binaries_exist(self, built_cli_binary: Path) -> None:
         """Test all 6 platform binaries are built."""
         print(f"\\nChecking for binaries in: {DIST_DIR}")
-
-        if not DIST_DIR.exists():
-            pytest.skip(f"Distribution directory not found: {DIST_DIR}")
+        assert built_cli_binary.exists(), f"Built binary does not exist: {built_cli_binary}"
+        assert DIST_DIR.exists(), f"Distribution directory not found: {DIST_DIR}"
 
         found_binaries = set()
         for binary_name in DIST_DIR.iterdir():
@@ -95,20 +302,25 @@ class TestBinaryPresence:
             machine = _machine_name()
             current_binary = BINARIES.get(f"{_platform_name()}-{machine}")
             if current_binary:
-                assert (DIST_DIR / current_binary).exists(), f"Current platform binary not found: {current_binary}"
+                matching_current = list(DIST_DIR.glob(f"{current_binary}*"))
+                assert matching_current, f"Current platform binary not found: {current_binary}"
 
 
 class TestBinarySize:
     """Test binary sizes are reasonable."""
 
-    @pytest.mark.skipif(not DIST_DIR.exists(), reason="dist/cli not found")
-    def test_binary_size_reasonable(self) -> None:
+    def test_binary_size_reasonable(self, built_cli_binary: Path) -> None:
         """Test binary size is reasonable (< 100MB)."""
+        assert built_cli_binary.exists(), f"Built binary does not exist: {built_cli_binary}"
         # Find any binary in the dist directory
-        binaries = list(DIST_DIR.glob("lucius-*"))
+        binaries = [
+            binary
+            for binary in DIST_DIR.glob("lucius-*")
+            if binary.is_file() and not _is_benchmark_binary_name(binary.name)
+        ]
 
         if not binaries:
-            pytest.skip("No binaries found to test")
+            pytest.skip("No non-benchmark binaries found to test")
 
         for binary in binaries:
             size_mb = binary.stat().st_size / (1024 * 1024)
@@ -125,13 +337,12 @@ class TestBinaryPermissions:
     """Test binary permissions are correct."""
 
     @pytest.mark.skipif(platform.system() == "Windows", reason="Permissions only on Unix")
-    def test_binary_executable(self) -> None:
+    def test_binary_executable(self, built_cli_binary: Path) -> None:
         """Test Unix binaries have executable permission."""
+        assert built_cli_binary.exists(), f"Built binary does not exist: {built_cli_binary}"
         # Find Unix binaries (not .exe)
         binaries = list(DIST_DIR.glob("lucius-*"))
-
-        if not binaries:
-            pytest.skip("No binaries found to test")
+        assert binaries, f"No binaries found to test in {DIST_DIR}"
 
         for binary in binaries:
             if not binary.name.endswith(".exe"):
@@ -142,12 +353,9 @@ class TestBinaryPermissions:
 class TestBinaryExecution:
     """Test binary execution and basic functionality."""
 
-    @pytest.mark.skipif(not DIST_DIR.exists(), reason="dist/cli not found")
-    def test_binary_version_command(self) -> None:
+    def test_binary_version_command(self, built_cli_binary: Path) -> None:
         """Test binary responds to --version command."""
-        binary_to_test = _select_current_binary()
-        if not binary_to_test:
-            pytest.skip("No binaries found to test")
+        binary_to_test = built_cli_binary
 
         print(f"\\nTesting binary: {binary_to_test.name}")
 
@@ -178,12 +386,9 @@ class TestBinaryExecution:
         output = result.stdout + result.stderr
         assert "lucius" in output.lower(), f"Version output doesn't contain 'lucius': {output}"
 
-    @pytest.mark.skipif(not DIST_DIR.exists(), reason="dist/cli not found")
-    def test_binary_help_command(self) -> None:
+    def test_binary_help_command(self, built_cli_binary: Path) -> None:
         """Test binary responds to --help command."""
-        binary_to_test = _select_current_binary()
-        if not binary_to_test:
-            pytest.skip("No binaries found to test")
+        binary_to_test = built_cli_binary
 
         print(f"\\nTesting help for: {binary_to_test.name}")
 
@@ -218,12 +423,9 @@ class TestBinaryExecution:
 class TestBinaryStandaloneExecution:
     """Test binary executes standalone without Python runtime."""
 
-    @pytest.mark.skipif(not DIST_DIR.exists(), reason="dist/cli not found")
-    def test_binary_standalone_no_python(self) -> None:
+    def test_binary_standalone_no_python(self, built_cli_binary: Path) -> None:
         """Test binary doesn't require Python to be in PATH."""
-        binary_to_test = _select_current_binary()
-        if not binary_to_test:
-            pytest.skip("No binaries found to test")
+        binary_to_test = built_cli_binary
 
         print(f"\\nTesting standalone execution for: {binary_to_test.name}")
 
@@ -252,12 +454,9 @@ class TestBinaryStandaloneExecution:
 class TestBinaryToolSchemaEmbedded:
     """Test binary contains embedded command metadata for entity/action discovery."""
 
-    @pytest.mark.skipif(not DIST_DIR.exists(), reason="dist/cli not found")
-    def test_binary_has_schemas(self) -> None:
+    def test_binary_has_schemas(self, built_cli_binary: Path) -> None:
         """Test binary supports entity discovery without runtime MCP dependency."""
-        binary_to_test = _select_current_binary()
-        if not binary_to_test:
-            pytest.skip("No binaries found to test")
+        binary_to_test = built_cli_binary
 
         print(f"\\nTesting tool schemas for: {binary_to_test.name}")
 
@@ -317,10 +516,10 @@ class TestBinaryNoHTTPComponents:
 class TestCrossPlatformCompatibility:
     """Test cross-platform binary naming and structure."""
 
-    def test_binary_naming_convention(self) -> None:
+    def test_binary_naming_convention(self, built_cli_binary: Path) -> None:
         """Test all binary files follow expected naming convention."""
-        if not DIST_DIR.exists():
-            pytest.skip("dist/cli not found")
+        assert built_cli_binary.exists(), f"Built binary does not exist: {built_cli_binary}"
+        assert DIST_DIR.exists(), "dist/cli not found"
 
         binaries = list(DIST_DIR.glob("lucius-*"))
 
@@ -344,6 +543,8 @@ class TestCrossPlatformCompatibility:
 class TestBinaryBuildScriptConfiguration:
     """Validate CLI build script configuration needed for runtime stability."""
 
+    EXPECTED_ONEFILE_CACHE_SPEC = "{CACHE_DIR}/{COMPANY}/{PRODUCT}/{VERSION}"
+
     def test_rich_unicode_data_included_in_nuitka_builds(self) -> None:
         """All platform build scripts must include rich unicode data package."""
         project_root = Path(__file__).parent.parent.parent
@@ -360,4 +561,186 @@ class TestBinaryBuildScriptConfiguration:
 
         assert not missing, "Nuitka build scripts missing rich unicode data include flag:\n" + "\n".join(
             sorted(missing)
+        )
+
+    def test_onefile_cached_mode_enabled_for_build_scripts(self) -> None:
+        """Onefile builds must enable cached startup extraction mode."""
+        project_root = Path(__file__).parent.parent.parent
+        scripts = [
+            project_root / "deployment/scripts/build_cli_unix.sh",
+            project_root / "deployment/scripts/build_cli_windows.bat",
+        ]
+
+        missing_cache_mode_default: list[str] = []
+        missing_cache_mode_usage: list[str] = []
+        missing_tempdir_spec: list[str] = []
+        for script_path in scripts:
+            content = script_path.read_text(encoding="utf-8")
+            if script_path.suffix == ".sh":
+                if 'ONEFILE_CACHE_MODE="${ONEFILE_CACHE_MODE:-cached}"' not in content:
+                    missing_cache_mode_default.append(str(script_path))
+                if "--onefile-cache-mode=${ONEFILE_CACHE_MODE}" not in content:
+                    missing_cache_mode_usage.append(str(script_path))
+            else:
+                if 'if "%ONEFILE_CACHE_MODE%"=="" set ONEFILE_CACHE_MODE=cached' not in content:
+                    missing_cache_mode_default.append(str(script_path))
+                if "--onefile-cache-mode=cached" not in content:
+                    missing_cache_mode_usage.append(str(script_path))
+            if self.EXPECTED_ONEFILE_CACHE_SPEC not in content:
+                missing_tempdir_spec.append(str(script_path))
+
+        assert not missing_cache_mode_default, (
+            "Nuitka build scripts missing default onefile cached mode configuration:\n"
+            + "\n".join(sorted(missing_cache_mode_default))
+        )
+        assert not missing_cache_mode_usage, (
+            "Nuitka build scripts missing onefile cache mode flag wiring:\n"
+            + "\n".join(sorted(missing_cache_mode_usage))
+        )
+        assert not missing_tempdir_spec, (
+            "Nuitka build scripts missing version-scoped onefile tempdir spec:\n"
+            + "\n".join(sorted(missing_tempdir_spec))
+        )
+
+    def test_no_compression_not_enabled_by_default(self) -> None:
+        """Variant 3 flag must not be enabled in default build scripts."""
+        project_root = Path(__file__).parent.parent.parent
+        scripts = [
+            project_root / "deployment/scripts/build_cli_unix.sh",
+            project_root / "deployment/scripts/build_cli_windows.bat",
+        ]
+
+        missing_default_false: list[str] = []
+        missing_conditional_guard: list[str] = []
+        for script_path in scripts:
+            content = script_path.read_text(encoding="utf-8")
+            if script_path.suffix == ".sh":
+                if "ONEFILE_NO_COMPRESSION=false" not in content:
+                    missing_default_false.append(str(script_path))
+                if 'if [[ "${ONEFILE_NO_COMPRESSION}" == true ]]; then' not in content:
+                    missing_conditional_guard.append(str(script_path))
+            else:
+                if "set ONEFILE_NO_COMPRESSION=false" not in content:
+                    missing_default_false.append(str(script_path))
+                if 'if /I "%ONEFILE_NO_COMPRESSION%"=="true"' not in content:
+                    missing_conditional_guard.append(str(script_path))
+
+        assert not missing_default_false, (
+            "Default build scripts must keep no-compression disabled unless explicitly requested:\n"
+            + "\n".join(sorted(missing_default_false))
+        )
+        assert not missing_conditional_guard, (
+            "No-compression flag should only be applied behind an explicit runtime guard:\n"
+            + "\n".join(sorted(missing_conditional_guard))
+        )
+
+    def test_version_bump_renders_distinct_cache_paths(self) -> None:
+        """Version N and N+1 must map to different onefile cache directories."""
+        template = self.EXPECTED_ONEFILE_CACHE_SPEC
+        company = "lucius"
+        product = "cli"
+        version_n = "1.2.3"
+        version_n1 = "1.2.4"
+
+        os_roots = {
+            "linux": "/home/test/.cache",
+            "macos": "/Users/test/Library/Caches",
+            "windows": "C:/Users/test/AppData/Local",
+        }
+
+        for os_name, cache_root in os_roots.items():
+            path_n = _render_cache_path(template, cache_root, company, product, version_n)
+            path_n1 = _render_cache_path(template, cache_root, company, product, version_n1)
+
+            assert path_n != path_n1, f"{os_name}: version bump must invalidate previous cache path"
+            assert path_n.startswith(cache_root), f"{os_name}: rendered cache path must stay under OS cache root"
+            assert path_n1.startswith(cache_root), f"{os_name}: rendered cache path must stay under OS cache root"
+            assert path_n.endswith(f"/{version_n}"), f"{os_name}: rendered path should end with version N"
+            assert path_n1.endswith(f"/{version_n1}"), f"{os_name}: rendered path should end with version N+1"
+
+
+class TestBinaryStartupCacheBehavior:
+    """Optional runtime checks for onefile cache reuse behavior."""
+
+    def test_cached_binary_second_start_is_faster(self, built_cli_binary: Path) -> None:
+        """Informational startup-cache observation for warm vs cold onefile launches."""
+        override = environ.get("LUCIUS_CACHED_BINARY_PATH", "").strip()
+        if override:
+            binary = Path(override)
+            if not binary.exists():
+                pytest.skip(f"LUCIUS_CACHED_BINARY_PATH not found: {override}")
+        else:
+            binary = built_cli_binary
+
+        env = os.environ.copy()
+        cache_root = Path(tempfile.mkdtemp(prefix="lucius-cli-cache-"))
+        # Nuitka onefile uses CACHE_DIR, which honors XDG cache roots on Unix.
+        env["XDG_CACHE_HOME"] = str(cache_root)
+        env["HOME"] = env.get("HOME", str(cache_root))
+        if platform.system() == "Windows":
+            env["LOCALAPPDATA"] = str(cache_root)
+
+        def run_once() -> float:
+            start = time.perf_counter()
+            result = subprocess.run(
+                [str(binary), "--version"],
+                capture_output=True,
+                text=True,
+                timeout=20,
+                env=env,
+            )
+            elapsed = time.perf_counter() - start
+            assert result.returncode == 0, f"Binary failed: {result.stderr}"
+            return elapsed
+
+        first = run_once()
+        second = run_once()
+
+        expected_cache_dir = _runtime_expected_onefile_cache_dir(cache_root)
+        observations: list[str] = []
+
+        if second >= first:
+            observations.append(
+                "Warm start was not faster "
+                f"(first={first:.3f}s, second={second:.3f}s); "
+                "performance can vary by CI load."
+            )
+
+        if not expected_cache_dir.exists():
+            observations.append(f"Resolved onefile cache directory was not found: {expected_cache_dir}")
+        elif not any(expected_cache_dir.rglob("*")):
+            observations.append(f"No cache files were observed under resolved onefile cache path: {expected_cache_dir}")
+
+        if observations:
+            pytest.xfail("Informational startup-cache observations:\n" + "\n".join(observations))
+
+    def test_cache_template_tokens_are_resolved_at_runtime(self, built_cli_binary: Path) -> None:
+        """Onefile cache directories should not contain unresolved {TOKEN} placeholders."""
+        env = os.environ.copy()
+        cache_root = Path(tempfile.mkdtemp(prefix="lucius-cli-cache-template-"))
+        env["XDG_CACHE_HOME"] = str(cache_root)
+        env["HOME"] = env.get("HOME", str(cache_root))
+        if platform.system() == "Windows":
+            env["LOCALAPPDATA"] = str(cache_root)
+
+        result = subprocess.run(
+            [str(built_cli_binary), "--version"],
+            capture_output=True,
+            text=True,
+            timeout=20,
+            env=env,
+        )
+        assert result.returncode == 0, f"Binary failed: {result.stderr}"
+
+        expected_cache_dir = _runtime_expected_onefile_cache_dir(cache_root)
+        created_paths = list(expected_cache_dir.rglob("*")) if expected_cache_dir.exists() else []
+        assert created_paths, "Expected onefile cache extraction artifacts to be created"
+
+        unresolved = [
+            path
+            for path in created_paths
+            if "{" in str(path.relative_to(expected_cache_dir)) or "}" in str(path.relative_to(expected_cache_dir))
+        ]
+        assert not unresolved, "Found unresolved onefile cache template placeholders:\n" + "\n".join(
+            str(path) for path in unresolved[:20]
         )

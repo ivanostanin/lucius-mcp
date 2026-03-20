@@ -698,3 +698,27 @@ so that I can execute lucius-mcp functionality directly from the command line wi
 16. **Docker Integration**: Support running the CLI in Docker containers for consistent environments
 
 17. **CI/CD Pipeline**: Automated build and test pipeline for all platform binaries
+
+### Story 9.5: Nuitka Onefile Caching for CLI Startup
+
+As a Release Engineer,
+I want onefile CLI binaries to use persistent extraction caching,
+so that repeated command startup is fast without significantly increasing binary size.
+
+**Acceptance Criteria:**
+
+**Given** the current onefile build configuration and benchmark variants
+**When** we compare startup time and artifact size
+**Then** Variant 2 (`onefile` + persistent `onefile-tempdir-spec` + `onefile-cache-mode=cached`) is selected as default
+**And** Variant 3 (`--onefile-no-compression`) is not selected as default due to large artifact growth.
+
+**Given** all currently supported OS targets (Linux, macOS, Windows; arm64/x86_64)
+**When** binaries run with onefile cache enabled
+**Then** extraction cache uses native OS cache roots
+**And** cache paths are version-scoped and stable
+**And** cache from older binary version is not reused after version increase.
+
+**Given** benchmark documentation and packaging tests
+**When** maintainers validate startup behavior
+**Then** first-run (cold) and subsequent-run (warm) behavior is reproducible
+**And** warm-start performance improvement over current configuration is verified.
