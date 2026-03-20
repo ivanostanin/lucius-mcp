@@ -6,4 +6,5 @@ uv run mypy src && \
 uv run pytest tests/unit tests/integration tests/cli && \
 uv run pytest tests/docs && \
 uv run --env-file .env.test pytest tests/e2e -n auto -rs && \
+rm -rf dist/cli
 uv run pytest tests/packaging

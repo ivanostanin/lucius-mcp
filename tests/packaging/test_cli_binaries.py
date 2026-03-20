@@ -12,6 +12,7 @@ import tempfile
 import time
 from os import environ
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -47,13 +48,22 @@ def _machine_name() -> str:
     return "arm64" if platform.machine().lower() in {"arm64", "aarch64"} else "x86_64"
 
 
-def _select_current_binary() -> Path | None:
-    binaries = [binary for binary in DIST_DIR.glob("lucius-*") if binary.is_file()]
+def _select_current_binary(
+    platform_name: str | None = None,
+    machine_name: str | None = None,
+    *,
+    allow_platform_fallback: bool = True,
+) -> Path | None:
+    binaries = [
+        binary
+        for binary in DIST_DIR.glob("lucius-*")
+        if binary.is_file() and not _is_benchmark_binary_name(binary.name)
+    ]
     if not binaries:
         return None
 
-    platform_name = _platform_name()
-    machine_name = _machine_name()
+    platform_name = platform_name or _platform_name()
+    machine_name = machine_name or _machine_name()
     expected_name = BINARIES.get(f"{platform_name}-{machine_name}")
     if expected_name and (DIST_DIR / expected_name).exists():
         return DIST_DIR / expected_name
@@ -63,6 +73,9 @@ def _select_current_binary() -> Path | None:
         lower_name = binary.name.lower()
         if machine_name in lower_name and (platform_name in lower_name or system_name in lower_name):
             return binary
+
+    if not allow_platform_fallback:
+        return None
 
     for binary in binaries:
         lower_name = binary.name.lower()
@@ -101,6 +114,14 @@ def built_cli_binary(request: pytest.FixtureRequest) -> Path:
     project_root = Path(__file__).parent.parent.parent
     platform_name = _platform_name()
     machine_name = _machine_name()
+    existing_binary = _select_current_binary(platform_name, machine_name, allow_platform_fallback=False)
+
+    if existing_binary is not None and existing_binary.exists():
+        _emit_build_log(
+            request,
+            f"[build-cli] reusing existing binary for {platform_name}-{machine_name}: {existing_binary}",
+        )
+        return existing_binary
 
     if platform.system() == "Windows":
         command = ["cmd", "/c", "deployment\\scripts\\build_cli_windows.bat", "--arch", machine_name]
@@ -135,7 +156,7 @@ def built_cli_binary(request: pytest.FixtureRequest) -> Path:
     if return_code != 0:
         pytest.fail(f"CLI build failed with exit code {return_code}")
 
-    binary = _select_current_binary()
+    binary = _select_current_binary(platform_name, machine_name, allow_platform_fallback=False)
     if binary is None or not binary.exists():
         pytest.fail("CLI build completed but no current-platform lucius binary was found in dist/cli")
 
@@ -150,6 +171,49 @@ class TestBinaryBuildFixture:
         assert built_cli_binary.exists(), f"Built binary does not exist: {built_cli_binary}"
         assert built_cli_binary.is_file(), f"Built binary path is not a file: {built_cli_binary}"
         assert built_cli_binary.stat().st_size > 0, f"Built binary is empty: {built_cli_binary}"
+
+
+class TestBinaryBuildFixtureReuse:
+    """Validate fixture reuses existing binaries before attempting a build."""
+
+    def test_select_current_binary_strict_mode_requires_matching_arch(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        platform_name = _platform_name()
+        machine_name = _machine_name()
+        wrong_arch = "x86_64" if machine_name == "arm64" else "arm64"
+        wrong_binary_name = BINARIES[f"{platform_name}-{wrong_arch}"]
+
+        monkeypatch.setattr("tests.packaging.test_cli_binaries.DIST_DIR", tmp_path)
+        wrong_binary = tmp_path / wrong_binary_name
+        wrong_binary.write_bytes(b"not-the-right-arch")
+
+        selected = _select_current_binary(platform_name, machine_name, allow_platform_fallback=False)
+        assert selected is None, "Strict selection should not return wrong-arch binaries"
+
+    def test_fixture_reuses_existing_binary_without_build(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        platform_name = _platform_name()
+        machine_name = _machine_name()
+        expected_name = BINARIES[f"{platform_name}-{machine_name}"]
+
+        monkeypatch.setattr("tests.packaging.test_cli_binaries.DIST_DIR", tmp_path)
+        existing_binary = tmp_path / expected_name
+        existing_binary.write_bytes(b"binary")
+
+        def _unexpected_popen(*args: object, **kwargs: object) -> object:
+            raise AssertionError("subprocess.Popen should not be called when matching binary already exists")
+
+        monkeypatch.setattr(subprocess, "Popen", _unexpected_popen)
+
+        request = SimpleNamespace(config=SimpleNamespace(pluginmanager=SimpleNamespace(getplugin=lambda _name: None)))
+        selected = built_cli_binary.__wrapped__(request)
+        assert selected == existing_binary
 
 
 class TestBinaryPresence:
