@@ -130,13 +130,15 @@ uv add "mcp[cli,fastapi]" pydantic starlette uvicorn
 *   **Layering Rule:** Thick Service -> Thin CLI adapter. No new business layer and no new tool layer are introduced for CLI migration.
 
 ### CLI Output Format Data Flow
-*   **Input Contract:** CLI receives normalized action results from the existing service/tool behavior path (no extra business layer).
-*   **Format Resolution:** Renderer resolves `--format` with `json` as default when omitted; this default applies to all CLI action calls unless explicitly overridden.
+*   **Tool Output Contract:** Tools must emit `plain|json` only, with `json` as default when output mode is not specified (breaking change).
+*   **Input Contract:** CLI ingests tool outputs (`plain` or `json`) from the existing service/tool behavior path (no extra business layer).
+*   **Format Resolution:** CLI resolves requested renderer format after tool output is received.
+*   **Passthrough Rule:** For `plain` and `json`, CLI returns tool output content unchanged.
 *   **Format Rendering Contract:**
-    *   `plain`: backward-compatible human-readable summary text; escaped newline sequences (`\n`) are rendered as actual line breaks.
-    *   `json`: canonical machine-consumable output (default).
-    *   `table`: printable tabular output for multi-record responses (for example `test_case list`).
-    *   `csv`: CSV tabular output for multi-record responses using the same deterministic columns as `table`.
+    *   `plain`: human-readable rendering; escaped newline sequences (`\n`) are rendered as actual line breaks.
+    *   `json`: machine-consumable rendering.
+    *   `table`: CLI-only printable tabular output for multi-record responses.
+    *   `csv`: CLI-only CSV tabular output for multi-record responses using same deterministic columns as `table`.
 *   **Fallback/Error Contract:** When tabular formats are requested for non-tabular responses, CLI returns deterministic fallback output or actionable guidance; tracebacks and internal logs are not exposed.
 *   **Determinism Rule:** Column selection/order for `table` and `csv` must be stable across runs and validated by automated tests.
 
@@ -170,9 +172,9 @@ uv add "mcp[cli,fastapi]" pydantic starlette uvicorn
 ### Communication Patterns (Agent Interface)
 
 **Tool Prompts:**
-*   All tools MUST return simple, text-based success messages ("Successfully created X") or informative error explanations.
-*   NO raw JSON dumps unless specifically requested by the tool contract.
-*   CLI actions MUST preserve equivalent behavior and support `plain|json|table|csv` output formats (`json` default).
+*   Tools MUST support `plain|json` outputs and default to `json`.
+*   `table|csv` are CLI-only rendering modes and must not be introduced as tool output modes.
+*   CLI actions MUST preserve equivalent behavior and support `plain|json|table|csv` rendering options.
 
 **Error Handling:**
 *   `try/except` blocks in tools are **FORBIDDEN**.
@@ -297,12 +299,16 @@ lucius-mcp/
     *   validation and confirm-gate behavior parity
     *   error hint parity and non-traceback guarantees
     *   deterministic header/column ordering checks for table/csv on multi-record results
+    *   tool output contract checks (`plain|json`, default `json`)
+    *   passthrough parity checks for tool `plain`/`json` output content
 *   **E2E CLI Execution Tests:**
     *   real CLI process invocation for key entity/action flows
     *   startup/help/discovery latency and correctness checks
     *   FastMCP-decoupling guard (CLI path must not require `src.main` import)
     *   format-matrix verification for `plain|json|table|csv` on at least one multi-record flow and one single-record flow
     *   explicit validation that plain text outputs render escaped newlines as actual line breaks
+    *   end-to-end data-flow validation from tool output payloads into CLI renderers
+    *   verification that only `table|csv` perform CLI rendering transformations
 
 **Coverage Gates:**
 *   **Global:** maintain project threshold (>85%).

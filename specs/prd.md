@@ -196,18 +196,19 @@ The product provides a direct CLI interface in addition to MCP transport. CLI co
 *   **Input/Output:** Strict JSON following the MCP specification.
 *   **Pydantic Models:** All schemas are auto-generated from the Allure TestOps OpenAPI 3.1 spec ensuring 1:1 fidelity.
 *   **Attachments:** Handled via Base64 strings or external URL references (depending on Allure API limits).
-*   **CLI Output Formats:** `plain`, `json` (default), `table`, `csv`.
+*   **Tool Output Formats:** `plain`, `json` with `json` as default (breaking change).
+*   **CLI Output Formats:** `plain`, `json`, `table`, `csv` where `table` and `csv` are CLI-only renderer modes.
 
 ### CLI Output Data Flow & Format Contracts
 
-*   **Flow Step 1 (Execution):** `lucius <entity> <action>` routes to existing service behavior and obtains a normalized result payload.
-*   **Flow Step 2 (Format Resolution):** If `--format` is omitted, renderer defaults to `json`.
-*   **Flow Step 3 (Rendering):**
-    *   `plain`: Human-readable summary text (backward-compatible style).
-    *   `json`: Canonical machine-consumable representation (default).
-    *   `table`: Printable row/column output for multi-record results (for example, list/search outputs such as `test_case list`).
-    *   `csv`: CSV table for multi-record results using the same deterministic columns as `table`.
-*   **Flow Step 4 (Fallback/Error Contract):** If tabular formats are requested for non-tabular payloads, CLI must apply documented deterministic fallback behavior and return actionable user-facing guidance without tracebacks.
+*   **Flow Step 1 (Tool Execution):** `lucius <entity> <action>` executes mapped tool behavior and receives tool output in `json` (default) or `plain`.
+*   **Flow Step 2 (Tool Contract):** Tools do not emit `table` or `csv`; those modes are not part of tool output contract.
+*   **Flow Step 3 (CLI Rendering):**
+    *   `plain`: Human-readable rendering with escaped newline normalization (`\\n` -> newline).
+    *   `json`: Canonical machine-consumable rendering.
+    *   `table`: CLI-only printable row/column output for multi-record results.
+    *   `csv`: CLI-only CSV rendering for multi-record results using same deterministic columns as `table`.
+*   **Flow Step 4 (Validation):** Integration tests must validate end-to-end tool->CLI flow and output contracts.
 
 ### Error Handling & Rate Limits
 
@@ -302,6 +303,11 @@ The product provides a direct CLI interface in addition to MCP transport. CLI co
 *   **FR28:** In `plain` output mode, escaped newline sequences (`\n`) in response text MUST be rendered as actual line breaks, not literal backslash+n text.
 *   **FR29:** Automated tests (unit and E2E) MUST verify newline rendering behavior in `plain` output mode.
 *   **FR30:** Breaking CLI behavior changes MUST be committed using Conventional Commits with the `!` breaking marker and a `BREAKING CHANGE:` footer describing impact.
+*   **FR31:** Tools MUST support `plain` and `json` output formats, with `json` as the default when output format is not specified.
+*   **FR32:** `table` and `csv` MUST be implemented only in CLI rendering and MUST NOT be exposed as tool-level output modes.
+*   **FR33:** Integration tests MUST verify acceptance criteria and end-to-end data flow from tool outputs into CLI renderers.
+*   **FR34:** EVERY exposed tool MUST follow the output contract (`plain|json`, default `json`).
+*   **FR35:** CLI MUST return tool `plain` and `json` outputs to users without content changes and perform rendering transformations only for `table|csv`.
 
 ## Non-Functional Requirements
 

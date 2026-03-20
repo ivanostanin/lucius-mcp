@@ -1,126 +1,122 @@
-# Story 9.6: Unified CLI Output Formats (JSON Default + Table/CSV/Plain)
+# Story 9.6: Tool-to-CLI Output Contract (Tools JSON Default, CLI Table/CSV Rendering)
 
-Status: review
+Status: ready-for-dev
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
 ## Story
 
 As a Developer or QA Engineer,
-I want CLI tool results to support `plain`, `json`, `table`, and `csv` output formats with `json` as the default,
-so that both machine consumers and human reviewers can use the same commands effectively.
+I want the CLI to ingest and display the data returned by tools through a consistent output contract,
+so that automation and human-readable workflows are both supported without ambiguity.
 
-This story extends Epic 9 CLI output behavior by adding first-class `csv` support and formalizing rendering rules for multi-record responses (for example `test_case list`).
+This story defines a breaking output-contract change:
+- Tools must support `plain` and `json` outputs.
+- Tool default output format becomes `json` (breaking change from current plain-text default behavior).
+- `table` and `csv` are CLI-only renderers and must not be introduced as tool-level output formats.
 
 ## Acceptance Criteria
 
-1. **Format matrix and defaults**
-   - **Given** any supported `lucius <entity> <action>` command
-   - **When** `--format` is omitted
-   - **Then** output defaults to `json`
-   - **And** this default applies to all CLI action calls unless `--format` is explicitly provided
-   - **And** explicit `--format plain|json|table|csv` is accepted.
+1. **Tool output contract and defaults (breaking change)**
+   - **Given** any tool that returns result payloads
+   - **When** output format is not explicitly requested
+   - **Then** tool output defaults to `json`
+   - **And** tools support exactly `plain|json` output modes
+   - **And** this default change is treated as a breaking change.
 
-2. **Plain format compatibility**
-   - **Given** existing command behavior that currently returns plain text summaries
-   - **When** I run with `--format plain`
-   - **Then** output remains human-readable and backward-compatible with current plain semantics.
-   - **And** escaped newline sequences (`\\n`) in plain text payloads are rendered as actual line breaks in terminal output (not as literal backslash+n text).
+2. **CLI renderer scope**
+   - **Given** CLI command execution (`lucius <entity> <action>`)
+   - **When** output is rendered
+   - **Then** CLI supports `plain|json|table|csv`
+   - **And** `table` and `csv` exist only in CLI rendering layer
+   - **And** tools do not expose `table` or `csv` output modes.
 
-3. **Table format for multi-record responses**
-   - **Given** a command that returns multiple records (for example `lucius test_case list`)
-   - **When** I run with `--format table`
-   - **Then** output is a printable tabular view with headers and rows
-   - **And** column order is deterministic across runs.
+3. **Tool-to-CLI data flow contract**
+   - **Given** CLI calls a mapped tool
+   - **When** tool returns `json` (default) or `plain`
+   - **Then** CLI ingests tool output and renders requested CLI format deterministically
+   - **And** no traceback/internal logs are printed for normal format handling.
 
-4. **CSV format for multi-record responses**
-   - **Given** a command that returns multiple records (for example `lucius test_case list`)
-   - **When** I run with `--format csv`
-   - **Then** output is a valid CSV table with a header row
-   - **And** CSV columns match the table-format columns for the same command
-   - **And** CSV escaping/quoting is RFC-4180-compatible.
+4. **Plain text newline handling**
+   - **Given** plain text payloads containing escaped newline markers (`\\n`)
+   - **When** plain output is displayed
+   - **Then** `\\n` is rendered as an actual line break (not literal backslash+n text).
 
-5. **Single-record/non-tabular behavior**
-   - **Given** commands returning single objects or plain messages
-   - **When** I request `table` or `csv`
-   - **Then** output follows a documented, deterministic fallback behavior (single-row projection or actionable format guidance)
-   - **And** no traceback or internal logs are printed.
-
-6. **E2E coverage for format behavior**
-   - **Given** CLI test suites
+5. **Integration test coverage for ACs and data flow**
+   - **Given** automated test suites
    - **When** tests run in CI
-   - **Then** E2E tests verify `plain`, `json`, `table`, and `csv` rendering for representative commands
-   - **And** at minimum include one multi-record flow (`test_case list`) and one single-record flow
-   - **And** validate deterministic headers/column ordering for `table` and `csv`
-   - **And** include explicit tests validating `plain` newline rendering (`\\n` -> newline).
+   - **Then** integration tests verify:
+     - tool default `json` output behavior
+     - tool `plain` output behavior
+     - CLI ingestion of tool outputs and rendering across `plain|json|table|csv`
+     - newline normalization in plain output
+     - deterministic table/csv column behavior for multi-record results.
 
-7. **Architecture and PRD documentation requirements**
+6. **Documentation requirements (PRD + Architecture)**
    - **Given** this story implementation
    - **When** documentation is updated
-   - **Then** `specs/architecture.md` includes an explicit data-flow section for output format rendering
-   - **And** `specs/prd.md` includes the canonical format contract (`plain`, `json` default, `table`, `csv`) and data-flow expectations
-   - **And** both docs stay consistent with CLI behavior and tests.
+   - **Then** `specs/prd.md` and `specs/architecture.md` explicitly document:
+     - tool output contract (`plain|json`, default `json`)
+     - CLI-only renderer contract (`table|csv`)
+     - end-to-end data flow from tools to CLI renderers.
 
-8. **Breaking-change commit convention requirement**
-   - **Given** Story 9.6 introduces CLI output behavior changes
+7. **Breaking-change commit convention requirement**
+   - **Given** this story introduces a breaking output-contract change
    - **When** changes are committed
    - **Then** commit message uses Conventional Commits with a breaking marker `!` (example: `feat(cli)!: ...`)
-   - **And** commit body includes a `BREAKING CHANGE:` note describing the behavior change.
+   - **And** commit body includes a `BREAKING CHANGE:` note describing impact and migration expectations.
+
+8. **Every-tool compliance and passthrough guarantee**
+   - **Given** the complete set of exposed tools/routes
+   - **When** output is produced and consumed by CLI
+   - **Then** every tool follows the `plain|json` output contract with default `json`
+   - **And** CLI returns tool `plain` and `json` outputs to users without content changes
+   - **And** CLI performs rendering transformations only for `table` and `csv` formats.
 
 ## Tasks / Subtasks
 
-- [x] **Task 1: Extend format enum and defaults** (AC: 1, 2)
-  - [x] 1.1 Add `csv` to accepted output format values.
-  - [x] 1.2 Enforce `json` as the default for all CLI action calls whenever `--format` is omitted.
-  - [x] 1.3 Preserve backward-compatible `plain` summaries.
-  - [x] 1.4 Render escaped newline markers (`\\n`) as real line breaks in `plain` output.
+- [ ] **Task 1: Define tool output contract** (AC: 1)
+  - [ ] 1.1 Add/confirm tool-level output mode support: `plain|json`.
+  - [ ] 1.2 Set tool default output format to `json`.
+  - [ ] 1.3 Document migration impact as breaking change.
 
-- [x] **Task 2: Implement rendering contracts** (AC: 3, 4, 5)
-  - [x] 2.1 Implement deterministic table rendering for multi-record outputs.
-  - [x] 2.2 Implement CSV rendering using the same column selection/order as table.
-  - [x] 2.3 Implement and document single-record fallback behavior for table/csv requests.
-  - [x] 2.4 Ensure formatter failures return user-facing hints only.
+- [ ] **Task 2: Enforce CLI-only table/csv renderers** (AC: 2, 3)
+  - [ ] 2.1 Keep `table|csv` implementation in CLI layer only.
+  - [ ] 2.2 Ensure CLI renderer behavior is deterministic for multi-record payloads.
+  - [ ] 2.3 Ensure non-tabular payload handling is deterministic and user-friendly.
 
-- [x] **Task 3: Add comprehensive tests** (AC: 6)
-  - [x] 3.1 Add unit tests for format parsing/default behavior.
-  - [x] 3.2 Add mocked integration tests for formatter output shapes and deterministic headers.
-  - [x] 3.3 Add E2E CLI tests for `plain|json|table|csv` on representative commands.
-  - [x] 3.4 Add regression tests for CSV quoting/escaping edge cases.
-  - [x] 3.5 Add unit + E2E regression tests for `plain` newline rendering (`\\n` is printed as newline, not literal text).
+- [ ] **Task 3: Implement plain newline normalization** (AC: 4)
+  - [ ] 3.1 Normalize escaped `\\n` markers in plain output rendering.
+  - [ ] 3.2 Verify behavior for both direct tool plain output and CLI plain rendering.
 
-- [x] **Task 4: Update docs and traceability artifacts** (AC: 7)
-  - [x] 4.1 Update `specs/prd.md` format contract and data-flow section.
-  - [x] 4.2 Update `specs/architecture.md` CLI format rendering data-flow section.
-  - [x] 4.3 Update Epic 9 story listing and sprint status tracking for Story 9.6.
+- [ ] **Task 4: Add integration tests for AC and data flow** (AC: 5)
+  - [ ] 4.1 Add/extend integration tests for tool default `json` output.
+  - [ ] 4.2 Add/extend integration tests for tool `plain` output.
+  - [ ] 4.3 Add/extend integration tests for CLI ingestion and rendering (`plain|json|table|csv`).
+  - [ ] 4.4 Add tests for newline normalization and deterministic table/csv output.
 
-- [x] **Task 5: Commit metadata for breaking behavior changes** (AC: 8)
-  - [x] 5.1 Use Conventional Commit with `!` marker for Story 9.6 implementation commit.
-  - [x] 5.2 Add `BREAKING CHANGE:` footer describing JSON default and plain newline rendering behavior changes.
+- [ ] **Task 5: Update docs and traceability artifacts** (AC: 6)
+  - [ ] 5.1 Update `specs/prd.md` output contracts and tool->CLI flow.
+  - [ ] 5.2 Update `specs/architecture.md` output contracts and tool->CLI flow.
+  - [ ] 5.3 Update Epic 9 story listing and sprint status tracking for this revised scope.
+
+- [ ] **Task 6: Commit metadata for breaking behavior changes** (AC: 7)
+  - [ ] 6.1 Use Conventional Commit with `!` marker for implementation commit.
+  - [ ] 6.2 Add `BREAKING CHANGE:` footer describing tool default and renderer-scope changes.
+
+- [ ] **Task 7: Enforce every-tool contract and passthrough behavior** (AC: 8)
+  - [ ] 7.1 Audit all exposed tools/routes to verify `plain|json` support and default `json`.
+  - [ ] 7.2 Add integration tests asserting CLI passthrough parity for tool `plain` and `json` outputs.
+  - [ ] 7.3 Add tests asserting that only `table|csv` apply CLI-specific rendering transformations.
 
 ## Dev Notes
 
 ### Scope Clarification
 
-- Story focuses on output formatting contracts at the CLI layer.
-- Existing domain/service behavior remains unchanged.
-- No new business logic layer is introduced.
-
-### Format Intent
-
-- `json`: machine-consumable default for automation.
-- `plain`: concise human-readable summaries (current behavior baseline).
-- `table`: readable terminal table for multi-record result sets.
-- `csv`: export-friendly tabular output for multi-record result sets.
-
-### Suggested Touchpoints
-
-- `src/cli/cli_entry.py`
-- `src/cli/formatter` module (or equivalent formatter functions)
-- `tests/cli/test_cli_basics.py`
-- `tests/cli/test_e2e_mocked.py`
-- CLI E2E process-invocation tests
-- `specs/prd.md`
-- `specs/architecture.md`
+- This story is about output contracts across both layers:
+  - tools (producer): `plain|json`, default `json`
+  - CLI (renderer): `plain|json|table|csv` with `table|csv` CLI-only.
+- The key intent is robust tool->CLI data ingestion and rendering.
 
 ### References
 
@@ -128,7 +124,6 @@ This story extends Epic 9 CLI output behavior by adding first-class `csv` suppor
 - [Source: specs/prd.md]
 - [Source: specs/architecture.md]
 - [Source: specs/implementation-artifacts/9-3-service-first-cli-entity-action.md]
-- [Source: specs/implementation-artifacts/9-5-nuitka-onefile-caching-for-cli-startup.md]
 
 ## Dev Agent Record
 
@@ -138,20 +133,9 @@ Codex GPT-5
 
 ### Completion Notes List
 
-- Implemented `csv` output format support in CLI formatter and output pipeline.
-- Enforced and validated JSON default output behavior for CLI action calls.
-- Added plain-output newline normalization (`\\n` -> rendered newline).
-- Updated help/hints/docs to include `json|table|plain|csv`.
-- Added/updated tests for format matrix, CSV quoting, default format behavior, and newline rendering.
-- Verified CLI test suite: `uv run --python 3.13 --extra dev pytest tests/cli -q` (119 passed).
-- Commit metadata requirement remains pending until an actual commit is created.
+- Story was re-scoped to clarify tool output defaults/contracts and CLI-only table/csv rendering.
+- Status reset to `ready-for-dev` to reflect revised acceptance criteria and pending implementation alignment.
 
 ### File List
 
-- src/cli/cli_entry.py
-- tests/cli/test_cli_basics.py
-- tests/cli/test_cli_coverage_helpers.py
-- tests/cli/test_e2e_mocked.py
-- docs/CLI.md
 - specs/implementation-artifacts/9-6-unified-cli-output-formats-json-table-csv-plain.md
-- specs/implementation-artifacts/sprint-status.yaml
