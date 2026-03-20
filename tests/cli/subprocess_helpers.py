@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
+UV_PYTHON_VERSION = f"{sys.version_info.major}.{sys.version_info.minor}"
 
 
 def run_cli(args: list[str]) -> subprocess.CompletedProcess[str]:
@@ -32,7 +33,7 @@ def run_python_snippet(script: str) -> subprocess.CompletedProcess[str]:
 def run_uv_python_snippet(script: str) -> subprocess.CompletedProcess[str]:
     """Run a Python snippet through `uv run` from the project root."""
     return subprocess.run(
-        ["uv", "run", "--python", "3.13", "python", "-c", script],
+        ["uv", "run", "--python", UV_PYTHON_VERSION, "python", "-c", script],
         capture_output=True,
         text=True,
         cwd=PROJECT_ROOT,
