@@ -6,7 +6,7 @@ Lucius uses an entity/action grammar:
 
 ```bash
 lucius <entity>
-lucius <entity> <action> --args '<json>' [--format json|table|plain]
+lucius <entity> <action> --args '<json>' [--format json|table|plain|csv]
 lucius <entity> <action> --help
 ```
 
@@ -65,6 +65,7 @@ lucius defect list --args '{}' --format plain
 - `--format json`
 - `--format table`
 - `--format plain`
+- `--format csv`
 
 Examples:
 
@@ -72,7 +73,10 @@ Examples:
 lucius test_case list --args '{}' --format json
 lucius test_case list --args '{}' --format table
 lucius test_case list --args '{}' --format plain
+lucius test_case list --args '{}' --format csv
 ```
+
+`plain` format normalizes escaped newline markers (`\n`) into rendered line breaks.
 
 ## Shell Completions
 

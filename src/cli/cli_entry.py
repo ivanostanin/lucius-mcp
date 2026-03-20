@@ -12,6 +12,8 @@ Design:
 from __future__ import annotations
 
 import asyncio
+import csv
+import io
 import json
 import logging
 import sys
@@ -31,7 +33,7 @@ console_err = rich.console.Console(stderr=True)
 console_out = rich.console.Console()
 
 TOOL_SCHEMAS_PATH = Path(__file__).parent / "data" / "tool_schemas.json"
-OUTPUT_FORMATS = {"json", "table", "plain"}
+OUTPUT_FORMATS = {"json", "table", "plain", "csv"}
 
 
 class CLIError(Exception):
@@ -113,6 +115,18 @@ def _format_table_value(value: typing.Any) -> str:
     return str(value)
 
 
+def _format_csv_value(value: typing.Any) -> str:
+    """Render CSV cell values without truncation."""
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, default=str)
+    return str(value)
+
+
+def _plain_text(value: typing.Any) -> str:
+    """Render plain output text and normalize escaped newlines."""
+    return str(value).replace("\\n", "\n")
+
+
 def format_as_table(data: typing.Any) -> typing.Any:
     """Format tool schemas or generic results as a Rich table."""
     from rich.table import Table
@@ -178,10 +192,63 @@ def format_as_table(data: typing.Any) -> typing.Any:
 def format_as_plain(data: typing.Any) -> str:
     """Format data as plain text."""
     if isinstance(data, dict):
-        return "\n".join(f"{k}: {v}" for k, v in data.items())
+        return "\n".join(f"{k}: {_plain_text(v)}" for k, v in data.items())
     if isinstance(data, list):
-        return "\n".join(str(item) for item in data)
-    return str(data)
+        return "\n".join(_plain_text(item) for item in data)
+    return _plain_text(data)
+
+
+def format_as_csv(data: typing.Any) -> str:
+    """Format tool schemas or generic results as RFC-4180-compatible CSV."""
+    output = io.StringIO()
+    writer = csv.writer(output, lineterminator="\n")
+
+    if _is_tool_schema_map(data):
+        writer.writerow(["tool_name", "description", "parameters"])
+        for tool_name in sorted(data):
+            tool_info = data[tool_name]
+            properties = tool_info.get("input_schema", {}).get("properties", {})
+            param_list = list(properties.keys()) if properties else ["(no parameters)"]
+            param_str = ", ".join(param_list[:5]) + ("..." if len(param_list) > 5 else "")
+            writer.writerow(
+                [
+                    tool_name,
+                    tool_info.get("description", "No description"),
+                    param_str,
+                ]
+            )
+        return output.getvalue()
+
+    if isinstance(data, dict):
+        field_names = [str(key) for key in data.keys()]
+        writer.writerow(field_names)
+        writer.writerow([_format_csv_value(data.get(name)) for name in field_names])
+        return output.getvalue()
+
+    if isinstance(data, list):
+        if not data:
+            writer.writerow(["value"])
+            return output.getvalue()
+
+        if all(isinstance(item, dict) for item in data):
+            column_names: list[str] = []
+            for item in data:
+                for key in item.keys():
+                    if key not in column_names:
+                        column_names.append(str(key))
+            writer.writerow(column_names)
+            for item in data:
+                writer.writerow([_format_csv_value(item.get(name)) for name in column_names])
+            return output.getvalue()
+
+        writer.writerow(["value"])
+        for item in data:
+            writer.writerow([_format_csv_value(item)])
+        return output.getvalue()
+
+    writer.writerow(["value"])
+    writer.writerow([_format_csv_value(data)])
+    return output.getvalue()
 
 
 def format_output_data(data: typing.Any, output_format: str = "json") -> None:
@@ -190,12 +257,14 @@ def format_output_data(data: typing.Any, output_format: str = "json") -> None:
         console_out.print_json(format_json(data))
     elif output_format == "table":
         console_out.print(format_as_table(data))
+    elif output_format == "csv":
+        console_out.print(format_as_csv(data), end="")
     elif output_format == "plain":
         console_out.print(format_as_plain(data))
     else:
         raise CLIError(
             f"Invalid output format: {output_format}",
-            hint="Use --format json|table|plain",
+            hint="Use --format json|table|plain|csv",
             exit_code=1,
         )
 
@@ -360,7 +429,7 @@ def print_global_help(registry: dict[str, dict[str, ActionSpec]]) -> None:
     console_out.print("  lucius --help")
     console_out.print("  lucius --version")
     console_out.print("  lucius <entity>")
-    console_out.print("  lucius <entity> <action> --args '<json>' [--format json|table|plain]")
+    console_out.print("  lucius <entity> <action> --args '<json>' [--format json|table|plain|csv]")
     console_out.print("  lucius <entity> <action> --help\n")
 
     table = Table(title="Available Entities")
@@ -385,7 +454,7 @@ def print_entity_actions(entity: str, actions: dict[str, ActionSpec]) -> None:
 
     console_out.print(f"\nEntity: [bold cyan]{entity}[/bold cyan]\n")
     console_out.print("Usage:")
-    console_out.print(f"  lucius {entity} <action> --args '<json>' [--format json|table|plain]")
+    console_out.print(f"  lucius {entity} <action> --args '<json>' [--format json|table|plain|csv]")
     console_out.print(f"  lucius {entity} <action> --help\n")
 
     table = Table(title=f"Actions for {entity}")
@@ -454,7 +523,7 @@ def parse_action_options(argv: list[str]) -> ActionOptions:
             continue
         if token in {"--format", "-f"}:
             if index + 1 >= len(argv):
-                raise CLIError("Missing value for --format", hint="Use --format json|table|plain")
+                raise CLIError("Missing value for --format", hint="Use --format json|table|plain|csv")
             options.output_format = argv[index + 1]
             index += 2
             continue
@@ -555,7 +624,7 @@ def run_cli(argv: list[str]) -> None:
     if options.output_format not in OUTPUT_FORMATS:
         raise CLIError(
             f"Invalid format '{options.output_format}'",
-            hint="Use --format json|table|plain",
+            hint="Use --format json|table|plain|csv",
             exit_code=1,
         )
 

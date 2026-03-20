@@ -16,6 +16,7 @@ from src.cli.cli_entry import (
     CLIError,
     build_command_registry,
     call_tool_function,
+    format_as_csv,
     format_as_plain,
     format_as_table,
     format_json,
@@ -149,6 +150,26 @@ class TestE2ERouting:
         mock_call.assert_awaited_once_with("list_test_cases", {})
         mock_format.assert_called_once_with({"ok": True}, "json")
 
+    def test_run_cli_uses_json_default_when_format_is_omitted(self) -> None:
+        with (
+            patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value={"ok": True})) as mock_call,
+            patch("src.cli.cli_entry.format_output_data") as mock_format,
+        ):
+            run_cli(["test_case", "list", "--args", "{}"])
+
+        mock_call.assert_awaited_once_with("list_test_cases", {})
+        mock_format.assert_called_once_with({"ok": True}, "json")
+
+    def test_run_cli_executes_csv_format(self) -> None:
+        with (
+            patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value=[{"id": 1}])) as mock_call,
+            patch("src.cli.cli_entry.format_output_data") as mock_format,
+        ):
+            run_cli(["test_case", "list", "--args", "{}", "--format", "csv"])
+
+        mock_call.assert_awaited_once_with("list_test_cases", {})
+        mock_format.assert_called_once_with([{"id": 1}], "csv")
+
     def test_run_cli_invalid_json(self) -> None:
         with pytest.raises(CLIError) as exc_info:
             run_cli(["test_case", "list", "--args", "{invalid}"])
@@ -215,6 +236,34 @@ class TestE2EFormatting:
         result = format_as_plain({"id": 1, "name": "Test"})
         assert "id: 1" in result
         assert "name: Test" in result
+
+    def test_format_plain_renders_escaped_newlines(self) -> None:
+        result = format_as_plain({"message": "line1\\nline2"})
+        assert "line1\nline2" in result
+        assert "line1\\nline2" not in result
+
+    def test_format_csv_for_multi_record_result(self) -> None:
+        csv_output = format_as_csv(
+            [
+                {"id": 1, "name": "Alpha"},
+                {"id": 2, "name": "Beta", "tags": ["smoke", "regression"]},
+            ]
+        )
+        lines = csv_output.strip().splitlines()
+        assert lines[0] == "id,name,tags"
+        assert lines[1].startswith("1,Alpha,")
+        assert lines[2].startswith("2,Beta,")
+
+    def test_format_csv_quotes_values(self) -> None:
+        csv_output = format_as_csv([{"id": 1, "name": 'He said "Hi"', "note": "a,b"}])
+        assert '"He said ""Hi"""' in csv_output
+        assert '"a,b"' in csv_output
+
+    def test_format_csv_does_not_truncate_nested_values(self) -> None:
+        long_value = "x" * 260
+        csv_output = format_as_csv([{"id": 1, "meta": {"note": long_value}}])
+        assert long_value in csv_output
+        assert "..." not in csv_output
 
 
 class TestE2EValidationAndHelp:

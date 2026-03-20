@@ -129,5 +129,5 @@ development_status:
   9-3-service-first-cli-entity-action: done
   9-4-python-3-13-compatibility-for-nuitka-cli-builds: done
   9-5-nuitka-onefile-caching-for-cli-startup: done
-  9-6-unified-cli-output-formats-json-table-csv-plain: ready-for-dev
+  9-6-unified-cli-output-formats-json-table-csv-plain: review
   epic-9-retrospective: optional

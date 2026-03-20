@@ -24,6 +24,7 @@ from src.cli.cli_entry import (
     _load_tool_function,
     all_entities_with_aliases,
     build_command_registry,
+    format_as_csv,
     format_as_plain,
     format_as_table,
     format_output_data,
@@ -67,6 +68,12 @@ class TestCLICoverageHelpers:
     def test_format_as_plain_variants(self) -> None:
         assert "x" in format_as_plain(["x", "y"])
         assert format_as_plain("plain") == "plain"
+        assert format_as_plain({"msg": "a\\nb"}).endswith("a\nb")
+
+    def test_format_as_csv_variants(self) -> None:
+        assert "value" in format_as_csv([])
+        assert "id,name" in format_as_csv([{"id": 1, "name": "Sample"}])
+        assert "value" in format_as_csv("single")
 
     def test_format_output_data_branches(self) -> None:
         with (
@@ -76,6 +83,7 @@ class TestCLICoverageHelpers:
             format_output_data({"ok": True}, "json")
             format_output_data({"ok": True}, "table")
             format_output_data({"ok": True}, "plain")
+            format_output_data({"ok": True}, "csv")
         assert print_json_mock.called
         assert print_mock.called
 
@@ -150,6 +158,8 @@ class TestCLICoverageHelpers:
     def test_parse_action_options_error_paths(self) -> None:
         options = parse_action_options(["--help"])
         assert options.show_help is True
+        csv_options = parse_action_options(["--format", "csv"])
+        assert csv_options.output_format == "csv"
 
         with pytest.raises(CLIError):
             parse_action_options(["--args"])
