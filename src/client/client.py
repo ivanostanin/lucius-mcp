@@ -353,6 +353,9 @@ class AllureClient:
     def get_project(self) -> int:
         return self._project
 
+    def get_base_url(self) -> str:
+        return self._base_url
+
     async def _get_jwt_token(self) -> str:
         """Exchange API token for a JWT Bearer token.
 

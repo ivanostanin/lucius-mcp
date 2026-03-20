@@ -4,6 +4,7 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.custom_field_value_service import CustomFieldValueService
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
 
 
 async def delete_custom_field_value(
@@ -20,6 +21,9 @@ async def delete_custom_field_value(
     confirm: Annotated[
         bool, Field(description="Must be set to True to proceed with deletion. Safety measure.")
     ] = False,
+    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
 ) -> str:
     """Delete a custom field value.
     ⚠️ CAUTION: Destructive.
@@ -31,15 +35,25 @@ async def delete_custom_field_value(
         project_id: Optional Allure TestOps project ID override.
         confirm: Must be set to True to proceed with deletion.
             This is a safety measure to prevent accidental deletions.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         Confirmation message.
     """
     if not confirm:
-        return (
+        message = (
             "⚠️ Deletion requires confirmation.\n\n"
             "Deleting a custom field value may fail if it is currently in use. "
             f"Please call again with confirm=True to proceed with deleting custom field value {cfv_id}."
+        )
+        return render_output(
+            plain=message,
+            json_payload={
+                "requires_confirmation": True,
+                "cfv_id": cfv_id,
+                "action": "delete_custom_field_value",
+            },
+            output_format=output_format,
         )
 
     async with AllureClient.from_env(project=project_id) as client:
@@ -52,6 +66,14 @@ async def delete_custom_field_value(
         )
 
         if deleted:
-            return f"✅ Custom field value {cfv_id} deleted successfully!"
+            return render_output(
+                plain=f"✅ Custom field value {cfv_id} deleted successfully!",
+                json_payload={"id": cfv_id, "status": "deleted"},
+                output_format=output_format,
+            )
 
-        return f"[INFO] Custom field value {cfv_id} was already removed."
+        return render_output(
+            plain=f"[INFO] Custom field value {cfv_id} was already removed.",
+            json_payload={"id": cfv_id, "status": "already_deleted"},
+            output_format=output_format,
+        )

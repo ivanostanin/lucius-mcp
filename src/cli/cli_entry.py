@@ -12,6 +12,8 @@ Design:
 from __future__ import annotations
 
 import asyncio
+import csv
+import io
 import json
 import logging
 import sys
@@ -31,7 +33,7 @@ console_err = rich.console.Console(stderr=True)
 console_out = rich.console.Console()
 
 TOOL_SCHEMAS_PATH = Path(__file__).parent / "data" / "tool_schemas.json"
-OUTPUT_FORMATS = {"json", "table", "plain"}
+OUTPUT_FORMATS = {"json", "table", "plain", "csv"}
 
 
 class CLIError(Exception):
@@ -113,25 +115,55 @@ def _format_table_value(value: typing.Any) -> str:
     return str(value)
 
 
+def _format_csv_value(value: typing.Any) -> str:
+    """Render CSV cell values without truncation."""
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, default=str)
+    return str(value)
+
+
+def _plain_text(value: typing.Any) -> str:
+    """Render plain output text and normalize escaped newlines."""
+    return str(value).replace("\\n", "\n")
+
+
+def _tool_schema_rows(data: dict[str, typing.Any]) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    for tool_name in sorted(data):
+        tool_info = data[tool_name]
+        properties = tool_info.get("input_schema", {}).get("properties", {})
+        param_list = list(properties.keys()) if properties else ["(no parameters)"]
+        rows.append(
+            {
+                "tool_name": tool_name,
+                "description": tool_info.get("description", "No description"),
+                "parameters": ", ".join(param_list[:5]) + ("..." if len(param_list) > 5 else ""),
+            }
+        )
+    return rows
+
+
+def _ordered_columns(rows: list[dict[str, typing.Any]]) -> list[str]:
+    column_names: list[str] = []
+    for row in rows:
+        for key in row.keys():
+            if key not in column_names:
+                column_names.append(str(key))
+    return column_names
+
+
 def format_as_table(data: typing.Any) -> typing.Any:
     """Format tool schemas or generic results as a Rich table."""
     from rich.table import Table
 
     if _is_tool_schema_map(data):
+        rows = _tool_schema_rows(typing.cast(dict[str, typing.Any], data))
         table = Table(title="Available Lucius Tools")
         table.add_column("Tool Name", style="cyan", no_wrap=True)
         table.add_column("Description", style="green")
         table.add_column("Parameters", style="yellow")
-
-        for tool_name, tool_info in data.items():
-            properties = tool_info.get("input_schema", {}).get("properties", {})
-            param_list = list(properties.keys()) if properties else ["(no parameters)"]
-            param_str = ", ".join(param_list[:5]) + ("..." if len(param_list) > 5 else "")
-            table.add_row(
-                tool_name,
-                tool_info.get("description", "No description")[:60],
-                param_str,
-            )
+        for row in rows:
+            table.add_row(row["tool_name"], row["description"][:60], row["parameters"])
         return table
 
     if isinstance(data, dict):
@@ -150,16 +182,12 @@ def format_as_table(data: typing.Any) -> typing.Any:
             return table
 
         if all(isinstance(item, dict) for item in data):
-            column_names: list[str] = []
-            for item in data:
-                for key in item.keys():
-                    if key not in column_names:
-                        column_names.append(str(key))
-
+            rows = typing.cast(list[dict[str, typing.Any]], data)
+            column_names = _ordered_columns(rows)
             table = Table(title="Command Result")
             for name in column_names:
                 table.add_column(name, style="green")
-            for item in data:
+            for item in rows:
                 table.add_row(*[_format_table_value(item.get(name)) for name in column_names])
             return table
 
@@ -178,10 +206,51 @@ def format_as_table(data: typing.Any) -> typing.Any:
 def format_as_plain(data: typing.Any) -> str:
     """Format data as plain text."""
     if isinstance(data, dict):
-        return "\n".join(f"{k}: {v}" for k, v in data.items())
+        return "\n".join(f"{k}: {_plain_text(v)}" for k, v in data.items())
     if isinstance(data, list):
-        return "\n".join(str(item) for item in data)
-    return str(data)
+        return "\n".join(_plain_text(item) for item in data)
+    return _plain_text(data)
+
+
+def format_as_csv(data: typing.Any) -> str:
+    """Format tool schemas or generic results as RFC-4180-compatible CSV."""
+    output = io.StringIO()
+    writer = csv.writer(output, lineterminator="\n")
+
+    if _is_tool_schema_map(data):
+        rows = _tool_schema_rows(typing.cast(dict[str, typing.Any], data))
+        writer.writerow(["tool_name", "description", "parameters"])
+        for row in rows:
+            writer.writerow([row["tool_name"], row["description"], row["parameters"]])
+        return output.getvalue()
+
+    if isinstance(data, dict):
+        field_names = [str(key) for key in data.keys()]
+        writer.writerow(field_names)
+        writer.writerow([_format_csv_value(data.get(name)) for name in field_names])
+        return output.getvalue()
+
+    if isinstance(data, list):
+        if not data:
+            writer.writerow(["value"])
+            return output.getvalue()
+
+        if all(isinstance(item, dict) for item in data):
+            rows = typing.cast(list[dict[str, typing.Any]], data)
+            column_names = _ordered_columns(rows)
+            writer.writerow(column_names)
+            for item in rows:
+                writer.writerow([_format_csv_value(item.get(name)) for name in column_names])
+            return output.getvalue()
+
+        writer.writerow(["value"])
+        for item in data:
+            writer.writerow([_format_csv_value(item)])
+        return output.getvalue()
+
+    writer.writerow(["value"])
+    writer.writerow([_format_csv_value(data)])
+    return output.getvalue()
 
 
 def format_output_data(data: typing.Any, output_format: str = "json") -> None:
@@ -190,14 +259,27 @@ def format_output_data(data: typing.Any, output_format: str = "json") -> None:
         console_out.print_json(format_json(data))
     elif output_format == "table":
         console_out.print(format_as_table(data))
+    elif output_format == "csv":
+        console_out.print(format_as_csv(data), end="")
     elif output_format == "plain":
         console_out.print(format_as_plain(data))
     else:
         raise CLIError(
             f"Invalid output format: {output_format}",
-            hint="Use --format json|table|plain",
+            hint="Use --format json|table|plain|csv",
             exit_code=1,
         )
+
+
+def select_tabular_payload(data: typing.Any) -> typing.Any:
+    """Prefer row collections from JSON envelopes for table/csv rendering."""
+    if not isinstance(data, dict):
+        return data
+
+    items = data.get("items")
+    if isinstance(items, list):
+        return items
+    return data
 
 
 def build_command_registry(schemas: dict[str, typing.Any]) -> dict[str, dict[str, ActionSpec]]:
@@ -360,7 +442,7 @@ def print_global_help(registry: dict[str, dict[str, ActionSpec]]) -> None:
     console_out.print("  lucius --help")
     console_out.print("  lucius --version")
     console_out.print("  lucius <entity>")
-    console_out.print("  lucius <entity> <action> --args '<json>' [--format json|table|plain]")
+    console_out.print("  lucius <entity> <action> --args '<json>' [--format json|table|plain|csv]")
     console_out.print("  lucius <entity> <action> --help\n")
 
     table = Table(title="Available Entities")
@@ -385,7 +467,7 @@ def print_entity_actions(entity: str, actions: dict[str, ActionSpec]) -> None:
 
     console_out.print(f"\nEntity: [bold cyan]{entity}[/bold cyan]\n")
     console_out.print("Usage:")
-    console_out.print(f"  lucius {entity} <action> --args '<json>' [--format json|table|plain]")
+    console_out.print(f"  lucius {entity} <action> --args '<json>' [--format json|table|plain|csv]")
     console_out.print(f"  lucius {entity} <action> --help\n")
 
     table = Table(title=f"Actions for {entity}")
@@ -454,7 +536,7 @@ def parse_action_options(argv: list[str]) -> ActionOptions:
             continue
         if token in {"--format", "-f"}:
             if index + 1 >= len(argv):
-                raise CLIError("Missing value for --format", hint="Use --format json|table|plain")
+                raise CLIError("Missing value for --format", hint="Use --format json|table|plain|csv")
             options.output_format = argv[index + 1]
             index += 2
             continue
@@ -555,7 +637,7 @@ def run_cli(argv: list[str]) -> None:
     if options.output_format not in OUTPUT_FORMATS:
         raise CLIError(
             f"Invalid format '{options.output_format}'",
-            hint="Use --format json|table|plain",
+            hint="Use --format json|table|plain|csv",
             exit_code=1,
         )
 
@@ -580,8 +662,37 @@ def run_cli(argv: list[str]) -> None:
         )
 
     validate_args_against_schema(args_dict, f"{entity} {action}", spec.schema)
-    result = asyncio.run(call_tool_function(spec.tool_name, args_dict))
-    format_output_data(result, options.output_format)
+    tool_output_format = "plain" if options.output_format == "plain" else "json"
+    tool_args = {**args_dict, "output_format": tool_output_format}
+    result = asyncio.run(call_tool_function(spec.tool_name, tool_args))
+
+    if options.output_format in {"plain", "json"}:
+        if isinstance(result, str):
+            console_out.print(result, end="")
+            return
+        raise CLIError(
+            f"Tool '{spec.tool_name}' returned non-string output for '{options.output_format}' mode",
+            hint="Tool output contract requires plain/json modes to return serialized text output.",
+            exit_code=2,
+        )
+
+    if not isinstance(result, str):
+        raise CLIError(
+            f"Tool '{spec.tool_name}' returned non-string output for '{options.output_format}' mode",
+            hint="Tool output contract requires JSON text output for table/csv rendering.",
+            exit_code=2,
+        )
+
+    try:
+        parsed: typing.Any = json.loads(result)
+    except json.JSONDecodeError as exc:
+        raise CLIError(
+            f"Tool '{spec.tool_name}' returned invalid JSON for '{options.output_format}' mode: {exc}",
+            hint="Tool output contract requires valid JSON text output for table/csv rendering.",
+            exit_code=2,
+        ) from None
+
+    format_output_data(select_tabular_payload(parsed), options.output_format)
 
 
 def main() -> None:

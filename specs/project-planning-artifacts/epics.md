@@ -722,3 +722,58 @@ so that repeated command startup is fast without significantly increasing binary
 **When** maintainers validate startup behavior
 **Then** first-run (cold) and subsequent-run (warm) behavior is reproducible
 **And** warm-start performance improvement over current configuration is verified.
+
+### Story 9.6: Tool-to-CLI Output Contract (Tools JSON Default, CLI Table/CSV Rendering)
+
+As a Developer or QA Engineer,
+I want CLI to ingest and display data returned by tools through a consistent output contract,
+so that tool output is machine-friendly by default while CLI still supports human-friendly table/csv views.
+
+**Acceptance Criteria:**
+
+**Given** any tool returning a payload
+**When** output format is not explicitly requested
+**Then** tool output defaults to `json`
+**And** tools support `plain|json` output modes only
+**And** this default change is treated as a breaking change.
+
+**Given** CLI execution (`lucius <entity> <action>`)
+**When** output is rendered
+**Then** CLI supports `plain|json|table|csv`
+**And** `table` and `csv` are CLI-only renderers (not tool output modes).
+
+**Given** CLI invokes mapped tools
+**When** tools return `json` (default) or `plain`
+**Then** CLI ingests tool output and renders requested format deterministically
+**And** no traceback/internal logs are printed for normal format handling.
+
+**Given** plain text payloads containing escaped newline sequences (`\n`)
+**When** plain output is displayed
+**Then** `\n` is rendered as a line break (not literal backslash+n).
+
+**Given** Story 9.6 implementation
+**When** integration tests run
+**Then** tests verify AC behavior and tool->CLI data flow for:
+**And** tool default `json`
+**And** tool `plain`
+**And** CLI rendering `plain|json|table|csv`
+**And** newline normalization
+**And** deterministic table/csv columns for multi-record results.
+
+**Given** Story 9.6 implementation
+**When** documentation is updated
+**Then** `specs/prd.md` and `specs/architecture.md` document:
+**And** tool output contract (`plain|json`, default `json`)
+**And** CLI-only renderer contract (`table|csv`)
+**And** end-to-end data flow from tools to CLI.
+
+**Given** Story 9.6 introduces a breaking output-contract change
+**When** implementation changes are committed
+**Then** commit message follows Conventional Commits with breaking marker `!` (for example `feat(cli)!: ...`)
+**And** commit body includes `BREAKING CHANGE:` details.
+
+**Given** the full set of exposed tools/routes
+**When** output is produced and consumed by CLI
+**Then** every tool follows `plain|json` output contract with default `json`
+**And** CLI returns tool `plain`/`json` outputs without content changes
+**And** CLI applies output rendering transformations only for `table|csv`.

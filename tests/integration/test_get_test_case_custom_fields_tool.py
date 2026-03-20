@@ -17,7 +17,7 @@ async def test_tool_get_test_case_custom_fields_output_format() -> None:
                 return_value={"Layer": "UI", "Component": ["Auth", "API"]}
             )
 
-            output = await get_test_case_custom_fields(test_case_id=123, project_id=1)
+            output = await get_test_case_custom_fields(test_case_id=123, project_id=1, output_format="plain")
 
             assert "Custom Fields for Test Case 123:" in output
             assert "- Layer: UI" in output
@@ -34,6 +34,6 @@ async def test_tool_get_test_case_custom_fields_empty() -> None:
             mock_service = mock_service_cls.return_value
             mock_service.get_test_case_custom_fields_values = AsyncMock(return_value={})
 
-            output = await get_test_case_custom_fields(test_case_id=456, project_id=1)
+            output = await get_test_case_custom_fields(test_case_id=456, project_id=1, output_format="plain")
 
             assert "Test Case 456 has no custom field values set." in output

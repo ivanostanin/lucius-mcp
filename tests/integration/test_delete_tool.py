@@ -33,7 +33,7 @@ async def test_delete_test_case_tool_confirmation_required(mock_service: Mock, m
     test_case_id = 123
 
     # WHEN: Tool is invoked
-    result = await delete_test_case(test_case_id=test_case_id, confirm=False)
+    result = await delete_test_case(test_case_id=test_case_id, confirm=False, output_format="plain")
 
     # THEN: Returns warning message requiring confirmation
     assert "Deletion requires confirmation" in result
@@ -60,7 +60,7 @@ async def test_delete_test_case_tool_success_message(mock_service: Mock, mock_cl
     )
 
     # WHEN: Tool is called with confirm=True
-    result = await delete_test_case(test_case_id=test_case_id, confirm=True)
+    result = await delete_test_case(test_case_id=test_case_id, confirm=True, output_format="plain")
 
     # THEN: Returns success message with correct format
     assert result.startswith("✅ Archived Test Case")
@@ -88,7 +88,7 @@ async def test_delete_test_case_tool_already_deleted_message(mock_service: Mock,
     )
 
     # WHEN: Tool is called with confirm=True
-    result = await delete_test_case(test_case_id=test_case_id, confirm=True)
+    result = await delete_test_case(test_case_id=test_case_id, confirm=True, output_format="plain")
 
     # THEN: Returns already-deleted message with correct format
     assert result.startswith("ℹ️ Test Case")  # noqa: RUF001
@@ -111,7 +111,7 @@ async def test_delete_test_case_tool_error_handling(mock_service: Mock, mock_cli
     service_instance.delete_test_case.side_effect = Exception("API connection failed")
 
     # WHEN: Tool is called with confirm=True
-    result = await delete_test_case(test_case_id=test_case_id, confirm=True)
+    result = await delete_test_case(test_case_id=test_case_id, confirm=True, output_format="plain")
 
     # THEN: Returns error message without raising exception
     assert "Error archiving test case" in result

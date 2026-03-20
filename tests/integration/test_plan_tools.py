@@ -25,7 +25,7 @@ async def test_create_test_plan_tool() -> None:
             mock_plan = TestPlanDto(id=100, name="Plan 100")
             mock_service.create_plan = AsyncMock(return_value=mock_plan)
 
-            output = await create_test_plan(name="Plan 100", test_case_ids=[1, 2])
+            output = await create_test_plan(name="Plan 100", test_case_ids=[1, 2], output_format="plain")
 
             assert "Created Test Plan 100: 'Plan 100'" in output
             mock_service.create_plan.assert_called_once_with(
@@ -46,7 +46,7 @@ async def test_update_test_plan_tool() -> None:
             mock_plan = TestPlanDto(id=100, name="Updated Plan")
             mock_service.update_plan = AsyncMock(return_value=mock_plan)
 
-            output = await update_test_plan(plan_id=100, name="Updated Plan")
+            output = await update_test_plan(plan_id=100, name="Updated Plan", output_format="plain")
 
             assert "Updated Test Plan 100: 'Updated Plan'" in output
             mock_service.update_plan.assert_called_once_with(plan_id=100, name="Updated Plan")
@@ -63,7 +63,7 @@ async def test_manage_test_plan_content_tool() -> None:
             # manage content returns a plan but tool returns string
             mock_service.update_plan_content = AsyncMock()
 
-            output = await manage_test_plan_content(plan_id=100, add_test_case_ids=[10])
+            output = await manage_test_plan_content(plan_id=100, add_test_case_ids=[10], output_format="plain")
 
             assert "Updated content for Test Plan 100" in output
             mock_service.update_plan_content.assert_called_once_with(
@@ -85,7 +85,7 @@ async def test_list_test_plans_tool() -> None:
             ]
             mock_service.list_plans = AsyncMock(return_value=mock_plans)
 
-            output = await list_test_plans(page=0, size=10)
+            output = await list_test_plans(page=0, size=10, output_format="plain")
 
             assert "[1] P1 (5 cases)" in output
             assert "[2] P2 (0 cases)" in output
@@ -103,7 +103,7 @@ async def test_delete_test_plan_tool() -> None:
             mock_service.delete_plan = AsyncMock()
 
             # Test with confirm=True
-            output = await delete_test_plan(plan_id=100, confirm=True)
+            output = await delete_test_plan(plan_id=100, confirm=True, output_format="plain")
 
             assert "Successfully deleted Test Plan 100" in output
             mock_service.delete_plan.assert_called_once_with(plan_id=100)
@@ -112,7 +112,7 @@ async def test_delete_test_plan_tool() -> None:
 @pytest.mark.asyncio
 async def test_delete_test_plan_no_confirm() -> None:
     # Test without confirmation (should not call service)
-    output = await delete_test_plan(plan_id=100, confirm=False)
+    output = await delete_test_plan(plan_id=100, confirm=False, output_format="plain")
 
     assert "⚠️ Deletion requires confirmation" in output
     assert "confirm=True" in output

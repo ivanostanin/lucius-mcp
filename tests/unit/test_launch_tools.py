@@ -18,7 +18,7 @@ async def test_create_launch_output_format() -> None:
             mock_launch = type("LaunchDto", (), {"id": 10, "name": "Launch"})
             mock_service.create_launch = AsyncMock(return_value=mock_launch)
 
-            output = await create_launch(name="Launch")
+            output = await create_launch(name="Launch", output_format="plain")
 
             assert "✅ Launch created successfully!" in output
             assert "ID: 10" in output
@@ -46,7 +46,7 @@ async def test_list_launches_output_format() -> None:
             )
             mock_service.list_launches = AsyncMock(return_value=result)
 
-            output = await list_launches(page=0, size=20)
+            output = await list_launches(page=0, size=20, output_format="plain")
 
             assert "Found 1 launches" in output
             assert "#1" in output
@@ -68,7 +68,7 @@ async def test_list_launches_empty() -> None:
             )
             mock_service.list_launches = AsyncMock(return_value=result)
 
-            output = await list_launches(page=0, size=20)
+            output = await list_launches(page=0, size=20, output_format="plain")
 
             assert "No launches found" in output
 
@@ -129,7 +129,7 @@ async def test_get_launch_output_format() -> None:
                     )
                     mock_service.get_launch = AsyncMock(return_value=mock_launch)
 
-                    output = await get_launch(launch_id=10)
+                    output = await get_launch(launch_id=10, output_format="plain")
 
                     mock_auth_context.assert_called_once_with(project_id=None)
                     assert "Launch details" in output
@@ -163,7 +163,7 @@ async def test_delete_launch_output_archived() -> None:
                     )
                     mock_service.delete_launch = AsyncMock(return_value=mock_result)
 
-                    output = await delete_launch(launch_id=42)
+                    output = await delete_launch(launch_id=42, output_format="plain")
 
                     assert "Archived Launch 42" in output
                     assert "Launch 42" in output
@@ -195,7 +195,7 @@ async def test_delete_launch_output_already_deleted() -> None:
                     )
                     mock_service.delete_launch = AsyncMock(return_value=mock_result)
 
-                    output = await delete_launch(launch_id=77)
+                    output = await delete_launch(launch_id=77, output_format="plain")
 
                     assert "Launch 77" in output
                     assert "already archived or doesn't exist" in output
@@ -254,7 +254,12 @@ async def test_close_launch_output_format() -> None:
                     mock_launch.close_report_generation = "scheduled"
 
                     runtime_api_token = mock_auth_context.return_value.api_token
-                    output = await close_launch(launch_id=20, project_id=1, api_token=runtime_api_token)
+                    output = await close_launch(
+                        launch_id=20,
+                        project_id=1,
+                        api_token=runtime_api_token,
+                        output_format="plain",
+                    )
 
                     mock_auth_context.assert_called_once_with(api_token=runtime_api_token, project_id=1)
                     mock_service.close_launch.assert_called_once_with(20)
@@ -315,7 +320,12 @@ async def test_reopen_launch_output_format() -> None:
                     mock_service.reopen_launch = AsyncMock(return_value=mock_launch)
 
                     runtime_api_token = mock_auth_context.return_value.api_token
-                    output = await reopen_launch(launch_id=21, project_id=1, api_token=runtime_api_token)
+                    output = await reopen_launch(
+                        launch_id=21,
+                        project_id=1,
+                        api_token=runtime_api_token,
+                        output_format="plain",
+                    )
 
                     mock_auth_context.assert_called_once_with(api_token=runtime_api_token, project_id=1)
                     mock_service.reopen_launch.assert_called_once_with(21)

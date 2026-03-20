@@ -27,7 +27,7 @@ def test_annotation_policy_matches_registered_tools() -> None:
     policy_tool_names = set(TOOL_HINT_POLICY.keys())
     tag_policy_tool_names = set(TOOL_TAGS.keys())
 
-    assert len(registered_tool_names) == 55
+    assert len(registered_tool_names) == 56
     assert registered_tool_names == policy_tool_names
     assert registered_tool_names == tag_policy_tool_names
 

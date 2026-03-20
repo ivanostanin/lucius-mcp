@@ -6,6 +6,7 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.test_layer_service import TestLayerService
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
 
 
 async def list_test_layer_schemas(
@@ -14,6 +15,9 @@ async def list_test_layer_schemas(
     ] = None,
     page: Annotated[int, Field(description="Page number (0-based). Default is 0.")] = 0,
     size: Annotated[int, Field(description="Page size (max 100). Default is 100.")] = 100,
+    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
 ) -> str:
     """List test layer schemas for a project.
 
@@ -24,6 +28,7 @@ async def list_test_layer_schemas(
         project_id: Optional project ID override
         page: Page number (0-based)
         size: Page size (max 100)
+        output_format: Output format: plain (default) or json.
 
     Returns:
         List of test layer schemas with their IDs, keys, and linked test layers
@@ -33,11 +38,28 @@ async def list_test_layer_schemas(
         schemas = await service.list_test_layer_schemas(project_id=project_id, page=page, size=size)
 
     if not schemas:
-        return "No test layer schemas found."
+        return render_output(
+            plain="No test layer schemas found.",
+            json_payload={"items": [], "total": 0, "page": page, "size": size},
+            output_format=output_format,
+        )
 
     lines = [f"Found {len(schemas)} test layer schemas:"]
+    items: list[dict[str, object]] = []
     for schema in schemas:
         test_layer_name = schema.test_layer.name if schema.test_layer else "N/A"
         lines.append(f"- ID: {schema.id}, Key: {schema.key}, Layer: {test_layer_name}")
+        items.append(
+            {
+                "id": schema.id,
+                "key": schema.key,
+                "test_layer_name": test_layer_name,
+                "test_layer_id": schema.test_layer.id if schema.test_layer else None,
+            }
+        )
 
-    return "\n".join(lines)
+    return render_output(
+        plain="\n".join(lines),
+        json_payload={"items": items, "total": len(items), "page": page, "size": size},
+        output_format=output_format,
+    )

@@ -25,14 +25,14 @@ async def test_tool_get_custom_fields_output_format() -> None:
             mock_service.get_custom_fields = AsyncMock(return_value=mock_files)
 
             # verify output
-            output = await get_custom_fields(project_id=1)
+            output = await get_custom_fields(project_id=1, output_format="plain")
 
             assert "Found 2 custom fields:" in output
             assert "- Layer (required): UI, API" in output
             assert "- Priority (optional): Any text/No allowed values" in output
 
             # Verify filtering pass-through
-            await get_custom_fields(name="Lay", project_id=1)
+            await get_custom_fields(name="Lay", project_id=1, output_format="plain")
             mock_service.get_custom_fields.assert_called_with(name="Lay")
 
 
@@ -47,8 +47,8 @@ async def test_tool_get_custom_fields_empty() -> None:
             mock_service = mock_service_cls.return_value
             mock_service.get_custom_fields = AsyncMock(return_value=[])
 
-            output = await get_custom_fields(project_id=1)
+            output = await get_custom_fields(project_id=1, output_format="plain")
             assert "No custom fields found for this project." in output
 
-            output_filtered = await get_custom_fields(name="Missing", project_id=1)
+            output_filtered = await get_custom_fields(name="Missing", project_id=1, output_format="plain")
             assert "No custom fields found matching 'Missing'." in output_filtered

@@ -53,7 +53,7 @@ async def test_list_test_layers_empty() -> None:
             mock_service = mock_service_cls.return_value
             mock_service.list_test_layers = AsyncMock(return_value=[])
 
-            output = await list_test_layers()
+            output = await list_test_layers(output_format="plain")
 
             assert "No test layers found." in output
 
@@ -70,7 +70,7 @@ async def test_create_test_layer_output_format() -> None:
             mock_layer = type("TestLayerDto", (), {"id": 10, "name": "E2E"})
             mock_service.create_test_layer = AsyncMock(return_value=mock_layer)
 
-            output = await create_test_layer(name="E2E")
+            output = await create_test_layer(name="E2E", output_format="plain")
 
             assert "✅ Test layer created successfully!" in output
             assert "ID: 10" in output
@@ -89,7 +89,7 @@ async def test_update_test_layer_changed() -> None:
             updated_layer = type("TestLayerDto", (), {"id": 5, "name": "New Name"})
             mock_service.update_test_layer = AsyncMock(return_value=(updated_layer, True))
 
-            output = await update_test_layer(layer_id=5, name="New Name", confirm=True)
+            output = await update_test_layer(layer_id=5, name="New Name", confirm=True, output_format="plain")
 
             assert "✅ Test layer 5 updated successfully!" in output
             assert "New name: New Name" in output
@@ -107,7 +107,7 @@ async def test_update_test_layer_no_change() -> None:
             unchanged_layer = type("TestLayerDto", (), {"id": 5, "name": "Same Name"})
             mock_service.update_test_layer = AsyncMock(return_value=(unchanged_layer, False))
 
-            output = await update_test_layer(layer_id=5, name="Same Name", confirm=True)
+            output = await update_test_layer(layer_id=5, name="Same Name", confirm=True, output_format="plain")
 
             assert "[INFO]" in output
             assert "no changes made" in output
@@ -124,7 +124,7 @@ async def test_delete_test_layer_output() -> None:
             mock_service = mock_service_cls.return_value
             mock_service.delete_test_layer = AsyncMock()
 
-            output = await delete_test_layer(layer_id=7, confirm=True)
+            output = await delete_test_layer(layer_id=7, confirm=True, output_format="plain")
 
             assert "✅ Test layer 7 deleted successfully!" in output
 
@@ -147,7 +147,7 @@ async def test_list_test_layer_schemas_output_format() -> None:
                 return_value=[type("TestLayerSchemaDto", (), schema) for schema in mock_schemas]
             )
 
-            output = await list_test_layer_schemas(project_id=1)
+            output = await list_test_layer_schemas(project_id=1, output_format="plain")
 
             assert "Found 2 test layer schemas:" in output
             assert "ID: 1, Key: layer, Layer: Unit" in output
@@ -170,7 +170,7 @@ async def test_create_test_layer_schema_output() -> None:
             )
             mock_service.create_test_layer_schema = AsyncMock(return_value=mock_schema)
 
-            output = await create_test_layer_schema(key="layer", test_layer_id=5, project_id=1)
+            output = await create_test_layer_schema(key="layer", test_layer_id=5, project_id=1, output_format="plain")
 
             assert "✅ Test layer schema created successfully!" in output
             assert "ID: 100" in output
@@ -194,7 +194,7 @@ async def test_update_test_layer_schema_changed() -> None:
             )
             mock_service.update_test_layer_schema = AsyncMock(return_value=(updated_schema, True))
 
-            output = await update_test_layer_schema(schema_id=30, key="new_key", confirm=True)
+            output = await update_test_layer_schema(schema_id=30, key="new_key", confirm=True, output_format="plain")
 
             assert "✅ Test layer schema 30 updated successfully!" in output
             assert "Key: new_key" in output
@@ -211,6 +211,6 @@ async def test_delete_test_layer_schema_output() -> None:
             mock_service = mock_service_cls.return_value
             mock_service.delete_test_layer_schema = AsyncMock()
 
-            output = await delete_test_layer_schema(schema_id=40, confirm=True)
+            output = await delete_test_layer_schema(schema_id=40, confirm=True, output_format="plain")
 
             assert "✅ Test layer schema 40 deleted successfully!" in output

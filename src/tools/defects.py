@@ -7,11 +7,19 @@ from typing import Annotated
 
 from src.client import AllureClient
 from src.services.defect_service import DefectService
+from src.tools.output_contract import (
+    DEFAULT_OUTPUT_FORMAT,
+    OutputFormat,
+    render_collection_output,
+    render_confirmation_required,
+    render_output,
+)
 
 
 async def create_defect(
     name: Annotated[str, "Name / title of the defect"],
     description: Annotated[str | None, "Optional markdown description"] = None,
+    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
 ) -> str:
     """Create a new defect in the current project.
 
@@ -22,6 +30,7 @@ async def create_defect(
         name: Human-readable defect title. Must be non-empty.
         description: Optional markdown description providing context
             about the defect (root cause, impact, workaround, etc.).
+        output_format: Output format: plain (default) or json.
 
     Returns:
         A success message containing the ID and name of the created defect.
@@ -29,16 +38,27 @@ async def create_defect(
     async with AllureClient.from_env() as client:
         service = DefectService(client)
         defect = await service.create_defect(name=name, description=description)
-        return f"Created Defect #{defect.id}: '{defect.name}'"
+        message = f"Created Defect #{defect.id}: '{defect.name}'"
+        return render_output(
+            plain=message,
+            json_payload={
+                "id": defect.id,
+                "name": defect.name,
+                "description": defect.description,
+            },
+            output_format=output_format,
+        )
 
 
 async def get_defect(
     defect_id: Annotated[int, "ID of the defect to retrieve"],
+    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
 ) -> str:
     """Retrieve detailed information about a specific defect.
 
     Args:
         defect_id: Numeric ID of the defect.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         Formatted defect details: ID, name, status, description.
@@ -53,7 +73,17 @@ async def get_defect(
         ]
         if defect.description:
             lines.append(f"Description: {defect.description}")
-        return "\n".join(lines)
+        return render_output(
+            plain="\n".join(lines),
+            json_payload={
+                "id": defect.id,
+                "name": defect.name,
+                "closed": defect.closed,
+                "status": status,
+                "description": defect.description,
+            },
+            output_format=output_format,
+        )
 
 
 async def update_defect(
@@ -61,6 +91,7 @@ async def update_defect(
     name: Annotated[str | None, "New defect name"] = None,
     description: Annotated[str | None, "New markdown description"] = None,
     closed: Annotated[bool | None, "Set to true to close, false to reopen"] = None,
+    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
 ) -> str:
     """Update an existing defect's name, description, or status.
 
@@ -72,6 +103,7 @@ async def update_defect(
         name: New defect title (optional).
         description: New markdown description (optional).
         closed: Set to true to close the defect, false to reopen (optional).
+        output_format: Output format: plain (default) or json.
 
     Returns:
         A success message with the updated defect ID and current status.
@@ -85,7 +117,18 @@ async def update_defect(
             closed=closed,
         )
         status = "Closed" if defect.closed else "Open"
-        return f"Updated Defect #{defect.id}: '{defect.name}' (Status: {status})"
+        message = f"Updated Defect #{defect.id}: '{defect.name}' (Status: {status})"
+        return render_output(
+            plain=message,
+            json_payload={
+                "id": defect.id,
+                "name": defect.name,
+                "closed": defect.closed,
+                "status": status,
+                "description": defect.description,
+            },
+            output_format=output_format,
+        )
 
 
 async def delete_defect(
@@ -94,6 +137,7 @@ async def delete_defect(
         bool,
         "Safety flag — must be set to true to confirm deletion",
     ] = False,
+    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
 ) -> str:
     """Permanently delete a defect and all its associated matchers.
 
@@ -104,20 +148,35 @@ async def delete_defect(
         defect_id: Numeric ID of the defect to delete.
         confirm: Must be explicitly set to true. Prevents accidental
             deletion when the agent misinterprets the user's intent.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         Confirmation or rejection message.
     """
     if not confirm:
-        return f"Deletion aborted. Set confirm=true to permanently delete Defect #{defect_id}."
+        return render_confirmation_required(
+            action="delete_defect",
+            plain=f"Deletion aborted. Set confirm=true to permanently delete Defect #{defect_id}.",
+            defect_id=defect_id,
+            output_format=output_format,
+        )
     async with AllureClient.from_env() as client:
         service = DefectService(client)
         await service.delete_defect(defect_id)
-        return f"Deleted Defect #{defect_id}"
+        return render_output(
+            plain=f"Deleted Defect #{defect_id}",
+            json_payload={"id": defect_id, "status": "deleted"},
+            output_format=output_format,
+        )
 
 
-async def list_defects() -> str:
+async def list_defects(
+    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
+) -> str:
     """List all defects in the current project.
+
+    Args:
+        output_format: Output format: plain (default) or json.
 
     Returns:
         A formatted list of defects with their IDs, names, and status.
@@ -126,13 +185,18 @@ async def list_defects() -> str:
     async with AllureClient.from_env() as client:
         service = DefectService(client)
         defects = await service.list_defects()
-        if not defects:
-            return "No defects found in the current project."
         lines: list[str] = [f"Found {len(defects)} defect(s):"]
+        items: list[dict[str, object]] = []
         for d in defects:
             status = "Closed" if d.closed else "Open"
             lines.append(f"  • #{d.id}: {d.name} ({status})")
-        return "\n".join(lines)
+            items.append({"id": d.id, "name": d.name, "closed": d.closed, "status": status})
+        return render_collection_output(
+            items=items,
+            plain_empty="No defects found in the current project.",
+            plain_lines=lines,
+            output_format=output_format,
+        )
 
 
 async def link_defect_to_test_case(
@@ -151,6 +215,7 @@ async def link_defect_to_test_case(
         str | None,
         "Optional integration name for issue mapping. Mutually exclusive with integration_id.",
     ] = None,
+    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
 ) -> str:
     """Link a defect to a test case through a shared issue mapping.
 
@@ -163,6 +228,7 @@ async def link_defect_to_test_case(
         issue_key: Optional issue key. If omitted, uses existing defect issue mapping.
         integration_id: Optional integration ID for issue mapping.
         integration_name: Optional integration name for issue mapping.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         Confirmation message including defect, test case, and issue mapping details.
@@ -178,14 +244,36 @@ async def link_defect_to_test_case(
         )
 
         if result.already_linked:
-            return (
+            message = (
                 f"Defect #{result.defect_id} is already linked to Test Case #{result.test_case_id} "
                 f"via issue '{result.issue_key}' (integration ID: {result.integration_id}). No changes made."
             )
+            return render_output(
+                plain=message,
+                json_payload={
+                    "defect_id": result.defect_id,
+                    "test_case_id": result.test_case_id,
+                    "issue_key": result.issue_key,
+                    "integration_id": result.integration_id,
+                    "already_linked": True,
+                },
+                output_format=output_format,
+            )
 
-        return (
+        message = (
             f"Linked Defect #{result.defect_id} to Test Case #{result.test_case_id} "
             f"via issue '{result.issue_key}' (integration ID: {result.integration_id})."
+        )
+        return render_output(
+            plain=message,
+            json_payload={
+                "defect_id": result.defect_id,
+                "test_case_id": result.test_case_id,
+                "issue_key": result.issue_key,
+                "integration_id": result.integration_id,
+                "already_linked": False,
+            },
+            output_format=output_format,
         )
 
 
@@ -193,6 +281,7 @@ async def list_defect_test_cases(
     defect_id: Annotated[int, "ID of the defect whose linked test cases should be listed"],
     page: Annotated[int, "Zero-based page index"] = 0,
     size: Annotated[int, "Page size (1..100)"] = 20,
+    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
 ) -> str:
     """List test cases currently linked to a defect.
 
@@ -200,6 +289,7 @@ async def list_defect_test_cases(
         defect_id: Numeric ID of the defect.
         page: Zero-based page index.
         size: Page size (1..100).
+        output_format: Output format: plain (default) or json.
 
     Returns:
         Paginated list of linked test cases with ID, name, and status.
@@ -208,20 +298,29 @@ async def list_defect_test_cases(
         service = DefectService(client)
         result = await service.list_defect_test_cases(defect_id=defect_id, page=page, size=size)
 
-        if not result.items:
-            return f"No test cases linked to Defect #{defect_id}."
-
         total_pages = result.total_pages if result.total_pages > 0 else 1
         lines = [
             f"Found {result.total} linked test case(s) for Defect #{defect_id} "
             f"(page {result.page + 1} of {total_pages}):"
         ]
+        items: list[dict[str, object]] = []
         for case in result.items:
             case_id = case.id if case.id is not None else "N/A"
             case_name = case.name or "(unnamed)"
             status_name = case.status.name if case.status and case.status.name else "Unknown"
             lines.append(f"  • #{case_id}: {case_name} [{status_name}]")
-        return "\n".join(lines)
+            items.append({"id": case.id, "name": case_name, "status": status_name})
+        return render_collection_output(
+            items=items,
+            plain_empty=f"No test cases linked to Defect #{defect_id}.",
+            plain_lines=lines,
+            defect_id=defect_id,
+            page=result.page,
+            size=result.size,
+            total=result.total,
+            total_pages=total_pages,
+            output_format=output_format,
+        )
 
 
 # ── Defect Matcher tools ──────────────────────────────────────────
@@ -238,6 +337,7 @@ async def create_defect_matcher(
         str | None,
         "Regex to match against stack traces",
     ] = None,
+    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
 ) -> str:
     """Create a defect matcher (automation rule) for a defect.
 
@@ -255,6 +355,7 @@ async def create_defect_matcher(
             of failing test results. Optional if trace_regex is given.
         trace_regex: Regular expression matched against stack traces of
             failing test results. Optional if message_regex is given.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         A success message with the created matcher ID.
@@ -267,7 +368,18 @@ async def create_defect_matcher(
             message_regex=message_regex,
             trace_regex=trace_regex,
         )
-        return f"Created Defect Matcher #{matcher.id}: '{matcher.name}' for Defect #{defect_id}"
+        message = f"Created Defect Matcher #{matcher.id}: '{matcher.name}' for Defect #{defect_id}"
+        return render_output(
+            plain=message,
+            json_payload={
+                "id": matcher.id,
+                "name": matcher.name,
+                "defect_id": defect_id,
+                "message_regex": matcher.message_regex,
+                "trace_regex": matcher.trace_regex,
+            },
+            output_format=output_format,
+        )
 
 
 async def update_defect_matcher(
@@ -275,6 +387,7 @@ async def update_defect_matcher(
     name: Annotated[str | None, "New matcher name"] = None,
     message_regex: Annotated[str | None, "New message regex"] = None,
     trace_regex: Annotated[str | None, "New trace regex"] = None,
+    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
 ) -> str:
     """Update a defect matcher's name or regex patterns.
 
@@ -285,6 +398,7 @@ async def update_defect_matcher(
         name: New matcher name (optional).
         message_regex: New error message regex (optional).
         trace_regex: New stack trace regex (optional).
+        output_format: Output format: plain (default) or json.
 
     Returns:
         A success message with the updated matcher ID.
@@ -297,7 +411,17 @@ async def update_defect_matcher(
             message_regex=message_regex,
             trace_regex=trace_regex,
         )
-        return f"Updated Defect Matcher #{matcher.id}: '{matcher.name}'"
+        message = f"Updated Defect Matcher #{matcher.id}: '{matcher.name}'"
+        return render_output(
+            plain=message,
+            json_payload={
+                "id": matcher.id,
+                "name": matcher.name,
+                "message_regex": matcher.message_regex,
+                "trace_regex": matcher.trace_regex,
+            },
+            output_format=output_format,
+        )
 
 
 async def delete_defect_matcher(
@@ -306,6 +430,7 @@ async def delete_defect_matcher(
         bool,
         "Safety flag — must be set to true to confirm deletion",
     ] = False,
+    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
 ) -> str:
     """Permanently delete a defect matcher (automation rule).
 
@@ -316,25 +441,37 @@ async def delete_defect_matcher(
         matcher_id: Numeric ID of the matcher to delete.
         confirm: Must be explicitly set to true. Prevents accidental
             deletion when the agent misinterprets the user's intent.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         Confirmation or rejection message.
     """
     if not confirm:
-        return f"Deletion aborted. Set confirm=true to permanently delete Defect Matcher #{matcher_id}."
+        return render_confirmation_required(
+            action="delete_defect_matcher",
+            plain=f"Deletion aborted. Set confirm=true to permanently delete Defect Matcher #{matcher_id}.",
+            matcher_id=matcher_id,
+            output_format=output_format,
+        )
     async with AllureClient.from_env() as client:
         service = DefectService(client)
         await service.delete_defect_matcher(matcher_id)
-        return f"Deleted Defect Matcher #{matcher_id}"
+        return render_output(
+            plain=f"Deleted Defect Matcher #{matcher_id}",
+            json_payload={"id": matcher_id, "status": "deleted"},
+            output_format=output_format,
+        )
 
 
 async def list_defect_matchers(
     defect_id: Annotated[int, "ID of the parent defect"],
+    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
 ) -> str:
     """List all matchers (automation rules) for a given defect.
 
     Args:
         defect_id: Numeric ID of the parent defect.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         Formatted list of matchers with names and regex patterns.
@@ -342,9 +479,8 @@ async def list_defect_matchers(
     async with AllureClient.from_env() as client:
         service = DefectService(client)
         matchers = await service.list_defect_matchers(defect_id)
-        if not matchers:
-            return f"No matchers found for Defect #{defect_id}."
         lines: list[str] = [f"Found {len(matchers)} matcher(s) for Defect #{defect_id}:"]
+        items: list[dict[str, object]] = []
         for m in matchers:
             parts = [f"  • #{m.id}: {m.name}"]
             if m.message_regex:
@@ -352,4 +488,18 @@ async def list_defect_matchers(
             if m.trace_regex:
                 parts.append(f"    trace: {m.trace_regex}")
             lines.extend(parts)
-        return "\n".join(lines)
+            items.append(
+                {
+                    "id": m.id,
+                    "name": m.name,
+                    "message_regex": m.message_regex,
+                    "trace_regex": m.trace_regex,
+                }
+            )
+        return render_collection_output(
+            items=items,
+            plain_empty=f"No matchers found for Defect #{defect_id}.",
+            plain_lines=lines,
+            defect_id=defect_id,
+            output_format=output_format,
+        )

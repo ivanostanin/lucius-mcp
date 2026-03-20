@@ -2,23 +2,9 @@
 Test basic CLI functionality.
 """
 
-import subprocess
-import sys
-from pathlib import Path
+import json
 
-# Path to the lucius project
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-
-
-def run_cli(args: list[str]) -> subprocess.CompletedProcess[str]:
-    """Run CLI command as subprocess."""
-    result = subprocess.run(
-        [sys.executable, "-m", "src.cli.cli_entry", *args],
-        capture_output=True,
-        text=True,
-        cwd=PROJECT_ROOT,
-    )
-    return result
+from tests.cli.subprocess_helpers import run_cli, run_cli_with_mocked_result, run_python_snippet
 
 
 def test_cli_help():
@@ -29,6 +15,7 @@ def test_cli_help():
     assert "Usage:" in result.stdout
     assert "Available Entities" in result.stdout
     assert "test_case" in result.stdout
+    assert "--format json|table|plain|csv" in result.stdout
 
 
 def test_cli_version():
@@ -45,6 +32,7 @@ def test_cli_entity_actions():
     assert result.returncode == 0
     assert "Actions for test_case" in result.stdout
     assert "list" in result.stdout
+    assert "--format json|table|plain|csv" in result.stdout
 
 
 def test_cli_entity_alias_plural():
@@ -111,3 +99,70 @@ def test_legacy_command_style_is_rejected():
     assert result.returncode == 1
     output = result.stderr.lower() + result.stdout.lower()
     assert "legacy command style" in output
+
+
+def test_process_cli_default_json_output_without_format_flag():
+    """Process-level check: action output defaults to JSON when --format is omitted."""
+    result = run_cli_with_mocked_result(
+        ["test_case", "list", "--args", "{}"],
+        '{"ok":true,"count":2}',
+    )
+    assert result.returncode == 0
+    assert result.stdout.strip() == '{"ok":true,"count":2}'
+
+
+def test_process_cli_csv_output_rendering():
+    """Process-level check: CSV output renders tabular rows with header."""
+    result = run_cli_with_mocked_result(
+        ["test_case", "list", "--args", "{}", "--format", "csv"],
+        json.dumps(
+            [
+                {"id": 1, "name": "Alpha"},
+                {"id": 2, "name": "Beta", "tags": ["smoke", "regression"]},
+            ]
+        ),
+    )
+    assert result.returncode == 0
+    lines = result.stdout.strip().splitlines()
+    assert lines[0] == "id,name,tags"
+    assert lines[1].startswith("1,Alpha,")
+    assert lines[2].startswith("2,Beta,")
+
+
+def test_process_cli_csv_output_renders_items_envelope():
+    """Process-level check: CSV renderer uses envelope['items'] rows when present."""
+    result = run_cli_with_mocked_result(
+        ["test_case", "list", "--args", "{}", "--format", "csv"],
+        json.dumps({"items": [{"id": 1, "name": "Alpha"}], "total": 1}),
+    )
+    assert result.returncode == 0
+    lines = result.stdout.strip().splitlines()
+    assert lines[0] == "id,name"
+    assert lines[1] == "1,Alpha"
+
+
+def test_process_cli_plain_output_renders_escaped_newlines():
+    """Process-level check: plain output is passed through unchanged from tool result."""
+    result = run_cli_with_mocked_result(
+        ["test_case", "get", "--args", '{"test_case_id": 1}', "--format", "plain"],
+        "line1\nline2",
+    )
+    assert result.returncode == 0
+    assert result.stdout == "line1\nline2"
+
+
+def test_process_cli_plain_output_normalizes_escaped_newlines_end_to_end():
+    """Process-level check: tool plain rendering normalizes escaped newline markers."""
+    script = "\n".join(
+        [
+            "from src.cli import cli_entry",
+            "from src.tools.output_contract import render_message_output",
+            "async def _fake(_tool_name, _args):",
+            "    return render_message_output('line1\\\\nline2', output_format='plain')",
+            "cli_entry.call_tool_function = _fake",
+            "cli_entry.run_cli(['test_case', 'get', '--args', '{\"test_case_id\": 1}', '--format', 'plain'])",
+        ]
+    )
+    result = run_python_snippet(script)
+    assert result.returncode == 0
+    assert result.stdout == "line1\nline2"
