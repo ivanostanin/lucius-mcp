@@ -11,7 +11,7 @@ _bmad/
 .claude/
 !/.claude/settings.local.json
 # Codex CLI
-.codex/
+#.codex/
 # Gemini CLI
 .gemini/
 # Antigravity BMAD workflows

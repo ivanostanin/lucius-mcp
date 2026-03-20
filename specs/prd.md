@@ -178,7 +178,7 @@ He tries to make his agent create a test case with a missing required field. The
 
 The product provides a direct CLI interface in addition to MCP transport. CLI command semantics are entity-oriented and mirror existing tool behavior:
 
-*   **Command Grammar:** `lucius <testops_entity_type> <action> [--args <json>] [--format json|table|plain]`.
+*   **Command Grammar:** `lucius <testops_entity_type> <action> [--args <json>] [--format plain|json|table|csv]`.
 *   **Entity Discovery:** `lucius <testops_entity_type>` lists available actions for that entity.
 *   **Action Help:** `lucius <testops_entity_type> <action> --help` shows action description, parameters, and examples.
 *   **Behavior Parity:** Each CLI action must preserve existing tool behavior (validation, confirmation gates, idempotency, and user-facing error hints).
@@ -196,6 +196,18 @@ The product provides a direct CLI interface in addition to MCP transport. CLI co
 *   **Input/Output:** Strict JSON following the MCP specification.
 *   **Pydantic Models:** All schemas are auto-generated from the Allure TestOps OpenAPI 3.1 spec ensuring 1:1 fidelity.
 *   **Attachments:** Handled via Base64 strings or external URL references (depending on Allure API limits).
+*   **CLI Output Formats:** `plain`, `json` (default), `table`, `csv`.
+
+### CLI Output Data Flow & Format Contracts
+
+*   **Flow Step 1 (Execution):** `lucius <entity> <action>` routes to existing service behavior and obtains a normalized result payload.
+*   **Flow Step 2 (Format Resolution):** If `--format` is omitted, renderer defaults to `json`.
+*   **Flow Step 3 (Rendering):**
+    *   `plain`: Human-readable summary text (backward-compatible style).
+    *   `json`: Canonical machine-consumable representation (default).
+    *   `table`: Printable row/column output for multi-record results (for example, list/search outputs such as `test_case list`).
+    *   `csv`: CSV table for multi-record results using the same deterministic columns as `table`.
+*   **Flow Step 4 (Fallback/Error Contract):** If tabular formats are requested for non-tabular payloads, CLI must apply documented deterministic fallback behavior and return actionable user-facing guidance without tracebacks.
 
 ### Error Handling & Rate Limits
 
@@ -280,10 +292,16 @@ The product provides a direct CLI interface in addition to MCP transport. CLI co
 *   **FR19:** Running only `lucius <entity>` MUST print available actions for that entity.
 *   **FR20:** Every `lucius <entity> <action>` command MUST support `--help` with description, parameters, and examples.
 *   **FR21:** Each `entity/action` command MUST map to existing service behavior and mimic existing tool semantics without adding new tools/layers.
-*   **FR22:** CLI output formats MUST remain `json` (default), `table`, and `plain`.
+*   **FR22:** CLI output formats MUST support `plain`, `json` (default), `table`, and `csv`.
+*   **FR22a:** All CLI action calls MUST use `json` output format by default when `--format` is not provided.
 *   **FR23:** Automated tests MUST validate command parsing and routing for all supported CLI entities and actions.
 *   **FR24:** Automated tests MUST validate entity-only action discovery (`lucius <entity>`) and action help rendering (`lucius <entity> <action> --help`).
 *   **FR25:** Automated tests MUST verify behavior parity for representative create/read/update/delete/search/link/close/reopen flows.
+*   **FR26:** For multi-record outputs (for example `test_case list`), `table` and `csv` renderers MUST use deterministic, documented column ordering.
+*   **FR27:** E2E CLI tests MUST verify `plain|json|table|csv` rendering across at least one multi-record flow and one single-record flow.
+*   **FR28:** In `plain` output mode, escaped newline sequences (`\n`) in response text MUST be rendered as actual line breaks, not literal backslash+n text.
+*   **FR29:** Automated tests (unit and E2E) MUST verify newline rendering behavior in `plain` output mode.
+*   **FR30:** Breaking CLI behavior changes MUST be committed using Conventional Commits with the `!` breaking marker and a `BREAKING CHANGE:` footer describing impact.
 
 ## Non-Functional Requirements
 
@@ -312,6 +330,8 @@ The product provides a direct CLI interface in addition to MCP transport. CLI co
 *   **NFR13:** CLI automation test suite MUST include unit, mocked integration, and end-to-end command invocation coverage.
 *   **NFR14:** CLI route coverage requirement: 100% of canonical `entity/action` routes must be represented by at least one automated test.
 *   **NFR15:** CLI module coverage target: at least 90% line coverage for `src/cli/`.
+*   **NFR22:** Documentation consistency requirement: `specs/prd.md` and `specs/architecture.md` MUST both include and maintain synchronized output-format data-flow contracts.
+*   **NFR23:** Release governance: commits that change CLI output defaults or rendering semantics MUST use Conventional Commit breaking-change notation (`type(scope)!: ...`) and include a `BREAKING CHANGE:` footer.
 
 ### Observability & Metrics
 *   **NFR16:** **Structured Logging:** All events must be logged in structured JSON format (level, timestamp, logger, message, context).

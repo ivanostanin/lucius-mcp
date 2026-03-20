@@ -722,3 +722,52 @@ so that repeated command startup is fast without significantly increasing binary
 **When** maintainers validate startup behavior
 **Then** first-run (cold) and subsequent-run (warm) behavior is reproducible
 **And** warm-start performance improvement over current configuration is verified.
+
+### Story 9.6: Unified CLI Output Formats (JSON Default + Table/CSV/Plain)
+
+As a Developer or QA Engineer,
+I want CLI tool results to support `plain`, `json`, `table`, and `csv` output formats with `json` as the default,
+so that the same command can be consumed by both automation and humans.
+
+**Acceptance Criteria:**
+
+**Given** any supported `lucius <entity> <action>` command
+**When** I omit `--format`
+**Then** output defaults to `json`
+**And** this default applies to all CLI action calls unless `--format` is explicitly provided
+**And** explicit `--format plain|json|table|csv` is accepted.
+
+**Given** a multi-record command result (e.g., `lucius test_case list`)
+**When** I run with `--format table`
+**Then** output is a printable table with deterministic headers/column order.
+
+**Given** a multi-record command result (e.g., `lucius test_case list`)
+**When** I run with `--format csv`
+**Then** output is a valid CSV table with header row
+**And** CSV columns match the table columns.
+
+**Given** the current plain-text behavior
+**When** I run with `--format plain`
+**Then** output remains backward-compatible human-readable text
+**And** escaped newline sequences (`\n`) are rendered as actual line breaks (not literal `\n`).
+
+**Given** commands that return a single object or message
+**When** `table` or `csv` is requested
+**Then** the CLI applies documented deterministic fallback behavior
+**And** it never prints traceback/internal logs.
+
+**Given** Story 9.6 implementation
+**When** test suites run
+**Then** E2E tests validate `plain|json|table|csv` on representative multi-record and single-record commands
+**And** deterministic column ordering is verified for table/csv
+**And** tests verify `plain` newline rendering (`\n` -> newline).
+
+**Given** Story 9.6 implementation
+**When** documentation is updated
+**Then** `specs/architecture.md` documents output-format rendering data flow
+**And** `specs/prd.md` documents canonical format contracts and data-flow expectations.
+
+**Given** Story 9.6 introduces CLI behavior changes
+**When** implementation changes are committed
+**Then** commit message follows Conventional Commits with breaking marker `!` (for example `feat(cli)!: ...`)
+**And** commit body includes `BREAKING CHANGE:` details.

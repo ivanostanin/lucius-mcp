@@ -129,6 +129,17 @@ uv add "mcp[cli,fastapi]" pydantic starlette uvicorn
 *   **Execution Path:** CLI routes entity/action commands to existing service behavior while preserving current tool semantics.
 *   **Layering Rule:** Thick Service -> Thin CLI adapter. No new business layer and no new tool layer are introduced for CLI migration.
 
+### CLI Output Format Data Flow
+*   **Input Contract:** CLI receives normalized action results from the existing service/tool behavior path (no extra business layer).
+*   **Format Resolution:** Renderer resolves `--format` with `json` as default when omitted; this default applies to all CLI action calls unless explicitly overridden.
+*   **Format Rendering Contract:**
+    *   `plain`: backward-compatible human-readable summary text; escaped newline sequences (`\n`) are rendered as actual line breaks.
+    *   `json`: canonical machine-consumable output (default).
+    *   `table`: printable tabular output for multi-record responses (for example `test_case list`).
+    *   `csv`: CSV tabular output for multi-record responses using the same deterministic columns as `table`.
+*   **Fallback/Error Contract:** When tabular formats are requested for non-tabular responses, CLI returns deterministic fallback output or actionable guidance; tracebacks and internal logs are not exposed.
+*   **Determinism Rule:** Column selection/order for `table` and `csv` must be stable across runs and validated by automated tests.
+
 ### Infrastructure & Deployment
 *   **Runtime:** Python 3.14 (managed via `uv`).
 *   **Dependency Management:** `pyproject.toml` managed by `uv`.
@@ -161,7 +172,7 @@ uv add "mcp[cli,fastapi]" pydantic starlette uvicorn
 **Tool Prompts:**
 *   All tools MUST return simple, text-based success messages ("Successfully created X") or informative error explanations.
 *   NO raw JSON dumps unless specifically requested by the tool contract.
-*   CLI actions MUST preserve equivalent behavior and support `json|table|plain` output formats (`json` default).
+*   CLI actions MUST preserve equivalent behavior and support `plain|json|table|csv` output formats (`json` default).
 
 **Error Handling:**
 *   `try/except` blocks in tools are **FORBIDDEN**.
@@ -174,6 +185,7 @@ uv add "mcp[cli,fastapi]" pydantic starlette uvicorn
 *   Run `ruff` to enforce PEP8.
 *   Run `mypy --strict` to enforce typing.
 *   **Agent Rule:** "If you change a Pydantic model, you MUST re-run the generator."
+*   **Release Rule:** Breaking CLI output behavior changes must use Conventional Commit breaking notation (`type(scope)!: ...`) and include a `BREAKING CHANGE:` footer.
 
 ## Project Structure & Boundaries
 
@@ -278,15 +290,19 @@ lucius-mcp/
     *   command grammar parsing for `lucius <entity> <action>`
     *   entity-only action listing behavior
     *   action help rendering shape and required sections
-    *   output formatter behavior (`json|table|plain`)
+    *   output formatter behavior (`plain|json|table|csv`)
+    *   plain-output newline rendering (`\n` -> newline, not literal text)
 *   **Mocked Integration Tests (`tests/cli/test_e2e_mocked.py`):**
     *   route-to-service invocation parity with representative action flows
     *   validation and confirm-gate behavior parity
     *   error hint parity and non-traceback guarantees
+    *   deterministic header/column ordering checks for table/csv on multi-record results
 *   **E2E CLI Execution Tests:**
     *   real CLI process invocation for key entity/action flows
     *   startup/help/discovery latency and correctness checks
     *   FastMCP-decoupling guard (CLI path must not require `src.main` import)
+    *   format-matrix verification for `plain|json|table|csv` on at least one multi-record flow and one single-record flow
+    *   explicit validation that plain text outputs render escaped newlines as actual line breaks
 
 **Coverage Gates:**
 *   **Global:** maintain project threshold (>85%).
