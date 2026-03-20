@@ -31,7 +31,7 @@ async def test_list_integrations_tool_output(mock_from_env):
         IntegrationDto(id=2, name="GitHub Repo", info=IntegrationInfoDto(type=IntegrationTypeDto.GITHUB)),
     ]
 
-    result = await list_integrations()
+    result = await list_integrations(output_format="plain")
 
     assert "Available Integrations" in result
     assert "2 found" in result
@@ -54,7 +54,7 @@ async def test_list_integrations_tool_empty(mock_from_env):
     mock_client.get_project = Mock(return_value=17)
     mock_client.get_project_available_integrations.return_value = []
 
-    result = await list_integrations()
+    result = await list_integrations(output_format="plain")
     assert "No integrations configured" in result
 
 
@@ -78,7 +78,7 @@ async def test_create_test_case_tool_passes_integration_params(monkeypatch):
     monkeypatch.setattr(AllureClient, "from_env", Mock(return_value=DummyClient()))
     monkeypatch.setattr(create_test_case_module, "TestCaseService", Mock(return_value=service))
 
-    await create_test_case(name="Test TC", issues=["PROJ-123"], integration_id=5)
+    await create_test_case(name="Test TC", issues=["PROJ-123"], integration_id=5, output_format="plain")
 
     service.create_test_case.assert_called_once()
     kwargs = service.create_test_case.call_args.kwargs
@@ -108,7 +108,13 @@ async def test_update_test_case_tool_passes_integration_params(monkeypatch):
     monkeypatch.setattr(AllureClient, "from_env", Mock(return_value=DummyClient()))
     monkeypatch.setattr(update_test_case_module, "TestCaseService", Mock(return_value=service))
 
-    await update_test_case(test_case_id=123, issues=["PROJ-456"], integration_name="Jira", confirm=True)
+    await update_test_case(
+        test_case_id=123,
+        issues=["PROJ-456"],
+        integration_name="Jira",
+        confirm=True,
+        output_format="plain",
+    )
 
     service.update_test_case.assert_called_once()
     data = service.update_test_case.call_args[0][1]

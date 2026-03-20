@@ -24,7 +24,13 @@ async def test_create_test_suite_output_format() -> None:
             created_suite = type("SuiteDto", (), {"id": 25, "name": "Payments"})
             mock_service.create_test_suite = AsyncMock(return_value=created_suite)
 
-            output = await create_test_suite(name="Payments", project_id=1, tree_id=200, parent_suite_id=11)
+            output = await create_test_suite(
+                name="Payments",
+                project_id=1,
+                tree_id=200,
+                parent_suite_id=11,
+                output_format="plain",
+            )
 
             assert "✅ Test suite created successfully!" in output
             assert "ID: 25" in output
@@ -51,7 +57,7 @@ async def test_list_test_suites_output_hierarchical() -> None:
             ]
             mock_service.list_test_suites = AsyncMock(return_value=(tree, suites))
 
-            output = await list_test_suites(project_id=1, tree_id=101, include_empty=True)
+            output = await list_test_suites(project_id=1, tree_id=101, include_empty=True, output_format="plain")
 
             assert "Tree: Main Tree (ID: 101)" in output
             assert "Found 1 top-level suites:" in output
@@ -71,7 +77,7 @@ async def test_list_test_suites_empty_tree_message() -> None:
             tree = TreeDtoV2(id=12, name="Core", project_id=1, custom_fields_project=[])
             mock_service.list_test_suites = AsyncMock(return_value=(tree, []))
 
-            output = await list_test_suites(project_id=1)
+            output = await list_test_suites(project_id=1, output_format="plain")
 
             assert output == "Tree 'Core' (ID: 12) has no suites."
 
@@ -88,7 +94,11 @@ async def test_assign_test_cases_to_suite_output() -> None:
             mock_service.assign_test_cases_to_suite = AsyncMock(return_value=3)
 
             output = await assign_test_cases_to_suite(
-                suite_id=44, test_case_ids=[100, 101, 102], project_id=1, tree_id=2
+                suite_id=44,
+                test_case_ids=[100, 101, 102],
+                project_id=1,
+                tree_id=2,
+                output_format="plain",
             )
 
             assert output == "✅ Assigned 3 test case(s) to suite 44."
@@ -102,7 +112,7 @@ async def test_assign_test_cases_to_suite_output() -> None:
 @pytest.mark.asyncio
 async def test_delete_test_suite_requires_confirm() -> None:
     """delete_test_suite enforces explicit destructive confirmation."""
-    output = await delete_test_suite(suite_id=123, confirm=False)
+    output = await delete_test_suite(suite_id=123, confirm=False, output_format="plain")
     assert output == "⚠️ Destructive operation. Confirm deletion of suite 123 by passing confirm=True."
 
 
@@ -117,7 +127,7 @@ async def test_delete_test_suite_output_confirmed() -> None:
             mock_service = mock_service_cls.return_value
             mock_service.delete_suite = AsyncMock(return_value=True)
 
-            output = await delete_test_suite(suite_id=555, confirm=True, project_id=7)
+            output = await delete_test_suite(suite_id=555, confirm=True, project_id=7, output_format="plain")
 
             assert output == "✅ Test suite 555 deleted successfully (idempotent)."
             mock_service.delete_suite.assert_called_once_with(suite_id=555)

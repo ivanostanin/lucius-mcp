@@ -6,12 +6,16 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.test_layer_service import TestLayerService
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
 
 
 async def create_test_layer_schema(
     key: Annotated[str, Field(description="The schema key (e.g., custom field name like 'layer' or 'test_layer').")],
     test_layer_id: Annotated[int, Field(description="ID of the test layer to link to this schema.")],
     project_id: Annotated[int, Field(description="Allure TestOps project ID to create the schema in.")],
+    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
 ) -> str:
     """Create a new test layer schema to map a custom field key to a test layer.
 
@@ -23,6 +27,7 @@ async def create_test_layer_schema(
         key: Schema key (typically a custom field name)
         test_layer_id: ID of the test layer to link
         project_id: Project ID
+        output_format: Output format: plain (default) or json.
 
     Returns:
         Confirmation message with the created schema's details
@@ -36,4 +41,15 @@ async def create_test_layer_schema(
         )
 
     test_layer_name = schema.test_layer.name if schema.test_layer else "N/A"
-    return f"✅ Test layer schema created successfully! ID: {schema.id}, Key: {schema.key}, Layer: {test_layer_name}"
+    return render_output(
+        plain=(
+            f"✅ Test layer schema created successfully! ID: {schema.id}, Key: {schema.key}, Layer: {test_layer_name}"
+        ),
+        json_payload={
+            "id": schema.id,
+            "key": schema.key,
+            "test_layer_id": test_layer_id,
+            "test_layer_name": test_layer_name,
+        },
+        output_format=output_format,
+    )

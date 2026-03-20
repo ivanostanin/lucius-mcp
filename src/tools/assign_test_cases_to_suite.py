@@ -13,6 +13,7 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.test_hierarchy_service import TestHierarchyService
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
 
 
 async def assign_test_cases_to_suite(
@@ -22,6 +23,9 @@ async def assign_test_cases_to_suite(
     tree_id: Annotated[
         int | None, Field(description="Target hierarchy tree ID. If omitted, default project tree is used.")
     ] = None,
+    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
 ) -> str:
     """Assign test cases to a suite path in hierarchy.
 
@@ -33,6 +37,7 @@ async def assign_test_cases_to_suite(
         test_case_ids: List of test case IDs to assign.
         project_id: Optional project override. If omitted, use default project from environment.
         tree_id: Optional hierarchy tree ID. If omitted, the default project tree is used.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         Success message with the number of assigned test cases.
@@ -45,4 +50,13 @@ async def assign_test_cases_to_suite(
             tree_id=tree_id,
         )
 
-    return f"✅ Assigned {assigned_count} test case(s) to suite {suite_id}."
+    return render_output(
+        plain=f"✅ Assigned {assigned_count} test case(s) to suite {suite_id}.",
+        json_payload={
+            "suite_id": suite_id,
+            "tree_id": tree_id,
+            "assigned_count": assigned_count,
+            "test_case_ids": test_case_ids,
+        },
+        output_format=output_format,
+    )

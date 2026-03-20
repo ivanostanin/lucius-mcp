@@ -4,6 +4,7 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService, TestCaseUpdate
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
 from src.utils.links import normalize_links
 
 
@@ -72,6 +73,9 @@ async def update_test_case(  # noqa: C901
     ] = None,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
     confirm: Annotated[bool, Field(description="Must be set to True to proceed with update. Safety measure.")] = False,
+    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
 ) -> str:
     """Update an existing test case in Allure TestOps.
     ⚠️ CAUTION: Destructive.
@@ -107,6 +111,7 @@ async def update_test_case(  # noqa: C901
         project_id: Optional override for the default Project ID.
         confirm: Must be set to True to proceed with update.
             This is a safety measure to prevent accidental updates.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         A confirmation message summarizing the update.
@@ -116,10 +121,19 @@ async def update_test_case(  # noqa: C901
             arguments.
     """
     if not confirm:
-        return (
+        message = (
             "⚠️ Update requires confirmation.\n\n"
             "This will modify test case properties and may overwrite existing data. "
             f"Please call again with confirm=True to proceed with updating test case {test_case_id}."
+        )
+        return render_output(
+            plain=message,
+            json_payload={
+                "requires_confirmation": True,
+                "test_case_id": test_case_id,
+                "action": "update_test_case",
+            },
+            output_format=output_format,
         )
 
     async with AllureClient.from_env(project=project_id) as client:
@@ -211,5 +225,14 @@ async def update_test_case(  # noqa: C901
             changes.append("cleared all issues")
 
         summary = ", ".join(changes) if changes else "No changes made (idempotent)"
-
-        return f"Test Case {updated_case.id} updated successfully. Changes: {summary}"
+        message = f"Test Case {updated_case.id} updated successfully. Changes: {summary}"
+        return render_output(
+            plain=message,
+            json_payload={
+                "id": updated_case.id,
+                "name": getattr(updated_case, "name", None),
+                "summary": summary,
+                "changes": changes,
+            },
+            output_format=output_format,
+        )

@@ -6,6 +6,7 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.launch_service import LaunchDeleteResult, LaunchListResult, LaunchService
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
 from src.utils.auth import get_auth_context
 from src.utils.config import settings
 
@@ -24,6 +25,9 @@ async def create_launch(
     ] = None,
     tags: Annotated[list[str] | None, Field(description="Optional list of tags.")] = None,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
 ) -> str:
     """Create a new launch in Allure TestOps.
 
@@ -35,6 +39,7 @@ async def create_launch(
         links: Optional list of external link dictionaries.
         tags: Optional list of launch tags.
         project_id: Optional override for the default Project ID.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         Confirmation message with launch ID and name.
@@ -50,7 +55,12 @@ async def create_launch(
             tags=tags,
         )
 
-    return f"✅ Launch created successfully! ID: {launch.id}, Name: {launch.name}"
+    message = f"✅ Launch created successfully! ID: {launch.id}, Name: {launch.name}"
+    return render_output(
+        plain=message,
+        json_payload=_launch_payload(launch),
+        output_format=output_format,
+    )
 
 
 async def list_launches(
@@ -63,6 +73,9 @@ async def list_launches(
         Field(description=("Sorting criteria in the format: property(,asc|desc). Example: ['createdDate,DESC']")),
     ] = None,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
 ) -> str:
     """List launches in a project.
 
@@ -73,6 +86,7 @@ async def list_launches(
         filter_id: Optional filter ID.
         sort: Optional sort criteria.
         project_id: Optional override for the default Project ID.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         Formatted list of launches with pagination info.
@@ -87,18 +101,33 @@ async def list_launches(
             sort=sort,
         )
 
-    return _format_launch_list(result)
+    items = [_launch_payload(launch) for launch in result.items]
+    return render_output(
+        plain=_format_launch_list(result),
+        json_payload={
+            "total": result.total,
+            "page": result.page,
+            "size": result.size,
+            "total_pages": result.total_pages,
+            "items": items,
+        },
+        output_format=output_format,
+    )
 
 
 async def get_launch(
     launch_id: Annotated[int, Field(description="Launch ID (required).")],
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
 ) -> str:
     """Retrieve a specific launch and summarize its details.
 
     Args:
         launch_id: The unique ID of the launch.
         project_id: Optional override for the default Project ID.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         LLM-friendly summary of the launch details.
@@ -116,12 +145,19 @@ async def get_launch(
         service = LaunchService(client=client)
         launch = await service.get_launch(launch_id)
 
-    return _format_launch_detail(launch)
+    return render_output(
+        plain=_format_launch_detail(launch),
+        json_payload=_launch_payload(launch),
+        output_format=output_format,
+    )
 
 
 async def delete_launch(
     launch_id: Annotated[int, Field(description="Launch ID to delete/archive (required).")],
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
 ) -> str:
     """Delete/archive a launch by ID.
     ⚠️ CAUTION: Destructive.
@@ -129,6 +165,7 @@ async def delete_launch(
     Args:
         launch_id: The unique ID of the launch to archive.
         project_id: Optional override for the default Project ID.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         Confirmation message with launch ID and idempotent status.
@@ -146,13 +183,25 @@ async def delete_launch(
         service = LaunchService(client=client)
         result = await service.delete_launch(launch_id)
 
-    return _format_launch_delete(result)
+    return render_output(
+        plain=_format_launch_delete(result),
+        json_payload={
+            "launch_id": result.launch_id,
+            "name": result.name,
+            "status": result.status,
+            "message": result.message,
+        },
+        output_format=output_format,
+    )
 
 
 async def close_launch(
     launch_id: Annotated[int, Field(description="Launch ID (required).")],
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
     api_token: Annotated[str | None, Field(description="Optional runtime API token override.")] = None,
+    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
 ) -> str:
     """Close a launch and return updated launch details.
 
@@ -160,6 +209,7 @@ async def close_launch(
         launch_id: The unique ID of the launch.
         project_id: Optional override for the default Project ID.
         api_token: Optional runtime API token override.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         LLM-friendly summary of the closed launch.
@@ -177,13 +227,23 @@ async def close_launch(
         service = LaunchService(client=client)
         launch = await service.close_launch(launch_id)
 
-    return f"Launch closed successfully.\n{_format_launch_detail(launch)}"
+    message = f"Launch closed successfully.\n{_format_launch_detail(launch)}"
+    payload = _launch_payload(launch)
+    payload["operation"] = "closed"
+    return render_output(
+        plain=message,
+        json_payload=payload,
+        output_format=output_format,
+    )
 
 
 async def reopen_launch(
     launch_id: Annotated[int, Field(description="Launch ID (required).")],
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
     api_token: Annotated[str | None, Field(description="Optional runtime API token override.")] = None,
+    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
 ) -> str:
     """Reopen a launch and return updated launch details.
 
@@ -191,6 +251,7 @@ async def reopen_launch(
         launch_id: The unique ID of the launch.
         project_id: Optional override for the default Project ID.
         api_token: Optional runtime API token override.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         LLM-friendly summary of the reopened launch.
@@ -208,7 +269,30 @@ async def reopen_launch(
         service = LaunchService(client=client)
         launch = await service.reopen_launch(launch_id)
 
-    return f"Launch reopened successfully.\n{_format_launch_detail(launch)}"
+    message = f"Launch reopened successfully.\n{_format_launch_detail(launch)}"
+    payload = _launch_payload(launch)
+    payload["operation"] = "reopened"
+    return render_output(
+        plain=message,
+        json_payload=payload,
+        output_format=output_format,
+    )
+
+
+def _launch_payload(launch: object) -> dict[str, object]:
+    return {
+        "id": getattr(launch, "id", None),
+        "name": getattr(launch, "name", None),
+        "closed": getattr(launch, "closed", None),
+        "created_date": getattr(launch, "created_date", None) or getattr(launch, "createdDate", None),
+        "last_modified_date": getattr(launch, "last_modified_date", None) or getattr(launch, "lastModifiedDate", None),
+        "project_id": getattr(launch, "project_id", None) or getattr(launch, "projectId", None),
+        "autoclose": getattr(launch, "autoclose", None),
+        "external": getattr(launch, "external", None),
+        "known_defects_count": getattr(launch, "known_defects_count", None)
+        or getattr(launch, "knownDefectsCount", None),
+        "new_defects_count": getattr(launch, "new_defects_count", None) or getattr(launch, "newDefectsCount", None),
+    }
 
 
 def _format_launch_list(result: LaunchListResult) -> str:

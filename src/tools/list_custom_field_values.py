@@ -4,6 +4,7 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.custom_field_value_service import CustomFieldValueService
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
 
 
 async def list_custom_field_values(
@@ -27,6 +28,9 @@ async def list_custom_field_values(
         Field(description="Optional sort criteria, e.g. ['name,asc', 'id,desc']"),
     ] = None,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
 ) -> str:
     """List available values for a custom field.
 
@@ -40,6 +44,7 @@ async def list_custom_field_values(
         size: Number of items per page.
         sort: Optional sort criteria, e.g. ["name,asc", "id,desc"].
         project_id: Optional override for the default Project ID.
+        output_format: Output format: plain (default) or json.
     """
     async with AllureClient.from_env(project=project_id) as client:
         service = CustomFieldValueService(client=client)
@@ -57,7 +62,16 @@ async def list_custom_field_values(
 
         values = result.content or []
         if not values:
-            return "No custom field values found."
+            return render_output(
+                plain="No custom field values found.",
+                json_payload={
+                    "items": [],
+                    "total": 0,
+                    "page": page,
+                    "size": size,
+                },
+                output_format=output_format,
+            )
 
         total = result.total_elements if result.total_elements is not None else len(values)
         header = f"Found {total} custom field values:"
@@ -65,8 +79,26 @@ async def list_custom_field_values(
             header = f"Found {total} custom field values (page {result.number + 1}/{result.total_pages}):"
 
         lines = [header]
+        items: list[dict[str, object]] = []
         for value in values:
             count = value.test_cases_count if value.test_cases_count is not None else 0
             lines.append(f"- ID: {value.id}, Name: {value.name}, Test cases: {count}")
+            items.append(
+                {
+                    "id": value.id,
+                    "name": value.name,
+                    "test_cases_count": count,
+                }
+            )
 
-        return "\n".join(lines)
+        return render_output(
+            plain="\n".join(lines),
+            json_payload={
+                "items": items,
+                "total": total,
+                "page": result.number if result.number is not None else page,
+                "size": size,
+                "total_pages": result.total_pages,
+            },
+            output_format=output_format,
+        )

@@ -15,7 +15,7 @@ from src.tools.cleanup import (
 @pytest.mark.asyncio
 async def test_delete_archived_test_cases_requires_confirmation() -> None:
     with patch("src.tools.cleanup.TestCaseService") as mock_service_cls:
-        output = await delete_archived_test_cases(confirm=False)
+        output = await delete_archived_test_cases(confirm=False, output_format="plain")
         assert output == DESTRUCTIVE_CONFIRMATION_MESSAGE
         mock_service_cls.assert_not_called()
 
@@ -30,7 +30,7 @@ async def test_delete_archived_test_cases_output() -> None:
             mock_service = mock_service_cls.return_value
             mock_service.cleanup_archived = AsyncMock(return_value=4)
 
-            output = await delete_archived_test_cases(confirm=True)
+            output = await delete_archived_test_cases(confirm=True, output_format="plain")
 
             assert output == "Deleted 4 archived test case(s)."
             mock_service.cleanup_archived.assert_awaited_once()
@@ -39,7 +39,7 @@ async def test_delete_archived_test_cases_output() -> None:
 @pytest.mark.asyncio
 async def test_delete_archived_shared_steps_requires_confirmation() -> None:
     with patch("src.tools.cleanup.SharedStepService") as mock_service_cls:
-        output = await delete_archived_shared_steps(confirm=False)
+        output = await delete_archived_shared_steps(confirm=False, output_format="plain")
         assert output == DESTRUCTIVE_CONFIRMATION_MESSAGE
         mock_service_cls.assert_not_called()
 
@@ -54,7 +54,7 @@ async def test_delete_archived_shared_steps_output() -> None:
             mock_service = mock_service_cls.return_value
             mock_service.cleanup_archived = AsyncMock(return_value=2)
 
-            output = await delete_archived_shared_steps(confirm=True)
+            output = await delete_archived_shared_steps(confirm=True, output_format="plain")
 
             assert output == "Deleted 2 archived shared step(s)."
             mock_service.cleanup_archived.assert_awaited_once()
@@ -63,7 +63,7 @@ async def test_delete_archived_shared_steps_output() -> None:
 @pytest.mark.asyncio
 async def test_delete_unused_custom_fields_requires_confirmation() -> None:
     with patch("src.tools.cleanup.CustomFieldService") as mock_service_cls:
-        output = await delete_unused_custom_fields(confirm=False)
+        output = await delete_unused_custom_fields(confirm=False, output_format="plain")
         assert output == DESTRUCTIVE_CONFIRMATION_MESSAGE
         mock_service_cls.assert_not_called()
 
@@ -78,7 +78,7 @@ async def test_delete_unused_custom_fields_output() -> None:
             mock_service = mock_service_cls.return_value
             mock_service.cleanup_unused = AsyncMock(return_value=3)
 
-            output = await delete_unused_custom_fields(confirm=True)
+            output = await delete_unused_custom_fields(confirm=True, output_format="plain")
 
             assert output == "Deleted 3 unused custom field(s)."
             mock_service.cleanup_unused.assert_awaited_once()

@@ -4,6 +4,7 @@ from pydantic import Field
 
 from src.client import AllureClient, AllureValidationError
 from src.services.search_service import SearchQueryParser, SearchService, TestCaseDetails, TestCaseListResult
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
 
 
 async def list_test_cases(
@@ -13,6 +14,9 @@ async def list_test_cases(
     tags: Annotated[list[str] | None, Field(description="Optional tag filters (exact match).", max_length=100)] = None,
     status: Annotated[str | None, Field(description="Optional status filter (exact match).", max_length=100)] = None,
     project_id: Annotated[int | None, Field(description="Allure TestOps project ID to list test cases from.")] = None,
+    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
 ) -> str:
     """List all test cases in a project.
 
@@ -26,6 +30,7 @@ async def list_test_cases(
         tags: Optional list of tag names to filter by (exact match).
         status: Optional test case status name to filter by (exact match).
         project_id: Optional override for the default Project ID.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         A formatted list of test cases with pagination info.
@@ -44,7 +49,11 @@ async def list_test_cases(
             status=status,
         )
 
-    return _format_test_case_list(result)
+    return render_output(
+        plain=_format_test_case_list(result),
+        json_payload=_serialize_test_case_list_result(result),
+        output_format=output_format,
+    )
 
 
 async def search_test_cases(
@@ -76,6 +85,9 @@ async def search_test_cases(
     page: Annotated[int, Field(description="Zero-based page index.")] = 0,
     size: Annotated[int, Field(description="Number of results per page (max 100).", le=100)] = 20,
     project_id: Annotated[int | None, Field(description="Allure TestOps project ID to list test cases from.")] = None,
+    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
 ) -> str:
     """Search for test cases by name, tag, or AQL query.
 
@@ -111,6 +123,7 @@ async def search_test_cases(
         page: Page number (0-indexed). Default: 0.
         size: Results per page (max 100). Default: 20.
         project_id: Optional override for the default Project ID.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         List of matching test cases or descriptive error message.
@@ -156,12 +169,22 @@ async def search_test_cases(
 
     # Use the appropriate display query for formatting
     display_query = aql if aql else query
-    return _format_search_results(result, display_query or "")
+    return render_output(
+        plain=_format_search_results(result, display_query or ""),
+        json_payload={
+            **_serialize_test_case_list_result(result),
+            "query": display_query or "",
+        },
+        output_format=output_format,
+    )
 
 
 async def get_test_case_details(
     test_case_id: Annotated[int, Field(description="ID of the test case to retrieve.")],
     project_id: Annotated[int | None, Field(description="Allure TestOps project ID to list test cases from.")] = None,
+    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
 ) -> str:
     """Get complete details of a specific test case.
 
@@ -172,6 +195,7 @@ async def get_test_case_details(
     Args:
         test_case_id: The unique ID of the test case to retrieve.
         project_id: Optional override for the default Project ID.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         Formatted test case details including all metadata.
@@ -186,7 +210,11 @@ async def get_test_case_details(
         service = SearchService(client=client)
         details = await service.get_test_case_details(test_case_id)
 
-    return _format_test_case_details(details)
+    return render_output(
+        plain=_format_test_case_details(details),
+        json_payload=_serialize_test_case_details(details),
+        output_format=output_format,
+    )
 
 
 def _format_test_case_list(result: TestCaseListResult) -> str:
@@ -204,6 +232,37 @@ def _format_test_case_list(result: TestCaseListResult) -> str:
         lines.append(f"\nUse page={result.page + 1} to see more results.")
 
     return "\n".join(lines)
+
+
+def _serialize_test_case_summary(tc: object) -> dict[str, object]:
+    status_obj = getattr(tc, "status", None)
+    status_name = getattr(status_obj, "name", None) if status_obj is not None else None
+
+    tags_raw = getattr(tc, "tags", None)
+    tags: list[str] = []
+    if isinstance(tags_raw, list):
+        for tag in tags_raw:
+            tag_name = getattr(tag, "name", None)
+            if isinstance(tag_name, str):
+                tags.append(tag_name)
+
+    return {
+        "id": getattr(tc, "id", None),
+        "name": getattr(tc, "name", None),
+        "status": status_name or "unknown",
+        "tags": tags,
+    }
+
+
+def _serialize_test_case_list_result(result: TestCaseListResult) -> dict[str, object]:
+    items = [_serialize_test_case_summary(tc) for tc in result.items]
+    return {
+        "total": result.total,
+        "page": result.page,
+        "size": result.size,
+        "total_pages": result.total_pages,
+        "items": items,
+    }
 
 
 def _format_test_case_details(details: TestCaseDetails) -> str:
@@ -233,6 +292,57 @@ def _format_test_case_details(details: TestCaseDetails) -> str:
     _append_attachments(lines, scenario)
 
     return "\n".join(lines)
+
+
+def _serialize_test_case_details(details: TestCaseDetails) -> dict[str, object]:
+    tc = details.test_case
+    scenario = details.scenario
+
+    steps: list[dict[str, object]] = []
+    for i, step in enumerate(getattr(scenario, "steps", []) or [], 1):
+        actual = _get_raw(step, ["actual_instance"]) or _get_raw(step, ["actual"])
+        body = _get_text(actual, ["body", "description", "action"]) or _get_text(step, ["body", "description"])
+        expected = _get_text(actual, ["expected", "expected_result", "expectedResult"]) or _get_text(
+            step, ["expected", "expected_result", "expectedResult"]
+        )
+        step_payload: dict[str, object] = {"index": i, "action": body or "Step"}
+        if expected is not None:
+            step_payload["expected"] = expected
+        steps.append(step_payload)
+
+    custom_fields: list[dict[str, str]] = []
+    for cf in getattr(tc, "custom_fields", None) or []:
+        key = _get_text(getattr(cf, "custom_field", None), ["name"]) or _get_text(
+            cf, ["custom_field_name", "field_name", "name"]
+        )
+        value = _get_text(cf, ["value", "value_text", "valueName", "value_name", "name"])
+        if key and value:
+            custom_fields.append({"name": key, "value": value})
+
+    attachments: list[dict[str, str]] = []
+    for att in getattr(scenario, "attachments", None) or []:
+        name = _get_text(att, ["name", "file_name", "filename", "title"]) or "attachment"
+        attachment_id = _get_text(att, ["id", "attachment_id", "attachmentId"])
+        payload: dict[str, str] = {"name": name}
+        if attachment_id:
+            payload["id"] = attachment_id
+        attachments.append(payload)
+
+    status_obj = getattr(tc, "status", None)
+    status_name = getattr(status_obj, "name", None) if status_obj is not None else None
+    tags = [t.name for t in getattr(tc, "tags", []) or [] if getattr(t, "name", None)]
+
+    return {
+        "id": getattr(tc, "id", None),
+        "name": getattr(tc, "name", None),
+        "status": status_name or "unknown",
+        "description": getattr(tc, "description", None),
+        "precondition": getattr(tc, "precondition", None),
+        "tags": tags,
+        "custom_fields": custom_fields,
+        "attachments": attachments,
+        "steps": steps,
+    }
 
 
 def _format_search_results(result: TestCaseListResult, query: str) -> str:

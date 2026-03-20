@@ -30,7 +30,7 @@ async def test_list_custom_field_values_output_format() -> None:
             mock_service = mock_service_cls.return_value
             mock_service.list_custom_field_values = AsyncMock(return_value=mock_page)
 
-            output = await list_custom_field_values(custom_field_id=10)
+            output = await list_custom_field_values(custom_field_id=10, output_format="plain")
 
             assert "Found 2 custom field values" in output
             assert "ID: 1, Name: Smoke" in output
@@ -50,7 +50,7 @@ async def test_list_custom_field_values_empty() -> None:
             mock_service = mock_service_cls.return_value
             mock_service.list_custom_field_values = AsyncMock(return_value=mock_page)
 
-            output = await list_custom_field_values(custom_field_id=10)
+            output = await list_custom_field_values(custom_field_id=10, output_format="plain")
 
             assert "No custom field values found" in output
 
@@ -67,7 +67,7 @@ async def test_create_custom_field_value_output() -> None:
             mock_service = mock_service_cls.return_value
             mock_service.create_custom_field_value = AsyncMock(return_value=mock_value)
 
-            output = await create_custom_field_value(custom_field_id=10, name="Smoke")
+            output = await create_custom_field_value(custom_field_id=10, name="Smoke", output_format="plain")
 
             assert "✅ Custom field value created successfully!" in output
             assert "ID: 99" in output
@@ -84,7 +84,13 @@ async def test_update_custom_field_value_output() -> None:
             mock_service = mock_service_cls.return_value
             mock_service.update_custom_field_value = AsyncMock(return_value=None)
 
-            output = await update_custom_field_value(cfv_id=7, name="Updated", custom_field_id=10, confirm=True)
+            output = await update_custom_field_value(
+                cfv_id=7,
+                name="Updated",
+                custom_field_id=10,
+                confirm=True,
+                output_format="plain",
+            )
 
             assert "✅ Custom field value 7 updated successfully!" in output
             assert "New name: Updated" in output
@@ -100,7 +106,7 @@ async def test_delete_custom_field_value_output_deleted() -> None:
             mock_service = mock_service_cls.return_value
             mock_service.delete_custom_field_value = AsyncMock(return_value=True)
 
-            output = await delete_custom_field_value(cfv_id=12, custom_field_id=10, confirm=True)
+            output = await delete_custom_field_value(cfv_id=12, custom_field_id=10, confirm=True, output_format="plain")
 
             assert "✅ Custom field value 12 deleted successfully!" in output
 
@@ -115,6 +121,6 @@ async def test_delete_custom_field_value_output_missing() -> None:
             mock_service = mock_service_cls.return_value
             mock_service.delete_custom_field_value = AsyncMock(return_value=False)
 
-            output = await delete_custom_field_value(cfv_id=12, custom_field_id=10, confirm=True)
+            output = await delete_custom_field_value(cfv_id=12, custom_field_id=10, confirm=True, output_format="plain")
 
             assert "already removed" in output

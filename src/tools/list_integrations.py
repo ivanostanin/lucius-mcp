@@ -6,6 +6,7 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.integration_service import IntegrationService
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
 
 
 async def list_integrations(
@@ -19,6 +20,9 @@ async def list_integrations(
             )
         ),
     ] = None,
+    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
 ) -> str:
     """List available integrations (issue trackers) in Allure TestOps.
 
@@ -29,6 +33,7 @@ async def list_integrations(
         project_id: Optional override for the default Project ID.
             When provided (or from environment default), integrations are filtered
             to those available for that project.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         A formatted list of available integrations with their IDs and names.
@@ -49,14 +54,20 @@ async def list_integrations(
         integrations = await service.list_integrations(project_id=client.get_project())
 
         if not integrations:
-            return (
+            plain_output = (
                 "📋 No integrations configured.\n\n"
                 "Integrations connect Allure TestOps to external issue trackers "
                 "(Jira, GitHub, etc.). Contact your Allure admin to configure integrations."
             )
+            return render_output(
+                plain=plain_output,
+                json_payload={"items": [], "total": 0},
+                output_format=output_format,
+            )
 
         # Format output
         lines: list[str] = [f"📋 **Available Integrations** ({len(integrations)} found):\n"]
+        items: list[dict[str, object]] = []
 
         for integration in integrations:
             name = integration.name or "(unnamed)"
@@ -67,6 +78,13 @@ async def list_integrations(
                 info_type = getattr(integration.info.type, "value", str(integration.info.type))
                 info_type = f" [{info_type.lower()}]"
             lines.append(f"• **{name}** (ID: {int_id}){info_type}")
+            items.append(
+                {
+                    "id": integration.id,
+                    "name": name,
+                    "type": info_type.strip(" []") if info_type else None,
+                }
+            )
 
         lines.append("")
         lines.append(
@@ -74,4 +92,8 @@ async def list_integrations(
             "test cases with issues to specify which integration to use."
         )
 
-        return "\n".join(lines)
+        return render_output(
+            plain="\n".join(lines),
+            json_payload={"items": items, "total": len(items)},
+            output_format=output_format,
+        )

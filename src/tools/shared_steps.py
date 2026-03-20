@@ -4,6 +4,7 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.shared_step_service import SharedStepService
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
 
 
 async def create_shared_step(
@@ -21,6 +22,9 @@ async def create_shared_step(
         ),
     ] = None,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
 ) -> str:
     """Create a new reusable Shared Step.
 
@@ -34,18 +38,29 @@ async def create_shared_step(
                  - name (str): Filename.
                - steps (list[dict], optional): Nested steps (recursive structure).
         project_id: Optional override for the default Project ID.
+        output_format: Output format: plain (default) or json.
     """
 
     async with AllureClient.from_env(project=project_id) as client:
         service = SharedStepService(client=client)
         shared_step = await service.create_shared_step(name=name, steps=steps)
 
-        return (
+        plain_output = (
             f"Successfully created Shared Step:\n"
             f"ID: {shared_step.id}\n"
             f"Name: {shared_step.name}\n"
             f"Project ID: {shared_step.project_id}\n"
             f"URL: {client._base_url}/project/{project_id}/settings/shared-steps/{shared_step.id}"
+        )
+        return render_output(
+            plain=plain_output,
+            json_payload={
+                "id": shared_step.id,
+                "name": shared_step.name,
+                "project_id": shared_step.project_id,
+                "url": f"{client._base_url}/project/{project_id}/settings/shared-steps/{shared_step.id}",
+            },
+            output_format=output_format,
         )
 
 
@@ -55,6 +70,9 @@ async def list_shared_steps(
     search: Annotated[str | None, Field(description="Optional search query to filter by name.")] = None,
     archived: Annotated[bool, Field(description="Whether to include archived steps (default False).")] = False,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
 ) -> str:
     """List shared steps in a project to find existing ones.
 
@@ -64,14 +82,32 @@ async def list_shared_steps(
         search: Optional search query to filter by name.
         archived: Whether to include archived steps (default False).
         project_id: Optional override for the default Project ID.
+        output_format: Output format: plain (default) or json.
     """
 
     async with AllureClient.from_env(project=project_id) as client:
         service = SharedStepService(client=client)
         steps = await service.list_shared_steps(page=page, size=size, search=search, archived=archived)
+        payload_items = [
+            {
+                "id": s.id,
+                "name": s.name,
+                "steps_count": s.steps_count,
+            }
+            for s in steps
+        ]
 
         if not steps:
-            return f"No shared steps found for project {project_id}."
+            return render_output(
+                plain=f"No shared steps found for project {project_id}.",
+                json_payload={
+                    "items": [],
+                    "total": 0,
+                    "page": page,
+                    "size": size,
+                },
+                output_format=output_format,
+            )
 
         output = [f"Found {len(steps)} shared steps for project {project_id}:"]
         for s in steps:
@@ -79,7 +115,16 @@ async def list_shared_steps(
             count_info = f" ({s.steps_count} steps)" if s.steps_count is not None else ""
             output.append(f"- [ID: {s.id}] {s.name}{count_info}")
 
-        return "\n".join(output)
+        return render_output(
+            plain="\n".join(output),
+            json_payload={
+                "items": payload_items,
+                "total": len(payload_items),
+                "page": page,
+                "size": size,
+            },
+            output_format=output_format,
+        )
 
 
 async def update_shared_step(
@@ -88,6 +133,9 @@ async def update_shared_step(
     description: Annotated[str | None, Field(description="New description (optional).")] = None,
     confirm: Annotated[bool, Field(description="Must be set to True to proceed with update. Safety measure.")] = False,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
 ) -> str:
     """Update an existing shared step.
     ⚠️ CAUTION: Destructive.
@@ -105,6 +153,7 @@ async def update_shared_step(
         confirm: Must be set to True to proceed with update.
             This is a safety measure to prevent accidental updates.
         project_id: Optional override for the default Project ID.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         Confirmation message with summary of changes.
@@ -117,10 +166,19 @@ async def update_shared_step(
         )
     """
     if not confirm:
-        return (
+        message = (
             "⚠️ Update requires confirmation.\n\n"
             "Changes propagate to ALL test cases using this shared step. "
             f"Please call again with confirm=True to proceed with updating shared step {step_id}."
+        )
+        return render_output(
+            plain=message,
+            json_payload={
+                "requires_confirmation": True,
+                "step_id": step_id,
+                "action": "update_shared_step",
+            },
+            output_format=output_format,
         )
 
     async with AllureClient.from_env(project=project_id) as client:
@@ -128,8 +186,15 @@ async def update_shared_step(
         updated, changed = await service.update_shared_step(step_id=step_id, name=name, description=description)
 
         if not changed:
-            return (
-                f"No changes needed for Shared Step {step_id}\n\nThe shared step already matches the requested state."
+            return render_output(
+                plain=f"No changes needed for Shared Step {step_id}\n\n"
+                "The shared step already matches the requested state.",
+                json_payload={
+                    "id": step_id,
+                    "changed": False,
+                    "name": getattr(updated, "name", None),
+                },
+                output_format=output_format,
             )
 
         msg_parts = [f"✅ Updated Shared Step {step_id}: '{updated.name}'", "\nChanges applied:"]
@@ -138,13 +203,25 @@ async def update_shared_step(
         if description:
             msg_parts.append(f"- description: '{description}'")
 
-        return "\n".join(msg_parts)
+        return render_output(
+            plain="\n".join(msg_parts),
+            json_payload={
+                "id": step_id,
+                "name": updated.name,
+                "changed": True,
+                "updated_fields": [field for field, value in (("name", name), ("description", description)) if value],
+            },
+            output_format=output_format,
+        )
 
 
 async def delete_shared_step(
     step_id: Annotated[int, Field(description="The shared step ID to delete (required).")],
     confirm: Annotated[bool, Field(description="Must be True to proceed (safety measure).")] = False,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
 ) -> str:
     """Delete a shared step from the library.
     ⚠️ CAUTION: Destructive.
@@ -156,6 +233,7 @@ async def delete_shared_step(
         step_id: The shared step ID to delete (required).
         confirm: Must be True to proceed (safety measure).
         project_id: Optional override for the default Project ID.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         Confirmation message.
@@ -168,10 +246,19 @@ async def delete_shared_step(
         This performs a soft delete by archiving the shared step.
     """
     if not confirm:
-        return (
+        message = (
             "⚠️ Deletion requires confirmation.\n\n"
             "Deleting a shared step used by test cases will be breaking those references. "
             f"Please call again with confirm=True to proceed with archiving shared step {step_id}."
+        )
+        return render_output(
+            plain=message,
+            json_payload={
+                "requires_confirmation": True,
+                "step_id": step_id,
+                "action": "delete_shared_step",
+            },
+            output_format=output_format,
         )
 
     async with AllureClient.from_env(project=project_id) as client:
@@ -179,6 +266,13 @@ async def delete_shared_step(
         deleted = await service.delete_shared_step(step_id=step_id)
 
         if deleted:
-            return f"✅ Archived Shared Step {step_id}\n\nThe shared step has been successfully archived."
-        else:
-            return f"ℹ️ Shared Step {step_id} was already archived or doesn't exist."  # noqa: RUF001
+            return render_output(
+                plain=f"✅ Archived Shared Step {step_id}\n\nThe shared step has been successfully archived.",
+                json_payload={"id": step_id, "status": "archived"},
+                output_format=output_format,
+            )
+        return render_output(
+            plain=f"ℹ️ Shared Step {step_id} was already archived or doesn't exist.",  # noqa: RUF001
+            json_payload={"id": step_id, "status": "already_archived"},
+            output_format=output_format,
+        )

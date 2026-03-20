@@ -2,12 +2,14 @@ from typing import Annotated
 
 from src.client import AllureClient
 from src.services.plan_service import PlanService
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
 
 
 async def create_test_plan(
     name: Annotated[str, "Name of the test plan"],
     test_case_ids: Annotated[list[int] | None, "List of Test Case IDs to include"] = None,
     aql_filter: Annotated[str | None, "AQL query to select test cases"] = None,
+    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
 ) -> str:
     """Create a new Test Plan in Allure TestOps.
 
@@ -22,6 +24,7 @@ async def create_test_plan(
         test_case_ids: Optional list of numeric Test Case IDs to include initially.
         aql_filter: Optional AQL query string to dynamically select test cases
             (e.g., 'tag in ["smoke", "regression"]').
+        output_format: Output format: plain (default) or json.
 
     Returns:
         A success message containing the ID and Name of the created plan.
@@ -33,12 +36,23 @@ async def create_test_plan(
             test_case_ids=test_case_ids,
             aql_filter=aql_filter,
         )
-        return f"Created Test Plan {plan.id}: '{plan.name}'"
+        message = f"Created Test Plan {plan.id}: '{plan.name}'"
+        return render_output(
+            plain=message,
+            json_payload={
+                "id": plan.id,
+                "name": plan.name,
+                "aql_filter": aql_filter,
+                "test_case_ids": test_case_ids or [],
+            },
+            output_format=output_format,
+        )
 
 
 async def update_test_plan(
     plan_id: Annotated[int, "ID of the test plan"],
     name: Annotated[str | None, "New name"] = None,
+    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
 ) -> str:
     """Update the metadata of an existing Test Plan.
 
@@ -47,6 +61,7 @@ async def update_test_plan(
     Args:
         plan_id: The numeric ID of the Test Plan to update.
         name: The new name for the Test Plan.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         A success message confirming the update with the Plan ID and new Name.
@@ -54,7 +69,15 @@ async def update_test_plan(
     async with AllureClient.from_env() as client:
         service = PlanService(client)
         plan = await service.update_plan(plan_id=plan_id, name=name)
-        return f"Updated Test Plan {plan.id}: '{plan.name}'"
+        message = f"Updated Test Plan {plan.id}: '{plan.name}'"
+        return render_output(
+            plain=message,
+            json_payload={
+                "id": plan.id,
+                "name": plan.name,
+            },
+            output_format=output_format,
+        )
 
 
 async def manage_test_plan_content(
@@ -62,6 +85,7 @@ async def manage_test_plan_content(
     add_test_case_ids: Annotated[list[int] | None, "List of Test Case IDs to add"] = None,
     remove_test_case_ids: Annotated[list[int] | None, "List of Test Case IDs to remove"] = None,
     update_aql_filter: Annotated[str | None, "Update the AQL filter string"] = None,
+    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
 ) -> str:
     """Modify the content (Test Cases) of an existing Test Plan.
 
@@ -74,6 +98,7 @@ async def manage_test_plan_content(
         remove_test_case_ids: List of Test Case IDs to remove from the plan.
         update_aql_filter: New AQL query string to replace the existing one.
             Use this to change the dynamic criteria for test case selection.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         A success message confirming the content update.
@@ -86,12 +111,23 @@ async def manage_test_plan_content(
             test_case_ids_remove=remove_test_case_ids,
             aql_filter=update_aql_filter,
         )
-        return f"Updated content for Test Plan {plan_id}"
+        message = f"Updated content for Test Plan {plan_id}"
+        return render_output(
+            plain=message,
+            json_payload={
+                "plan_id": plan_id,
+                "add_test_case_ids": add_test_case_ids or [],
+                "remove_test_case_ids": remove_test_case_ids or [],
+                "aql_filter": update_aql_filter,
+            },
+            output_format=output_format,
+        )
 
 
 async def list_test_plans(
     page: Annotated[int, "Page number (0-based)"] = 0,
     size: Annotated[int, "Page size"] = 100,
+    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
 ) -> str:
     """List Test Plans for the current project.
 
@@ -101,6 +137,7 @@ async def list_test_plans(
     Args:
         page: The page number to retrieve (0-based index). Defaults to 0.
         size: The number of items per page. Defaults to 100.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         A formatted string listing the Test Plans found, or a message indicating
@@ -111,20 +148,31 @@ async def list_test_plans(
         plans = await service.list_plans(page=page, size=size)
 
         if not plans:
-            return "No test plans found."
+            return render_output(
+                plain="No test plans found.",
+                json_payload={"items": [], "total": 0, "page": page, "size": size},
+                output_format=output_format,
+            )
 
         result = []
+        items: list[dict[str, object]] = []
         for p in plans:
             # Note: test_cases_count field might be None
             count = p.test_cases_count or 0
             result.append(f"[{p.id}] {p.name} ({count} cases)")
+            items.append({"id": p.id, "name": p.name, "test_cases_count": count})
 
-        return "\n".join(result)
+        return render_output(
+            plain="\n".join(result),
+            json_payload={"items": items, "total": len(items), "page": page, "size": size},
+            output_format=output_format,
+        )
 
 
 async def delete_test_plan(
     plan_id: Annotated[int, "ID of the test plan to delete"],
     confirm: Annotated[bool, "Must be set to True to proceed with deletion. Safety measure."] = False,
+    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
 ) -> str:
     """Delete a Test Plan.
     ⚠️ CAUTION: Destructive.
@@ -135,18 +183,32 @@ async def delete_test_plan(
     Args:
         plan_id: The numeric ID of the Test Plan to delete.
         confirm: Must be set to True to proceed with deletion.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         A formatted success message or a warning if confirmation is missing.
     """
     if not confirm:
-        return (
+        message = (
             "⚠️ Deletion requires confirmation.\n\n"
             "This action permanently deletes the Test Plan. "
             f"Please call again with confirm=True to proceed with deleting test plan {plan_id}."
+        )
+        return render_output(
+            plain=message,
+            json_payload={
+                "requires_confirmation": True,
+                "plan_id": plan_id,
+                "action": "delete_test_plan",
+            },
+            output_format=output_format,
         )
 
     async with AllureClient.from_env() as client:
         service = PlanService(client)
         await service.delete_plan(plan_id=plan_id)
-        return f"Successfully deleted Test Plan {plan_id}."
+        return render_output(
+            plain=f"Successfully deleted Test Plan {plan_id}.",
+            json_payload={"plan_id": plan_id, "status": "deleted"},
+            output_format=output_format,
+        )

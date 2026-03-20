@@ -44,6 +44,7 @@ async def test_create_test_case_tool_success(mock_service: Mock, mock_client: Mo
         tags=tags,
         custom_fields=custom_fields,
         test_layer_id=5,
+        output_format="plain",
     )
 
     assert "777" in result
@@ -78,6 +79,7 @@ async def test_create_test_case_tool_with_issues(mock_service: Mock, mock_client
     result = await create_test_case(
         name=name,
         issues=issues,
+        output_format="plain",
     )
 
     assert "778" in result

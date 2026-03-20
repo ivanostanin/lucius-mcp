@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from rich.console import Console
 
+from src.cli import cli_entry
 from src.cli.cli_entry import (
     ActionSpec,
     CLIError,
@@ -142,33 +143,68 @@ class TestE2ERouting:
 
     def test_run_cli_executes_mapped_action(self) -> None:
         with (
-            patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value={"ok": True})) as mock_call,
+            patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value='{"ok":true}')) as mock_call,
+            patch.object(cli_entry.console_out, "print") as mock_print,
             patch("src.cli.cli_entry.format_output_data") as mock_format,
         ):
             run_cli(["test_case", "list", "--args", "{}", "--format", "json"])
 
-        mock_call.assert_awaited_once_with("list_test_cases", {})
-        mock_format.assert_called_once_with({"ok": True}, "json")
+        mock_call.assert_awaited_once_with("list_test_cases", {"output_format": "json"})
+        mock_print.assert_called_once_with('{"ok":true}', end="")
+        mock_format.assert_not_called()
 
     def test_run_cli_uses_json_default_when_format_is_omitted(self) -> None:
         with (
-            patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value={"ok": True})) as mock_call,
+            patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value='{"ok":true}')) as mock_call,
+            patch.object(cli_entry.console_out, "print") as mock_print,
             patch("src.cli.cli_entry.format_output_data") as mock_format,
         ):
             run_cli(["test_case", "list", "--args", "{}"])
 
-        mock_call.assert_awaited_once_with("list_test_cases", {})
-        mock_format.assert_called_once_with({"ok": True}, "json")
+        mock_call.assert_awaited_once_with("list_test_cases", {"output_format": "json"})
+        mock_print.assert_called_once_with('{"ok":true}', end="")
+        mock_format.assert_not_called()
+
+    def test_run_cli_plain_mode_passthrough(self) -> None:
+        with (
+            patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value="line1\nline2")) as mock_call,
+            patch.object(cli_entry.console_out, "print") as mock_print,
+            patch("src.cli.cli_entry.format_output_data") as mock_format,
+        ):
+            run_cli(["test_case", "list", "--args", "{}", "--format", "plain"])
+
+        mock_call.assert_awaited_once_with("list_test_cases", {"output_format": "plain"})
+        mock_print.assert_called_once_with("line1\nline2", end="")
+        mock_format.assert_not_called()
 
     def test_run_cli_executes_csv_format(self) -> None:
         with (
-            patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value=[{"id": 1}])) as mock_call,
+            patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value='[{"id":1}]')) as mock_call,
             patch("src.cli.cli_entry.format_output_data") as mock_format,
         ):
             run_cli(["test_case", "list", "--args", "{}", "--format", "csv"])
 
-        mock_call.assert_awaited_once_with("list_test_cases", {})
+        mock_call.assert_awaited_once_with("list_test_cases", {"output_format": "json"})
         mock_format.assert_called_once_with([{"id": 1}], "csv")
+
+    def test_run_cli_executes_csv_format_from_items_envelope(self) -> None:
+        with (
+            patch(
+                "src.cli.cli_entry.call_tool_function",
+                new=AsyncMock(return_value='{"items":[{"id":1,"name":"Alpha"}],"total":1}'),
+            ) as mock_call,
+            patch("src.cli.cli_entry.format_output_data") as mock_format,
+        ):
+            run_cli(["test_case", "list", "--args", "{}", "--format", "csv"])
+
+        mock_call.assert_awaited_once_with("list_test_cases", {"output_format": "json"})
+        mock_format.assert_called_once_with([{"id": 1, "name": "Alpha"}], "csv")
+
+    def test_run_cli_csv_rejects_invalid_json_tool_output(self) -> None:
+        with patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value="not-json")):
+            with pytest.raises(CLIError) as exc_info:
+                run_cli(["test_case", "list", "--args", "{}", "--format", "csv"])
+        assert "invalid json" in exc_info.value.message.lower()
 
     def test_run_cli_invalid_json(self) -> None:
         with pytest.raises(CLIError) as exc_info:
@@ -191,7 +227,7 @@ class TestCLIImportBoundary:
         sys.modules.pop("fastmcp", None)
         sys.modules.pop("src.main", None)
         with (
-            patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value={"ok": True})),
+            patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value='{"ok":true}')),
             patch("src.cli.cli_entry.format_output_data"),
         ):
             run_cli(["test_case", "list", "--args", "{}"])

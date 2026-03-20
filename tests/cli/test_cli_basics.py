@@ -27,20 +27,49 @@ def run_cli_with_mocked_result(
     mocked_result: object,
 ) -> subprocess.CompletedProcess[str]:
     """Run CLI routing in a subprocess with a mocked async tool result."""
-    payload = json.dumps(mocked_result)
+    payload = repr(mocked_result)
     script = "\n".join(
         [
-            "import json",
             "from src.cli import cli_entry",
-            f"_payload = {payload!r}",
+            f"_payload = {payload}",
             "async def _fake(_tool_name, _args):",
-            "    return json.loads(_payload)",
+            "    return _payload",
             "cli_entry.call_tool_function = _fake",
             f"cli_entry.run_cli({args!r})",
         ]
     )
     return subprocess.run(
         [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        cwd=PROJECT_ROOT,
+    )
+
+
+def run_cli_with_mocked_result_via_uv(
+    args: list[str],
+    tool_name: str,
+    mocked_result: object,
+    expected_tool_output_format: str,
+) -> subprocess.CompletedProcess[str]:
+    """Run CLI via `uv run` subprocess with a stubbed tool function."""
+    payload = repr(mocked_result)
+    script = "\n".join(
+        [
+            "from src.cli import cli_entry",
+            "import src.tools as tools",
+            f"_payload = {payload}",
+            f"_tool_name = {tool_name!r}",
+            f"_expected = {expected_tool_output_format!r}",
+            "async def _fake(**kwargs):",
+            "    assert kwargs.get('output_format') == _expected, (_expected, kwargs)",
+            "    return _payload",
+            "setattr(tools, _tool_name, _fake)",
+            f"cli_entry.run_cli({args!r})",
+        ]
+    )
+    return subprocess.run(
+        ["uv", "run", "--python", "3.13", "python", "-c", script],
         capture_output=True,
         text=True,
         cwd=PROJECT_ROOT,
@@ -145,21 +174,22 @@ def test_process_cli_default_json_output_without_format_flag():
     """Process-level check: action output defaults to JSON when --format is omitted."""
     result = run_cli_with_mocked_result(
         ["test_case", "list", "--args", "{}"],
-        {"ok": True, "count": 2},
+        '{"ok":true,"count":2}',
     )
     assert result.returncode == 0
-    assert '"ok"' in result.stdout
-    assert '"count"' in result.stdout
+    assert result.stdout.strip() == '{"ok":true,"count":2}'
 
 
 def test_process_cli_csv_output_rendering():
     """Process-level check: CSV output renders tabular rows with header."""
     result = run_cli_with_mocked_result(
         ["test_case", "list", "--args", "{}", "--format", "csv"],
-        [
-            {"id": 1, "name": "Alpha"},
-            {"id": 2, "name": "Beta", "tags": ["smoke", "regression"]},
-        ],
+        json.dumps(
+            [
+                {"id": 1, "name": "Alpha"},
+                {"id": 2, "name": "Beta", "tags": ["smoke", "regression"]},
+            ]
+        ),
     )
     assert result.returncode == 0
     lines = result.stdout.strip().splitlines()
@@ -168,12 +198,88 @@ def test_process_cli_csv_output_rendering():
     assert lines[2].startswith("2,Beta,")
 
 
-def test_process_cli_plain_output_renders_escaped_newlines():
-    """Process-level check: plain output converts literal \\n to actual line breaks."""
+def test_process_cli_csv_output_renders_items_envelope():
+    """Process-level check: CSV renderer uses envelope['items'] rows when present."""
     result = run_cli_with_mocked_result(
-        ["test_case", "get", "--args", '{"test_case_id": 1}', "--format", "plain"],
-        {"message": "line1\\nline2"},
+        ["test_case", "list", "--args", "{}", "--format", "csv"],
+        json.dumps({"items": [{"id": 1, "name": "Alpha"}], "total": 1}),
     )
     assert result.returncode == 0
-    assert "line1\nline2" in result.stdout
-    assert "line1\\nline2" not in result.stdout
+    lines = result.stdout.strip().splitlines()
+    assert lines[0] == "id,name"
+    assert lines[1] == "1,Alpha"
+
+
+def test_process_cli_plain_output_renders_escaped_newlines():
+    """Process-level check: plain output is passed through unchanged from tool result."""
+    result = run_cli_with_mocked_result(
+        ["test_case", "get", "--args", '{"test_case_id": 1}', "--format", "plain"],
+        "line1\nline2",
+    )
+    assert result.returncode == 0
+    assert result.stdout == "line1\nline2"
+
+
+def test_uv_run_cli_default_requests_json_and_returns_json() -> None:
+    """E2E (uv run): default CLI format requests JSON tool output and returns it unchanged."""
+    result = run_cli_with_mocked_result_via_uv(
+        ["test_case", "list", "--args", "{}"],
+        "list_test_cases",
+        '{"ok":true,"count":2}',
+        expected_tool_output_format="json",
+    )
+    assert result.returncode == 0
+    assert result.stdout.strip() == '{"ok":true,"count":2}'
+
+
+def test_uv_run_cli_plain_requests_plain_and_returns_plain() -> None:
+    """E2E (uv run): plain CLI format requests plain tool output and returns it unchanged."""
+    result = run_cli_with_mocked_result_via_uv(
+        ["test_case", "get", "--args", '{"test_case_id": 1}', "--format", "plain"],
+        "get_test_case_details",
+        "line1\nline2",
+        expected_tool_output_format="plain",
+    )
+    assert result.returncode == 0
+    assert result.stdout == "line1\nline2"
+
+
+def test_uv_run_cli_csv_requests_json_and_renders_csv() -> None:
+    """E2E (uv run): csv CLI format requests JSON tool output and renders CSV."""
+    result = run_cli_with_mocked_result_via_uv(
+        ["test_case", "list", "--args", "{}", "--format", "csv"],
+        "list_test_cases",
+        json.dumps([{"id": 1, "name": "Alpha"}, {"id": 2, "name": "Beta"}]),
+        expected_tool_output_format="json",
+    )
+    assert result.returncode == 0
+    lines = result.stdout.strip().splitlines()
+    assert lines[0] == "id,name"
+    assert lines[1] == "1,Alpha"
+    assert lines[2] == "2,Beta"
+
+
+def test_uv_run_cli_table_requests_json_and_renders_table() -> None:
+    """E2E (uv run): table CLI format requests JSON tool output and renders table."""
+    result = run_cli_with_mocked_result_via_uv(
+        ["test_case", "list", "--args", "{}", "--format", "table"],
+        "list_test_cases",
+        json.dumps([{"id": 1, "name": "Alpha"}]),
+        expected_tool_output_format="json",
+    )
+    assert result.returncode == 0
+    assert "Command Result" in result.stdout
+    assert "Alpha" in result.stdout
+
+
+def test_uv_run_cli_csv_rejects_invalid_json_tool_output() -> None:
+    """E2E (uv run): csv CLI format fails hard when tool does not return JSON."""
+    result = run_cli_with_mocked_result_via_uv(
+        ["test_case", "list", "--args", "{}", "--format", "csv"],
+        "list_test_cases",
+        "not-json",
+        expected_tool_output_format="json",
+    )
+    assert result.returncode != 0
+    output = result.stderr + result.stdout
+    assert "invalid json" in output.lower()

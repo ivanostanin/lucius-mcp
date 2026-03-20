@@ -269,6 +269,17 @@ def format_output_data(data: typing.Any, output_format: str = "json") -> None:
         )
 
 
+def select_tabular_payload(data: typing.Any) -> typing.Any:
+    """Prefer row collections from JSON envelopes for table/csv rendering."""
+    if not isinstance(data, dict):
+        return data
+
+    items = data.get("items")
+    if isinstance(items, list):
+        return items
+    return data
+
+
 def build_command_registry(schemas: dict[str, typing.Any]) -> dict[str, dict[str, ActionSpec]]:
     """Build {entity: {action: ActionSpec}} from canonical route matrix."""
     registry: dict[str, dict[str, ActionSpec]] = {}
@@ -649,8 +660,37 @@ def run_cli(argv: list[str]) -> None:
         )
 
     validate_args_against_schema(args_dict, f"{entity} {action}", spec.schema)
-    result = asyncio.run(call_tool_function(spec.tool_name, args_dict))
-    format_output_data(result, options.output_format)
+    tool_output_format = "plain" if options.output_format == "plain" else "json"
+    tool_args = {**args_dict, "output_format": tool_output_format}
+    result = asyncio.run(call_tool_function(spec.tool_name, tool_args))
+
+    if options.output_format in {"plain", "json"}:
+        if isinstance(result, str):
+            console_out.print(result, end="")
+            return
+        raise CLIError(
+            f"Tool '{spec.tool_name}' returned non-string output for '{options.output_format}' mode",
+            hint="Tool output contract requires plain/json modes to return serialized text output.",
+            exit_code=2,
+        )
+
+    if not isinstance(result, str):
+        raise CLIError(
+            f"Tool '{spec.tool_name}' returned non-string output for '{options.output_format}' mode",
+            hint="Tool output contract requires JSON text output for table/csv rendering.",
+            exit_code=2,
+        )
+
+    try:
+        parsed: typing.Any = json.loads(result)
+    except json.JSONDecodeError as exc:
+        raise CLIError(
+            f"Tool '{spec.tool_name}' returned invalid JSON for '{options.output_format}' mode: {exc}",
+            hint="Tool output contract requires valid JSON text output for table/csv rendering.",
+            exit_code=2,
+        ) from None
+
+    format_output_data(select_tabular_payload(parsed), options.output_format)
 
 
 def main() -> None:

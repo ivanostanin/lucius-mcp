@@ -103,7 +103,7 @@ __all__ = [
     "update_test_plan",
 ]
 
-ToolFn = Callable[..., Awaitable[object]]
+ToolFn = Callable[..., Awaitable[str]]
 
 all_tools: list[ToolFn] = [
     create_test_case,

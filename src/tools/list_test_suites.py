@@ -13,6 +13,7 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.test_hierarchy_service import SuiteNode, TestHierarchyService
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
 
 
 def _format_suite_lines(nodes: list[SuiteNode], indent: int = 0) -> list[str]:
@@ -34,6 +35,9 @@ async def list_test_suites(
         bool,
         Field(description="Whether to include suites that have no nested child suites. Default is True."),
     ] = True,
+    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
 ) -> str:
     """List hierarchy suites for a project tree.
 
@@ -41,6 +45,7 @@ async def list_test_suites(
         project_id: Optional project override. If omitted, use default project from environment.
         tree_id: Optional hierarchy tree ID. If omitted, the default project tree is used.
         include_empty: Whether to include suites without nested child suites.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         Hierarchical text output with tree info and suite nodes.
@@ -51,13 +56,43 @@ async def list_test_suites(
 
     tree_name = tree.name or "Unnamed tree"
     tree_id_value = tree.id if tree.id is not None else "N/A"
+    suites_payload = _serialize_suite_nodes(suites)
 
     if not suites:
-        return f"Tree '{tree_name}' (ID: {tree_id_value}) has no suites."
+        return render_output(
+            plain=f"Tree '{tree_name}' (ID: {tree_id_value}) has no suites.",
+            json_payload={
+                "tree": {"id": tree.id, "name": tree_name},
+                "items": [],
+                "total": 0,
+            },
+            output_format=output_format,
+        )
 
     lines = [
         f"Tree: {tree_name} (ID: {tree_id_value})",
         f"Found {len(suites)} top-level suites:",
     ]
     lines.extend(_format_suite_lines(suites))
-    return "\n".join(lines)
+    return render_output(
+        plain="\n".join(lines),
+        json_payload={
+            "tree": {"id": tree.id, "name": tree_name},
+            "items": suites_payload,
+            "total": len(suites_payload),
+        },
+        output_format=output_format,
+    )
+
+
+def _serialize_suite_nodes(nodes: list[SuiteNode]) -> list[dict[str, object]]:
+    serialized: list[dict[str, object]] = []
+    for node in nodes:
+        serialized.append(
+            {
+                "id": node.id,
+                "name": node.name,
+                "children": _serialize_suite_nodes(node.children),
+            }
+        )
+    return serialized

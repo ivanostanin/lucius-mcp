@@ -4,7 +4,9 @@ Additional CLI tests to satisfy coverage and error-path requirements.
 
 from __future__ import annotations
 
+import ast
 import asyncio
+import inspect
 import json
 import sys
 from pathlib import Path
@@ -229,8 +231,92 @@ class TestCLICoverageHelpers:
         assert schemas["get_test_case_details"]["entity"] == "test_case"
         assert schemas["get_test_case_details"]["action"] == "get"
         assert "example_command" in schemas["get_test_case_details"]
+        output_format_schema = schemas["get_test_case_details"]["input_schema"]["properties"]["output_format"]
+        assert output_format_schema["default"] == "plain"
+
+    def test_every_route_tool_signature_supports_output_format(self) -> None:
+        for tool_name in all_route_tool_names():
+            fn = _load_tool_function(tool_name)
+            signature = inspect.signature(fn)
+            output_param = signature.parameters.get("output_format")
+            assert output_param is not None, f"{tool_name} missing output_format"
+            assert output_param.default == "plain"
 
     def test_schema_json_serializable(self) -> None:
         schemas = load_tool_schemas()
         serialized = json.dumps(schemas)
         assert "create_test_case" in serialized
+
+    def test_every_async_tool_in_src_tools_has_output_format_default_plain(self) -> None:
+        tools_dir = Path(__file__).resolve().parents[2] / "src" / "tools"
+        skip_modules = {"__init__.py", "annotations.py", "test_layers.py", "output_contract.py"}
+
+        for module_path in sorted(tools_dir.glob("*.py")):
+            if module_path.name in skip_modules:
+                continue
+
+            module = __import__(f"src.tools.{module_path.stem}", fromlist=["*"])
+            for _, fn in inspect.getmembers(module, inspect.iscoroutinefunction):
+                signature = inspect.signature(fn)
+                output_param = signature.parameters.get("output_format")
+                assert output_param is not None, f"{module_path.name}:{fn.__name__} missing output_format"
+                assert output_param.default == "plain", f"{module_path.name}:{fn.__name__} default is not plain"
+
+    def test_every_async_tool_docstring_mentions_output_format(self) -> None:
+        tools_dir = Path(__file__).resolve().parents[2] / "src" / "tools"
+        skip_modules = {"__init__.py", "annotations.py", "test_layers.py", "output_contract.py"}
+
+        for module_path in sorted(tools_dir.glob("*.py")):
+            if module_path.name in skip_modules:
+                continue
+
+            tree = ast.parse(module_path.read_text())
+            for node in tree.body:
+                if not isinstance(node, ast.AsyncFunctionDef):
+                    continue
+
+                param_names = [arg.arg for arg in node.args.args] + [arg.arg for arg in node.args.kwonlyargs]
+                if "output_format" not in param_names:
+                    continue
+
+                docstring = ast.get_docstring(node) or ""
+                assert "output_format:" in docstring, (
+                    f"{module_path.name}:{node.name} docstring must document output_format"
+                )
+
+    def test_every_async_tool_uses_output_format_in_its_body(self) -> None:  # noqa: C901
+        tools_dir = Path(__file__).resolve().parents[2] / "src" / "tools"
+        skip_modules = {"__init__.py", "annotations.py", "test_layers.py", "output_contract.py"}
+        formatter_names = {"render_output", "render_message_output", "apply_output_contract"}
+
+        for module_path in sorted(tools_dir.glob("*.py")):
+            if module_path.name in skip_modules:
+                continue
+
+            tree = ast.parse(module_path.read_text())
+            for node in tree.body:
+                if not isinstance(node, ast.AsyncFunctionDef):
+                    continue
+
+                param_names = [arg.arg for arg in node.args.args] + [arg.arg for arg in node.args.kwonlyargs]
+                if "output_format" not in param_names:
+                    continue
+
+                used = any(isinstance(inner, ast.Name) and inner.id == "output_format" for inner in ast.walk(node))
+                assert used, f"{module_path.name}:{node.name} declares output_format but does not use it"
+
+                formatter_called = False
+                for inner in ast.walk(node):
+                    if not isinstance(inner, ast.Call):
+                        continue
+                    if isinstance(inner.func, ast.Name) and inner.func.id in formatter_names:
+                        for keyword in inner.keywords:
+                            if keyword.arg == "output_format" and isinstance(keyword.value, ast.Name):
+                                if keyword.value.id == "output_format":
+                                    formatter_called = True
+                                    break
+                    if formatter_called:
+                        break
+                assert formatter_called, (
+                    f"{module_path.name}:{node.name} must pass output_format into output formatter helper"
+                )

@@ -6,6 +6,7 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
 
 
 async def delete_test_case(
@@ -14,6 +15,9 @@ async def delete_test_case(
         bool, Field(description="Must be set to True to proceed with deletion. Safety measure.")
     ] = False,
     project_id: Annotated[int | None, Field(description="Optional Allure TestOps project ID override.")] = None,
+    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
 ) -> str:
     """Archive an obsolete test case.
     ⚠️ CAUTION: Destructive.
@@ -30,15 +34,25 @@ async def delete_test_case(
         confirm: Must be set to True to proceed with deletion.
             This is a safety measure to prevent accidental deletions.
         project_id: Optional Allure TestOps project ID override.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         Confirmation message with the archived test case details.
     """
     if not confirm:
-        return (
+        message = (
             "⚠️ Deletion requires confirmation.\n\n"
             "Archiving test cases removes them from active views. "
             f"Please call again with confirm=True to proceed with archiving test case {test_case_id}."
+        )
+        return render_output(
+            plain=message,
+            json_payload={
+                "requires_confirmation": True,
+                "test_case_id": test_case_id,
+                "action": "delete_test_case",
+            },
+            output_format=output_format,
         )
 
     async with AllureClient.from_env(project=project_id) as client:
@@ -46,9 +60,21 @@ async def delete_test_case(
         try:
             result = await service.delete_test_case(test_case_id)
         except Exception as e:
-            return f"Error archiving test case: {e}"
+            return render_output(
+                plain=f"Error archiving test case: {e}",
+                json_payload={"test_case_id": test_case_id, "status": "error", "error": str(e)},
+                output_format=output_format,
+            )
 
         if result.status == "already_deleted":
-            return f"ℹ️ Test Case {test_case_id} was already archived or doesn't exist."  # noqa: RUF001
+            return render_output(
+                plain=f"ℹ️ Test Case {test_case_id} was already archived or doesn't exist.",  # noqa: RUF001
+                json_payload={"test_case_id": test_case_id, "status": "already_archived"},
+                output_format=output_format,
+            )
 
-        return f"✅ Archived Test Case {result.test_case_id}: '{result.name}'"
+        return render_output(
+            plain=f"✅ Archived Test Case {result.test_case_id}: '{result.name}'",
+            json_payload={"test_case_id": result.test_case_id, "name": result.name, "status": "archived"},
+            output_format=output_format,
+        )

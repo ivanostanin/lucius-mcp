@@ -45,6 +45,7 @@ async def test_update_test_case_tool_issues(mock_service: Mock, mock_client: Moc
         remove_issues=remove_issues,
         clear_issues=clear_issues,
         confirm=True,
+        output_format="plain",
     )
 
     assert "99" in result

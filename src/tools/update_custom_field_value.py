@@ -4,6 +4,7 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.custom_field_value_service import CustomFieldValueService
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
 
 
 async def update_custom_field_value(
@@ -19,6 +20,9 @@ async def update_custom_field_value(
     ] = None,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
     confirm: Annotated[bool, Field(description="Must be set to True to proceed with update. Safety measure.")] = False,
+    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
 ) -> str:
     """Update an existing custom field value.
     ⚠️ CAUTION: Destructive.
@@ -31,15 +35,25 @@ async def update_custom_field_value(
         project_id: Optional Allure TestOps project ID override.
         confirm: Must be set to True to proceed with update.
             This is a safety measure to prevent accidental updates.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         Confirmation message indicating whether changes were made.
     """
     if not confirm:
-        return (
+        message = (
             "⚠️ Update requires confirmation.\n\n"
             "Updating a custom field value affects all test cases using it. "
             f"Please call again with confirm=True to proceed with updating custom field value {cfv_id}."
+        )
+        return render_output(
+            plain=message,
+            json_payload={
+                "requires_confirmation": True,
+                "cfv_id": cfv_id,
+                "action": "update_custom_field_value",
+            },
+            output_format=output_format,
         )
 
     async with AllureClient.from_env(project=project_id) as client:
@@ -52,4 +66,13 @@ async def update_custom_field_value(
             name=name,
         )
 
-        return f"✅ Custom field value {cfv_id} updated successfully!\nNew name: {name}"
+        return render_output(
+            plain=f"✅ Custom field value {cfv_id} updated successfully!\nNew name: {name}",
+            json_payload={
+                "id": cfv_id,
+                "name": name,
+                "custom_field_id": custom_field_id,
+                "custom_field_name": custom_field_name,
+            },
+            output_format=output_format,
+        )

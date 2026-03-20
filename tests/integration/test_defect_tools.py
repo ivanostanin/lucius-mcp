@@ -37,7 +37,7 @@ async def test_create_defect_tool() -> None:
             mock_svc = mock_svc_cls.return_value
             mock_svc.create_defect = AsyncMock(return_value=DefectDto(id=10, name="Bug A"))
 
-            output = await create_defect(name="Bug A", description="desc")
+            output = await create_defect(name="Bug A", description="desc", output_format="plain")
 
             assert "Created Defect #10" in output
             assert "'Bug A'" in output
@@ -56,7 +56,7 @@ async def test_get_defect_tool() -> None:
                 return_value=DefectDto(id=10, name="Bug A", closed=False, description="details")
             )
 
-            output = await get_defect(defect_id=10)
+            output = await get_defect(defect_id=10, output_format="plain")
 
             assert "Defect #10" in output
             assert "Status: Open" in output
@@ -73,7 +73,7 @@ async def test_update_defect_tool() -> None:
             mock_svc = mock_svc_cls.return_value
             mock_svc.update_defect = AsyncMock(return_value=DefectDto(id=10, name="Renamed", closed=True))
 
-            output = await update_defect(defect_id=10, name="Renamed", closed=True)
+            output = await update_defect(defect_id=10, name="Renamed", closed=True, output_format="plain")
 
             assert "Updated Defect #10" in output
             assert "Status: Closed" in output
@@ -95,7 +95,7 @@ async def test_delete_defect_tool_confirmed() -> None:
             mock_svc = mock_svc_cls.return_value
             mock_svc.delete_defect = AsyncMock()
 
-            output = await delete_defect(defect_id=10, confirm=True)
+            output = await delete_defect(defect_id=10, confirm=True, output_format="plain")
 
             assert "Deleted Defect #10" in output
             mock_svc.delete_defect.assert_called_once_with(10)
@@ -103,7 +103,7 @@ async def test_delete_defect_tool_confirmed() -> None:
 
 @pytest.mark.asyncio
 async def test_delete_defect_no_confirm() -> None:
-    output = await delete_defect(defect_id=10, confirm=False)
+    output = await delete_defect(defect_id=10, confirm=False, output_format="plain")
 
     assert "aborted" in output.lower()
     assert "confirm=true" in output
@@ -124,7 +124,7 @@ async def test_list_defects_tool() -> None:
                 ]
             )
 
-            output = await list_defects()
+            output = await list_defects(output_format="plain")
 
             assert "2 defect(s)" in output
             assert "#1: D1 (Open)" in output
@@ -141,7 +141,7 @@ async def test_list_defects_empty() -> None:
             mock_svc = mock_svc_cls.return_value
             mock_svc.list_defects = AsyncMock(return_value=[])
 
-            output = await list_defects()
+            output = await list_defects(output_format="plain")
 
             assert "No defects found" in output
 
@@ -169,6 +169,7 @@ async def test_link_defect_to_test_case_tool() -> None:
                 test_case_id=20,
                 issue_key="PROJ-123",
                 integration_id=7,
+                output_format="plain",
             )
 
             assert "Linked Defect #10 to Test Case #20" in output
@@ -205,6 +206,7 @@ async def test_link_defect_to_test_case_tool_with_integration_name() -> None:
                 test_case_id=20,
                 issue_key="PROJ-123",
                 integration_name="Jira",
+                output_format="plain",
             )
 
             assert "Linked Defect #10 to Test Case #20" in output
@@ -235,7 +237,12 @@ async def test_link_defect_to_test_case_tool_idempotent() -> None:
                 )
             )
 
-            output = await link_defect_to_test_case(defect_id=10, test_case_id=20, issue_key="PROJ-123")
+            output = await link_defect_to_test_case(
+                defect_id=10,
+                test_case_id=20,
+                issue_key="PROJ-123",
+                output_format="plain",
+            )
 
             assert "already linked" in output.lower()
             assert "No changes made" in output
@@ -259,7 +266,7 @@ async def test_list_defect_test_cases_tool() -> None:
                 )
             )
 
-            output = await list_defect_test_cases(defect_id=10, page=0, size=20)
+            output = await list_defect_test_cases(defect_id=10, page=0, size=20, output_format="plain")
 
             assert "Found 1 linked test case(s) for Defect #10" in output
             assert "#20: Linked TC [Draft]" in output
@@ -285,6 +292,7 @@ async def test_create_defect_matcher_tool() -> None:
                 defect_id=10,
                 name="NPE Rule",
                 message_regex="NullPointer.*",
+                output_format="plain",
             )
 
             assert "Created Defect Matcher #20" in output
@@ -307,7 +315,7 @@ async def test_update_defect_matcher_tool() -> None:
             mock_svc = mock_svc_cls.return_value
             mock_svc.update_defect_matcher = AsyncMock(return_value=DefectMatcherDto(id=20, name="Updated Rule"))
 
-            output = await update_defect_matcher(matcher_id=20, name="Updated Rule")
+            output = await update_defect_matcher(matcher_id=20, name="Updated Rule", output_format="plain")
 
             assert "Updated Defect Matcher #20" in output
             mock_svc.update_defect_matcher.assert_called_once_with(
@@ -328,7 +336,7 @@ async def test_delete_defect_matcher_confirmed() -> None:
             mock_svc = mock_svc_cls.return_value
             mock_svc.delete_defect_matcher = AsyncMock()
 
-            output = await delete_defect_matcher(matcher_id=20, confirm=True)
+            output = await delete_defect_matcher(matcher_id=20, confirm=True, output_format="plain")
 
             assert "Deleted Defect Matcher #20" in output
             mock_svc.delete_defect_matcher.assert_called_once_with(20)
@@ -336,7 +344,7 @@ async def test_delete_defect_matcher_confirmed() -> None:
 
 @pytest.mark.asyncio
 async def test_delete_defect_matcher_no_confirm() -> None:
-    output = await delete_defect_matcher(matcher_id=20, confirm=False)
+    output = await delete_defect_matcher(matcher_id=20, confirm=False, output_format="plain")
 
     assert "aborted" in output.lower()
     assert "confirm=true" in output
@@ -361,7 +369,7 @@ async def test_list_defect_matchers_tool() -> None:
                 ]
             )
 
-            output = await list_defect_matchers(defect_id=10)
+            output = await list_defect_matchers(defect_id=10, output_format="plain")
 
             assert "1 matcher(s)" in output
             assert "#20: NPE Rule" in output
@@ -378,6 +386,6 @@ async def test_list_defect_matchers_empty() -> None:
             mock_svc = mock_svc_cls.return_value
             mock_svc.list_defect_matchers = AsyncMock(return_value=[])
 
-            output = await list_defect_matchers(defect_id=10)
+            output = await list_defect_matchers(defect_id=10, output_format="plain")
 
             assert "No matchers found" in output

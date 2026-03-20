@@ -1,7 +1,7 @@
 {
   "environment": {
-    "fastmcp": "3.1.0",
-    "mcp": "1.25.0"
+    "fastmcp": "3.1.1",
+    "mcp": "1.26.0"
   },
   "serverInfo": {
     "name": "lucius-mcp",
@@ -15,7 +15,7 @@
     {
       "name": "create_test_case",
       "title": "Create Test Case",
-      "description": "Create a new test case in Allure TestOps.\n\nArgs:\n    name: The name of the test case.\n    description: A markdown description of the test case.\n    steps: List of steps. Each step must be a dict with 'action' and 'expected' keys.\n           Example: [{'action': 'Login', 'expected': 'Dashboard visible'}]\n    tags: List of tag names.\n    attachments: List of attachments.\n                 Example Base64: [{'name': 's.png', 'content': '<base64>', 'content_type': 'image/png'}]\n                 Example URL: [{'name': 'report.pdf', 'url': 'http://example.com/report.pdf',\n                                'content_type': 'application/pdf'}]\n    custom_fields: Dictionary of custom field names and their values (string or list of strings).\n                   Example: {'Layer': 'UI', 'Components': ['Auth', 'DB']}\n    test_layer_id: Optional test layer ID to assign (use list_test_layers to find IDs).\n    test_layer_name: Optional test layer name to assign (exact case-sensitive match).\n    issues: Optional list of issue keys to link (e.g., ['PROJ-123']).\n    integration_id: Optional integration ID for issue linking (required when multiple integrations exist).\n    integration_name: Optional integration name for issue linking (mutually exclusive with integration_id).\n    project_id: Optional override for the default Project ID.\n\nReturns:\n    A message confirming creation with the ID and Name.\n\nRaises:\n    AuthenticationError: If no API token available from environment or arguments.",
+      "description": "Create a new test case in Allure TestOps.\n\nArgs:\n    name: The name of the test case.\n    description: A markdown description of the test case.\n    steps: List of steps. Each step must be a dict with 'action' and 'expected' keys.\n           Example: [{'action': 'Login', 'expected': 'Dashboard visible'}]\n    tags: List of tag names.\n    attachments: List of attachments.\n                 Example Base64: [{'name': 's.png', 'content': '<base64>', 'content_type': 'image/png'}]\n                 Example URL: [{'name': 'report.pdf', 'url': 'http://example.com/report.pdf',\n                                'content_type': 'application/pdf'}]\n    custom_fields: Dictionary of custom field names and their values (string or list of strings).\n                   Example: {'Layer': 'UI', 'Components': ['Auth', 'DB']}\n    test_layer_id: Optional test layer ID to assign (use list_test_layers to find IDs).\n    test_layer_name: Optional test layer name to assign (exact case-sensitive match).\n    issues: Optional list of issue keys to link (e.g., ['PROJ-123']).\n    integration_id: Optional integration ID for issue linking (required when multiple integrations exist).\n    integration_name: Optional integration name for issue linking (mutually exclusive with integration_id).\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    A message confirming creation with the ID and Name.\n\nRaises:\n    AuthenticationError: If no API token available from environment or arguments.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -183,6 +183,15 @@
             ],
             "default": null,
             "description": "Optional override for the default Project ID."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -222,7 +231,7 @@
     {
       "name": "get_test_case_details",
       "title": "Get Test Case Details",
-      "description": "Get complete details of a specific test case.\n\nRetrieves all information about a test case including its steps, tags,\ncustom fields, and attachments. Use this before updating a test case to\nunderstand its current state.\n\nArgs:\n    test_case_id: The unique ID of the test case to retrieve.\n    project_id: Optional override for the default Project ID.\n\nReturns:\n    Formatted test case details including all metadata.\n\nRaises:\n    AuthenticationError: If no API token available from environment or arguments.",
+      "description": "Get complete details of a specific test case.\n\nRetrieves all information about a test case including its steps, tags,\ncustom fields, and attachments. Use this before updating a test case to\nunderstand its current state.\n\nArgs:\n    test_case_id: The unique ID of the test case to retrieve.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Formatted test case details including all metadata.\n\nRaises:\n    AuthenticationError: If no API token available from environment or arguments.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -241,6 +250,15 @@
             ],
             "default": null,
             "description": "Allure TestOps project ID to list test cases from."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -280,7 +298,7 @@
     {
       "name": "update_test_case",
       "title": "Update Test Case",
-      "description": "Update an existing test case in Allure TestOps.\n⚠️ CAUTION: Destructive.\n\nPerforms a partial update: only supplied fields are sent to the API. When\nprovided, ``steps`` replace all existing steps, and ``attachments`` replace\nall existing global attachments. Omit a field to preserve its current value.\n\nArgs:\n    test_case_id: The ID of the test case to update.\n    name: New name for the test case.\n    description: New description for the test case.\n    precondition: New precondition text.\n    steps: New list of steps. Each step is a dict with ``action``,\n        ``expected``, and optional ``attachments`` list.\n    tags: New list of tags.\n    attachments: New list of global attachments. Each dict has ``name`` and\n        either ``content`` (base64) or ``url``.\n    custom_fields: Custom field updates as a name-to-value (or list of values) mapping.\n    automated: Whether the test case is automated.\n    expected_result: Global expected result for the test case.\n    status_id: ID of the test case status.\n    test_layer_id: ID of the test layer.\n    test_layer_name: Name of the test layer.\n    workflow_id: ID of the workflow.\n    links: New list of external links. Each dict has ``name``, ``url``,\n        and optional ``type``.\n    issues: List of issue keys to ADD (e.g. ['PROJ-123']).\n    remove_issues: List of issue keys to REMOVE.\n    clear_issues: If True, remove ALL issues from the test case.\n    integration_id: Optional integration ID for issue linking.\n    integration_name: Optional integration name for issue linking.\n    project_id: Optional override for the default Project ID.\n    confirm: Must be set to True to proceed with update.\n        This is a safety measure to prevent accidental updates.\n\nReturns:\n    A confirmation message summarizing the update.\n\nRaises:\n    AuthenticationError: If no API token available from environment or\n        arguments.",
+      "description": "Update an existing test case in Allure TestOps.\n⚠️ CAUTION: Destructive.\n\nPerforms a partial update: only supplied fields are sent to the API. When\nprovided, ``steps`` replace all existing steps, and ``attachments`` replace\nall existing global attachments. Omit a field to preserve its current value.\n\nArgs:\n    test_case_id: The ID of the test case to update.\n    name: New name for the test case.\n    description: New description for the test case.\n    precondition: New precondition text.\n    steps: New list of steps. Each step is a dict with ``action``,\n        ``expected``, and optional ``attachments`` list.\n    tags: New list of tags.\n    attachments: New list of global attachments. Each dict has ``name`` and\n        either ``content`` (base64) or ``url``.\n    custom_fields: Custom field updates as a name-to-value (or list of values) mapping.\n    automated: Whether the test case is automated.\n    expected_result: Global expected result for the test case.\n    status_id: ID of the test case status.\n    test_layer_id: ID of the test layer.\n    test_layer_name: Name of the test layer.\n    workflow_id: ID of the workflow.\n    links: New list of external links. Each dict has ``name``, ``url``,\n        and optional ``type``.\n    issues: List of issue keys to ADD (e.g. ['PROJ-123']).\n    remove_issues: List of issue keys to REMOVE.\n    clear_issues: If True, remove ALL issues from the test case.\n    integration_id: Optional integration ID for issue linking.\n    integration_name: Optional integration name for issue linking.\n    project_id: Optional override for the default Project ID.\n    confirm: Must be set to True to proceed with update.\n        This is a safety measure to prevent accidental updates.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    A confirmation message summarizing the update.\n\nRaises:\n    AuthenticationError: If no API token available from environment or\n        arguments.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -570,6 +588,15 @@
             "default": false,
             "description": "Must be set to True to proceed with update. Safety measure.",
             "type": "boolean"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -609,7 +636,7 @@
     {
       "name": "delete_test_case",
       "title": "Delete Test Case",
-      "description": "Archive an obsolete test case.\n⚠️ CAUTION: Destructive.\n\nThis performs a SOFT DELETE (archive). The test case can typically\nbe recovered from the Allure UI if needed.\n\n⚠️ CAUTION: This action removes the test case from active views.\nHistorical data and launch associations may be affected.\n\nArgs:\n    test_case_id: The Allure test case ID to archive.\n        Found in the URL: /testcase/12345 -> test_case_id=12345\n    confirm: Must be set to True to proceed with deletion.\n        This is a safety measure to prevent accidental deletions.\n    project_id: Optional Allure TestOps project ID override.\n\nReturns:\n    Confirmation message with the archived test case details.",
+      "description": "Archive an obsolete test case.\n⚠️ CAUTION: Destructive.\n\nThis performs a SOFT DELETE (archive). The test case can typically\nbe recovered from the Allure UI if needed.\n\n⚠️ CAUTION: This action removes the test case from active views.\nHistorical data and launch associations may be affected.\n\nArgs:\n    test_case_id: The Allure test case ID to archive.\n        Found in the URL: /testcase/12345 -> test_case_id=12345\n    confirm: Must be set to True to proceed with deletion.\n        This is a safety measure to prevent accidental deletions.\n    project_id: Optional Allure TestOps project ID override.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Confirmation message with the archived test case details.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -633,6 +660,15 @@
             ],
             "default": null,
             "description": "Optional Allure TestOps project ID override."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -672,7 +708,7 @@
     {
       "name": "delete_archived_test_cases",
       "title": "Delete Archived Test Cases",
-      "description": "Permanently delete all archived/deleted test cases in the current project.",
+      "description": "Permanently delete all archived/deleted test cases in the current project.\n\nArgs:\n    confirm: Must be set to True to proceed.\n    project_id: Optional Allure TestOps project ID override.\n    output_format: Output format: plain (default) or json.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -692,6 +728,15 @@
             ],
             "default": null,
             "description": "Optional Allure TestOps project ID override."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "type": "object"
@@ -728,7 +773,7 @@
     {
       "name": "list_test_cases",
       "title": "List Test Cases",
-      "description": "List all test cases in a project.\n\nReturns a paginated list of test cases with their IDs, names, and tags.\nUse this to review existing test documentation in a project.\n\nArgs:\n    page: Page number for pagination (0-indexed). Default: 0.\n    size: Number of results per page (max 100). Default: 20.\n    name_filter: Optional filter to search by name or description.\n    tags: Optional list of tag names to filter by (exact match).\n    status: Optional test case status name to filter by (exact match).\n    project_id: Optional override for the default Project ID.\n\nReturns:\n    A formatted list of test cases with pagination info.\n\nRaises:\n    AuthenticationError: If no API token available from environment or arguments.",
+      "description": "List all test cases in a project.\n\nReturns a paginated list of test cases with their IDs, names, and tags.\nUse this to review existing test documentation in a project.\n\nArgs:\n    page: Page number for pagination (0-indexed). Default: 0.\n    size: Number of results per page (max 100). Default: 20.\n    name_filter: Optional filter to search by name or description.\n    tags: Optional list of tag names to filter by (exact match).\n    status: Optional test case status name to filter by (exact match).\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    A formatted list of test cases with pagination info.\n\nRaises:\n    AuthenticationError: If no API token available from environment or arguments.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -795,6 +840,15 @@
             ],
             "default": null,
             "description": "Allure TestOps project ID to list test cases from."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "type": "object"
@@ -831,7 +885,7 @@
     {
       "name": "get_custom_fields",
       "title": "Get Custom Fields",
-      "description": "Get available custom fields and their allowed values for the project.\n\nUse this tool to discover what custom fields are available (e.g., 'Layer', 'Priority')\nand what values are valid for them (e.g., 'UI', 'High'). This is essential before\ncreating or updating test cases to ensure you use valid field names and values.\n\nArgs:\n    name: Optional name filter to find a specific field (case-insensitive).\n    project_id: Optional project ID override.\n\nReturns:\n    A list of custom fields with their required status and allowed values.",
+      "description": "Get available custom fields and their allowed values for the project.\n\nUse this tool to discover what custom fields are available (e.g., 'Layer', 'Priority')\nand what values are valid for them (e.g., 'UI', 'High'). This is essential before\ncreating or updating test cases to ensure you use valid field names and values.\n\nArgs:\n    name: Optional name filter to find a specific field (case-insensitive).\n    project_id: Optional project ID override.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    A list of custom fields with their required status and allowed values.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -858,6 +912,15 @@
             ],
             "default": null,
             "description": "Allure TestOps project ID to fetch custom fields from."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "type": "object"
@@ -894,7 +957,7 @@
     {
       "name": "delete_unused_custom_fields",
       "title": "Delete Unused Custom Fields",
-      "description": "Delete custom fields that are unused by any test case in the current project.",
+      "description": "Delete custom fields that are unused by any test case in the current project.\n\nArgs:\n    confirm: Must be set to True to proceed.\n    project_id: Optional Allure TestOps project ID override.\n    output_format: Output format: plain (default) or json.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -914,6 +977,15 @@
             ],
             "default": null,
             "description": "Optional Allure TestOps project ID override."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "type": "object"
@@ -951,7 +1023,7 @@
     {
       "name": "list_custom_field_values",
       "title": "List Custom Field Values",
-      "description": "List available values for a custom field.\n\nArgs:\n    custom_field_id: Project-scoped custom field ID to list values for.\n    custom_field_name: Custom field name to resolve when custom_field_id is not provided.\n    query: Optional search query to filter values.\n    var_global: Optional filter for global values.\n    test_case_search: Optional test case search filter to match values in test cases.\n    page: Zero-based page index.\n    size: Number of items per page.\n    sort: Optional sort criteria, e.g. [\"name,asc\", \"id,desc\"].\n    project_id: Optional override for the default Project ID.",
+      "description": "List available values for a custom field.\n\nArgs:\n    custom_field_id: Project-scoped custom field ID to list values for.\n    custom_field_name: Custom field name to resolve when custom_field_id is not provided.\n    query: Optional search query to filter values.\n    var_global: Optional filter for global values.\n    test_case_search: Optional test case search filter to match values in test cases.\n    page: Zero-based page index.\n    size: Number of items per page.\n    sort: Optional sort criteria, e.g. [\"name,asc\", \"id,desc\"].\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: plain (default) or json.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -1065,6 +1137,15 @@
             ],
             "default": null,
             "description": "Optional override for the default Project ID."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "type": "object"
@@ -1102,7 +1183,7 @@
     {
       "name": "create_custom_field_value",
       "title": "Create Custom Field Value",
-      "description": "Create a new custom field value option.\n\nArgs:\n    name: Name for the new custom field value.\n    custom_field_id: Project-scoped custom field ID to create a value for.\n    custom_field_name: Custom field name to resolve when custom_field_id is not provided.\n    project_id: Optional override for the default Project ID.",
+      "description": "Create a new custom field value option.\n\nArgs:\n    name: Name for the new custom field value.\n    custom_field_id: Project-scoped custom field ID to create a value for.\n    custom_field_name: Custom field name to resolve when custom_field_id is not provided.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: plain (default) or json.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -1145,6 +1226,15 @@
             ],
             "default": null,
             "description": "Optional override for the default Project ID."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -1185,7 +1275,7 @@
     {
       "name": "update_custom_field_value",
       "title": "Update Custom Field Value",
-      "description": "Update an existing custom field value.\n⚠️ CAUTION: Destructive.\n\nArgs:\n    cfv_id: Custom field value ID to update.\n    name: New name for the custom field value.\n    custom_field_id: Project-scoped custom field ID (optional, resolves by name if missing).\n    custom_field_name: Custom field name to resolve when custom_field_id is not provided.\n    project_id: Optional Allure TestOps project ID override.\n    confirm: Must be set to True to proceed with update.\n        This is a safety measure to prevent accidental updates.\n\nReturns:\n    Confirmation message indicating whether changes were made.",
+      "description": "Update an existing custom field value.\n⚠️ CAUTION: Destructive.\n\nArgs:\n    cfv_id: Custom field value ID to update.\n    name: New name for the custom field value.\n    custom_field_id: Project-scoped custom field ID (optional, resolves by name if missing).\n    custom_field_name: Custom field name to resolve when custom_field_id is not provided.\n    project_id: Optional Allure TestOps project ID override.\n    confirm: Must be set to True to proceed with update.\n        This is a safety measure to prevent accidental updates.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Confirmation message indicating whether changes were made.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -1237,6 +1327,15 @@
             "default": false,
             "description": "Must be set to True to proceed with update. Safety measure.",
             "type": "boolean"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -1278,7 +1377,7 @@
     {
       "name": "delete_custom_field_value",
       "title": "Delete Custom Field Value",
-      "description": "Delete a custom field value.\n⚠️ CAUTION: Destructive.\n\nArgs:\n    cfv_id: Custom field value ID to delete.\n    custom_field_id: Project-scoped custom field ID (optional, resolves by name if missing).\n    custom_field_name: Custom field name to resolve when custom_field_id is not provided.\n    project_id: Optional Allure TestOps project ID override.\n    confirm: Must be set to True to proceed with deletion.\n        This is a safety measure to prevent accidental deletions.\n\nReturns:\n    Confirmation message.",
+      "description": "Delete a custom field value.\n⚠️ CAUTION: Destructive.\n\nArgs:\n    cfv_id: Custom field value ID to delete.\n    custom_field_id: Project-scoped custom field ID (optional, resolves by name if missing).\n    custom_field_name: Custom field name to resolve when custom_field_id is not provided.\n    project_id: Optional Allure TestOps project ID override.\n    confirm: Must be set to True to proceed with deletion.\n        This is a safety measure to prevent accidental deletions.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Confirmation message.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -1326,6 +1425,15 @@
             "default": false,
             "description": "Must be set to True to proceed with deletion. Safety measure.",
             "type": "boolean"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -1366,7 +1474,7 @@
     {
       "name": "get_test_case_custom_fields",
       "title": "Get Test Case Custom Fields",
-      "description": "Retrieve custom field values for a specific test case.\n\nArgs:\n    test_case_id: The ID of the test case.\n    project_id: Optional project ID override.\n\nReturns:\n    A dictionary where keys are custom field names and values are\n    either a single string value or a list of string values.",
+      "description": "Retrieve custom field values for a specific test case.\n\nArgs:\n    test_case_id: The ID of the test case.\n    project_id: Optional project ID override.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    A dictionary where keys are custom field names and values are\n    either a single string value or a list of string values.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -1385,6 +1493,15 @@
             ],
             "default": null,
             "description": "Optional override for the default Project ID."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -1425,7 +1542,7 @@
     {
       "name": "search_test_cases",
       "title": "Search Test Cases",
-      "description": "Search for test cases by name, tag, or AQL query.\n\nFind test cases matching your search criteria. Supports simple name/tag search\nor advanced AQL (Allure Query Language) for complex filtering.\n\nSimple Query Syntax (use 'query' parameter):\n- Plain text: Searches in test case names (case-insensitive)\n- tag:value: Filters by exact tag match\n- Combined: \"login tag:smoke\" finds test cases with \"login\" in name AND \"smoke\" tag\n\nImportant: see https://docs.qameta.io/allure-testops/advanced/aql/ for the full AQL syntax reference.\nAQL Syntax (use 'aql' parameter):\n- Operators: and, or, not\n- Precedence: and binds tighter than or; use parentheses to group\n- Strings are double-quoted; numbers are unquoted; booleans are true/false\n- Comparison operators: =, !=, ~= (contains), in, not in\n- Field examples: status, tag, name, createdBy, automated, layer\n\nArgs:\n    query: Simple search query. Examples:\n        - \"login flow\" (name search)\n        - \"tag:smoke\" (tag filter)\n        - \"tag:smoke tag:regression\" (multiple tags - AND logic)\n        - \"authentication tag:security\" (combined)\n    aql: Raw AQL query for advanced filtering. Examples:\n        - 'status=\"failed\" and tag=\"regression\"'\n        - '(createdBy = \"John\" or createdBy = \"Jane\") and name ~= \"test\"'\n        - 'tag in [\"smoke\", \"e2e\"] and automated = true'\n        - 'id = 17'\n        - 'cf[\"Story\"] = \"Story 2\"'\n        - 'cfv in [\"Auth\", \"Story 2\"]'\n    page: Page number (0-indexed). Default: 0.\n    size: Results per page (max 100). Default: 20.\n    project_id: Optional override for the default Project ID.\n\nReturns:\n    List of matching test cases or descriptive error message.\n\nRaises:\n    AuthenticationError: If no API token available from environment or arguments.\n    AllureValidationError: If AQL syntax is invalid or query is empty.\n\nExamples:\n    search_test_cases(query=\"login\")\n    → \"Found 5 test cases matching 'login':\n       - [#1] User Login Flow (tags: smoke, auth)\n       - [#2] Admin Login Test (tags: admin)\"\n\n    search_test_cases(aql='status=\"failed\" and tag=\"regression\"')\n    → \"Found 12 test cases matching 'status=\"failed\" and tag=\"regression\"':\n       - [#5] Critical Path Test ...\"",
+      "description": "Search for test cases by name, tag, or AQL query.\n\nFind test cases matching your search criteria. Supports simple name/tag search\nor advanced AQL (Allure Query Language) for complex filtering.\n\nSimple Query Syntax (use 'query' parameter):\n- Plain text: Searches in test case names (case-insensitive)\n- tag:value: Filters by exact tag match\n- Combined: \"login tag:smoke\" finds test cases with \"login\" in name AND \"smoke\" tag\n\nImportant: see https://docs.qameta.io/allure-testops/advanced/aql/ for the full AQL syntax reference.\nAQL Syntax (use 'aql' parameter):\n- Operators: and, or, not\n- Precedence: and binds tighter than or; use parentheses to group\n- Strings are double-quoted; numbers are unquoted; booleans are true/false\n- Comparison operators: =, !=, ~= (contains), in, not in\n- Field examples: status, tag, name, createdBy, automated, layer\n\nArgs:\n    query: Simple search query. Examples:\n        - \"login flow\" (name search)\n        - \"tag:smoke\" (tag filter)\n        - \"tag:smoke tag:regression\" (multiple tags - AND logic)\n        - \"authentication tag:security\" (combined)\n    aql: Raw AQL query for advanced filtering. Examples:\n        - 'status=\"failed\" and tag=\"regression\"'\n        - '(createdBy = \"John\" or createdBy = \"Jane\") and name ~= \"test\"'\n        - 'tag in [\"smoke\", \"e2e\"] and automated = true'\n        - 'id = 17'\n        - 'cf[\"Story\"] = \"Story 2\"'\n        - 'cfv in [\"Auth\", \"Story 2\"]'\n    page: Page number (0-indexed). Default: 0.\n    size: Results per page (max 100). Default: 20.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    List of matching test cases or descriptive error message.\n\nRaises:\n    AuthenticationError: If no API token available from environment or arguments.\n    AllureValidationError: If AQL syntax is invalid or query is empty.\n\nExamples:\n    search_test_cases(query=\"login\")\n    → \"Found 5 test cases matching 'login':\n       - [#1] User Login Flow (tags: smoke, auth)\n       - [#2] Admin Login Test (tags: admin)\"\n\n    search_test_cases(aql='status=\"failed\" and tag=\"regression\"')\n    → \"Found 12 test cases matching 'status=\"failed\" and tag=\"regression\"':\n       - [#5] Critical Path Test ...\"",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -1475,6 +1592,15 @@
             ],
             "default": null,
             "description": "Allure TestOps project ID to list test cases from."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "type": "object"
@@ -1511,7 +1637,7 @@
     {
       "name": "create_launch",
       "title": "Create Launch",
-      "description": "Create a new launch in Allure TestOps.\n\nArgs:\n    name: Launch name.\n    autoclose: Whether the launch auto-closes.\n    external: Whether the launch is external.\n    issues: Optional list of issue dictionaries.\n    links: Optional list of external link dictionaries.\n    tags: Optional list of launch tags.\n    project_id: Optional override for the default Project ID.\n\nReturns:\n    Confirmation message with launch ID and name.",
+      "description": "Create a new launch in Allure TestOps.\n\nArgs:\n    name: Launch name.\n    autoclose: Whether the launch auto-closes.\n    external: Whether the launch is external.\n    issues: Optional list of issue dictionaries.\n    links: Optional list of external link dictionaries.\n    tags: Optional list of launch tags.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Confirmation message with launch ID and name.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -1603,6 +1729,15 @@
             ],
             "default": null,
             "description": "Optional override for the default Project ID."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -1642,7 +1777,7 @@
     {
       "name": "get_launch",
       "title": "Get Launch",
-      "description": "Retrieve a specific launch and summarize its details.\n\nArgs:\n    launch_id: The unique ID of the launch.\n    project_id: Optional override for the default Project ID.\n\nReturns:\n    LLM-friendly summary of the launch details.",
+      "description": "Retrieve a specific launch and summarize its details.\n\nArgs:\n    launch_id: The unique ID of the launch.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    LLM-friendly summary of the launch details.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -1661,6 +1796,15 @@
             ],
             "default": null,
             "description": "Optional override for the default Project ID."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -1700,7 +1844,7 @@
     {
       "name": "list_launches",
       "title": "List Launches",
-      "description": "List launches in a project.\n\nArgs:\n    page: Zero-based page index.\n    size: Number of results per page (max 100).\n    search: Optional name search.\n    filter_id: Optional filter ID.\n    sort: Optional sort criteria.\n    project_id: Optional override for the default Project ID.\n\nReturns:\n    Formatted list of launches with pagination info.",
+      "description": "List launches in a project.\n\nArgs:\n    page: Zero-based page index.\n    size: Number of results per page (max 100).\n    search: Optional name search.\n    filter_id: Optional filter ID.\n    sort: Optional sort criteria.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Formatted list of launches with pagination info.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -1765,6 +1909,15 @@
             ],
             "default": null,
             "description": "Optional override for the default Project ID."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "type": "object"
@@ -1801,7 +1954,7 @@
     {
       "name": "delete_launch",
       "title": "Delete Launch",
-      "description": "Delete/archive a launch by ID.\n⚠️ CAUTION: Destructive.\n\nArgs:\n    launch_id: The unique ID of the launch to archive.\n    project_id: Optional override for the default Project ID.\n\nReturns:\n    Confirmation message with launch ID and idempotent status.",
+      "description": "Delete/archive a launch by ID.\n⚠️ CAUTION: Destructive.\n\nArgs:\n    launch_id: The unique ID of the launch to archive.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Confirmation message with launch ID and idempotent status.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -1820,6 +1973,15 @@
             ],
             "default": null,
             "description": "Optional override for the default Project ID."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -1859,7 +2021,7 @@
     {
       "name": "close_launch",
       "title": "Close Launch",
-      "description": "Close a launch and return updated launch details.\n\nArgs:\n    launch_id: The unique ID of the launch.\n    project_id: Optional override for the default Project ID.\n    api_token: Optional runtime API token override.\n\nReturns:\n    LLM-friendly summary of the closed launch.",
+      "description": "Close a launch and return updated launch details.\n\nArgs:\n    launch_id: The unique ID of the launch.\n    project_id: Optional override for the default Project ID.\n    api_token: Optional runtime API token override.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    LLM-friendly summary of the closed launch.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -1890,6 +2052,15 @@
             ],
             "default": null,
             "description": "Optional runtime API token override."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -1929,7 +2100,7 @@
     {
       "name": "reopen_launch",
       "title": "Reopen Launch",
-      "description": "Reopen a launch and return updated launch details.\n\nArgs:\n    launch_id: The unique ID of the launch.\n    project_id: Optional override for the default Project ID.\n    api_token: Optional runtime API token override.\n\nReturns:\n    LLM-friendly summary of the reopened launch.",
+      "description": "Reopen a launch and return updated launch details.\n\nArgs:\n    launch_id: The unique ID of the launch.\n    project_id: Optional override for the default Project ID.\n    api_token: Optional runtime API token override.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    LLM-friendly summary of the reopened launch.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -1960,6 +2131,15 @@
             ],
             "default": null,
             "description": "Optional runtime API token override."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -1999,7 +2179,7 @@
     {
       "name": "list_integrations",
       "title": "List Integrations",
-      "description": "List available integrations (issue trackers) in Allure TestOps.\n\nUse this tool to discover which integrations (Jira, GitHub, etc.) are\nconfigured and available for linking issues to test cases.\n\nArgs:\n    project_id: Optional override for the default Project ID.\n        When provided (or from environment default), integrations are filtered\n        to those available for that project.\n\nReturns:\n    A formatted list of available integrations with their IDs and names.\n    If no integrations are configured, returns an informative message.\n\nExamples:\n    >>> list_integrations()\n    \"📋 Available Integrations (3 found):\n     • Github Integration (ID: 1) [github]\n     • Noxtua Jira Integration (ID: 2) [jira]\n     • TestOps TMS (ID: 3) [tms]\n\n     Hint: Use 'integration_id' or 'integration_name' when creating/updating\n     test cases with issues to specify which integration to use.\"",
+      "description": "List available integrations (issue trackers) in Allure TestOps.\n\nUse this tool to discover which integrations (Jira, GitHub, etc.) are\nconfigured and available for linking issues to test cases.\n\nArgs:\n    project_id: Optional override for the default Project ID.\n        When provided (or from environment default), integrations are filtered\n        to those available for that project.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    A formatted list of available integrations with their IDs and names.\n    If no integrations are configured, returns an informative message.\n\nExamples:\n    >>> list_integrations()\n    \"📋 Available Integrations (3 found):\n     • Github Integration (ID: 1) [github]\n     • Noxtua Jira Integration (ID: 2) [jira]\n     • TestOps TMS (ID: 3) [tms]\n\n     Hint: Use 'integration_id' or 'integration_name' when creating/updating\n     test cases with issues to specify which integration to use.\"",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -2014,6 +2194,15 @@
             ],
             "default": null,
             "description": "Optional override for the default Project ID. When provided (or from environment default), integrations are filtered to those available for that project."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "type": "object"
@@ -2050,7 +2239,7 @@
     {
       "name": "create_shared_step",
       "title": "Create Shared Step",
-      "description": "Create a new reusable Shared Step.\n\nArgs:\n    name: The name of the shared step (e.g., \"Login as Admin\").\n    steps: Optional list of steps. Each step is a dictionary with:\n           - action (str): The step description (e.g., \"Enter username\").\n           - expected (str, optional): The expected result.\n           - attachments (list[dict], optional): List of attachments containing:\n             - content (str): Base64 encoded content.\n             - name (str): Filename.\n           - steps (list[dict], optional): Nested steps (recursive structure).\n    project_id: Optional override for the default Project ID.",
+      "description": "Create a new reusable Shared Step.\n\nArgs:\n    name: The name of the shared step (e.g., \"Login as Admin\").\n    steps: Optional list of steps. Each step is a dictionary with:\n           - action (str): The step description (e.g., \"Enter username\").\n           - expected (str, optional): The expected result.\n           - attachments (list[dict], optional): List of attachments containing:\n             - content (str): Base64 encoded content.\n             - name (str): Filename.\n           - steps (list[dict], optional): Nested steps (recursive structure).\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: plain (default) or json.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -2085,6 +2274,15 @@
             ],
             "default": null,
             "description": "Optional override for the default Project ID."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -2124,7 +2322,7 @@
     {
       "name": "list_shared_steps",
       "title": "List Shared Steps",
-      "description": "List shared steps in a project to find existing ones.\n\nArgs:\n    page: Page number (0-based, default 0).\n    size: Number of items per page (default 100).\n    search: Optional search query to filter by name.\n    archived: Whether to include archived steps (default False).\n    project_id: Optional override for the default Project ID.",
+      "description": "List shared steps in a project to find existing ones.\n\nArgs:\n    page: Page number (0-based, default 0).\n    size: Number of items per page (default 100).\n    search: Optional search query to filter by name.\n    archived: Whether to include archived steps (default False).\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: plain (default) or json.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -2166,6 +2364,15 @@
             ],
             "default": null,
             "description": "Optional override for the default Project ID."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "type": "object"
@@ -2202,7 +2409,7 @@
     {
       "name": "update_shared_step",
       "title": "Update Shared Step",
-      "description": "Update an existing shared step.\n⚠️ CAUTION: Destructive.\n\n⚠️ IMPORTANT: Changes propagate to ALL test cases using this shared step.\n\nOnly provided fields will be updated. Omitted fields remain unchanged.\nRepeated calls with the same data are idempotent.\n\nArgs:\n    step_id: The shared step ID to update (required).\n        Found via list_shared_steps or in the Allure URL.\n    name: New name for the shared step (optional).\n    description: New description (optional).\n    confirm: Must be set to True to proceed with update.\n        This is a safety measure to prevent accidental updates.\n    project_id: Optional override for the default Project ID.\n\nReturns:\n    Confirmation message with summary of changes.\n\nExample:\n    update_shared_step(\n        step_id=789,\n        name=\"Login as Admin (Updated)\",\n        confirm=True\n    )",
+      "description": "Update an existing shared step.\n⚠️ CAUTION: Destructive.\n\n⚠️ IMPORTANT: Changes propagate to ALL test cases using this shared step.\n\nOnly provided fields will be updated. Omitted fields remain unchanged.\nRepeated calls with the same data are idempotent.\n\nArgs:\n    step_id: The shared step ID to update (required).\n        Found via list_shared_steps or in the Allure URL.\n    name: New name for the shared step (optional).\n    description: New description (optional).\n    confirm: Must be set to True to proceed with update.\n        This is a safety measure to prevent accidental updates.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Confirmation message with summary of changes.\n\nExample:\n    update_shared_step(\n        step_id=789,\n        name=\"Login as Admin (Updated)\",\n        confirm=True\n    )",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -2250,6 +2457,15 @@
             ],
             "default": null,
             "description": "Optional override for the default Project ID."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -2289,7 +2505,7 @@
     {
       "name": "delete_shared_step",
       "title": "Delete Shared Step",
-      "description": "Delete a shared step from the library.\n⚠️ CAUTION: Destructive.\n\n⚠️ CAUTION: If this shared step is used by test cases, deleting it\nwill break those references.\n\nArgs:\n    step_id: The shared step ID to delete (required).\n    confirm: Must be True to proceed (safety measure).\n    project_id: Optional override for the default Project ID.\n\nReturns:\n    Confirmation message.\n\nExample (safe delete):\n    delete_shared_step(step_id=789, confirm=True)\n    → \"🗑️  Archived Shared Step 789\"\n\nNote:\n    This performs a soft delete by archiving the shared step.",
+      "description": "Delete a shared step from the library.\n⚠️ CAUTION: Destructive.\n\n⚠️ CAUTION: If this shared step is used by test cases, deleting it\nwill break those references.\n\nArgs:\n    step_id: The shared step ID to delete (required).\n    confirm: Must be True to proceed (safety measure).\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Confirmation message.\n\nExample (safe delete):\n    delete_shared_step(step_id=789, confirm=True)\n    → \"🗑️  Archived Shared Step 789\"\n\nNote:\n    This performs a soft delete by archiving the shared step.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -2313,6 +2529,15 @@
             ],
             "default": null,
             "description": "Optional override for the default Project ID."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -2352,7 +2577,7 @@
     {
       "name": "delete_archived_shared_steps",
       "title": "Delete Archived Shared Steps",
-      "description": "Permanently delete all archived shared steps in the current project.",
+      "description": "Permanently delete all archived shared steps in the current project.\n\nArgs:\n    confirm: Must be set to True to proceed.\n    project_id: Optional Allure TestOps project ID override.\n    output_format: Output format: plain (default) or json.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -2372,6 +2597,15 @@
             ],
             "default": null,
             "description": "Optional Allure TestOps project ID override."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "type": "object"
@@ -2408,7 +2642,7 @@
     {
       "name": "link_shared_step",
       "title": "Link Shared Step",
-      "description": "Link a shared step to a test case.\n⚠️ CAUTION: Destructive.\n\nAdds a reference to the shared step in the test case's step list.\nThe shared step's actions will expand at execution time.\n\nArgs:\n    test_case_id: The ID of test case to modify.\n        Found in URL: /testcase/12345\n    shared_step_id: The ID of shared step to link.\n        Found via list_shared_steps or in Allure UI.\n    position: Where to insert the shared step (0-indexed, optional).\n        - 0 = Insert at beginning\n        - None = Append to end (default)\n        - N = Insert after step N (so it becomes the (N+1)th step)\n    project_id: Optional override for the default Project ID.\n    confirm: Must be set to True to proceed with linking.\n        This is a safety measure to prevent accidental linking.\n\nReturns:\n    Confirmation with updated step list preview.\n\nExample:\n    link_shared_step(\n        test_case_id=12345,\n        shared_step_id=789,  # \"Login as Admin\"\n        position=0,\n        confirm=True\n    )",
+      "description": "Link a shared step to a test case.\n⚠️ CAUTION: Destructive.\n\nAdds a reference to the shared step in the test case's step list.\nThe shared step's actions will expand at execution time.\n\nArgs:\n    test_case_id: The ID of test case to modify.\n        Found in URL: /testcase/12345\n    shared_step_id: The ID of shared step to link.\n        Found via list_shared_steps or in Allure UI.\n    position: Where to insert the shared step (0-indexed, optional).\n        - 0 = Insert at beginning\n        - None = Append to end (default)\n        - N = Insert after step N (so it becomes the (N+1)th step)\n    project_id: Optional override for the default Project ID.\n    confirm: Must be set to True to proceed with linking.\n        This is a safety measure to prevent accidental linking.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Confirmation with updated step list preview.\n\nExample:\n    link_shared_step(\n        test_case_id=12345,\n        shared_step_id=789,  # \"Login as Admin\"\n        position=0,\n        confirm=True\n    )",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -2448,6 +2682,15 @@
             "default": false,
             "description": "Must be set to True to proceed with linking. Safety measure.",
             "type": "boolean"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -2489,7 +2732,7 @@
     {
       "name": "unlink_shared_step",
       "title": "Unlink Shared Step",
-      "description": "Remove a shared step reference from a test case.\n⚠️ CAUTION: Destructive.\n\nRemoves the link to the shared step. The test case will no longer\ninclude those steps at execution time.\n\nArgs:\n    test_case_id: The test case to modify.\n    shared_step_id: The shared step to unlink.\n    project_id: Optional override for the default Project ID.\n    confirm: Must be set to True to proceed with unlinking.\n        This is a safety measure to prevent accidental unlinking.\n\nReturns:\n    Confirmation with updated step list.\n\nNote: This only removes the REFERENCE. The shared step itself\nremains in the library and other test cases are unaffected.\n\nExample:\n    unlink_shared_step(test_case_id=12345, shared_step_id=789, confirm=True)",
+      "description": "Remove a shared step reference from a test case.\n⚠️ CAUTION: Destructive.\n\nRemoves the link to the shared step. The test case will no longer\ninclude those steps at execution time.\n\nArgs:\n    test_case_id: The test case to modify.\n    shared_step_id: The shared step to unlink.\n    project_id: Optional override for the default Project ID.\n    confirm: Must be set to True to proceed with unlinking.\n        This is a safety measure to prevent accidental unlinking.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Confirmation with updated step list.\n\nNote: This only removes the REFERENCE. The shared step itself\nremains in the library and other test cases are unaffected.\n\nExample:\n    unlink_shared_step(test_case_id=12345, shared_step_id=789, confirm=True)",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -2517,6 +2760,15 @@
             "default": false,
             "description": "Must be set to True to proceed with unlinking. Safety measure.",
             "type": "boolean"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -2558,7 +2810,7 @@
     {
       "name": "list_test_layers",
       "title": "List Test Layers",
-      "description": "List test layers to discover available test layer taxonomy.\n\nTest layers define the taxonomy for categorizing test cases (e.g., Unit, Integration, E2E).\nUse this to find layer IDs and names before creating or updating test cases.\n\nArgs:\n    page: Page number (0-based)\n    size: Page size (max 100)\n\nReturns:\n    List of test layers with their IDs and names",
+      "description": "List test layers to discover available test layer taxonomy.\n\nTest layers define the taxonomy for categorizing test cases (e.g., Unit, Integration, E2E).\nUse this to find layer IDs and names before creating or updating test cases.\n\nArgs:\n    page: Page number (0-based)\n    size: Page size (max 100)\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    List of test layers with their IDs and names",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -2571,6 +2823,15 @@
             "default": 100,
             "description": "Page size (max 100). Default is 100.",
             "type": "integer"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "type": "object"
@@ -2607,7 +2868,7 @@
     {
       "name": "create_test_layer",
       "title": "Create Test Layer",
-      "description": "Create a new test layer in Allure TestOps.\n\nTest layers define taxonomy for categorizing test cases. Common examples include\n'Unit', 'Integration', 'E2E', 'UI', 'API', etc.\n\nArgs:\n    name: Name of the test layer\n    project_id: Optional project ID override\n\nReturns:\n    Confirmation message with the created layer's ID and name",
+      "description": "Create a new test layer in Allure TestOps.\n\nTest layers define taxonomy for categorizing test cases. Common examples include\n'Unit', 'Integration', 'E2E', 'UI', 'API', etc.\n\nArgs:\n    name: Name of the test layer\n    project_id: Optional project ID override\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Confirmation message with the created layer's ID and name",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -2626,6 +2887,15 @@
             ],
             "default": null,
             "description": "Allure TestOps project ID to create the test layer in."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -2665,7 +2935,7 @@
     {
       "name": "update_test_layer",
       "title": "Update Test Layer",
-      "description": "Update an existing test layer's name.\n⚠️ CAUTION: Destructive.\n\nArgs:\n    layer_id: ID of the test layer to update.\n    name: New name for the test layer.\n    project_id: Optional Allure TestOps project ID override.\n    confirm: Must be set to True to proceed with update.\n        This is a safety measure to prevent accidental updates.\n\nReturns:\n    Confirmation message indicating whether changes were made.",
+      "description": "Update an existing test layer's name.\n⚠️ CAUTION: Destructive.\n\nArgs:\n    layer_id: ID of the test layer to update.\n    name: New name for the test layer.\n    project_id: Optional Allure TestOps project ID override.\n    confirm: Must be set to True to proceed with update.\n        This is a safety measure to prevent accidental updates.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Confirmation message indicating whether changes were made.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -2693,6 +2963,15 @@
             "default": false,
             "description": "Must be set to True to proceed with update. Safety measure.",
             "type": "boolean"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -2733,7 +3012,7 @@
     {
       "name": "delete_test_layer",
       "title": "Delete Test Layer",
-      "description": "Delete a test layer from Allure TestOps.\n⚠️ CAUTION: Destructive.\n\nArgs:\n    layer_id: ID of the test layer to delete.\n    project_id: Optional Allure TestOps project ID override.\n    confirm: Must be set to True to proceed with deletion.\n        This is a safety measure to prevent accidental deletions.\n\nReturns:\n    Confirmation message.",
+      "description": "Delete a test layer from Allure TestOps.\n⚠️ CAUTION: Destructive.\n\nArgs:\n    layer_id: ID of the test layer to delete.\n    project_id: Optional Allure TestOps project ID override.\n    confirm: Must be set to True to proceed with deletion.\n        This is a safety measure to prevent accidental deletions.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Confirmation message.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -2757,6 +3036,15 @@
             "default": false,
             "description": "Must be set to True to proceed with deletion. Safety measure.",
             "type": "boolean"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -2796,7 +3084,7 @@
     {
       "name": "list_test_layer_schemas",
       "title": "List Test Layer Schemas",
-      "description": "List test layer schemas for a project.\n\nTest layer schemas map custom field keys to test layers within a project.\nThey determine which test layer is assigned when a specific custom field value is used.\n\nArgs:\n    project_id: Optional project ID override\n    page: Page number (0-based)\n    size: Page size (max 100)\n\nReturns:\n    List of test layer schemas with their IDs, keys, and linked test layers",
+      "description": "List test layer schemas for a project.\n\nTest layer schemas map custom field keys to test layers within a project.\nThey determine which test layer is assigned when a specific custom field value is used.\n\nArgs:\n    project_id: Optional project ID override\n    page: Page number (0-based)\n    size: Page size (max 100)\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    List of test layer schemas with their IDs, keys, and linked test layers",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -2821,6 +3109,15 @@
             "default": 100,
             "description": "Page size (max 100). Default is 100.",
             "type": "integer"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "type": "object"
@@ -2858,7 +3155,7 @@
     {
       "name": "create_test_layer_schema",
       "title": "Create Test Layer Schema",
-      "description": "Create a new test layer schema to map a custom field key to a test layer.\n\nTest layer schemas define the mapping between custom field keys and test layers.\nThis allows test cases with specific custom field values to be automatically\nassigned to the correct test layer.\n\nArgs:\n    key: Schema key (typically a custom field name)\n    test_layer_id: ID of the test layer to link\n    project_id: Project ID\n\nReturns:\n    Confirmation message with the created schema's details",
+      "description": "Create a new test layer schema to map a custom field key to a test layer.\n\nTest layer schemas define the mapping between custom field keys and test layers.\nThis allows test cases with specific custom field values to be automatically\nassigned to the correct test layer.\n\nArgs:\n    key: Schema key (typically a custom field name)\n    test_layer_id: ID of the test layer to link\n    project_id: Project ID\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Confirmation message with the created schema's details",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -2873,6 +3170,15 @@
           "project_id": {
             "description": "Allure TestOps project ID to create the schema in.",
             "type": "integer"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -2915,7 +3221,7 @@
     {
       "name": "update_test_layer_schema",
       "title": "Update Test Layer Schema",
-      "description": "Update an existing test layer schema.\n⚠️ CAUTION: Destructive.\n\nArgs:\n    schema_id: ID of the schema to update.\n    test_layer_id: Optional new test layer ID to link to.\n    key: Optional new schema key.\n    project_id: Optional Allure TestOps project ID override.\n    confirm: Must be set to True to proceed with update.\n        This is a safety measure to prevent accidental updates.\n\nReturns:\n    Confirmation message indicating whether changes were made.",
+      "description": "Update an existing test layer schema.\n⚠️ CAUTION: Destructive.\n\nArgs:\n    schema_id: ID of the schema to update.\n    test_layer_id: Optional new test layer ID to link to.\n    key: Optional new schema key.\n    project_id: Optional Allure TestOps project ID override.\n    confirm: Must be set to True to proceed with update.\n        This is a safety measure to prevent accidental updates.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Confirmation message indicating whether changes were made.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -2963,6 +3269,15 @@
             "default": false,
             "description": "Must be set to True to proceed with update. Safety measure.",
             "type": "boolean"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -3003,7 +3318,7 @@
     {
       "name": "delete_test_layer_schema",
       "title": "Delete Test Layer Schema",
-      "description": "Delete a test layer schema from the project.\n⚠️ CAUTION: Destructive.\n\nArgs:\n    schema_id: ID of the schema to delete.\n    project_id: Optional Allure TestOps project ID override.\n    confirm: Must be set to True to proceed with deletion.\n        This is a safety measure to prevent accidental deletions.\n\nReturns:\n    Confirmation message.",
+      "description": "Delete a test layer schema from the project.\n⚠️ CAUTION: Destructive.\n\nArgs:\n    schema_id: ID of the schema to delete.\n    project_id: Optional Allure TestOps project ID override.\n    confirm: Must be set to True to proceed with deletion.\n        This is a safety measure to prevent accidental deletions.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Confirmation message.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -3027,6 +3342,15 @@
             "default": false,
             "description": "Must be set to True to proceed with deletion. Safety measure.",
             "type": "boolean"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -3067,7 +3391,7 @@
     {
       "name": "create_test_suite",
       "title": "Create Test Suite",
-      "description": "Create a new test suite node in the hierarchy tree.\n\nArgs:\n    name: Suite name to create.\n    project_id: Optional project override. If omitted, use default project from environment.\n    tree_id: Optional hierarchy tree ID. If omitted, the default project tree is used.\n    parent_suite_id: Optional parent suite ID. Provide to create a nested suite.\n\nReturns:\n    Success message containing created suite ID and name.",
+      "description": "Create a new test suite node in the hierarchy tree.\n\nArgs:\n    name: Suite name to create.\n    project_id: Optional project override. If omitted, use default project from environment.\n    tree_id: Optional hierarchy tree ID. If omitted, the default project tree is used.\n    parent_suite_id: Optional parent suite ID. Provide to create a nested suite.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Success message containing created suite ID and name.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -3110,6 +3434,15 @@
             ],
             "default": null,
             "description": "Parent suite/group node ID for nested suite creation."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -3149,7 +3482,7 @@
     {
       "name": "list_test_suites",
       "title": "List Test Suites",
-      "description": "List hierarchy suites for a project tree.\n\nArgs:\n    project_id: Optional project override. If omitted, use default project from environment.\n    tree_id: Optional hierarchy tree ID. If omitted, the default project tree is used.\n    include_empty: Whether to include suites without nested child suites.\n\nReturns:\n    Hierarchical text output with tree info and suite nodes.",
+      "description": "List hierarchy suites for a project tree.\n\nArgs:\n    project_id: Optional project override. If omitted, use default project from environment.\n    tree_id: Optional hierarchy tree ID. If omitted, the default project tree is used.\n    include_empty: Whether to include suites without nested child suites.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Hierarchical text output with tree info and suite nodes.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -3181,6 +3514,15 @@
             "default": true,
             "description": "Whether to include suites that have no nested child suites. Default is True.",
             "type": "boolean"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "type": "object"
@@ -3217,7 +3559,7 @@
     {
       "name": "assign_test_cases_to_suite",
       "title": "Assign Test Cases To Suite",
-      "description": "Assign test cases to a suite path in hierarchy.\n\n⚠️ CAUTION: Destructive.\nReassigning test cases changes their hierarchy location.\n\nArgs:\n    suite_id: Target suite/group node ID.\n    test_case_ids: List of test case IDs to assign.\n    project_id: Optional project override. If omitted, use default project from environment.\n    tree_id: Optional hierarchy tree ID. If omitted, the default project tree is used.\n\nReturns:\n    Success message with the number of assigned test cases.",
+      "description": "Assign test cases to a suite path in hierarchy.\n\n⚠️ CAUTION: Destructive.\nReassigning test cases changes their hierarchy location.\n\nArgs:\n    suite_id: Target suite/group node ID.\n    test_case_ids: List of test case IDs to assign.\n    project_id: Optional project override. If omitted, use default project from environment.\n    tree_id: Optional hierarchy tree ID. If omitted, the default project tree is used.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Success message with the number of assigned test cases.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -3255,6 +3597,15 @@
             ],
             "default": null,
             "description": "Target hierarchy tree ID. If omitted, default project tree is used."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -3296,7 +3647,7 @@
     {
       "name": "delete_test_suite",
       "title": "Delete Test Suite",
-      "description": "Delete a test suite node from hierarchy.\n⚠️ CAUTION: Destructive.\n\nThis operation removes a hierarchy suite/group node. Allure TestOps handles\nnested entities according to its API behavior for tree groups.\n\nArgs:\n    suite_id: Existing suite (tree node) ID to delete.\n    confirm: Must be set to True to proceed.\n        This safety flag prevents accidental destructive actions.\n    project_id: Optional Allure TestOps project override.\n\nReturns:\n    A confirmation or safety warning message.\n\nExample:\n    delete_test_suite(suite_id=12345, confirm=True)\n    -> \"✅ Test suite 12345 deleted successfully (idempotent).\"",
+      "description": "Delete a test suite node from hierarchy.\n⚠️ CAUTION: Destructive.\n\nThis operation removes a hierarchy suite/group node. Allure TestOps handles\nnested entities according to its API behavior for tree groups.\n\nArgs:\n    suite_id: Existing suite (tree node) ID to delete.\n    confirm: Must be set to True to proceed.\n        This safety flag prevents accidental destructive actions.\n    project_id: Optional Allure TestOps project override.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    A confirmation or safety warning message.\n\nExample:\n    delete_test_suite(suite_id=12345, confirm=True)\n    -> \"✅ Test suite 12345 deleted successfully (idempotent).\"",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -3320,6 +3671,15 @@
             ],
             "default": null,
             "description": "Optional Allure TestOps project ID override."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: 'plain' (default) or 'json'.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -3359,7 +3719,7 @@
     {
       "name": "create_test_plan",
       "title": "Create Test Plan",
-      "description": "Create a new Test Plan in Allure TestOps.\n\nThis tool allows creating a Test Plan, which is a collection of Test Cases\nto be executed. You can define the content of the plan either by:\n1. Explicitly listing Test Case IDs (`test_case_ids`).\n2. Providing an AQL (Allure Query Language) filter (`aql_filter`).\n3. Both (explicit selection + dynamic filter).\n\nArgs:\n    name: The display name for the new Test Plan.\n    test_case_ids: Optional list of numeric Test Case IDs to include initially.\n    aql_filter: Optional AQL query string to dynamically select test cases\n        (e.g., 'tag in [\"smoke\", \"regression\"]').\n\nReturns:\n    A success message containing the ID and Name of the created plan.",
+      "description": "Create a new Test Plan in Allure TestOps.\n\nThis tool allows creating a Test Plan, which is a collection of Test Cases\nto be executed. You can define the content of the plan either by:\n1. Explicitly listing Test Case IDs (`test_case_ids`).\n2. Providing an AQL (Allure Query Language) filter (`aql_filter`).\n3. Both (explicit selection + dynamic filter).\n\nArgs:\n    name: The display name for the new Test Plan.\n    test_case_ids: Optional list of numeric Test Case IDs to include initially.\n    aql_filter: Optional AQL query string to dynamically select test cases\n        (e.g., 'tag in [\"smoke\", \"regression\"]').\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    A success message containing the ID and Name of the created plan.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -3393,6 +3753,15 @@
             ],
             "default": null,
             "description": "AQL query to select test cases"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: plain (default) or json.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -3432,7 +3801,7 @@
     {
       "name": "update_test_plan",
       "title": "Update Test Plan",
-      "description": "Update the metadata of an existing Test Plan.\n\nCurrently, supports updating the name of the plan.\n\nArgs:\n    plan_id: The numeric ID of the Test Plan to update.\n    name: The new name for the Test Plan.\n\nReturns:\n    A success message confirming the update with the Plan ID and new Name.",
+      "description": "Update the metadata of an existing Test Plan.\n\nCurrently, supports updating the name of the plan.\n\nArgs:\n    plan_id: The numeric ID of the Test Plan to update.\n    name: The new name for the Test Plan.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    A success message confirming the update with the Plan ID and new Name.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -3451,6 +3820,15 @@
             ],
             "default": null,
             "description": "New name"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: plain (default) or json.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -3490,7 +3868,7 @@
     {
       "name": "manage_test_plan_content",
       "title": "Manage Test Plan Content",
-      "description": "Modify the content (Test Cases) of an existing Test Plan.\n\nAllows adding or removing specific Test Cases by ID, or updating the\nunderlying AQL filter query.\n\nArgs:\n    plan_id: The numeric ID of the Test Plan to modify.\n    add_test_case_ids: List of Test Case IDs to add to the plan.\n    remove_test_case_ids: List of Test Case IDs to remove from the plan.\n    update_aql_filter: New AQL query string to replace the existing one.\n        Use this to change the dynamic criteria for test case selection.\n\nReturns:\n    A success message confirming the content update.",
+      "description": "Modify the content (Test Cases) of an existing Test Plan.\n\nAllows adding or removing specific Test Cases by ID, or updating the\nunderlying AQL filter query.\n\nArgs:\n    plan_id: The numeric ID of the Test Plan to modify.\n    add_test_case_ids: List of Test Case IDs to add to the plan.\n    remove_test_case_ids: List of Test Case IDs to remove from the plan.\n    update_aql_filter: New AQL query string to replace the existing one.\n        Use this to change the dynamic criteria for test case selection.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    A success message confirming the content update.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -3539,6 +3917,15 @@
             ],
             "default": null,
             "description": "Update the AQL filter string"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: plain (default) or json.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -3579,7 +3966,7 @@
     {
       "name": "list_test_plans",
       "title": "List Test Plans",
-      "description": "List Test Plans for the current project.\n\nRetrieves a paginated list of Test Plans, showing their IDs, names,\nand the number of test cases they contain.\n\nArgs:\n    page: The page number to retrieve (0-based index). Defaults to 0.\n    size: The number of items per page. Defaults to 100.\n\nReturns:\n    A formatted string listing the Test Plans found, or a message indicating\n    no plans were found.",
+      "description": "List Test Plans for the current project.\n\nRetrieves a paginated list of Test Plans, showing their IDs, names,\nand the number of test cases they contain.\n\nArgs:\n    page: The page number to retrieve (0-based index). Defaults to 0.\n    size: The number of items per page. Defaults to 100.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    A formatted string listing the Test Plans found, or a message indicating\n    no plans were found.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -3592,6 +3979,15 @@
             "default": 100,
             "description": "Page size",
             "type": "integer"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: plain (default) or json.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "type": "object"
@@ -3628,7 +4024,7 @@
     {
       "name": "create_defect",
       "title": "Create Defect",
-      "description": "Create a new defect in the current project.\n\nUse this tool to register a known defect that can later be linked\nto failing test results through defect matchers (automation rules).\n\nArgs:\n    name: Human-readable defect title. Must be non-empty.\n    description: Optional markdown description providing context\n        about the defect (root cause, impact, workaround, etc.).\n\nReturns:\n    A success message containing the ID and name of the created defect.",
+      "description": "Create a new defect in the current project.\n\nUse this tool to register a known defect that can later be linked\nto failing test results through defect matchers (automation rules).\n\nArgs:\n    name: Human-readable defect title. Must be non-empty.\n    description: Optional markdown description providing context\n        about the defect (root cause, impact, workaround, etc.).\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    A success message containing the ID and name of the created defect.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -3647,6 +4043,15 @@
             ],
             "default": null,
             "description": "Optional markdown description"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: plain (default) or json.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -3686,13 +4091,22 @@
     {
       "name": "get_defect",
       "title": "Get Defect",
-      "description": "Retrieve detailed information about a specific defect.\n\nArgs:\n    defect_id: Numeric ID of the defect.\n\nReturns:\n    Formatted defect details: ID, name, status, description.",
+      "description": "Retrieve detailed information about a specific defect.\n\nArgs:\n    defect_id: Numeric ID of the defect.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Formatted defect details: ID, name, status, description.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
           "defect_id": {
             "description": "ID of the defect to retrieve",
             "type": "integer"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: plain (default) or json.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -3732,7 +4146,7 @@
     {
       "name": "link_defect_to_test_case",
       "title": "Link Defect To Test Case",
-      "description": "Link a defect to a test case through a shared issue mapping.\n\nThis operation ensures defect governance and test coverage are connected:\nthe issue is linked to the defect and to the specified test case.\n\nArgs:\n    defect_id: Numeric ID of the defect.\n    test_case_id: Numeric ID of the test case.\n    issue_key: Optional issue key. If omitted, uses existing defect issue mapping.\n    integration_id: Optional integration ID for issue mapping.\n    integration_name: Optional integration name for issue mapping.\n\nReturns:\n    Confirmation message including defect, test case, and issue mapping details.",
+      "description": "Link a defect to a test case through a shared issue mapping.\n\nThis operation ensures defect governance and test coverage are connected:\nthe issue is linked to the defect and to the specified test case.\n\nArgs:\n    defect_id: Numeric ID of the defect.\n    test_case_id: Numeric ID of the test case.\n    issue_key: Optional issue key. If omitted, uses existing defect issue mapping.\n    integration_id: Optional integration ID for issue mapping.\n    integration_name: Optional integration name for issue mapping.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Confirmation message including defect, test case, and issue mapping details.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -3779,6 +4193,15 @@
             ],
             "default": null,
             "description": "Optional integration name for issue mapping. Mutually exclusive with integration_id."
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: plain (default) or json.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -3821,7 +4244,7 @@
     {
       "name": "list_defect_test_cases",
       "title": "List Defect Test Cases",
-      "description": "List test cases currently linked to a defect.\n\nArgs:\n    defect_id: Numeric ID of the defect.\n    page: Zero-based page index.\n    size: Page size (1..100).\n\nReturns:\n    Paginated list of linked test cases with ID, name, and status.",
+      "description": "List test cases currently linked to a defect.\n\nArgs:\n    defect_id: Numeric ID of the defect.\n    page: Zero-based page index.\n    size: Page size (1..100).\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Paginated list of linked test cases with ID, name, and status.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -3838,6 +4261,15 @@
             "default": 20,
             "description": "Page size (1..100)",
             "type": "integer"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: plain (default) or json.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -3878,7 +4310,7 @@
     {
       "name": "update_defect",
       "title": "Update Defect",
-      "description": "Update an existing defect's name, description, or status.\n\nAt least one field must be provided. Fields set to null/None are\nleft unchanged.\n\nArgs:\n    defect_id: Numeric ID of the defect to update.\n    name: New defect title (optional).\n    description: New markdown description (optional).\n    closed: Set to true to close the defect, false to reopen (optional).\n\nReturns:\n    A success message with the updated defect ID and current status.",
+      "description": "Update an existing defect's name, description, or status.\n\nAt least one field must be provided. Fields set to null/None are\nleft unchanged.\n\nArgs:\n    defect_id: Numeric ID of the defect to update.\n    name: New defect title (optional).\n    description: New markdown description (optional).\n    closed: Set to true to close the defect, false to reopen (optional).\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    A success message with the updated defect ID and current status.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -3921,6 +4353,15 @@
             ],
             "default": null,
             "description": "Set to true to close, false to reopen"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: plain (default) or json.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -3960,7 +4401,7 @@
     {
       "name": "delete_defect",
       "title": "Delete Defect",
-      "description": "Permanently delete a defect and all its associated matchers.\n\nThis is a destructive operation. The ``confirm`` parameter must be\nset to ``true`` to actually perform the deletion.\n\nArgs:\n    defect_id: Numeric ID of the defect to delete.\n    confirm: Must be explicitly set to true. Prevents accidental\n        deletion when the agent misinterprets the user's intent.\n\nReturns:\n    Confirmation or rejection message.",
+      "description": "Permanently delete a defect and all its associated matchers.\n\nThis is a destructive operation. The ``confirm`` parameter must be\nset to ``true`` to actually perform the deletion.\n\nArgs:\n    defect_id: Numeric ID of the defect to delete.\n    confirm: Must be explicitly set to true. Prevents accidental\n        deletion when the agent misinterprets the user's intent.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Confirmation or rejection message.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -3972,6 +4413,15 @@
             "default": false,
             "description": "Safety flag — must be set to true to confirm deletion",
             "type": "boolean"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: plain (default) or json.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -4011,10 +4461,20 @@
     {
       "name": "list_defects",
       "title": "List Defects",
-      "description": "List all defects in the current project.\n\nReturns:\n    A formatted list of defects with their IDs, names, and status.\n    Returns a message if no defects exist.",
+      "description": "List all defects in the current project.\n\nArgs:\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    A formatted list of defects with their IDs, names, and status.\n    Returns a message if no defects exist.",
       "inputSchema": {
         "additionalProperties": false,
-        "properties": {},
+        "properties": {
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: plain (default) or json.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "outputSchema": {
@@ -4049,7 +4509,7 @@
     {
       "name": "create_defect_matcher",
       "title": "Create Defect Matcher",
-      "description": "Create a defect matcher (automation rule) for a defect.\n\nMatchers automatically link future failing test results to a defect\nwhen the test failure's error message or stack trace matches the\nprovided regex patterns.\n\nAt least one of ``message_regex`` or ``trace_regex`` must be\nsupplied.\n\nArgs:\n    defect_id: Numeric ID of the parent defect.\n    name: Short descriptive name for the matcher rule.\n    message_regex: Regular expression matched against error messages\n        of failing test results. Optional if trace_regex is given.\n    trace_regex: Regular expression matched against stack traces of\n        failing test results. Optional if message_regex is given.\n\nReturns:\n    A success message with the created matcher ID.",
+      "description": "Create a defect matcher (automation rule) for a defect.\n\nMatchers automatically link future failing test results to a defect\nwhen the test failure's error message or stack trace matches the\nprovided regex patterns.\n\nAt least one of ``message_regex`` or ``trace_regex`` must be\nsupplied.\n\nArgs:\n    defect_id: Numeric ID of the parent defect.\n    name: Short descriptive name for the matcher rule.\n    message_regex: Regular expression matched against error messages\n        of failing test results. Optional if trace_regex is given.\n    trace_regex: Regular expression matched against stack traces of\n        failing test results. Optional if message_regex is given.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    A success message with the created matcher ID.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -4084,6 +4544,15 @@
             ],
             "default": null,
             "description": "Regex to match against stack traces"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: plain (default) or json.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -4125,7 +4594,7 @@
     {
       "name": "update_defect_matcher",
       "title": "Update Defect Matcher",
-      "description": "Update a defect matcher's name or regex patterns.\n\nAt least one field must be provided.\n\nArgs:\n    matcher_id: Numeric ID of the matcher to update.\n    name: New matcher name (optional).\n    message_regex: New error message regex (optional).\n    trace_regex: New stack trace regex (optional).\n\nReturns:\n    A success message with the updated matcher ID.",
+      "description": "Update a defect matcher's name or regex patterns.\n\nAt least one field must be provided.\n\nArgs:\n    matcher_id: Numeric ID of the matcher to update.\n    name: New matcher name (optional).\n    message_regex: New error message regex (optional).\n    trace_regex: New stack trace regex (optional).\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    A success message with the updated matcher ID.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -4168,6 +4637,15 @@
             ],
             "default": null,
             "description": "New trace regex"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: plain (default) or json.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -4208,7 +4686,7 @@
     {
       "name": "delete_defect_matcher",
       "title": "Delete Defect Matcher",
-      "description": "Permanently delete a defect matcher (automation rule).\n\nThis is a destructive operation. The ``confirm`` parameter must be\nset to ``true`` to actually perform the deletion.\n\nArgs:\n    matcher_id: Numeric ID of the matcher to delete.\n    confirm: Must be explicitly set to true. Prevents accidental\n        deletion when the agent misinterprets the user's intent.\n\nReturns:\n    Confirmation or rejection message.",
+      "description": "Permanently delete a defect matcher (automation rule).\n\nThis is a destructive operation. The ``confirm`` parameter must be\nset to ``true`` to actually perform the deletion.\n\nArgs:\n    matcher_id: Numeric ID of the matcher to delete.\n    confirm: Must be explicitly set to true. Prevents accidental\n        deletion when the agent misinterprets the user's intent.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Confirmation or rejection message.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -4220,6 +4698,15 @@
             "default": false,
             "description": "Safety flag — must be set to true to confirm deletion",
             "type": "boolean"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: plain (default) or json.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -4260,13 +4747,22 @@
     {
       "name": "list_defect_matchers",
       "title": "List Defect Matchers",
-      "description": "List all matchers (automation rules) for a given defect.\n\nArgs:\n    defect_id: Numeric ID of the parent defect.\n\nReturns:\n    Formatted list of matchers with names and regex patterns.",
+      "description": "List all matchers (automation rules) for a given defect.\n\nArgs:\n    defect_id: Numeric ID of the parent defect.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    Formatted list of matchers with names and regex patterns.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
           "defect_id": {
             "description": "ID of the parent defect",
             "type": "integer"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: plain (default) or json.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
           }
         },
         "required": [

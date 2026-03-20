@@ -18,7 +18,7 @@ async def test_create_launch_tool_success() -> None:
             mock_launch = type("LaunchDto", (), {"id": 55, "name": "Launch 55"})
             mock_service.create_launch = AsyncMock(return_value=mock_launch)
 
-            output = await create_launch(name="Launch 55")
+            output = await create_launch(name="Launch 55", output_format="plain")
 
             assert "Launch created successfully" in output
             assert "ID: 55" in output
@@ -47,7 +47,7 @@ async def test_list_launches_tool_output() -> None:
             )
             mock_service.list_launches = AsyncMock(return_value=result)
 
-            output = await list_launches(page=0, size=20)
+            output = await list_launches(page=0, size=20, output_format="plain")
 
             assert "Found 1 launches" in output
             assert "#9" in output
@@ -82,7 +82,7 @@ async def test_get_launch_tool_output() -> None:
                     )
                     mock_service.get_launch = AsyncMock(return_value=mock_launch)
 
-                    output = await get_launch(launch_id=12)
+                    output = await get_launch(launch_id=12, output_format="plain")
 
                     mock_auth_context.assert_called_once_with(project_id=None)
                     assert "Launch details" in output
@@ -113,7 +113,7 @@ async def test_delete_launch_tool_output_archived() -> None:
                     )
                     mock_service.delete_launch = AsyncMock(return_value=mock_result)
 
-                    output = await delete_launch(launch_id=55)
+                    output = await delete_launch(launch_id=55, output_format="plain")
 
                     assert "Archived Launch 55" in output
                     assert "Launch 55" in output
@@ -146,7 +146,7 @@ async def test_delete_launch_tool_output_already_deleted() -> None:
                     )
                     mock_service.delete_launch = AsyncMock(return_value=mock_result)
 
-                    output = await delete_launch(launch_id=56)
+                    output = await delete_launch(launch_id=56, output_format="plain")
 
                     assert "Launch 56" in output
                     assert "already archived or doesn't exist" in output
@@ -181,7 +181,12 @@ async def test_close_launch_tool_output() -> None:
                     mock_service.close_launch = AsyncMock(return_value=mock_launch)
 
                     runtime_api_token = mock_auth_context.return_value.api_token
-                    output = await close_launch(launch_id=13, project_id=1, api_token=runtime_api_token)
+                    output = await close_launch(
+                        launch_id=13,
+                        project_id=1,
+                        api_token=runtime_api_token,
+                        output_format="plain",
+                    )
 
                     mock_auth_context.assert_called_once_with(api_token=runtime_api_token, project_id=1)
                     mock_service.close_launch.assert_called_once_with(13)
@@ -217,7 +222,12 @@ async def test_reopen_launch_tool_output() -> None:
                     mock_service.reopen_launch = AsyncMock(return_value=mock_launch)
 
                     runtime_api_token = mock_auth_context.return_value.api_token
-                    output = await reopen_launch(launch_id=14, project_id=1, api_token=runtime_api_token)
+                    output = await reopen_launch(
+                        launch_id=14,
+                        project_id=1,
+                        api_token=runtime_api_token,
+                        output_format="plain",
+                    )
 
                     mock_auth_context.assert_called_once_with(api_token=runtime_api_token, project_id=1)
                     mock_service.reopen_launch.assert_called_once_with(14)

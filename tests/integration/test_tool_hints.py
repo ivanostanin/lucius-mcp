@@ -147,6 +147,7 @@ async def test_create_test_case_tool_forwards_test_layers(monkeypatch):
         test_layer_id=10,
         test_layer_name="Layer10",
         project_id=1,
+        output_format="plain",
     )
 
     assert "Created Test Case ID: 1" in result

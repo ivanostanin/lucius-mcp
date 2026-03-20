@@ -6,6 +6,7 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.test_hierarchy_service import TestHierarchyService
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
 
 
 async def delete_test_suite(
@@ -15,6 +16,9 @@ async def delete_test_suite(
         Field(description="Must be set to True to proceed with deletion. Safety measure."),
     ] = False,
     project_id: Annotated[int | None, Field(description="Optional Allure TestOps project ID override.")] = None,
+    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
 ) -> str:
     """Delete a test suite node from hierarchy.
     ⚠️ CAUTION: Destructive.
@@ -27,6 +31,7 @@ async def delete_test_suite(
         confirm: Must be set to True to proceed.
             This safety flag prevents accidental destructive actions.
         project_id: Optional Allure TestOps project override.
+        output_format: Output format: plain (default) or json.
 
     Returns:
         A confirmation or safety warning message.
@@ -36,10 +41,22 @@ async def delete_test_suite(
         -> "✅ Test suite 12345 deleted successfully (idempotent)."
     """
     if not confirm:
-        return f"⚠️ Destructive operation. Confirm deletion of suite {suite_id} by passing confirm=True."
+        return render_output(
+            plain=f"⚠️ Destructive operation. Confirm deletion of suite {suite_id} by passing confirm=True.",
+            json_payload={
+                "requires_confirmation": True,
+                "suite_id": suite_id,
+                "action": "delete_test_suite",
+            },
+            output_format=output_format,
+        )
 
     async with AllureClient.from_env(project=project_id) as client:
         service = TestHierarchyService(client)
         await service.delete_suite(suite_id=suite_id)
 
-    return f"✅ Test suite {suite_id} deleted successfully (idempotent)."
+    return render_output(
+        plain=f"✅ Test suite {suite_id} deleted successfully (idempotent).",
+        json_payload={"suite_id": suite_id, "status": "deleted"},
+        output_format=output_format,
+    )
