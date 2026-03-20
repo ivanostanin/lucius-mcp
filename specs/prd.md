@@ -196,12 +196,12 @@ The product provides a direct CLI interface in addition to MCP transport. CLI co
 *   **Input/Output:** Strict JSON following the MCP specification.
 *   **Pydantic Models:** All schemas are auto-generated from the Allure TestOps OpenAPI 3.1 spec ensuring 1:1 fidelity.
 *   **Attachments:** Handled via Base64 strings or external URL references (depending on Allure API limits).
-*   **Tool Output Formats:** `plain`, `json` with `json` as default (breaking change).
+*   **Tool Output Formats:** `plain`, `json` with `plain` as default (breaking change).
 *   **CLI Output Formats:** `plain`, `json`, `table`, `csv` where `table` and `csv` are CLI-only renderer modes.
 
 ### CLI Output Data Flow & Format Contracts
 
-*   **Flow Step 1 (Tool Execution):** `lucius <entity> <action>` executes mapped tool behavior and receives tool output in `json` (default) or `plain`.
+*   **Flow Step 1 (Tool Execution):** `lucius <entity> <action>` executes mapped tool behavior and receives tool output in `plain` (tool default) or `json`.
 *   **Flow Step 2 (Tool Contract):** Tools do not emit `table` or `csv`; those modes are not part of tool output contract.
 *   **Flow Step 3 (CLI Rendering):**
     *   `plain`: Human-readable rendering with escaped newline normalization (`\\n` -> newline).
@@ -303,10 +303,10 @@ The product provides a direct CLI interface in addition to MCP transport. CLI co
 *   **FR28:** In `plain` output mode, escaped newline sequences (`\n`) in response text MUST be rendered as actual line breaks, not literal backslash+n text.
 *   **FR29:** Automated tests (unit and E2E) MUST verify newline rendering behavior in `plain` output mode.
 *   **FR30:** Breaking CLI behavior changes MUST be committed using Conventional Commits with the `!` breaking marker and a `BREAKING CHANGE:` footer describing impact.
-*   **FR31:** Tools MUST support `plain` and `json` output formats, with `json` as the default when output format is not specified.
+*   **FR31:** Tools MUST support `plain` and `json` output formats, with `plain` as the default when output format is not specified.
 *   **FR32:** `table` and `csv` MUST be implemented only in CLI rendering and MUST NOT be exposed as tool-level output modes.
 *   **FR33:** Integration tests MUST verify acceptance criteria and end-to-end data flow from tool outputs into CLI renderers.
-*   **FR34:** EVERY exposed tool MUST follow the output contract (`plain|json`, default `json`).
+*   **FR34:** EVERY exposed tool MUST follow the output contract (`plain|json`, default `plain`).
 *   **FR35:** CLI MUST return tool `plain` and `json` outputs to users without content changes and perform rendering transformations only for `table|csv`.
 
 ## Non-Functional Requirements

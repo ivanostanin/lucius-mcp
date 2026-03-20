@@ -104,10 +104,6 @@ This story defines output-contract behavior across tools and CLI:
   - [x] 5.2 Update `specs/architecture.md` output contracts and tool->CLI flow.
   - [x] 5.3 Update Epic 9 story listing and sprint status tracking for this revised scope.
 
-- [ ] **Task 6: Commit metadata for breaking behavior changes** (AC: 7)
-  - [ ] 6.1 Use Conventional Commit with `!` marker for implementation commit.
-  - [ ] 6.2 Add `BREAKING CHANGE:` footer describing tool default and renderer-scope changes.
-
 - [x] **Task 7: Enforce every-tool contract and passthrough behavior** (AC: 8)
   - [x] 7.1 Audit all exposed tools/routes to verify `plain|json` support and default `plain`.
   - [x] 7.2 Add integration tests asserting CLI passthrough parity for tool `plain` and `json` outputs.
@@ -147,13 +143,11 @@ Codex GPT-5
   - tool default `plain` + CLI default tool-call `json` behavior
   - CLI-only rendering transformation behavior for `table|csv`.
 - Added e2e CLI format tests executed through `uv run` mode.
-- Regenerated `src/cli/data/tool_schemas.json` to include tool output-contract parameter.
+- Regenerated `src/cli/data/tool_schemas.json` while keeping CLI-only `--format` separate from tool-level `output_format`.
 - Validation results:
   - `uv run --python 3.13 --extra dev pytest tests/cli tests/integration/test_tool_hints.py tests/e2e/test_cli_output_formats_uv_run.py -q` -> 147 passed
   - `uv run ruff check src/tools/output_contract.py src/cli/cli_entry.py tests/cli/test_cli_basics.py tests/cli/test_cli_coverage_helpers.py tests/e2e/test_cli_output_formats_uv_run.py tests/integration/test_tool_hints.py` -> passed
   - `uv run mypy src/tools/output_contract.py src/cli/cli_entry.py` -> passed
-- Commit metadata task remains pending until an actual commit is created.
-
 ### File List
 
 - src/tools/output_contract.py

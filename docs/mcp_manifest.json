@@ -4022,6 +4022,66 @@
       "execution": null
     },
     {
+      "name": "delete_test_plan",
+      "title": "Delete Test Plan",
+      "description": "Delete a Test Plan.\n⚠️ CAUTION: Destructive.\n\nPermanently removes the Test Plan from Allure TestOps.\nThe operation is idempotent: if the plan does not exist, it returns success.\n\nArgs:\n    plan_id: The numeric ID of the Test Plan to delete.\n    confirm: Must be set to True to proceed with deletion.\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    A formatted success message or a warning if confirmation is missing.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "plan_id": {
+            "description": "ID of the test plan to delete",
+            "type": "integer"
+          },
+          "confirm": {
+            "default": false,
+            "description": "Must be set to True to proceed with deletion. Safety measure.",
+            "type": "boolean"
+          },
+          "output_format": {
+            "default": "plain",
+            "description": "Output format: plain (default) or json.",
+            "enum": [
+              "plain",
+              "json"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object",
+        "x-fastmcp-wrap-result": true
+      },
+      "icons": null,
+      "annotations": {
+        "title": "Delete Test Plan",
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": null
+      },
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "test-plan"
+          ]
+        }
+      },
+      "execution": null
+    },
+    {
       "name": "create_defect",
       "title": "Create Defect",
       "description": "Create a new defect in the current project.\n\nUse this tool to register a known defect that can later be linked\nto failing test results through defect matchers (automation rules).\n\nArgs:\n    name: Human-readable defect title. Must be non-empty.\n    description: Optional markdown description providing context\n        about the defect (root cause, impact, workaround, etc.).\n    output_format: Output format: plain (default) or json.\n\nReturns:\n    A success message containing the ID and name of the created defect.",

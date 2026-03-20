@@ -62,6 +62,30 @@ def test_e2e_uv_run_cli_plain() -> None:
     assert result.stdout == "line1\nline2"
 
 
+def test_e2e_uv_run_cli_plain_normalizes_escaped_newlines() -> None:
+    """With --format plain, escaped newline markers are normalized before CLI passthrough."""
+    script = "\n".join(
+        [
+            "from src.cli import cli_entry",
+            "import src.tools as tools",
+            "from src.tools.output_contract import render_message_output",
+            "async def _fake(**kwargs):",
+            "    assert kwargs.get('output_format') == 'plain', kwargs",
+            "    return render_message_output('line1\\\\nline2', output_format=kwargs['output_format'])",
+            "setattr(tools, 'get_test_case_details', _fake)",
+            "cli_entry.run_cli(['test_case', 'get', '--args', '{\"test_case_id\": 1}', '--format', 'plain'])",
+        ]
+    )
+    result = subprocess.run(
+        ["uv", "run", "--python", "3.13", "python", "-c", script],
+        capture_output=True,
+        text=True,
+        cwd=PROJECT_ROOT,
+    )
+    assert result.returncode == 0
+    assert result.stdout == "line1\nline2"
+
+
 def test_e2e_uv_run_cli_csv() -> None:
     """With --format csv, CLI requests json from the tool and renders csv."""
     result = run_cli_with_mocked_result_via_uv(

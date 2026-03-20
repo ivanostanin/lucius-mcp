@@ -130,7 +130,7 @@ uv add "mcp[cli,fastapi]" pydantic starlette uvicorn
 *   **Layering Rule:** Thick Service -> Thin CLI adapter. No new business layer and no new tool layer are introduced for CLI migration.
 
 ### CLI Output Format Data Flow
-*   **Tool Output Contract:** Tools must emit `plain|json` only, with `json` as default when output mode is not specified (breaking change).
+*   **Tool Output Contract:** Tools must emit `plain|json` only, with `plain` as default when output mode is not specified (breaking change).
 *   **Input Contract:** CLI ingests tool outputs (`plain` or `json`) from the existing service/tool behavior path (no extra business layer).
 *   **Format Resolution:** CLI resolves requested renderer format after tool output is received.
 *   **Passthrough Rule:** For `plain` and `json`, CLI returns tool output content unchanged.
@@ -172,7 +172,7 @@ uv add "mcp[cli,fastapi]" pydantic starlette uvicorn
 ### Communication Patterns (Agent Interface)
 
 **Tool Prompts:**
-*   Tools MUST support `plain|json` outputs and default to `json`.
+*   Tools MUST support `plain|json` outputs and default to `plain`.
 *   `table|csv` are CLI-only rendering modes and must not be introduced as tool output modes.
 *   CLI actions MUST preserve equivalent behavior and support `plain|json|table|csv` rendering options.
 

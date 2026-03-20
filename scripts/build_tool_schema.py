@@ -129,6 +129,8 @@ def _build_input_schema(function: typing.Callable[..., typing.Any]) -> dict[str,
     for param_name, parameter in signature.parameters.items():
         if parameter.kind in {inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD}:
             continue
+        if param_name == "output_format":
+            continue
 
         annotation, description, constraints = _annotated_metadata(parameter.annotation)
         schema = _type_to_schema(annotation)

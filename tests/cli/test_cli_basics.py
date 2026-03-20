@@ -220,6 +220,28 @@ def test_process_cli_plain_output_renders_escaped_newlines():
     assert result.stdout == "line1\nline2"
 
 
+def test_process_cli_plain_output_normalizes_escaped_newlines_end_to_end():
+    """Process-level check: tool plain rendering normalizes escaped newline markers."""
+    script = "\n".join(
+        [
+            "from src.cli import cli_entry",
+            "from src.tools.output_contract import render_message_output",
+            "async def _fake(_tool_name, _args):",
+            "    return render_message_output('line1\\\\nline2', output_format='plain')",
+            "cli_entry.call_tool_function = _fake",
+            "cli_entry.run_cli(['test_case', 'get', '--args', '{\"test_case_id\": 1}', '--format', 'plain'])",
+        ]
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        cwd=PROJECT_ROOT,
+    )
+    assert result.returncode == 0
+    assert result.stdout == "line1\nline2"
+
+
 def test_uv_run_cli_default_requests_json_and_returns_json() -> None:
     """E2E (uv run): default CLI format requests JSON tool output and returns it unchanged."""
     result = run_cli_with_mocked_result_via_uv(
@@ -239,6 +261,30 @@ def test_uv_run_cli_plain_requests_plain_and_returns_plain() -> None:
         "get_test_case_details",
         "line1\nline2",
         expected_tool_output_format="plain",
+    )
+    assert result.returncode == 0
+    assert result.stdout == "line1\nline2"
+
+
+def test_uv_run_cli_plain_normalizes_escaped_newlines_end_to_end() -> None:
+    """E2E (uv run): tool plain rendering normalizes escaped newline markers."""
+    script = "\n".join(
+        [
+            "from src.cli import cli_entry",
+            "import src.tools as tools",
+            "from src.tools.output_contract import render_message_output",
+            "async def _fake(**kwargs):",
+            "    assert kwargs.get('output_format') == 'plain', kwargs",
+            "    return render_message_output('line1\\\\nline2', output_format=kwargs['output_format'])",
+            "setattr(tools, 'get_test_case_details', _fake)",
+            "cli_entry.run_cli(['test_case', 'get', '--args', '{\"test_case_id\": 1}', '--format', 'plain'])",
+        ]
+    )
+    result = subprocess.run(
+        ["uv", "run", "--python", "3.13", "python", "-c", script],
+        capture_output=True,
+        text=True,
+        cwd=PROJECT_ROOT,
     )
     assert result.returncode == 0
     assert result.stdout == "line1\nline2"

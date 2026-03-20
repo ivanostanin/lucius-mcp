@@ -24,7 +24,13 @@ from src.tools.launches import close_launch, create_launch, delete_launch, get_l
 from src.tools.link_shared_step import link_shared_step
 from src.tools.list_custom_field_values import list_custom_field_values
 from src.tools.list_integrations import list_integrations
-from src.tools.plans import create_test_plan, list_test_plans, manage_test_plan_content, update_test_plan
+from src.tools.plans import (
+    create_test_plan,
+    delete_test_plan,
+    list_test_plans,
+    manage_test_plan_content,
+    update_test_plan,
+)
 from src.tools.search import get_test_case_details, list_test_cases, search_test_cases
 from src.tools.shared_steps import create_shared_step, delete_shared_step, list_shared_steps, update_shared_step
 from src.tools.test_layers import (
@@ -68,6 +74,7 @@ __all__ = [
     "delete_test_case",
     "delete_test_layer",
     "delete_test_layer_schema",
+    "delete_test_plan",
     "delete_test_suite",
     "delete_unused_custom_fields",
     "get_custom_fields",
@@ -154,6 +161,7 @@ all_tools: list[ToolFn] = [
     update_test_plan,
     manage_test_plan_content,
     list_test_plans,
+    delete_test_plan,
     # Defect Management Tools
     create_defect,
     get_defect,

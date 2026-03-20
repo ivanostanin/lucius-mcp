@@ -195,6 +195,9 @@ class TestCLICoverageHelpers:
             run_cli(["test_case", "list", "--format", "yaml"])
         with pytest.raises(CLIError):
             run_cli(["test_case", "list", "--args", "[]"])
+        with pytest.raises(CLIError) as output_format_error:
+            run_cli(["test_case", "list", "--args", '{"output_format":"plain"}'])
+        assert "unknown parameter 'output_format'" in output_format_error.value.message.lower()
 
         with (
             patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value={"ok": True})),
@@ -231,8 +234,7 @@ class TestCLICoverageHelpers:
         assert schemas["get_test_case_details"]["entity"] == "test_case"
         assert schemas["get_test_case_details"]["action"] == "get"
         assert "example_command" in schemas["get_test_case_details"]
-        output_format_schema = schemas["get_test_case_details"]["input_schema"]["properties"]["output_format"]
-        assert output_format_schema["default"] == "plain"
+        assert "output_format" not in schemas["get_test_case_details"]["input_schema"]["properties"]
 
     def test_every_route_tool_signature_supports_output_format(self) -> None:
         for tool_name in all_route_tool_names():
