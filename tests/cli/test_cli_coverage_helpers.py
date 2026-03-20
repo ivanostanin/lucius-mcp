@@ -272,7 +272,7 @@ class TestCLICoverageHelpers:
             if module_path.name in skip_modules:
                 continue
 
-            tree = ast.parse(module_path.read_text())
+            tree = ast.parse(module_path.read_text(encoding="utf-8"))
             for node in tree.body:
                 if not isinstance(node, ast.AsyncFunctionDef):
                     continue
@@ -301,7 +301,7 @@ class TestCLICoverageHelpers:
             if module_path.name in skip_modules:
                 continue
 
-            tree = ast.parse(module_path.read_text())
+            tree = ast.parse(module_path.read_text(encoding="utf-8"))
             for node in tree.body:
                 if not isinstance(node, ast.AsyncFunctionDef):
                     continue
