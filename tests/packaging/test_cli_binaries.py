@@ -7,6 +7,7 @@ Tests verify binary size, functionality, and standalone execution.
 import ast
 import os
 import platform
+import re
 import subprocess
 import tempfile
 import time
@@ -93,6 +94,64 @@ def _render_cache_path(template: str, cache_dir: str, company: str, product: str
         .replace("{PRODUCT}", product)
         .replace("{VERSION}", version)
     )
+
+
+def _get_onefile_metadata() -> tuple[str, str, str]:
+    """Get company/product/version metadata embedded into onefile cache path."""
+    project_root = Path(__file__).parent.parent.parent
+    unix_build_script = (project_root / "deployment/scripts/build_cli_unix.sh").read_text(encoding="utf-8")
+
+    company_match = re.search(r"--company-name=([^\s\"']+)", unix_build_script)
+    product_match = re.search(r"--product-name=([^\s\"']+)", unix_build_script)
+    if company_match is None or product_match is None:
+        raise RuntimeError("Could not parse onefile company/product metadata from build script")
+
+    from src.version import __version__
+
+    return company_match.group(1), product_match.group(1), __version__
+
+
+def _resolve_windows_local_appdata() -> Path:
+    """Resolve Windows native Local AppData path via shell API semantics."""
+    import ctypes
+
+    csidl_local_appdata = 28
+    shgfp_type_current = 0
+    buffer_size = 260
+    path_buffer = ctypes.create_unicode_buffer(buffer_size)
+
+    result = ctypes.windll.shell32.SHGetFolderPathW(
+        None,
+        csidl_local_appdata,
+        None,
+        shgfp_type_current,
+        path_buffer,
+    )
+    if result != 0:
+        raise RuntimeError(f"SHGetFolderPathW(CSIDL_LOCAL_APPDATA) failed with code {result}")
+
+    return Path(path_buffer.value)
+
+
+def _runtime_cache_probe_root(configured_cache_root: Path) -> Path:
+    """Return cache root actually used by onefile tempdir expansion on current OS."""
+    if platform.system() == "Windows":
+        return _resolve_windows_local_appdata()
+    return configured_cache_root
+
+
+def _runtime_expected_onefile_cache_dir(configured_cache_root: Path) -> Path:
+    """Expected onefile cache directory after runtime token expansion."""
+    company, product, version = _get_onefile_metadata()
+    cache_root = _runtime_cache_probe_root(configured_cache_root)
+    rendered = _render_cache_path(
+        template=TestBinaryBuildScriptConfiguration.EXPECTED_ONEFILE_CACHE_SPEC,
+        cache_dir=str(cache_root),
+        company=company,
+        product=product,
+        version=version,
+    )
+    return Path(rendered)
 
 
 def _is_release_binary_validation_enabled() -> bool:
@@ -637,7 +696,11 @@ class TestBinaryStartupCacheBehavior:
         first = run_once()
         second = run_once()
         assert second < first, f"Expected warm start to be faster, got first={first:.3f}s second={second:.3f}s"
-        assert any(cache_root.rglob("*")), "Expected cache files to be created under configured cache root"
+        expected_cache_dir = _runtime_expected_onefile_cache_dir(cache_root)
+        assert expected_cache_dir.exists(), f"Expected onefile cache dir to exist: {expected_cache_dir}"
+        assert any(expected_cache_dir.rglob("*")), (
+            f"Expected cache files to be created under resolved onefile cache path: {expected_cache_dir}"
+        )
 
     def test_cache_template_tokens_are_resolved_at_runtime(self, built_cli_binary: Path) -> None:
         """Onefile cache directories should not contain unresolved {TOKEN} placeholders."""
@@ -657,13 +720,14 @@ class TestBinaryStartupCacheBehavior:
         )
         assert result.returncode == 0, f"Binary failed: {result.stderr}"
 
-        created_paths = list(cache_root.rglob("*"))
+        expected_cache_dir = _runtime_expected_onefile_cache_dir(cache_root)
+        created_paths = list(expected_cache_dir.rglob("*")) if expected_cache_dir.exists() else []
         assert created_paths, "Expected onefile cache extraction artifacts to be created"
 
         unresolved = [
             path
             for path in created_paths
-            if "{" in str(path.relative_to(cache_root)) or "}" in str(path.relative_to(cache_root))
+            if "{" in str(path.relative_to(expected_cache_dir)) or "}" in str(path.relative_to(expected_cache_dir))
         ]
         assert not unresolved, "Found unresolved onefile cache template placeholders:\n" + "\n".join(
             str(path) for path in unresolved[:20]

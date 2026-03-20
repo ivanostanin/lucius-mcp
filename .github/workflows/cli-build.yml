@@ -173,6 +173,11 @@ jobs:
       matrix:
         include:
           - platform: linux
+            arch: arm64
+            runner: ubuntu-24.04-arm
+            artifact_name: lucius-linux-arm64
+
+          - platform: linux
             arch: x86_64
             runner: ubuntu-latest
             artifact_name: lucius-linux-x86_64
@@ -182,10 +187,20 @@ jobs:
             runner: macos-15
             artifact_name: lucius-macos-arm64
 
+          - platform: macos
+            arch: x86_64
+            runner: macos-15-intel
+            artifact_name: lucius-macos-x86_64
+
           - platform: windows
             arch: x86_64
             runner: windows-latest
             artifact_name: lucius-windows-x86_64.exe
+
+          - platform: windows
+            arch: arm64
+            runner: windows-11-arm
+            artifact_name: lucius-windows-arm64.exe
 
     steps:
       - name: Checkout repository
