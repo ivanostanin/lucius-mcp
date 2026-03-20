@@ -28,6 +28,11 @@ TARGET_ARCH="$(normalize_arch "$(uname -m)")"
 ONEFILE=true
 CLEAN=true
 JOBS=""
+# Version-scoped cache path keeps warm starts fast and prevents cross-version reuse.
+DEFAULT_ONEFILE_CACHE_TEMPDIR_SPEC='{CACHE_DIR}/{COMPANY}/{PRODUCT}/{VERSION}'
+ONEFILE_CACHE_TEMPDIR_SPEC="${ONEFILE_CACHE_TEMPDIR_SPEC:-$DEFAULT_ONEFILE_CACHE_TEMPDIR_SPEC}"
+ONEFILE_CACHE_MODE="${ONEFILE_CACHE_MODE:-cached}"
+ONEFILE_NO_COMPRESSION=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -63,6 +68,18 @@ while [[ $# -gt 0 ]]; do
             JOBS="$2"
             shift 2
             ;;
+        --onefile-cache-mode)
+            if [[ $# -lt 2 ]]; then
+                echo "Error: --onefile-cache-mode requires a value"
+                exit 1
+            fi
+            ONEFILE_CACHE_MODE="$2"
+            shift 2
+            ;;
+        --onefile-no-compression)
+            ONEFILE_NO_COMPRESSION=true
+            shift
+            ;;
         --help|-h)
             cat <<'EOF'
 Usage: deployment/scripts/build_cli_unix.sh [OPTIONS]
@@ -73,6 +90,8 @@ Options:
   --no-onefile              Disable --onefile mode
   --no-clean                Do not remove previous target artifacts
   --jobs <N>                Number of Nuitka jobs
+  --onefile-cache-mode      Onefile cache strategy: cached (default) or off
+  --onefile-no-compression  Enable Nuitka --onefile-no-compression
   --help, -h                Show help
 EOF
             exit 0
@@ -91,6 +110,11 @@ fi
 
 if [[ "${TARGET_ARCH}" != "arm64" && "${TARGET_ARCH}" != "x86_64" ]]; then
     echo "Error: Unsupported --arch '${TARGET_ARCH}'. Use arm64 or x86_64."
+    exit 1
+fi
+
+if [[ "${ONEFILE_CACHE_MODE}" != "cached" && "${ONEFILE_CACHE_MODE}" != "off" ]]; then
+    echo "Error: Unsupported --onefile-cache-mode '${ONEFILE_CACHE_MODE}'. Use cached or off."
     exit 1
 fi
 
@@ -133,11 +157,21 @@ if [[ ! -f "src/cli/data/tool_schemas.json" ]]; then
     exit 1
 fi
 
+CLI_VERSION="$(uv --quiet run --python 3.13 --extra dev python -c "from src.version import __version__; print(__version__)")"
+if [[ -z "${CLI_VERSION}" ]]; then
+    echo "Error: failed to resolve CLI version for onefile metadata"
+    exit 1
+fi
+
 nuitka_args=(
     --standalone
     --assume-yes-for-downloads
     --output-dir="${OUTPUT_DIR}"
     --output-filename="${OUTPUT_BASENAME}"
+    --company-name=lucius-mcp
+    --product-name=lucius
+    --file-version="${CLI_VERSION}"
+    --product-version="${CLI_VERSION}"
     --include-package=rich._unicode_data
     --include-data-files=src/cli/data/tool_schemas.json=data/tool_schemas.json
 )
@@ -148,6 +182,15 @@ fi
 
 if [[ "${ONEFILE}" == true ]]; then
     nuitka_args+=(--onefile)
+    if [[ "${ONEFILE_CACHE_MODE}" != "off" ]]; then
+        nuitka_args+=(
+            "--onefile-tempdir-spec=${ONEFILE_CACHE_TEMPDIR_SPEC}"
+            "--onefile-cache-mode=${ONEFILE_CACHE_MODE}"
+        )
+    fi
+    if [[ "${ONEFILE_NO_COMPRESSION}" == true ]]; then
+        nuitka_args+=(--onefile-no-compression)
+    fi
 fi
 
 if [[ -n "${JOBS}" ]]; then

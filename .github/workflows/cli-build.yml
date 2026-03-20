@@ -240,9 +240,8 @@ jobs:
 
       - name: Run packaging tests
         run: |
-          uv run --python ${{ env.CLI_BUILD_PYTHON_VERSION }} pytest tests/packaging/test_cli_binaries.py -v --tb=short
+          uv run --python ${{ env.CLI_BUILD_PYTHON_VERSION }} pytest tests/packaging/test_cli_*.py -v --tb=short
         shell: bash
-        continue-on-error: true  # May fail if not all binaries are present
 
   test-e2e-mocked:
     name: E2E tests with mocked API

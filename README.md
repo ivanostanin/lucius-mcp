@@ -139,9 +139,8 @@ chmod +x lucius-linux-x86_64
 ```
 
 **CLI Features:**
-- 🚀 Fast startup (< 1s) with lazy initialization
 - 🎯 Type-safe entity/action invocation with validation
-- 📊 Multiple output formats (JSON, table, plain)
+- 📊 Multiple output formats (JSON, table, csv, plain)
 - 🔍 Per-action help with parameters and examples
 - 🛡️ Clean error messages with guidance
 - 📦 Standalone binaries for Linux, macOS, and Windows

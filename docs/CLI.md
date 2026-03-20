@@ -114,3 +114,125 @@ PowerShell:
 - `lucius <entity>` prints actions and short descriptions.
 - `lucius <entity> <action> --help` prints description, parameters, required/optional markers, and examples.
 - Unknown entities/actions and invalid JSON receive guided error hints.
+
+## Onefile Startup Cache
+
+Nuitka onefile CLI builds are configured to reuse extraction cache between runs:
+
+- `--onefile-cache-mode=cached`
+- `--onefile-tempdir-spec={CACHE_DIR}/{COMPANY}/{PRODUCT}/{VERSION}`
+
+Operational behavior:
+
+- First run after build/version change performs extraction (cold start).
+- Subsequent runs reuse extracted payload (warm start).
+- Cache path is version-scoped (`{VERSION}`), so a newer binary version does not reuse older cached extraction artifacts.
+- `{CACHE_DIR}` maps to native OS cache roots:
+  - Linux: XDG cache (`$XDG_CACHE_HOME` or `~/.cache`)
+  - macOS: `~/Library/Caches`
+  - Windows: `%LOCALAPPDATA%`
+
+### Guardrails for Non-Writable Cache Roots
+
+If startup fails with a cache extraction/write error, verify cache-root writability first.
+
+Linux/macOS:
+
+```bash
+# Linux (XDG root or fallback)
+CACHE_ROOT="${XDG_CACHE_HOME:-$HOME/.cache}"
+test -d "$CACHE_ROOT" || mkdir -p "$CACHE_ROOT"
+test -w "$CACHE_ROOT" || echo "Cache root is not writable: $CACHE_ROOT"
+
+# macOS default root
+test -d "$HOME/Library/Caches" || mkdir -p "$HOME/Library/Caches"
+test -w "$HOME/Library/Caches" || echo "Cache root is not writable: $HOME/Library/Caches"
+```
+
+Windows PowerShell:
+
+```powershell
+$cacheRoot = if ($env:LOCALAPPDATA) { $env:LOCALAPPDATA } else { Join-Path $env:USERPROFILE "AppData\Local" }
+if (-not (Test-Path $cacheRoot)) { New-Item -ItemType Directory -Path $cacheRoot | Out-Null }
+try {
+  $probe = Join-Path $cacheRoot "lucius-write-probe.tmp"
+  Set-Content -Path $probe -Value "ok" -ErrorAction Stop
+  Remove-Item $probe -ErrorAction SilentlyContinue
+} catch {
+  Write-Host "Cache root is not writable: $cacheRoot"
+}
+```
+
+Fallback guidance:
+
+- Linux/macOS: set `XDG_CACHE_HOME` to a writable directory before running the binary.
+- Windows: set `LOCALAPPDATA` to a writable directory before running the binary.
+
+### Reproducible Benchmark Workflow
+
+Build variants on the same host/arch, then run cold/warm timing checks for each.
+
+Build commands (Unix):
+
+```bash
+case "$(uname -s)" in
+  Linux) PLATFORM=linux ;;
+  Darwin) PLATFORM=macos ;;
+  *) echo "Unsupported platform"; exit 1 ;;
+esac
+case "$(uname -m)" in
+  arm64|aarch64) ARCH=arm64 ;;
+  x86_64|amd64) ARCH=x86_64 ;;
+  *) echo "Unsupported arch"; exit 1 ;;
+esac
+BINARY="dist/cli/lucius-${PLATFORM}-${ARCH}"
+
+# Variant 1: current onefile (no cache mode/tempdir spec)
+bash deployment/scripts/build_cli_unix.sh --onefile-cache-mode off
+cp "$BINARY" dist/cli/lucius-variant1
+
+# Variant 2: cached tempdir spec + cached mode (default)
+bash deployment/scripts/build_cli_unix.sh
+cp "$BINARY" dist/cli/lucius-variant2
+
+# Variant 3: variant 2 + no compression
+bash deployment/scripts/build_cli_unix.sh --onefile-no-compression
+cp "$BINARY" dist/cli/lucius-variant3
+```
+
+Build commands (Windows):
+
+```bat
+REM Variant 1
+deployment\scripts\build_cli_windows.bat --onefile-cache-mode off
+copy dist\cli\lucius-windows-x86_64.exe dist\cli\lucius-variant1.exe
+
+REM Variant 2 (default)
+deployment\scripts\build_cli_windows.bat
+copy dist\cli\lucius-windows-x86_64.exe dist\cli\lucius-variant2.exe
+
+REM Variant 3
+deployment\scripts\build_cli_windows.bat --onefile-no-compression
+copy dist\cli\lucius-windows-x86_64.exe dist\cli\lucius-variant3.exe
+```
+
+Timing commands:
+
+```bash
+hyperfine --warmup 0 --runs 1 ./dist/cli/lucius-variant1 --version
+hyperfine --warmup 3 --runs 10 ./dist/cli/lucius-variant1 --version
+
+hyperfine --warmup 0 --runs 1 ./dist/cli/lucius-variant2 --version
+hyperfine --warmup 3 --runs 10 ./dist/cli/lucius-variant2 --version
+
+hyperfine --warmup 0 --runs 1 ./dist/cli/lucius-variant3 --version
+hyperfine --warmup 3 --runs 10 ./dist/cli/lucius-variant3 --version
+```
+
+Observed tradeoff (2026-03-20):
+
+| Variant | Config | Cold Start | Warm Avg | Size |
+|---|---|---:|---:|---:|
+| v1_current | current onefile | 4.644s | 3.915s | 32,216,032 B |
+| v2_cached | onefile + cached mode + persistent tempdir spec | 3.820s | 0.284s | 32,232,336 B |
+| v3_cached_nocomp | v2 + no compression | 5.008s | 0.150s | 159,881,088 B |
