@@ -109,18 +109,6 @@ PowerShell:
 . .\deployment\shell-completions\lucius.ps1
 ```
 
-## Migration Notes
-
-Legacy command style is not the primary UX anymore:
-
-- Old: `lucius list`
-- Old: `lucius call <tool_name> --args '{...}'`
-
-Use entity/action instead:
-
-- New: `lucius <entity>`
-- New: `lucius <entity> <action> --args '{...}'`
-
 ## Help and Validation
 
 - `lucius <entity>` prints actions and short descriptions.
