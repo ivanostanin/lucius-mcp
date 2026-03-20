@@ -107,40 +107,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  pages-build:
+  pages:
     needs: python-quality
-    runs-on: ubuntu-latest
     permissions:
       contents: read
-    steps:
-      - uses: actions/checkout@v6.0.2
-
-      - name: Prepare GitHub Pages content
-        run: |
-          mkdir -p _site
-          cp docs/mcp-registry.html _site/mcp-registry.html
-          cp docs/mcp_manifest.json _site/mcp_manifest.json
-          # Make / resolve directly.
-          cp docs/mcp-registry.html _site/index.html
-
-      - name: Upload pages artifact
-        uses: actions/upload-pages-artifact@v4.0.0
-        with:
-          path: _site
-
-  pages-deploy:
-    needs: pages-build
-    runs-on: ubuntu-latest
-    permissions:
       pages: write
       id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4.0.5
+    uses: ./.github/workflows/_pages_build_deploy.yml
 
   pypi-publish:
     needs: python-quality

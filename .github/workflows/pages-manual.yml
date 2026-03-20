@@ -1,0 +1,27 @@
+name: Pages Deploy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ensure-main:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require main branch
+        run: |
+          if [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+            echo "::error::This workflow can run only on the main branch."
+            echo "::error::Selected ref: ${GITHUB_REF}"
+            exit 1
+          fi
+
+  pages:
+    needs: ensure-main
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/_pages_build_deploy.yml
