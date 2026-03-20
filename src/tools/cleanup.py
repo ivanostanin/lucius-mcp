@@ -8,7 +8,7 @@ from src.client import AllureClient
 from src.services.custom_field_service import CustomFieldService
 from src.services.shared_step_service import SharedStepService
 from src.services.test_case_service import TestCaseService
-from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_confirmation_required, render_output
 
 DESTRUCTIVE_CONFIRMATION_MESSAGE = "⚠️ Destructive operation. Pass confirm=True to proceed."
 
@@ -28,12 +28,9 @@ async def delete_archived_test_cases(
         output_format: Output format: plain (default) or json.
     """
     if not confirm:
-        return render_output(
+        return render_confirmation_required(
+            action="delete_archived_test_cases",
             plain=DESTRUCTIVE_CONFIRMATION_MESSAGE,
-            json_payload={
-                "requires_confirmation": True,
-                "action": "delete_archived_test_cases",
-            },
             output_format=output_format,
         )
 
@@ -62,12 +59,9 @@ async def delete_archived_shared_steps(
         output_format: Output format: plain (default) or json.
     """
     if not confirm:
-        return render_output(
+        return render_confirmation_required(
+            action="delete_archived_shared_steps",
             plain=DESTRUCTIVE_CONFIRMATION_MESSAGE,
-            json_payload={
-                "requires_confirmation": True,
-                "action": "delete_archived_shared_steps",
-            },
             output_format=output_format,
         )
 
@@ -96,12 +90,9 @@ async def delete_unused_custom_fields(
         output_format: Output format: plain (default) or json.
     """
     if not confirm:
-        return render_output(
+        return render_confirmation_required(
+            action="delete_unused_custom_fields",
             plain=DESTRUCTIVE_CONFIRMATION_MESSAGE,
-            json_payload={
-                "requires_confirmation": True,
-                "action": "delete_unused_custom_fields",
-            },
             output_format=output_format,
         )
 

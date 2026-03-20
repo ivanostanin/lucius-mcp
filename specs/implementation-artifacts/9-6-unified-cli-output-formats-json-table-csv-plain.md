@@ -1,6 +1,6 @@
 # Story 9.6: Tool-to-CLI Output Contract (Tools Plain Default, CLI JSON-by-Default Calls + Table/CSV Rendering)
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

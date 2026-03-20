@@ -7,7 +7,13 @@ from typing import Annotated
 
 from src.client import AllureClient
 from src.services.defect_service import DefectService
-from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
+from src.tools.output_contract import (
+    DEFAULT_OUTPUT_FORMAT,
+    OutputFormat,
+    render_collection_output,
+    render_confirmation_required,
+    render_output,
+)
 
 
 async def create_defect(
@@ -148,13 +154,10 @@ async def delete_defect(
         Confirmation or rejection message.
     """
     if not confirm:
-        return render_output(
+        return render_confirmation_required(
+            action="delete_defect",
             plain=f"Deletion aborted. Set confirm=true to permanently delete Defect #{defect_id}.",
-            json_payload={
-                "requires_confirmation": True,
-                "defect_id": defect_id,
-                "action": "delete_defect",
-            },
+            defect_id=defect_id,
             output_format=output_format,
         )
     async with AllureClient.from_env() as client:
@@ -182,21 +185,16 @@ async def list_defects(
     async with AllureClient.from_env() as client:
         service = DefectService(client)
         defects = await service.list_defects()
-        if not defects:
-            return render_output(
-                plain="No defects found in the current project.",
-                json_payload={"items": [], "total": 0},
-                output_format=output_format,
-            )
         lines: list[str] = [f"Found {len(defects)} defect(s):"]
         items: list[dict[str, object]] = []
         for d in defects:
             status = "Closed" if d.closed else "Open"
             lines.append(f"  • #{d.id}: {d.name} ({status})")
             items.append({"id": d.id, "name": d.name, "closed": d.closed, "status": status})
-        return render_output(
-            plain="\n".join(lines),
-            json_payload={"items": items, "total": len(items)},
+        return render_collection_output(
+            items=items,
+            plain_empty="No defects found in the current project.",
+            plain_lines=lines,
             output_format=output_format,
         )
 
@@ -300,19 +298,6 @@ async def list_defect_test_cases(
         service = DefectService(client)
         result = await service.list_defect_test_cases(defect_id=defect_id, page=page, size=size)
 
-        if not result.items:
-            return render_output(
-                plain=f"No test cases linked to Defect #{defect_id}.",
-                json_payload={
-                    "defect_id": defect_id,
-                    "items": [],
-                    "total": 0,
-                    "page": page,
-                    "size": size,
-                },
-                output_format=output_format,
-            )
-
         total_pages = result.total_pages if result.total_pages > 0 else 1
         lines = [
             f"Found {result.total} linked test case(s) for Defect #{defect_id} "
@@ -325,16 +310,15 @@ async def list_defect_test_cases(
             status_name = case.status.name if case.status and case.status.name else "Unknown"
             lines.append(f"  • #{case_id}: {case_name} [{status_name}]")
             items.append({"id": case.id, "name": case_name, "status": status_name})
-        return render_output(
-            plain="\n".join(lines),
-            json_payload={
-                "defect_id": defect_id,
-                "items": items,
-                "total": result.total,
-                "page": result.page,
-                "size": result.size,
-                "total_pages": total_pages,
-            },
+        return render_collection_output(
+            items=items,
+            plain_empty=f"No test cases linked to Defect #{defect_id}.",
+            plain_lines=lines,
+            defect_id=defect_id,
+            page=result.page,
+            size=result.size,
+            total=result.total,
+            total_pages=total_pages,
             output_format=output_format,
         )
 
@@ -463,13 +447,10 @@ async def delete_defect_matcher(
         Confirmation or rejection message.
     """
     if not confirm:
-        return render_output(
+        return render_confirmation_required(
+            action="delete_defect_matcher",
             plain=f"Deletion aborted. Set confirm=true to permanently delete Defect Matcher #{matcher_id}.",
-            json_payload={
-                "requires_confirmation": True,
-                "matcher_id": matcher_id,
-                "action": "delete_defect_matcher",
-            },
+            matcher_id=matcher_id,
             output_format=output_format,
         )
     async with AllureClient.from_env() as client:
@@ -498,12 +479,6 @@ async def list_defect_matchers(
     async with AllureClient.from_env() as client:
         service = DefectService(client)
         matchers = await service.list_defect_matchers(defect_id)
-        if not matchers:
-            return render_output(
-                plain=f"No matchers found for Defect #{defect_id}.",
-                json_payload={"defect_id": defect_id, "items": [], "total": 0},
-                output_format=output_format,
-            )
         lines: list[str] = [f"Found {len(matchers)} matcher(s) for Defect #{defect_id}:"]
         items: list[dict[str, object]] = []
         for m in matchers:
@@ -521,8 +496,10 @@ async def list_defect_matchers(
                     "trace_regex": m.trace_regex,
                 }
             )
-        return render_output(
-            plain="\n".join(lines),
-            json_payload={"defect_id": defect_id, "items": items, "total": len(items)},
+        return render_collection_output(
+            items=items,
+            plain_empty=f"No matchers found for Defect #{defect_id}.",
+            plain_lines=lines,
+            defect_id=defect_id,
             output_format=output_format,
         )

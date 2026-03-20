@@ -289,7 +289,13 @@ class TestCLICoverageHelpers:
     def test_every_async_tool_uses_output_format_in_its_body(self) -> None:  # noqa: C901
         tools_dir = Path(__file__).resolve().parents[2] / "src" / "tools"
         skip_modules = {"__init__.py", "annotations.py", "test_layers.py", "output_contract.py"}
-        formatter_names = {"render_output", "render_message_output", "apply_output_contract"}
+        formatter_names = {
+            "render_output",
+            "render_message_output",
+            "render_collection_output",
+            "render_confirmation_required",
+            "apply_output_contract",
+        }
 
         for module_path in sorted(tools_dir.glob("*.py")):
             if module_path.name in skip_modules:

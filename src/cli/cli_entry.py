@@ -127,25 +127,43 @@ def _plain_text(value: typing.Any) -> str:
     return str(value).replace("\\n", "\n")
 
 
+def _tool_schema_rows(data: dict[str, typing.Any]) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    for tool_name in sorted(data):
+        tool_info = data[tool_name]
+        properties = tool_info.get("input_schema", {}).get("properties", {})
+        param_list = list(properties.keys()) if properties else ["(no parameters)"]
+        rows.append(
+            {
+                "tool_name": tool_name,
+                "description": tool_info.get("description", "No description"),
+                "parameters": ", ".join(param_list[:5]) + ("..." if len(param_list) > 5 else ""),
+            }
+        )
+    return rows
+
+
+def _ordered_columns(rows: list[dict[str, typing.Any]]) -> list[str]:
+    column_names: list[str] = []
+    for row in rows:
+        for key in row.keys():
+            if key not in column_names:
+                column_names.append(str(key))
+    return column_names
+
+
 def format_as_table(data: typing.Any) -> typing.Any:
     """Format tool schemas or generic results as a Rich table."""
     from rich.table import Table
 
     if _is_tool_schema_map(data):
+        rows = _tool_schema_rows(typing.cast(dict[str, typing.Any], data))
         table = Table(title="Available Lucius Tools")
         table.add_column("Tool Name", style="cyan", no_wrap=True)
         table.add_column("Description", style="green")
         table.add_column("Parameters", style="yellow")
-
-        for tool_name, tool_info in data.items():
-            properties = tool_info.get("input_schema", {}).get("properties", {})
-            param_list = list(properties.keys()) if properties else ["(no parameters)"]
-            param_str = ", ".join(param_list[:5]) + ("..." if len(param_list) > 5 else "")
-            table.add_row(
-                tool_name,
-                tool_info.get("description", "No description")[:60],
-                param_str,
-            )
+        for row in rows:
+            table.add_row(row["tool_name"], row["description"][:60], row["parameters"])
         return table
 
     if isinstance(data, dict):
@@ -164,16 +182,12 @@ def format_as_table(data: typing.Any) -> typing.Any:
             return table
 
         if all(isinstance(item, dict) for item in data):
-            column_names: list[str] = []
-            for item in data:
-                for key in item.keys():
-                    if key not in column_names:
-                        column_names.append(str(key))
-
+            rows = typing.cast(list[dict[str, typing.Any]], data)
+            column_names = _ordered_columns(rows)
             table = Table(title="Command Result")
             for name in column_names:
                 table.add_column(name, style="green")
-            for item in data:
+            for item in rows:
                 table.add_row(*[_format_table_value(item.get(name)) for name in column_names])
             return table
 
@@ -204,19 +218,10 @@ def format_as_csv(data: typing.Any) -> str:
     writer = csv.writer(output, lineterminator="\n")
 
     if _is_tool_schema_map(data):
+        rows = _tool_schema_rows(typing.cast(dict[str, typing.Any], data))
         writer.writerow(["tool_name", "description", "parameters"])
-        for tool_name in sorted(data):
-            tool_info = data[tool_name]
-            properties = tool_info.get("input_schema", {}).get("properties", {})
-            param_list = list(properties.keys()) if properties else ["(no parameters)"]
-            param_str = ", ".join(param_list[:5]) + ("..." if len(param_list) > 5 else "")
-            writer.writerow(
-                [
-                    tool_name,
-                    tool_info.get("description", "No description"),
-                    param_str,
-                ]
-            )
+        for row in rows:
+            writer.writerow([row["tool_name"], row["description"], row["parameters"]])
         return output.getvalue()
 
     if isinstance(data, dict):
@@ -231,13 +236,10 @@ def format_as_csv(data: typing.Any) -> str:
             return output.getvalue()
 
         if all(isinstance(item, dict) for item in data):
-            column_names: list[str] = []
-            for item in data:
-                for key in item.keys():
-                    if key not in column_names:
-                        column_names.append(str(key))
+            rows = typing.cast(list[dict[str, typing.Any]], data)
+            column_names = _ordered_columns(rows)
             writer.writerow(column_names)
-            for item in data:
+            for item in rows:
                 writer.writerow([_format_csv_value(item.get(name)) for name in column_names])
             return output.getvalue()
 

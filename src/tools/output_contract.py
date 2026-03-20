@@ -88,3 +88,46 @@ def render_message_output(
         json_payload={"message": _to_plain_output(message)},
         output_format=output_format,
     )
+
+
+def render_confirmation_required(
+    *,
+    action: str,
+    plain: str,
+    output_format: str = DEFAULT_OUTPUT_FORMAT,
+    **payload_fields: typing.Any,
+) -> str:
+    """Render a standard confirmation-required response envelope."""
+    return render_output(
+        plain=plain,
+        json_payload={
+            "requires_confirmation": True,
+            "action": action,
+            **payload_fields,
+        },
+        output_format=output_format,
+    )
+
+
+def render_collection_output(
+    *,
+    items: list[typing.Any],
+    plain_empty: str,
+    plain_lines: list[str] | None = None,
+    output_format: str = DEFAULT_OUTPUT_FORMAT,
+    total: int | None = None,
+    **payload_fields: typing.Any,
+) -> str:
+    """Render a standard collection response envelope."""
+    payload = {
+        **payload_fields,
+        "items": items,
+        "total": len(items) if total is None else total,
+    }
+    if not items:
+        return render_output(plain=plain_empty, json_payload=payload, output_format=output_format)
+    return render_output(
+        plain="\n".join(plain_lines or []),
+        json_payload=payload,
+        output_format=output_format,
+    )

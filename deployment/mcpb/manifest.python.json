@@ -211,6 +211,10 @@
       "description": "List Test Plans."
     },
     {
+      "name": "delete_test_plan",
+      "description": "Delete a Test Plan."
+    },
+    {
       "name": "create_defect",
       "description": "Create a new defect in the current project."
     },

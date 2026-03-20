@@ -1,5 +1,7 @@
 """Launch management tools."""
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Annotated
 
 from pydantic import Field
@@ -132,16 +134,7 @@ async def get_launch(
     Returns:
         LLM-friendly summary of the launch details.
     """
-    auth_context = get_auth_context(project_id=project_id)
-    project = auth_context.project_id if auth_context.project_id is not None else settings.ALLURE_PROJECT_ID
-    if project is None:
-        raise ValueError("Project ID is required to retrieve launch details")
-
-    async with AllureClient(
-        base_url=settings.ALLURE_ENDPOINT,
-        token=auth_context.api_token,
-        project=project,
-    ) as client:
+    async with _launch_client_context(project_id=project_id) as client:
         service = LaunchService(client=client)
         launch = await service.get_launch(launch_id)
 
@@ -170,16 +163,7 @@ async def delete_launch(
     Returns:
         Confirmation message with launch ID and idempotent status.
     """
-    auth_context = get_auth_context(project_id=project_id)
-    project = auth_context.project_id or settings.ALLURE_PROJECT_ID
-    if project is None:
-        raise ValueError("Project ID is required to delete launch")
-
-    async with AllureClient(
-        base_url=settings.ALLURE_ENDPOINT,
-        token=auth_context.api_token,
-        project=project,
-    ) as client:
+    async with _launch_client_context(project_id=project_id) as client:
         service = LaunchService(client=client)
         result = await service.delete_launch(launch_id)
 
@@ -214,16 +198,7 @@ async def close_launch(
     Returns:
         LLM-friendly summary of the closed launch.
     """
-    auth_context = get_auth_context(api_token=api_token, project_id=project_id)
-    project = auth_context.project_id if auth_context.project_id is not None else settings.ALLURE_PROJECT_ID
-    if project is None:
-        raise ValueError("Project ID is required to close launch")
-
-    async with AllureClient(
-        base_url=settings.ALLURE_ENDPOINT,
-        token=auth_context.api_token,
-        project=project,
-    ) as client:
+    async with _launch_client_context(project_id=project_id, api_token=api_token) as client:
         service = LaunchService(client=client)
         launch = await service.close_launch(launch_id)
 
@@ -256,16 +231,7 @@ async def reopen_launch(
     Returns:
         LLM-friendly summary of the reopened launch.
     """
-    auth_context = get_auth_context(api_token=api_token, project_id=project_id)
-    project = auth_context.project_id if auth_context.project_id is not None else settings.ALLURE_PROJECT_ID
-    if project is None:
-        raise ValueError("Project ID is required to reopen launch")
-
-    async with AllureClient(
-        base_url=settings.ALLURE_ENDPOINT,
-        token=auth_context.api_token,
-        project=project,
-    ) as client:
+    async with _launch_client_context(project_id=project_id, api_token=api_token) as client:
         service = LaunchService(client=client)
         launch = await service.reopen_launch(launch_id)
 
@@ -293,6 +259,28 @@ def _launch_payload(launch: object) -> dict[str, object]:
         or getattr(launch, "knownDefectsCount", None),
         "new_defects_count": getattr(launch, "new_defects_count", None) or getattr(launch, "newDefectsCount", None),
     }
+
+
+@asynccontextmanager
+async def _launch_client_context(
+    *,
+    project_id: int | None = None,
+    api_token: str | None = None,
+) -> AsyncIterator[AllureClient]:
+    if api_token is None:
+        auth_context = get_auth_context(project_id=project_id)
+    else:
+        auth_context = get_auth_context(api_token=api_token, project_id=project_id)
+    project = auth_context.project_id if auth_context.project_id is not None else settings.ALLURE_PROJECT_ID
+    if project is None:
+        raise ValueError("Project ID is required for launch operations")
+
+    async with AllureClient(
+        base_url=settings.ALLURE_ENDPOINT,
+        token=auth_context.api_token,
+        project=project,
+    ) as client:
+        yield client
 
 
 def _format_launch_list(result: LaunchListResult) -> str:

@@ -2,7 +2,13 @@ from typing import Annotated
 
 from src.client import AllureClient
 from src.services.plan_service import PlanService
-from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
+from src.tools.output_contract import (
+    DEFAULT_OUTPUT_FORMAT,
+    OutputFormat,
+    render_collection_output,
+    render_confirmation_required,
+    render_output,
+)
 
 
 async def create_test_plan(
@@ -147,13 +153,6 @@ async def list_test_plans(
         service = PlanService(client)
         plans = await service.list_plans(page=page, size=size)
 
-        if not plans:
-            return render_output(
-                plain="No test plans found.",
-                json_payload={"items": [], "total": 0, "page": page, "size": size},
-                output_format=output_format,
-            )
-
         result = []
         items: list[dict[str, object]] = []
         for p in plans:
@@ -162,9 +161,12 @@ async def list_test_plans(
             result.append(f"[{p.id}] {p.name} ({count} cases)")
             items.append({"id": p.id, "name": p.name, "test_cases_count": count})
 
-        return render_output(
-            plain="\n".join(result),
-            json_payload={"items": items, "total": len(items), "page": page, "size": size},
+        return render_collection_output(
+            items=items,
+            plain_empty="No test plans found.",
+            plain_lines=result,
+            page=page,
+            size=size,
             output_format=output_format,
         )
 
@@ -189,18 +191,14 @@ async def delete_test_plan(
         A formatted success message or a warning if confirmation is missing.
     """
     if not confirm:
-        message = (
-            "⚠️ Deletion requires confirmation.\n\n"
-            "This action permanently deletes the Test Plan. "
-            f"Please call again with confirm=True to proceed with deleting test plan {plan_id}."
-        )
-        return render_output(
-            plain=message,
-            json_payload={
-                "requires_confirmation": True,
-                "plan_id": plan_id,
-                "action": "delete_test_plan",
-            },
+        return render_confirmation_required(
+            action="delete_test_plan",
+            plain=(
+                "⚠️ Deletion requires confirmation.\n\n"
+                "This action permanently deletes the Test Plan. "
+                f"Please call again with confirm=True to proceed with deleting test plan {plan_id}."
+            ),
+            plan_id=plan_id,
             output_format=output_format,
         )
 

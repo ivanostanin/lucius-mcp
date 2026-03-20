@@ -4,7 +4,13 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.shared_step_service import SharedStepService
-from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
+from src.tools.output_contract import (
+    DEFAULT_OUTPUT_FORMAT,
+    OutputFormat,
+    render_collection_output,
+    render_confirmation_required,
+    render_output,
+)
 
 
 async def create_shared_step(
@@ -44,13 +50,16 @@ async def create_shared_step(
     async with AllureClient.from_env(project=project_id) as client:
         service = SharedStepService(client=client)
         shared_step = await service.create_shared_step(name=name, steps=steps)
+        if shared_step.id is None:
+            raise ValueError("Created shared step is missing an ID")
+        shared_step_url = _shared_step_url(client, shared_step.id)
 
         plain_output = (
             f"Successfully created Shared Step:\n"
             f"ID: {shared_step.id}\n"
             f"Name: {shared_step.name}\n"
             f"Project ID: {shared_step.project_id}\n"
-            f"URL: {client._base_url}/project/{project_id}/settings/shared-steps/{shared_step.id}"
+            f"URL: {shared_step_url}"
         )
         return render_output(
             plain=plain_output,
@@ -58,7 +67,7 @@ async def create_shared_step(
                 "id": shared_step.id,
                 "name": shared_step.name,
                 "project_id": shared_step.project_id,
-                "url": f"{client._base_url}/project/{project_id}/settings/shared-steps/{shared_step.id}",
+                "url": shared_step_url,
             },
             output_format=output_format,
         )
@@ -88,6 +97,7 @@ async def list_shared_steps(
     async with AllureClient.from_env(project=project_id) as client:
         service = SharedStepService(client=client)
         steps = await service.list_shared_steps(page=page, size=size, search=search, archived=archived)
+        resolved_project_id = client.get_project()
         payload_items = [
             {
                 "id": s.id,
@@ -96,33 +106,17 @@ async def list_shared_steps(
             }
             for s in steps
         ]
-
-        if not steps:
-            return render_output(
-                plain=f"No shared steps found for project {project_id}.",
-                json_payload={
-                    "items": [],
-                    "total": 0,
-                    "page": page,
-                    "size": size,
-                },
-                output_format=output_format,
-            )
-
-        output = [f"Found {len(steps)} shared steps for project {project_id}:"]
+        output = [f"Found {len(steps)} shared steps for project {resolved_project_id}:"]
         for s in steps:
             # Format: [ID: 123] Step Name (X steps)
             count_info = f" ({s.steps_count} steps)" if s.steps_count is not None else ""
             output.append(f"- [ID: {s.id}] {s.name}{count_info}")
-
-        return render_output(
-            plain="\n".join(output),
-            json_payload={
-                "items": payload_items,
-                "total": len(payload_items),
-                "page": page,
-                "size": size,
-            },
+        return render_collection_output(
+            items=payload_items,
+            plain_empty=f"No shared steps found for project {resolved_project_id}.",
+            plain_lines=output,
+            page=page,
+            size=size,
             output_format=output_format,
         )
 
@@ -166,18 +160,14 @@ async def update_shared_step(
         )
     """
     if not confirm:
-        message = (
-            "⚠️ Update requires confirmation.\n\n"
-            "Changes propagate to ALL test cases using this shared step. "
-            f"Please call again with confirm=True to proceed with updating shared step {step_id}."
-        )
-        return render_output(
-            plain=message,
-            json_payload={
-                "requires_confirmation": True,
-                "step_id": step_id,
-                "action": "update_shared_step",
-            },
+        return render_confirmation_required(
+            action="update_shared_step",
+            plain=(
+                "⚠️ Update requires confirmation.\n\n"
+                "Changes propagate to ALL test cases using this shared step. "
+                f"Please call again with confirm=True to proceed with updating shared step {step_id}."
+            ),
+            step_id=step_id,
             output_format=output_format,
         )
 
@@ -246,18 +236,14 @@ async def delete_shared_step(
         This performs a soft delete by archiving the shared step.
     """
     if not confirm:
-        message = (
-            "⚠️ Deletion requires confirmation.\n\n"
-            "Deleting a shared step used by test cases will be breaking those references. "
-            f"Please call again with confirm=True to proceed with archiving shared step {step_id}."
-        )
-        return render_output(
-            plain=message,
-            json_payload={
-                "requires_confirmation": True,
-                "step_id": step_id,
-                "action": "delete_shared_step",
-            },
+        return render_confirmation_required(
+            action="delete_shared_step",
+            plain=(
+                "⚠️ Deletion requires confirmation.\n\n"
+                "Deleting a shared step used by test cases will be breaking those references. "
+                f"Please call again with confirm=True to proceed with archiving shared step {step_id}."
+            ),
+            step_id=step_id,
             output_format=output_format,
         )
 
@@ -276,3 +262,7 @@ async def delete_shared_step(
             json_payload={"id": step_id, "status": "already_archived"},
             output_format=output_format,
         )
+
+
+def _shared_step_url(client: AllureClient, step_id: int) -> str:
+    return f"{client.get_base_url()}/project/{client.get_project()}/settings/shared-steps/{step_id}"
