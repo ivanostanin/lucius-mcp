@@ -8,7 +8,9 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PYPROJECT_PATH = PROJECT_ROOT / "pyproject.toml"
-WORKFLOW_PATH = PROJECT_ROOT / ".github" / "workflows" / "cli-build.yml"
+CLI_BUILD_WORKFLOW_PATH = PROJECT_ROOT / ".github" / "workflows" / "cli-build.yml"
+RELEASE_WORKFLOW_PATH = PROJECT_ROOT / ".github" / "workflows" / "release.yml"
+CLI_REUSABLE_WORKFLOW_PATH = PROJECT_ROOT / ".github" / "workflows" / "_cli_build_test.yml"
 BUILD_ALL_SCRIPT = PROJECT_ROOT / "deployment" / "scripts" / "build_all_cli.sh"
 CLI_BUILD_SCRIPTS = [
     PROJECT_ROOT / "deployment" / "scripts" / "build_cli_unix.sh",
@@ -32,12 +34,23 @@ def test_packaging_metadata_and_tooling_targets_python_313() -> None:
 
 
 def test_cli_build_workflow_remains_pinned_to_python_313() -> None:
-    content = WORKFLOW_PATH.read_text(encoding="utf-8")
-    python_version_lines = re.findall(r"python-version:\s*'([^']+)'", content)
+    reusable_content = CLI_REUSABLE_WORKFLOW_PATH.read_text(encoding="utf-8")
+    cli_build_content = CLI_BUILD_WORKFLOW_PATH.read_text(encoding="utf-8")
+    release_content = RELEASE_WORKFLOW_PATH.read_text(encoding="utf-8")
+
+    assert "default: '3.13'" in reusable_content
+    python_version_lines = re.findall(r"python-version:\s*'([^']+)'", reusable_content)
     assert python_version_lines
     assert set(python_version_lines) == {"${{ env.CLI_BUILD_PYTHON_VERSION }}"}
-    assert "CLI_BUILD_PYTHON_VERSION: '3.13'" in content
-    assert "path: dist/cli/${{ matrix.artifact_name }}" in content
+    assert "CLI_BUILD_PYTHON_VERSION: ${{ inputs.python-version }}" in reusable_content
+    assert "path: dist/cli/${{ matrix.artifact_name }}" in reusable_content
+
+    assert "uses: ./.github/workflows/_cli_build_test.yml" in cli_build_content
+    assert "python-version: '3.13'" in cli_build_content
+
+    assert "uses: ./.github/workflows/_cli_build_test.yml" in release_content
+    assert "python-version: '3.13'" in release_content
+
     for artifact_name in {
         "lucius-linux-arm64",
         "lucius-linux-x86_64",
@@ -46,7 +59,7 @@ def test_cli_build_workflow_remains_pinned_to_python_313() -> None:
         "lucius-windows-arm64.exe",
         "lucius-windows-x86_64.exe",
     }:
-        assert f"artifact_name: {artifact_name}" in content
+        assert f"artifact_name: {artifact_name}" in reusable_content
 
 
 def test_cli_build_scripts_require_python_313() -> None:

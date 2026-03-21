@@ -61,6 +61,14 @@ jobs:
       version: ${{ needs.validate-version.outputs.version }}
       artifact-name: mcpb-bundle-${{ needs.validate-version.outputs.version }}
 
+  cli-build:
+    needs: validate-version
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_cli_build_test.yml
+    with:
+      python-version: '3.13'
+
   docker-build:
     needs: [python-quality, validate-version]
     permissions:
@@ -78,7 +86,7 @@ jobs:
       push: true
 
   github-release:
-    needs: [validate-version, mcpb-build]
+    needs: [validate-version, mcpb-build, cli-build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -86,11 +94,39 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6.0.2
 
-      - name: Download artifacts
+      - name: Download MCPB artifacts
         uses: actions/download-artifact@v8.0.1
         with:
           name: mcpb-bundle-${{ needs.validate-version.outputs.version }}
           path: dist/
+
+      - name: Download CLI artifacts
+        uses: actions/download-artifact@v8.0.1
+        with:
+          pattern: lucius-*
+          path: dist/cli/
+          merge-multiple: true
+
+      - name: Setup Python and dependencies
+        uses: ./.github/actions/setup-lucius-python
+        with:
+          python-version: '3.13'
+
+      - name: Validate full release artifact set
+        env:
+          REQUIRE_ALL_CLI_BINARIES: "1"
+        run: |
+          uv run --python 3.13 pytest tests/packaging/test_cli_binaries.py::TestBinaryPresence::test_all_platform_binaries_exist -v --tb=short
+
+      - name: Create checksums
+        run: |
+          cd dist/cli
+          for file in lucius-*; do
+            if [ -f "$file" ]; then
+              sha256sum "$file" > "$file.sha256"
+            fi
+          done
+          cat *.sha256 > SHA256SUMS
 
       - name: Get Changelog Entry
         id: changelog_reader
@@ -103,7 +139,9 @@ jobs:
         uses: softprops/action-gh-release@v2.6.1
         with:
           body: ${{ steps.changelog_reader.outputs.changes }}
-          files: dist/*.mcpb
+          files: |
+            dist/*.mcpb
+            dist/cli/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
