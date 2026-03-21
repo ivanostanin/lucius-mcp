@@ -20,7 +20,7 @@ jobs:
       - name: Set up Python Environment
         uses: ./.github/actions/python-setup
         with:
-          python-version: '3.14'
+          python-version: ${{ vars.PYTHON_VERSION }}
       
       - name: Install Allure Commandline
         run: |

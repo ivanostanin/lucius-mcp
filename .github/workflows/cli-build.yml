@@ -20,4 +20,4 @@ jobs:
       contents: read
     uses: ./.github/workflows/_cli_build_test.yml
     with:
-      python-version: '3.13'
+      python-version: ${{ vars.PYTHON_VERSION }}

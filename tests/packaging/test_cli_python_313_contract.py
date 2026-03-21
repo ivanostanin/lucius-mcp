@@ -46,10 +46,10 @@ def test_cli_build_workflow_remains_pinned_to_python_313() -> None:
     assert "path: dist/cli/${{ matrix.artifact_name }}" in reusable_content
 
     assert "uses: ./.github/workflows/_cli_build_test.yml" in cli_build_content
-    assert "python-version: '3.13'" in cli_build_content
+    assert "python-version: ${{ vars.PYTHON_VERSION }}" in cli_build_content
 
     assert "uses: ./.github/workflows/_cli_build_test.yml" in release_content
-    assert "python-version: '3.13'" in release_content
+    assert "python-version: ${{ vars.PYTHON_VERSION }}" in release_content
 
     for artifact_name in {
         "lucius-linux-arm64",

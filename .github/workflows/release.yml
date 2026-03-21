@@ -50,7 +50,7 @@ jobs:
       contents: read
     uses: ./.github/workflows/_python_check.yml
     with:
-      python-version: '3.14'
+      python-version: ${{ vars.PYTHON_VERSION }}
 
   mcpb-build:
     needs: [validate-version, python-quality]
@@ -67,7 +67,7 @@ jobs:
       contents: read
     uses: ./.github/workflows/_cli_build_test.yml
     with:
-      python-version: '3.13'
+      python-version: ${{ vars.PYTHON_VERSION }}
 
   docker-build:
     needs: [python-quality, validate-version]
@@ -110,13 +110,13 @@ jobs:
       - name: Setup Python and dependencies
         uses: ./.github/actions/setup-lucius-python
         with:
-          python-version: '3.13'
+          python-version: ${{ vars.PYTHON_VERSION }}
 
       - name: Validate full release artifact set
         env:
           REQUIRE_ALL_CLI_BINARIES: "1"
         run: |
-          uv run --python 3.13 pytest tests/packaging/test_cli_binaries.py::TestBinaryPresence::test_all_platform_binaries_exist -v --tb=short
+          uv run --python ${{ vars.PYTHON_VERSION }} pytest tests/packaging/test_cli_binaries.py::TestBinaryPresence::test_all_platform_binaries_exist -v --tb=short
 
       - name: Create checksums
         run: |
