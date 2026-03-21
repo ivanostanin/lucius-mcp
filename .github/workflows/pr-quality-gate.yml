@@ -11,7 +11,7 @@ jobs:
   python-quality:
     uses: ./.github/workflows/_python_check.yml
     with:
-      python-version: '3.14'
+      python-version: ${{ vars.PYTHON_VERSION }}
 
   extract-version:
     runs-on: ubuntu-latest
