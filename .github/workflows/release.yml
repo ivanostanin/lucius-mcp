@@ -108,7 +108,7 @@ jobs:
           merge-multiple: true
 
       - name: Setup Python and dependencies
-        uses: ./.github/actions/setup-lucius-python
+        uses: ./.github/actions/setup-python
         with:
           python-version: ${{ vars.PYTHON_VERSION }}
 

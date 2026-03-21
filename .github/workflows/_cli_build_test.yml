@@ -119,23 +119,19 @@ jobs:
           }
 
       - name: Setup Python and dependencies
-        uses: ./.github/actions/setup-lucius-python
+        uses: ./.github/actions/setup-python
         with:
           python-version: '${{ env.CLI_BUILD_PYTHON_VERSION }}'
           install-build-deps: 'true'
 
       - name: Resolve versioned artifact name
         id: artifact
-        shell: pwsh
-        run: |
-          $cliVersion = (uv --quiet run --python $env:CLI_BUILD_PYTHON_VERSION --extra dev python -c "from src.version import __version__; print(__version__)").Trim()
-          if (-not $cliVersion) {
-            throw "Failed to resolve CLI version"
-          }
-          $artifactName = "lucius-$cliVersion-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.binary_ext }}"
-          "cli_version=$cliVersion" >> $env:GITHUB_OUTPUT
-          "artifact_name=$artifactName" >> $env:GITHUB_OUTPUT
-          Write-Host "Artifact name: $artifactName"
+        uses: ./.github/actions/resolve-cli-artifact-name
+        with:
+          python-version: '${{ env.CLI_BUILD_PYTHON_VERSION }}'
+          platform: '${{ matrix.platform }}'
+          arch: '${{ matrix.arch }}'
+          binary-ext: '${{ matrix.binary_ext }}'
 
       - name: Restore Nuitka build cache
         uses: actions/cache@v5.0.4
@@ -216,21 +212,18 @@ jobs:
         uses: actions/checkout@v6.0.2
 
       - name: Setup Python and dependencies
-        uses: ./.github/actions/setup-lucius-python
+        uses: ./.github/actions/setup-python
         with:
           python-version: '${{ env.CLI_BUILD_PYTHON_VERSION }}'
 
       - name: Resolve versioned artifact name
         id: artifact
-        shell: pwsh
-        run: |
-          $cliVersion = (uv --quiet run --python $env:CLI_BUILD_PYTHON_VERSION --extra dev python -c "from src.version import __version__; print(__version__)").Trim()
-          if (-not $cliVersion) {
-            throw "Failed to resolve CLI version"
-          }
-          $artifactName = "lucius-$cliVersion-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.binary_ext }}"
-          "artifact_name=$artifactName" >> $env:GITHUB_OUTPUT
-          Write-Host "Artifact name: $artifactName"
+        uses: ./.github/actions/resolve-cli-artifact-name
+        with:
+          python-version: '${{ env.CLI_BUILD_PYTHON_VERSION }}'
+          platform: '${{ matrix.platform }}'
+          arch: '${{ matrix.arch }}'
+          binary-ext: '${{ matrix.binary_ext }}'
 
       - name: Download binary artifact
         uses: actions/download-artifact@v8.0.1
