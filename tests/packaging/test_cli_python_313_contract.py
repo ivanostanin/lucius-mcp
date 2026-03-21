@@ -43,23 +43,20 @@ def test_cli_build_workflow_remains_pinned_to_python_313() -> None:
     assert python_version_lines
     assert set(python_version_lines) == {"${{ env.CLI_BUILD_PYTHON_VERSION }}"}
     assert "CLI_BUILD_PYTHON_VERSION: ${{ inputs.python-version }}" in reusable_content
-    assert "path: dist/cli/${{ matrix.artifact_name }}" in reusable_content
+    assert "from src.version import __version__; print(__version__)" in reusable_content
+    assert (
+        'artifactName = "lucius-$cliVersion-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.binary_ext }}"'
+        in reusable_content
+    )
+    assert "name: ${{ steps.artifact.outputs.artifact_name }}" in reusable_content
+    assert "path: dist/cli/${{ steps.artifact.outputs.artifact_name }}" in reusable_content
+    assert 'binary_ext: ".exe"' in reusable_content
 
     assert "uses: ./.github/workflows/_cli_build_test.yml" in cli_build_content
     assert "python-version: ${{ vars.PYTHON_VERSION }}" in cli_build_content
 
     assert "uses: ./.github/workflows/_cli_build_test.yml" in release_content
     assert "python-version: ${{ vars.PYTHON_VERSION }}" in release_content
-
-    for artifact_name in {
-        "lucius-linux-arm64",
-        "lucius-linux-x86_64",
-        "lucius-macos-arm64",
-        "lucius-macos-x86_64",
-        "lucius-windows-arm64.exe",
-        "lucius-windows-x86_64.exe",
-    }:
-        assert f"artifact_name: {artifact_name}" in reusable_content
 
 
 def test_cli_build_scripts_require_python_313() -> None:
