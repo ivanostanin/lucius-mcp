@@ -11,6 +11,7 @@ PYPROJECT_PATH = PROJECT_ROOT / "pyproject.toml"
 CLI_BUILD_WORKFLOW_PATH = PROJECT_ROOT / ".github" / "workflows" / "cli-build.yml"
 RELEASE_WORKFLOW_PATH = PROJECT_ROOT / ".github" / "workflows" / "release.yml"
 CLI_REUSABLE_WORKFLOW_PATH = PROJECT_ROOT / ".github" / "workflows" / "_cli_build_test.yml"
+CLI_ARTIFACT_ACTION_PATH = PROJECT_ROOT / ".github" / "actions" / "resolve-cli-artifact-name" / "action.yml"
 BUILD_ALL_SCRIPT = PROJECT_ROOT / "deployment" / "scripts" / "build_all_cli.sh"
 CLI_BUILD_SCRIPTS = [
     PROJECT_ROOT / "deployment" / "scripts" / "build_cli_unix.sh",
@@ -37,29 +38,31 @@ def test_cli_build_workflow_remains_pinned_to_python_313() -> None:
     reusable_content = CLI_REUSABLE_WORKFLOW_PATH.read_text(encoding="utf-8")
     cli_build_content = CLI_BUILD_WORKFLOW_PATH.read_text(encoding="utf-8")
     release_content = RELEASE_WORKFLOW_PATH.read_text(encoding="utf-8")
+    artifact_action_content = CLI_ARTIFACT_ACTION_PATH.read_text(encoding="utf-8")
 
     assert "default: '3.13'" in reusable_content
     python_version_lines = re.findall(r"python-version:\s*'([^']+)'", reusable_content)
     assert python_version_lines
     assert set(python_version_lines) == {"${{ env.CLI_BUILD_PYTHON_VERSION }}"}
     assert "CLI_BUILD_PYTHON_VERSION: ${{ inputs.python-version }}" in reusable_content
-    assert "path: dist/cli/${{ matrix.artifact_name }}" in reusable_content
+    assert "uses: ./.github/actions/resolve-cli-artifact-name" in reusable_content
+    assert "name: ${{ steps.artifact.outputs.artifact_name }}" in reusable_content
+    assert "path: dist/cli/${{ steps.artifact.outputs.artifact_name }}" in reusable_content
+    assert 'binary_ext: ".exe"' in reusable_content
+    assert "binary-ext: '${{ matrix.binary_ext }}'" in reusable_content
 
     assert "uses: ./.github/workflows/_cli_build_test.yml" in cli_build_content
     assert "python-version: ${{ vars.PYTHON_VERSION }}" in cli_build_content
+    assert ".github/actions/resolve-cli-artifact-name/**" in cli_build_content
 
     assert "uses: ./.github/workflows/_cli_build_test.yml" in release_content
     assert "python-version: ${{ vars.PYTHON_VERSION }}" in release_content
 
-    for artifact_name in {
-        "lucius-linux-arm64",
-        "lucius-linux-x86_64",
-        "lucius-macos-arm64",
-        "lucius-macos-x86_64",
-        "lucius-windows-arm64.exe",
-        "lucius-windows-x86_64.exe",
-    }:
-        assert f"artifact_name: {artifact_name}" in reusable_content
+    assert "from src.version import __version__; print(__version__)" in artifact_action_content
+    assert (
+        'artifactName = "lucius-$cliVersion-${{ inputs.platform }}-${{ inputs.arch }}${{ inputs.binary-ext }}"'
+        in artifact_action_content
+    )
 
 
 def test_cli_build_scripts_require_python_313() -> None:

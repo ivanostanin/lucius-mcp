@@ -1,4 +1,4 @@
-name: Setup Lucius Python Environment
+name: Setup Python Environment
 description: Setup Python, uv, optional platform build prerequisites, and project dependencies.
 
 inputs:

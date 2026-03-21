@@ -20,15 +20,32 @@ import pytest
 # Path to binary distribution directory
 DIST_DIR = Path(__file__).parent.parent.parent / "dist" / "cli"
 
-# Expected binary names by platform
-BINARIES = {
-    "linux-arm64": "lucius-linux-arm64",
-    "linux-x86_64": "lucius-linux-x86_64",
-    "macos-arm64": "lucius-macos-arm64",
-    "macos-x86_64": "lucius-macos-x86_64",
-    "windows-arm64": "lucius-windows-arm64.exe",
-    "windows-x86_64": "lucius-windows-x86_64.exe",
-}
+EXPECTED_TARGETS = (
+    ("linux", "arm64"),
+    ("linux", "x86_64"),
+    ("macos", "arm64"),
+    ("macos", "x86_64"),
+    ("windows", "arm64"),
+    ("windows", "x86_64"),
+)
+
+
+def _cli_version() -> str:
+    from src.version import __version__
+
+    return __version__
+
+
+def _expected_binary_name(platform_name: str, machine_name: str) -> str:
+    extension = ".exe" if platform_name == "windows" else ""
+    return f"lucius-{_cli_version()}-{platform_name}-{machine_name}{extension}"
+
+
+def _expected_binaries() -> dict[str, str]:
+    return {
+        f"{platform_name}-{machine_name}": _expected_binary_name(platform_name, machine_name)
+        for platform_name, machine_name in EXPECTED_TARGETS
+    }
 
 
 def _is_benchmark_binary_name(name: str) -> bool:
@@ -65,7 +82,7 @@ def _select_current_binary(
 
     platform_name = platform_name or _platform_name()
     machine_name = machine_name or _machine_name()
-    expected_name = BINARIES.get(f"{platform_name}-{machine_name}")
+    expected_name = _expected_binaries().get(f"{platform_name}-{machine_name}")
     if expected_name and (DIST_DIR / expected_name).exists():
         return DIST_DIR / expected_name
 
@@ -243,7 +260,7 @@ class TestBinaryBuildFixtureReuse:
         platform_name = _platform_name()
         machine_name = _machine_name()
         wrong_arch = "x86_64" if machine_name == "arm64" else "arm64"
-        wrong_binary_name = BINARIES[f"{platform_name}-{wrong_arch}"]
+        wrong_binary_name = _expected_binaries()[f"{platform_name}-{wrong_arch}"]
 
         monkeypatch.setattr("tests.packaging.test_cli_binaries.DIST_DIR", tmp_path)
         wrong_binary = tmp_path / wrong_binary_name
@@ -259,7 +276,7 @@ class TestBinaryBuildFixtureReuse:
     ) -> None:
         platform_name = _platform_name()
         machine_name = _machine_name()
-        expected_name = BINARIES[f"{platform_name}-{machine_name}"]
+        expected_name = _expected_binaries()[f"{platform_name}-{machine_name}"]
 
         monkeypatch.setattr("tests.packaging.test_cli_binaries.DIST_DIR", tmp_path)
         existing_binary = tmp_path / expected_name
@@ -293,14 +310,14 @@ class TestBinaryPresence:
 
         # Release packaging jobs can enforce full cross-platform artifact set.
         if _is_release_binary_validation_enabled():
-            missing = sorted(set(BINARIES.values()) - found_binaries)
+            missing = sorted(set(_expected_binaries().values()) - found_binaries)
             assert not missing, f"Release build is missing platform binaries: {missing}"
             return
 
         # Default/dev behavior: only require current-platform binary.
         if platform.system() in ["Linux", "Darwin"]:
             machine = _machine_name()
-            current_binary = BINARIES.get(f"{_platform_name()}-{machine}")
+            current_binary = _expected_binaries().get(f"{_platform_name()}-{machine}")
             if current_binary:
                 matching_current = list(DIST_DIR.glob(f"{current_binary}*"))
                 assert matching_current, f"Current platform binary not found: {current_binary}"

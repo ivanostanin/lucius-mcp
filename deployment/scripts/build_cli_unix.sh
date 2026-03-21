@@ -134,20 +134,6 @@ if ! command -v uv >/dev/null 2>&1; then
 fi
 
 OUTPUT_DIR="dist/cli"
-OUTPUT_BASENAME="lucius-${TARGET_PLATFORM}-${TARGET_ARCH}"
-OUTPUT_FILE="${OUTPUT_DIR}/${OUTPUT_BASENAME}"
-
-echo "Building lucius CLI for ${TARGET_PLATFORM} ${TARGET_ARCH}..."
-
-if [[ "${CLEAN}" == true ]]; then
-    mkdir -p "${OUTPUT_DIR}"
-    shopt -s nullglob
-    target_artifacts=("${OUTPUT_DIR}/${OUTPUT_BASENAME}"*)
-    if (( ${#target_artifacts[@]} > 0 )); then
-        rm -rf "${target_artifacts[@]}"
-    fi
-    shopt -u nullglob
-fi
 
 echo "Generating tool schemas..."
 uv --quiet run --python 3.13 --extra dev python scripts/build_tool_schema.py
@@ -161,6 +147,21 @@ CLI_VERSION="$(uv --quiet run --python 3.13 --extra dev python -c "from src.vers
 if [[ -z "${CLI_VERSION}" ]]; then
     echo "Error: failed to resolve CLI version for onefile metadata"
     exit 1
+fi
+
+OUTPUT_BASENAME="lucius-${CLI_VERSION}-${TARGET_PLATFORM}-${TARGET_ARCH}"
+OUTPUT_FILE="${OUTPUT_DIR}/${OUTPUT_BASENAME}"
+
+echo "Building lucius CLI for ${TARGET_PLATFORM} ${TARGET_ARCH}..."
+
+if [[ "${CLEAN}" == true ]]; then
+    mkdir -p "${OUTPUT_DIR}"
+    shopt -s nullglob
+    target_artifacts=("${OUTPUT_DIR}/lucius-*-${TARGET_PLATFORM}-${TARGET_ARCH}"*)
+    if (( ${#target_artifacts[@]} > 0 )); then
+        rm -rf "${target_artifacts[@]}"
+    fi
+    shopt -u nullglob
 fi
 
 nuitka_args=(

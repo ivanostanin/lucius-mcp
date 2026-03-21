@@ -72,14 +72,6 @@ if /I not "%ONEFILE_CACHE_MODE%"=="cached" if /I not "%ONEFILE_CACHE_MODE%"=="of
 )
 
 set OUTPUT_DIR=dist\cli
-set OUTPUT_FILE=lucius-windows-%TARGET_ARCH%.exe
-
-echo Building lucius CLI for Windows %TARGET_ARCH%...
-
-if not exist %OUTPUT_DIR% mkdir %OUTPUT_DIR%
-if /I "%CLEAN%"=="true" (
-    if exist %OUTPUT_DIR%\%OUTPUT_FILE% del /f /q %OUTPUT_DIR%\%OUTPUT_FILE%
-)
 
 echo Generating tool schemas...
 uv --quiet run --python 3.13 --extra dev python scripts\build_tool_schema.py
@@ -94,6 +86,17 @@ for /f "usebackq delims=" %%V in (`uv --quiet run --python 3.13 --extra dev pyth
 if "%CLI_VERSION%"=="" (
     echo Error: failed to resolve CLI version for onefile metadata
     exit /b 1
+)
+
+set OUTPUT_FILE=lucius-%CLI_VERSION%-windows-%TARGET_ARCH%.exe
+
+echo Building lucius CLI for Windows %TARGET_ARCH%...
+
+if not exist %OUTPUT_DIR% mkdir %OUTPUT_DIR%
+if /I "%CLEAN%"=="true" (
+    for %%F in ("%OUTPUT_DIR%\lucius-*-windows-%TARGET_ARCH%.exe") do (
+        if exist "%%~fF" del /f /q "%%~fF"
+    )
 )
 
 set "NUITKA_CACHE_FLAGS="

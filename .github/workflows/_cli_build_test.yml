@@ -27,48 +27,48 @@ jobs:
           # Linux ARM64
           - platform: linux
             arch: arm64
+            binary_ext: ""
             runner: ubuntu-24.04-arm
-            artifact_name: lucius-linux-arm64
             build_script: deployment/scripts/build_cli_unix.sh
             build_args: --platform linux --arch arm64
 
           # Linux x86_64
           - platform: linux
             arch: x86_64
+            binary_ext: ""
             runner: ubuntu-latest
-            artifact_name: lucius-linux-x86_64
             build_script: deployment/scripts/build_cli_unix.sh
             build_args: --platform linux --arch x86_64
 
           # macOS ARM64
           - platform: macos
             arch: arm64
+            binary_ext: ""
             runner: macos-15
-            artifact_name: lucius-macos-arm64
             build_script: deployment/scripts/build_cli_unix.sh
             build_args: --platform macos --arch arm64
 
           # macOS x86_64
           - platform: macos
             arch: x86_64
+            binary_ext: ""
             runner: macos-15-intel
-            artifact_name: lucius-macos-x86_64
             build_script: deployment/scripts/build_cli_unix.sh
             build_args: --platform macos --arch x86_64
 
           # Windows x86_64
           - platform: windows
             arch: x86_64
+            binary_ext: ".exe"
             runner: windows-latest
-            artifact_name: lucius-windows-x86_64.exe
             build_script: deployment/scripts/build_cli_windows.bat
             build_args: --arch x86_64
 
           # Windows ARM64
           - platform: windows
             arch: arm64
+            binary_ext: ".exe"
             runner: windows-11-arm
-            artifact_name: lucius-windows-arm64.exe
             build_script: deployment/scripts/build_cli_windows.bat
             build_args: --arch arm64
 
@@ -119,10 +119,19 @@ jobs:
           }
 
       - name: Setup Python and dependencies
-        uses: ./.github/actions/setup-lucius-python
+        uses: ./.github/actions/setup-python
         with:
           python-version: '${{ env.CLI_BUILD_PYTHON_VERSION }}'
           install-build-deps: 'true'
+
+      - name: Resolve versioned artifact name
+        id: artifact
+        uses: ./.github/actions/resolve-cli-artifact-name
+        with:
+          python-version: '${{ env.CLI_BUILD_PYTHON_VERSION }}'
+          platform: '${{ matrix.platform }}'
+          arch: '${{ matrix.arch }}'
+          binary-ext: '${{ matrix.binary_ext }}'
 
       - name: Restore Nuitka build cache
         uses: actions/cache@v5.0.4
@@ -156,8 +165,8 @@ jobs:
       - name: Upload binary artifact
         uses: actions/upload-artifact@v7.0.0
         with:
-          name: ${{ matrix.artifact_name }}
-          path: dist/cli/${{ matrix.artifact_name }}
+          name: ${{ steps.artifact.outputs.artifact_name }}
+          path: dist/cli/${{ steps.artifact.outputs.artifact_name }}
           retention-days: 30
 
   test-cli:
@@ -170,78 +179,72 @@ jobs:
         include:
           - platform: linux
             arch: arm64
+            binary_ext: ""
             runner: ubuntu-24.04-arm
-            artifact_name: lucius-linux-arm64
 
           - platform: linux
             arch: x86_64
+            binary_ext: ""
             runner: ubuntu-latest
-            artifact_name: lucius-linux-x86_64
 
           - platform: macos
             arch: arm64
+            binary_ext: ""
             runner: macos-15
-            artifact_name: lucius-macos-arm64
 
           - platform: macos
             arch: x86_64
+            binary_ext: ""
             runner: macos-15-intel
-            artifact_name: lucius-macos-x86_64
 
           - platform: windows
             arch: x86_64
+            binary_ext: ".exe"
             runner: windows-latest
-            artifact_name: lucius-windows-x86_64.exe
 
           - platform: windows
             arch: arm64
+            binary_ext: ".exe"
             runner: windows-11-arm
-            artifact_name: lucius-windows-arm64.exe
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6.0.2
 
       - name: Setup Python and dependencies
-        uses: ./.github/actions/setup-lucius-python
+        uses: ./.github/actions/setup-python
         with:
           python-version: '${{ env.CLI_BUILD_PYTHON_VERSION }}'
+
+      - name: Resolve versioned artifact name
+        id: artifact
+        uses: ./.github/actions/resolve-cli-artifact-name
+        with:
+          python-version: '${{ env.CLI_BUILD_PYTHON_VERSION }}'
+          platform: '${{ matrix.platform }}'
+          arch: '${{ matrix.arch }}'
+          binary-ext: '${{ matrix.binary_ext }}'
 
       - name: Download binary artifact
         uses: actions/download-artifact@v8.0.1
         with:
-          name: ${{ matrix.artifact_name }}
+          name: ${{ steps.artifact.outputs.artifact_name }}
           path: dist/cli/
 
       - name: Make binary executable (Unix)
         if: runner.os != 'Windows'
-        run: chmod +x dist/cli/${{ matrix.artifact_name }}
+        run: chmod +x dist/cli/${{ steps.artifact.outputs.artifact_name }}
 
       - name: Test binary --version
-        run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            ./dist/cli/${{ matrix.artifact_name }} --version
-          else
-            ./dist/cli/${{ matrix.artifact_name }} --version
-          fi
+        run: ./dist/cli/${{ steps.artifact.outputs.artifact_name }} --version
         shell: bash
 
       - name: Test binary --help
-        run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            ./dist/cli/${{ matrix.artifact_name }} --help
-          else
-            ./dist/cli/${{ matrix.artifact_name }} --help
-          fi
+        run: ./dist/cli/${{ steps.artifact.outputs.artifact_name }} --help
         shell: bash
 
       - name: Test binary entity command
-        run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            ./dist/cli/${{ matrix.artifact_name }} test_case
-          else
-            ./dist/cli/${{ matrix.artifact_name }} test_case
-          fi
+        run: ./dist/cli/${{ steps.artifact.outputs.artifact_name }} test_case
         shell: bash
 
       - name: Run CLI tests

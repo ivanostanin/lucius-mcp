@@ -6,7 +6,8 @@ on:
       - 'src/cli/**'
       - 'tests/cli/**'
       - 'deployment/scripts/**'
-      - '.github/actions/setup-lucius-python/**'
+      - '.github/actions/setup-python/**'
+      - '.github/actions/resolve-cli-artifact-name/**'
       - '.github/workflows/cli-build.yml'
       - '.github/workflows/_cli_build_test.yml'
   workflow_dispatch:

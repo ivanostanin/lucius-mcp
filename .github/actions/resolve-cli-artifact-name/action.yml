@@ -1,0 +1,40 @@
+name: Resolve CLI Artifact Name
+description: Resolve CLI version and construct versioned artifact file name.
+
+inputs:
+  python-version:
+    description: Python version for uv execution.
+    required: true
+  platform:
+    description: Target platform (linux|macos|windows).
+    required: true
+  arch:
+    description: Target architecture (arm64|x86_64).
+    required: true
+  binary-ext:
+    description: Binary extension, for example '.exe' on Windows.
+    required: false
+    default: ""
+
+outputs:
+  cli_version:
+    description: Resolved CLI version from src.version.__version__.
+    value: ${{ steps.resolve.outputs.cli_version }}
+  artifact_name:
+    description: Versioned CLI artifact file name.
+    value: ${{ steps.resolve.outputs.artifact_name }}
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve artifact name
+      id: resolve
+      shell: pwsh
+      run: |
+        $cliVersion = (uv --quiet run --python "${{ inputs.python-version }}" --extra dev python -c "from src.version import __version__; print(__version__)").Trim()
+        if (-not $cliVersion) {
+          throw "Failed to resolve CLI version"
+        }
+        $artifactName = "lucius-$cliVersion-${{ inputs.platform }}-${{ inputs.arch }}${{ inputs.binary-ext }}"
+        "cli_version=$cliVersion" >> $env:GITHUB_OUTPUT
+        "artifact_name=$artifactName" >> $env:GITHUB_OUTPUT
