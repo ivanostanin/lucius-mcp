@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added a standalone `lucius` CLI with packaged binaries, route mapping, and shell completion support for direct tool execution outside MCP clients (#85).
+- Added a Pages workflow for publishing tool registry from CI (#98).
+- Added a CI workflow to combine Dependabot pull requests into consolidated dependency updates (#116).
+
+### Changed
+- Unified output formats across CLI commands and MCP tools (`json`, `table`, `csv`, `plain`) for consistent machine- and human-readable responses (#97).
+- Enabled XDG-based CLI caching to improve startup performance and artifact reuse in builds (#96).
+- Expanded Python 3.13 support across CI, packaging checks, and release workflows (#87, #101).
+- Improved quick-start and CLI documentation for clearer setup and usage guidance (#94, #95).
+- Added a release workflow feature flag to control CLI artifact publishing behavior in CI/CD (#126).
+
+### Fixed
+- Fixed CI/release packaging so CLI binaries are included in release assets with correct versioned artifact naming (#100, #102).
+- Fixed CLI E2E subprocess handling to use a dynamic Python version instead of a hardcoded interpreter path (#99).
+- Improved CLI build pipeline reliability and optimization in CI checks (#88).
+
+## [v0.8.1] - 2026-04-08
+
+### Changed
+- Updated runtime, tooling, and workflow dependencies across the release window, including FastMCP, Uvicorn, Cyclopts, Ruff, Pytest-Cov, Starlette, `softprops/action-gh-release`, `docker/login-action`, and lockfile dependency refreshes (#89, #90, #91, #93, #103, #104, #105, #117, #124).
+
+### Fixed
+- Hardened telemetry identity handling using installation-scoped HMAC protection with transparent telemetry configuration and documentation improvements (#125).
+
 ## [v0.8.0] - 2026-03-09
 
 ### Added
@@ -160,7 +185,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.8.1...HEAD
+[v0.8.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.8.0...v0.8.1
 [v0.8.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.7.2...v0.8.0
 [v0.7.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.7.1...v0.7.2
 [v0.7.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.7.0...v0.7.1
