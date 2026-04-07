@@ -62,6 +62,7 @@ jobs:
       artifact-name: mcpb-bundle-${{ needs.validate-version.outputs.version }}
 
   cli-build:
+    if: ${{ vars.FEATURE_CLI == 'true' }}
     needs: validate-version
     permissions:
       contents: read
@@ -87,6 +88,7 @@ jobs:
 
   github-release:
     needs: [validate-version, mcpb-build, cli-build]
+    if: ${{ always() && needs.validate-version.result == 'success' && needs.mcpb-build.result == 'success' && (needs.cli-build.result == 'success' || needs.cli-build.result == 'skipped') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -100,7 +102,22 @@ jobs:
           name: mcpb-bundle-${{ needs.validate-version.outputs.version }}
           path: dist/
 
+      - name: Validate MCPB artifacts exist
+        run: |
+          shopt -s nullglob
+          files=(dist/*.mcpb)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "ERROR: No MCPB artifacts found in dist/"
+            exit 1
+          fi
+
+      - name: Create MCPB checksum manifest
+        run: |
+          cd dist
+          sha256sum *.mcpb > MCPB_SHA256SUMS
+
       - name: Download CLI artifacts
+        if: ${{ vars.FEATURE_CLI == 'true' }}
         uses: actions/download-artifact@v8.0.1
         with:
           pattern: lucius-*
@@ -113,12 +130,14 @@ jobs:
           python-version: ${{ vars.PYTHON_VERSION }}
 
       - name: Validate full release artifact set
+        if: ${{ vars.FEATURE_CLI == 'true' }}
         env:
           REQUIRE_ALL_CLI_BINARIES: "1"
         run: |
           uv run --python ${{ vars.PYTHON_VERSION }} pytest tests/packaging/test_cli_binaries.py::TestBinaryPresence::test_all_platform_binaries_exist -v --tb=short
 
       - name: Create checksums
+        if: ${{ vars.FEATURE_CLI == 'true' }}
         run: |
           cd dist/cli
           for file in lucius-*; do
@@ -135,13 +154,28 @@ jobs:
           version: ${{ github.ref_name }}
           path: ./CHANGELOG.md
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release (with CLI artifacts)
+        if: ${{ vars.FEATURE_CLI == 'true' }}
         uses: softprops/action-gh-release@v2.6.1
         with:
           body: ${{ steps.changelog_reader.outputs.changes }}
+          fail_on_unmatched_files: true
           files: |
             dist/*.mcpb
+            dist/MCPB_SHA256SUMS
             dist/cli/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release (MCPB only)
+        if: ${{ vars.FEATURE_CLI != 'true' }}
+        uses: softprops/action-gh-release@v2.6.1
+        with:
+          body: ${{ steps.changelog_reader.outputs.changes }}
+          fail_on_unmatched_files: true
+          files: |
+            dist/*.mcpb
+            dist/MCPB_SHA256SUMS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
