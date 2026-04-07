@@ -50,9 +50,10 @@ class TelemetryConfig:
     """Telemetry settings are configured in code, with optional env opt-out."""
 
     enabled: bool = True
-    umami_base_url: str = "https://collector.nmro.cc"
+    umami_base_url: str = "https://stats.ostanin.me"
     umami_website_id: str | None = "e011ac28-1d83-475e-b74a-6c610162dddb"
     umami_hostname: str = "lucius-mcp.prod"
+    state_dir: str | None = None
     hash_salt: str | None = None
 
 

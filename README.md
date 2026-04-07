@@ -149,6 +149,18 @@ For local CLI binary builds with Nuitka, use Python 3.13 (the build scripts and 
 
 For full CLI documentation and installation instructions, see [CLI Guide](docs/CLI.md).
 
+## 📡 Telemetry
+
+Lucius collects privacy-preserving usage telemetry to improve tool quality. Telemetry is enabled by default and sends metadata
+to `https://stats.ostanin.me`, an endpoint operated by the project owner (no third party has access to this endpoint).
+
+If this is acceptable in your environment, staying opted in helps improve Lucius over time. If you want to opt out, set
+`TELEMETRY_ENABLED=false` in your environment.
+
+No API tokens, test content, or tool arguments are sent.
+
+See [Telemetry & Privacy](docs/telemetry.md) for the full data dictionary and telemetry behavior details.
+
 ### Shell Completions
 
 Pre-generated shell completions are available in `deployment/shell-completions/`
