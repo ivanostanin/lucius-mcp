@@ -111,11 +111,6 @@ jobs:
             exit 1
           fi
 
-      - name: Create MCPB checksum manifest
-        run: |
-          cd dist
-          sha256sum *.mcpb > MCPB_SHA256SUMS
-
       - name: Download CLI artifacts
         if: ${{ vars.FEATURE_CLI == 'true' }}
         uses: actions/download-artifact@v8.0.1
@@ -136,17 +131,6 @@ jobs:
         run: |
           uv run --python ${{ vars.PYTHON_VERSION }} pytest tests/packaging/test_cli_binaries.py::TestBinaryPresence::test_all_platform_binaries_exist -v --tb=short
 
-      - name: Create checksums
-        if: ${{ vars.FEATURE_CLI == 'true' }}
-        run: |
-          cd dist/cli
-          for file in lucius-*; do
-            if [ -f "$file" ]; then
-              sha256sum "$file" > "$file.sha256"
-            fi
-          done
-          cat *.sha256 > SHA256SUMS
-
       - name: Get Changelog Entry
         id: changelog_reader
         uses: mindsers/changelog-reader-action@v2.2.3
@@ -162,7 +146,6 @@ jobs:
           fail_on_unmatched_files: true
           files: |
             dist/*.mcpb
-            dist/MCPB_SHA256SUMS
             dist/cli/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -175,7 +158,6 @@ jobs:
           fail_on_unmatched_files: true
           files: |
             dist/*.mcpb
-            dist/MCPB_SHA256SUMS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
