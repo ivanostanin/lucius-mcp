@@ -5,10 +5,13 @@ from __future__ import annotations
 import asyncio
 import datetime as dt
 import hashlib
+import hmac
 import os
 import platform
+import secrets
 import sys
 import uuid
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Literal
 from urllib.parse import urlparse
@@ -49,7 +52,8 @@ class TelemetryService:
         )
         self._website_id = self._resolve_umami_website_id(umami_website_id)
         self._hostname = self._resolve_umami_hostname(umami_hostname)
-        self._hash_salt = telemetry_config.hash_salt if hash_salt is None else hash_salt
+        self._hash_secret = self._resolve_hash_secret(hash_salt)
+        self._installation_id = self._resolve_installation_id() if self._enabled else None
         self._mcp_mode = settings.MCP_MODE if mcp_mode is None else mcp_mode
         self._server_version = server_version
         self._session_id = uuid.uuid4().hex
@@ -131,9 +135,7 @@ class TelemetryService:
         }
 
     def _installation_id_hash(self) -> str:
-        endpoint_host = self._endpoint_host() or "unknown-host"
-        project_id = str(settings.ALLURE_PROJECT_ID) if settings.ALLURE_PROJECT_ID else "unknown-project"
-        return self._hash_identifier(f"{endpoint_host}:{project_id}") or "unknown"
+        return self._hash_identifier(self._installation_id) or "unknown"
 
     def _endpoint_host(self) -> str | None:
         parsed = urlparse(settings.ALLURE_ENDPOINT)
@@ -187,6 +189,135 @@ class TelemetryService:
         else:
             resolved = telemetry_config.umami_hostname
         return resolved or "lucius-mcp.local"
+
+    def _resolve_hash_secret(self, explicit_secret: str | None) -> str | None:
+        if explicit_secret:
+            return explicit_secret.strip() or None
+
+        configured_secret = telemetry_config.hash_salt
+        if configured_secret:
+            return configured_secret.strip() or None
+
+        if not self._enabled:
+            return None
+
+        return self._read_or_create_telemetry_state_value(
+            filename="hash-secret",
+            generator=lambda: secrets.token_hex(32),
+        )
+
+    def _resolve_installation_id(self) -> str | None:
+        return self._read_or_create_telemetry_state_value(
+            filename="installation-id",
+            generator=lambda: uuid.uuid4().hex,
+        )
+
+    def _read_or_create_telemetry_state_value(self, *, filename: str, generator: Callable[[], str]) -> str | None:
+        state_dir = self._telemetry_state_dir()
+        state_file = state_dir / filename
+
+        existing = self._read_telemetry_state_value(state_file=state_file, filename=filename)
+        if existing is None:
+            return None
+
+        if existing:
+            return existing
+
+        if not self._ensure_telemetry_state_dir(state_dir):
+            return None
+
+        if os.name != "nt":
+            self._try_tighten_state_dir_permissions(state_dir)
+
+        generated = generator()
+        if not generated:
+            return None
+
+        return self._write_telemetry_state_value(state_file=state_file, filename=filename, generated=generated)
+
+    def _read_telemetry_state_value(self, *, state_file: Path, filename: str) -> str | None:
+        try:
+            return state_file.read_text(encoding="utf-8").strip()
+        except FileNotFoundError:
+            return ""
+        except OSError as exc:
+            logger.warning(
+                "Telemetry state read failed; sensitive identifiers will be omitted",
+                extra={"context": {"file": filename, "error": exc.__class__.__name__}},
+            )
+            return None
+
+    def _ensure_telemetry_state_dir(self, state_dir: Path) -> bool:
+        try:
+            state_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            logger.warning(
+                "Telemetry state directory creation failed; sensitive identifiers will be omitted",
+                extra={"context": {"dir": str(state_dir), "error": exc.__class__.__name__}},
+            )
+            return False
+        return True
+
+    def _try_tighten_state_dir_permissions(self, state_dir: Path) -> None:
+        try:
+            state_dir.chmod(0o700)
+        except OSError as exc:
+            logger.warning(
+                "Telemetry state directory permissions could not be tightened",
+                extra={"context": {"dir": str(state_dir), "error": exc.__class__.__name__}},
+            )
+
+    def _write_telemetry_state_value(self, *, state_file: Path, filename: str, generated: str) -> str | None:
+        try:
+            fd = os.open(state_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write(generated)
+            return generated
+        except FileExistsError:
+            return self._read_telemetry_state_value(state_file=state_file, filename=filename) or None
+        except OSError as exc:
+            logger.warning(
+                "Telemetry state write failed; sensitive identifiers will be omitted",
+                extra={"context": {"file": filename, "error": exc.__class__.__name__}},
+            )
+            return None
+
+    @staticmethod
+    def _telemetry_state_dir() -> Path:
+        return TelemetryService._telemetry_state_dir_for_platform(
+            configured_state_dir=telemetry_config.state_dir,
+            os_name=os.name,
+            sys_platform=sys.platform,
+            env=os.environ,
+            home_dir=Path.home(),
+        )
+
+    @staticmethod
+    def _telemetry_state_dir_for_platform(
+        *,
+        configured_state_dir: str | None,
+        os_name: str,
+        sys_platform: str,
+        env: Mapping[str, str],
+        home_dir: Path,
+    ) -> Path:
+        if configured_state_dir:
+            return Path(configured_state_dir).expanduser()
+
+        if os_name == "nt":
+            local_appdata = env.get("LOCALAPPDATA")
+            if local_appdata:
+                return Path(local_appdata) / "lucius-mcp"
+            return home_dir / "AppData" / "Local" / "lucius-mcp"
+
+        xdg_state_home = env.get("XDG_STATE_HOME")
+        if xdg_state_home:
+            return Path(xdg_state_home) / "lucius-mcp"
+
+        if sys_platform == "darwin":
+            return home_dir / "Library" / "Application Support" / "lucius-mcp"
+
+        return home_dir / ".local" / "state" / "lucius-mcp"
 
     def _schedule_event(self, event_name: str, payload: dict[str, str]) -> None:
         if not self._umami_ready:
@@ -281,10 +412,13 @@ class TelemetryService:
         return "plain-code-checkout"
 
     def _hash_identifier(self, value: str | None) -> str | None:
-        if not value:
+        if not value or not self._hash_secret:
             return None
-        salted = f"{self._hash_salt}:{value}" if self._hash_salt else value
-        return hashlib.sha256(salted.encode("utf-8")).hexdigest()
+        return hmac.new(
+            key=self._hash_secret.encode("utf-8"),
+            msg=value.encode("utf-8"),
+            digestmod=hashlib.sha256,
+        ).hexdigest()
 
     @staticmethod
     def _duration_bucket(duration_ms: float) -> str:

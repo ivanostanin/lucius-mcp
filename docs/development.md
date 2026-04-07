@@ -55,7 +55,7 @@ uv run pytest tests/unit/ tests/integration/
 When touching telemetry code, keep the existing privacy guardrails:
 
 - Do not include API tokens, headers, or request bodies with business/user content.
-- Hash environment-derived identifiers before emission (project id, endpoint host, installation identifier).
+- Protect environment-derived identifiers with keyed HMAC hashing before emission (project id, endpoint host, installation identifier).
 - Keep telemetry best-effort only: failures must never break startup or tool execution.
 - Preserve concise telemetry status logging (`enabled`/`disabled`) without sensitive values.
 

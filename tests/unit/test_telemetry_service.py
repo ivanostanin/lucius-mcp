@@ -1,6 +1,8 @@
 import asyncio
 import hashlib
+import hmac
 import json
+from pathlib import Path
 
 import httpx
 import pytest
@@ -126,6 +128,104 @@ async def test_opt_out_disables_http_requests() -> None:
     assert not route.called
 
 
+def test_opt_out_does_not_persist_telemetry_state(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    state_dir = tmp_path / "telemetry-state"
+    state_dir.mkdir()
+    monkeypatch.setattr(TelemetryService, "_telemetry_state_dir", staticmethod(lambda: state_dir))
+
+    TelemetryService(enabled=False)
+
+    assert list(state_dir.iterdir()) == []
+
+
+def test_telemetry_state_dir_windows_uses_localappdata(monkeypatch: pytest.MonkeyPatch) -> None:
+    state_dir = TelemetryService._telemetry_state_dir_for_platform(
+        configured_state_dir=None,
+        os_name="nt",
+        sys_platform="win32",
+        env={"LOCALAPPDATA": r"C:\Users\tester\AppData\Local"},
+        home_dir=Path("/home/ignored"),
+    )
+
+    assert state_dir == Path(r"C:\Users\tester\AppData\Local") / "lucius-mcp"
+
+
+def test_telemetry_state_dir_windows_falls_back_to_home() -> None:
+    state_dir = TelemetryService._telemetry_state_dir_for_platform(
+        configured_state_dir=None,
+        os_name="nt",
+        sys_platform="win32",
+        env={"XDG_STATE_HOME": "/var/lib/ignored"},
+        home_dir=Path("C:/Users/tester"),
+    )
+
+    assert state_dir == Path("C:/Users/tester") / "AppData" / "Local" / "lucius-mcp"
+
+
+def test_telemetry_state_dir_uses_xdg_on_posix() -> None:
+    state_dir = TelemetryService._telemetry_state_dir_for_platform(
+        configured_state_dir=None,
+        os_name="posix",
+        sys_platform="linux",
+        env={"XDG_STATE_HOME": "/var/lib/xdg-state"},
+        home_dir=Path("/home/ignored"),
+    )
+
+    assert state_dir == Path("/var/lib/xdg-state") / "lucius-mcp"
+
+
+def test_telemetry_state_dir_macos_default() -> None:
+    state_dir = TelemetryService._telemetry_state_dir_for_platform(
+        configured_state_dir=None,
+        os_name="posix",
+        sys_platform="darwin",
+        env={},
+        home_dir=Path("/Users/tester"),
+    )
+
+    assert state_dir == Path("/Users/tester") / "Library" / "Application Support" / "lucius-mcp"
+
+
+def test_telemetry_state_dir_linux_default() -> None:
+    state_dir = TelemetryService._telemetry_state_dir_for_platform(
+        configured_state_dir=None,
+        os_name="posix",
+        sys_platform="linux",
+        env={},
+        home_dir=Path("/home/tester"),
+    )
+
+    assert state_dir == Path("/home/tester") / ".local" / "state" / "lucius-mcp"
+
+
+def test_telemetry_state_dir_explicit_override() -> None:
+    state_dir = TelemetryService._telemetry_state_dir_for_platform(
+        configured_state_dir="~/custom-state",
+        os_name="posix",
+        sys_platform="linux",
+        env={},
+        home_dir=Path("/home/tester"),
+    )
+
+    assert state_dir == Path("~/custom-state").expanduser()
+
+
+def test_state_creation_tolerates_chmod_failure(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    state_dir = tmp_path / "telemetry-state"
+    monkeypatch.setattr(TelemetryService, "_telemetry_state_dir", staticmethod(lambda: state_dir))
+
+    def fail_chmod(_path: Path, _mode: int) -> None:
+        raise OSError("unsupported chmod")
+
+    monkeypatch.setattr(Path, "chmod", fail_chmod)
+
+    service = TelemetryService(enabled=False, hash_salt="explicit-secret")
+    value = service._read_or_create_telemetry_state_value(filename="hash-secret", generator=lambda: "generated-value")
+
+    assert value == "generated-value"
+    assert (state_dir / "hash-secret").read_text(encoding="utf-8") == "generated-value"
+
+
 @pytest.mark.asyncio
 @respx.mock
 async def test_env_opt_out_disables_http_requests(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -197,20 +297,34 @@ def test_hash_identifier_is_deterministic() -> None:
     assert hash_a != hash_c
 
 
-def test_sensitive_fields_use_salted_hashes(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_sensitive_fields_use_hmac_hashes(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "ALLURE_ENDPOINT", "https://sensitive.testops.cloud")
     monkeypatch.setattr(settings, "ALLURE_PROJECT_ID", 456)
 
     service = TelemetryService(enabled=False, hash_salt="telemetry-salt")
     payload = service._runtime_context()
 
-    expected_project_hash = hashlib.sha256(b"telemetry-salt:456").hexdigest()
-    expected_host_hash = hashlib.sha256(b"telemetry-salt:sensitive.testops.cloud").hexdigest()
+    expected_project_hash = hmac.new(b"telemetry-salt", b"456", hashlib.sha256).hexdigest()
+    expected_host_hash = hmac.new(b"telemetry-salt", b"sensitive.testops.cloud", hashlib.sha256).hexdigest()
 
     assert payload["project_id_hash"] == expected_project_hash
     assert payload["endpoint_host_hash"] == expected_host_hash
     assert payload["project_id_hash"] != "456"
     assert payload["endpoint_host_hash"] != "sensitive.testops.cloud"
+
+
+def test_sensitive_fields_are_unknown_without_hash_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(TelemetryService, "_resolve_hash_secret", lambda self, _: None)
+    monkeypatch.setattr(TelemetryService, "_resolve_installation_id", lambda self: None)
+    monkeypatch.setattr(settings, "ALLURE_ENDPOINT", "https://sensitive.testops.cloud")
+    monkeypatch.setattr(settings, "ALLURE_PROJECT_ID", 456)
+
+    service = TelemetryService(enabled=False)
+    payload = service._runtime_context()
+
+    assert payload["project_id_hash"] == "unknown"
+    assert payload["endpoint_host_hash"] == "unknown"
+    assert service._installation_id_hash() == "unknown"
 
 
 @pytest.mark.asyncio
