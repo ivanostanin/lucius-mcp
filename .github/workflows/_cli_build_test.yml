@@ -163,7 +163,7 @@ jobs:
         shell: cmd
 
       - name: Upload binary artifact
-        uses: actions/upload-artifact@v7.0.0
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: ${{ steps.artifact.outputs.artifact_name }}
           path: dist/cli/${{ steps.artifact.outputs.artifact_name }}
