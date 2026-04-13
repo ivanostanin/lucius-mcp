@@ -140,7 +140,7 @@ jobs:
 
       - name: Create GitHub Release (with CLI artifacts)
         if: ${{ vars.FEATURE_CLI == 'true' }}
-        uses: softprops/action-gh-release@v2.6.1
+        uses: softprops/action-gh-release@v3.0.0
         with:
           body: ${{ steps.changelog_reader.outputs.changes }}
           fail_on_unmatched_files: true
@@ -152,7 +152,7 @@ jobs:
 
       - name: Create GitHub Release (MCPB only)
         if: ${{ vars.FEATURE_CLI != 'true' }}
-        uses: softprops/action-gh-release@v2.6.1
+        uses: softprops/action-gh-release@v3.0.0
         with:
           body: ${{ steps.changelog_reader.outputs.changes }}
           fail_on_unmatched_files: true
