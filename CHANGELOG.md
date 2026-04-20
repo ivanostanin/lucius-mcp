@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed CLI E2E subprocess handling to use a dynamic Python version instead of a hardcoded interpreter path (#99).
 - Improved CLI build pipeline reliability and optimization in CI checks (#88).
 
+## [v0.8.3] - 2026-04-20
+
+### Changed
+- Updated dependency versions across runtime, tooling, and CI workflows, including `fastmcp`, `python-multipart`, `ruff`, `pytest`, `faker`, `respx`, and `actions/cache` (#142, #144, #145, #146, #147, #148, #149, #151).
+
 ## [v0.8.2] - 2026-04-13
 
 ### Added
@@ -192,7 +197,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.8.2...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.8.3...HEAD
+[v0.8.3]: https://github.com/ivanostanin/lucius-mcp/compare/v0.8.2...v0.8.3
 [v0.8.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.8.1...v0.8.2
 [v0.8.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.8.0...v0.8.1
 [v0.8.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.7.2...v0.8.0
