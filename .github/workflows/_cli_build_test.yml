@@ -134,7 +134,7 @@ jobs:
           binary-ext: '${{ matrix.binary_ext }}'
 
       - name: Restore Nuitka build cache
-        uses: actions/cache@v5.0.4
+        uses: actions/cache@v5.0.5
         with:
           path: ${{ env.NUITKA_CACHE_DIR }}
           key: nuitka-${{ runner.os }}-${{ matrix.arch }}-py${{ env.CLI_BUILD_PYTHON_VERSION }}-${{ hashFiles('uv.lock', 'deployment/scripts/build_cli_unix.sh', 'deployment/scripts/build_cli_windows.bat') }}
