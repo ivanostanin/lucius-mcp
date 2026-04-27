@@ -7,7 +7,7 @@ from pydantic import Field
 from src.client import AllureClient
 from src.client.generated.models.shared_step_step_dto import SharedStepStepDto
 from src.services.test_case_service import TestCaseService
-from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
 
 
 def _format_steps(scenario: object) -> str:
@@ -44,10 +44,10 @@ async def link_shared_step(
     ] = None,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
     confirm: Annotated[bool, Field(description="Must be set to True to proceed with linking. Safety measure.")] = False,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """Link a shared step to a test case.
     ⚠️ CAUTION: Destructive.
 
@@ -66,7 +66,7 @@ async def link_shared_step(
         project_id: Optional override for the default Project ID.
         confirm: Must be set to True to proceed with linking.
             This is a safety measure to prevent accidental linking.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         Confirmation with updated step list preview.

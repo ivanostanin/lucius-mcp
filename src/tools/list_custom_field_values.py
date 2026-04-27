@@ -4,7 +4,7 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.custom_field_value_service import CustomFieldValueService
-from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
 
 
 async def list_custom_field_values(
@@ -28,10 +28,10 @@ async def list_custom_field_values(
         Field(description="Optional sort criteria, e.g. ['name,asc', 'id,desc']"),
     ] = None,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """List available values for a custom field.
 
     Args:
@@ -44,7 +44,7 @@ async def list_custom_field_values(
         size: Number of items per page.
         sort: Optional sort criteria, e.g. ["name,asc", "id,desc"].
         project_id: Optional override for the default Project ID.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
     """
     async with AllureClient.from_env(project=project_id) as client:
         service = CustomFieldValueService(client=client)

@@ -6,7 +6,7 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.test_layer_service import TestLayerService
-from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
 
 
 async def update_test_layer(
@@ -14,10 +14,10 @@ async def update_test_layer(
     name: Annotated[str, Field(description="New name for the test layer.")],
     project_id: Annotated[int | None, Field(description="Allure TestOps project ID.")] = None,
     confirm: Annotated[bool, Field(description="Must be set to True to proceed with update. Safety measure.")] = False,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """Update an existing test layer's name.
     ⚠️ CAUTION: Destructive.
 
@@ -27,7 +27,7 @@ async def update_test_layer(
         project_id: Optional Allure TestOps project ID override.
         confirm: Must be set to True to proceed with update.
             This is a safety measure to prevent accidental updates.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         Confirmation message indicating whether changes were made.

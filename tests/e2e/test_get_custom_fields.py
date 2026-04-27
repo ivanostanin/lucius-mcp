@@ -90,7 +90,7 @@ async def test_e2e_get_custom_fields_tool_output(
     Tests the actual tool function that formats output as plain text.
     """
     # Call the tool directly (it will use project_id from env)
-    output = await get_custom_fields(project_id=project_id)
+    output = await get_custom_fields(project_id=project_id, output_format="plain")
 
     # Verify it's a string (LLM-friendly format)
     assert isinstance(output, str), "Tool should return string"
@@ -122,7 +122,7 @@ async def test_e2e_get_custom_fields_nonexistent_name(
     # Use a very unlikely field name
     unlikely_name = "ThisFieldDefinitelyDoesNotExist_E2E_Test_987654321"
 
-    output = await get_custom_fields(name=unlikely_name, project_id=project_id)
+    output = await get_custom_fields(name=unlikely_name, project_id=project_id, output_format="plain")
 
     # Should return not-found message
     assert "No custom fields found" in output, "Should indicate no matches found"
@@ -227,7 +227,7 @@ async def test_e2e_get_custom_fields_empty_project(
     # If no fields, verify graceful handling
     if not fields:
         # Tool should return appropriate message
-        output = await get_custom_fields()
+        output = await get_custom_fields(output_format="plain")
         assert "No custom fields found" in output, "Should indicate no fields in project"
         print("Project has no custom fields - verified graceful handling")
     else:

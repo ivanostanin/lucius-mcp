@@ -50,6 +50,25 @@ def test_e2e_uv_run_cli_plain_normalizes_escaped_newlines() -> None:
     assert result.stdout == "line1\nline2"
 
 
+def test_e2e_uv_run_cli_json_serializes_structured_tool_result() -> None:
+    """With --format json, structured-only tool results are serialized for CLI stdout."""
+    script = "\n".join(
+        [
+            "from src.cli import cli_entry",
+            "import src.tools as tools",
+            "from src.tools.output_contract import render_message_output",
+            "async def _fake(**kwargs):",
+            "    assert kwargs.get('output_format') == 'json', kwargs",
+            "    return render_message_output('done', output_format=kwargs['output_format'])",
+            "setattr(tools, 'get_test_case_details', _fake)",
+            "cli_entry.run_cli(['test_case', 'get', '--args', '{\"test_case_id\": 1}', '--format', 'json'])",
+        ]
+    )
+    result = run_uv_python_snippet(script)
+    assert result.returncode == 0
+    assert result.stdout == '{"message":"done"}'
+
+
 def test_e2e_uv_run_cli_csv() -> None:
     """With --format csv, CLI requests json from the tool and renders csv."""
     result = run_cli_with_mocked_result_via_uv(

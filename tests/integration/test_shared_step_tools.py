@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -25,9 +24,9 @@ async def test_create_shared_step_uses_resolved_project_context_in_url() -> None
 
             output = await create_shared_step(name="Login as Admin", output_format="json")
 
-            payload = json.loads(output)
-            assert payload["project_id"] == 456
-            assert payload["url"] == "https://example.com/project/456/settings/shared-steps/11"
+            assert output.content == []
+            assert output.structured_content["project_id"] == 456
+            assert output.structured_content["url"] == "https://example.com/project/456/settings/shared-steps/11"
 
 
 @pytest.mark.asyncio

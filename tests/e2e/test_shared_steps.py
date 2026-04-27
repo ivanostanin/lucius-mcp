@@ -34,6 +34,7 @@ async def test_shared_step_lifecycle_e2e(
         name=unique_name,
         project_id=project_id,
         steps=steps,
+        output_format="plain",
     )
 
     assert "Successfully created Shared Step" in output
@@ -50,7 +51,7 @@ async def test_shared_step_lifecycle_e2e(
     cleanup_tracker.track_shared_step(shared_step_id)
 
     # 2. List
-    list_output = await list_shared_steps(project_id=project_id, search=unique_name)
+    list_output = await list_shared_steps(project_id=project_id, search=unique_name, output_format="plain")
 
     assert list_output, "List output should not be empty"
     assert f"[ID: {shared_step_id}]" in list_output
@@ -79,6 +80,7 @@ async def test_create_shared_step_with_attachment_e2e(
         name=unique_name,
         project_id=project_id,
         steps=steps,
+        output_format="plain",
     )
 
     assert "Successfully created Shared Step" in output
@@ -108,7 +110,7 @@ async def test_update_shared_step_success_e2e(
 
     # 1. Create a shared step
     original_name = get_unique_name("Original Name")
-    output = await create_shared_step(name=original_name, project_id=project_id)
+    output = await create_shared_step(name=original_name, project_id=project_id, output_format="plain")
 
     match = re.search(r"ID: (\d+)", output)
     assert match
@@ -117,14 +119,14 @@ async def test_update_shared_step_success_e2e(
 
     # 2. Update the name
     new_name = get_unique_name("Updated Name")
-    update_output = await update_shared_step(step_id=shared_step_id, name=new_name, confirm=True)
+    update_output = await update_shared_step(step_id=shared_step_id, name=new_name, confirm=True, output_format="plain")
 
     assert "Updated Shared Step" in update_output
     assert new_name in update_output
     assert "Changes applied" in update_output
 
     # 3. Verify update by listing
-    list_output = await list_shared_steps(project_id=project_id, search=new_name)
+    list_output = await list_shared_steps(project_id=project_id, search=new_name, output_format="plain")
     assert f"[ID: {shared_step_id}]" in list_output
     assert new_name in list_output
 
@@ -141,7 +143,7 @@ async def test_update_shared_step_idempotent_e2e(
 
     # 1. Create
     name = get_unique_name("Idempotent Test")
-    output = await create_shared_step(name=name, project_id=project_id)
+    output = await create_shared_step(name=name, project_id=project_id, output_format="plain")
 
     match = re.search(r"ID: (\d+)", output)
     assert match
@@ -149,7 +151,7 @@ async def test_update_shared_step_idempotent_e2e(
     cleanup_tracker.track_shared_step(shared_step_id)
 
     # 2. Update with same name (should be no-op)
-    update_output = await update_shared_step(step_id=shared_step_id, name=name, confirm=True)
+    update_output = await update_shared_step(step_id=shared_step_id, name=name, confirm=True, output_format="plain")
 
     assert "No changes needed" in update_output
     assert "already matches" in update_output
@@ -167,7 +169,7 @@ async def test_delete_shared_step_success_e2e(
 
     # 1. Create
     name = get_unique_name("To Be Deleted")
-    output = await create_shared_step(name=name, project_id=project_id)
+    output = await create_shared_step(name=name, project_id=project_id, output_format="plain")
 
     match = re.search(r"ID: (\d+)", output)
     assert match
@@ -177,7 +179,7 @@ async def test_delete_shared_step_success_e2e(
     cleanup_tracker.track_shared_step(shared_step_id)
 
     # 2. Delete with confirmation
-    delete_output = await delete_shared_step(step_id=shared_step_id, confirm=True)
+    delete_output = await delete_shared_step(step_id=shared_step_id, confirm=True, output_format="plain")
 
     assert "Archived Shared Step" in delete_output
     assert str(shared_step_id) in delete_output
@@ -195,7 +197,7 @@ async def test_delete_shared_step_without_confirmation_e2e(
 
     # 1. Create
     name = get_unique_name("No Delete")
-    output = await create_shared_step(name=name, project_id=project_id)
+    output = await create_shared_step(name=name, project_id=project_id, output_format="plain")
 
     match = re.search(r"ID: (\d+)", output)
     assert match
@@ -203,7 +205,7 @@ async def test_delete_shared_step_without_confirmation_e2e(
     cleanup_tracker.track_shared_step(shared_step_id)
 
     # 2. Try delete without confirm
-    delete_output = await delete_shared_step(step_id=shared_step_id, confirm=False)
+    delete_output = await delete_shared_step(step_id=shared_step_id, confirm=False, output_format="plain")
 
     assert "⚠️ Deletion requires confirmation" in delete_output
     assert "confirm=True" in delete_output

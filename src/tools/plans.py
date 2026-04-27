@@ -5,6 +5,7 @@ from src.services.plan_service import PlanService
 from src.tools.output_contract import (
     DEFAULT_OUTPUT_FORMAT,
     OutputFormat,
+    ToolOutput,
     render_collection_output,
     render_confirmation_required,
     render_output,
@@ -15,8 +16,10 @@ async def create_test_plan(
     name: Annotated[str, "Name of the test plan"],
     test_case_ids: Annotated[list[int] | None, "List of Test Case IDs to include"] = None,
     aql_filter: Annotated[str | None, "AQL query to select test cases"] = None,
-    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
-) -> str:
+    output_format: Annotated[
+        OutputFormat | None, "Output format: 'json' (default) or 'plain'."
+    ] = DEFAULT_OUTPUT_FORMAT,
+) -> ToolOutput:
     """Create a new Test Plan in Allure TestOps.
 
     This tool allows creating a Test Plan, which is a collection of Test Cases
@@ -30,7 +33,7 @@ async def create_test_plan(
         test_case_ids: Optional list of numeric Test Case IDs to include initially.
         aql_filter: Optional AQL query string to dynamically select test cases
             (e.g., 'tag in ["smoke", "regression"]').
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         A success message containing the ID and Name of the created plan.
@@ -58,8 +61,10 @@ async def create_test_plan(
 async def update_test_plan(
     plan_id: Annotated[int, "ID of the test plan"],
     name: Annotated[str | None, "New name"] = None,
-    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
-) -> str:
+    output_format: Annotated[
+        OutputFormat | None, "Output format: 'json' (default) or 'plain'."
+    ] = DEFAULT_OUTPUT_FORMAT,
+) -> ToolOutput:
     """Update the metadata of an existing Test Plan.
 
     Currently, supports updating the name of the plan.
@@ -67,7 +72,7 @@ async def update_test_plan(
     Args:
         plan_id: The numeric ID of the Test Plan to update.
         name: The new name for the Test Plan.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         A success message confirming the update with the Plan ID and new Name.
@@ -91,8 +96,10 @@ async def manage_test_plan_content(
     add_test_case_ids: Annotated[list[int] | None, "List of Test Case IDs to add"] = None,
     remove_test_case_ids: Annotated[list[int] | None, "List of Test Case IDs to remove"] = None,
     update_aql_filter: Annotated[str | None, "Update the AQL filter string"] = None,
-    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
-) -> str:
+    output_format: Annotated[
+        OutputFormat | None, "Output format: 'json' (default) or 'plain'."
+    ] = DEFAULT_OUTPUT_FORMAT,
+) -> ToolOutput:
     """Modify the content (Test Cases) of an existing Test Plan.
 
     Allows adding or removing specific Test Cases by ID, or updating the
@@ -104,7 +111,7 @@ async def manage_test_plan_content(
         remove_test_case_ids: List of Test Case IDs to remove from the plan.
         update_aql_filter: New AQL query string to replace the existing one.
             Use this to change the dynamic criteria for test case selection.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         A success message confirming the content update.
@@ -133,8 +140,10 @@ async def manage_test_plan_content(
 async def list_test_plans(
     page: Annotated[int, "Page number (0-based)"] = 0,
     size: Annotated[int, "Page size"] = 100,
-    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
-) -> str:
+    output_format: Annotated[
+        OutputFormat | None, "Output format: 'json' (default) or 'plain'."
+    ] = DEFAULT_OUTPUT_FORMAT,
+) -> ToolOutput:
     """List Test Plans for the current project.
 
     Retrieves a paginated list of Test Plans, showing their IDs, names,
@@ -143,7 +152,7 @@ async def list_test_plans(
     Args:
         page: The page number to retrieve (0-based index). Defaults to 0.
         size: The number of items per page. Defaults to 100.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         A formatted string listing the Test Plans found, or a message indicating
@@ -174,8 +183,10 @@ async def list_test_plans(
 async def delete_test_plan(
     plan_id: Annotated[int, "ID of the test plan to delete"],
     confirm: Annotated[bool, "Must be set to True to proceed with deletion. Safety measure."] = False,
-    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
-) -> str:
+    output_format: Annotated[
+        OutputFormat | None, "Output format: 'json' (default) or 'plain'."
+    ] = DEFAULT_OUTPUT_FORMAT,
+) -> ToolOutput:
     """Delete a Test Plan.
     ⚠️ CAUTION: Destructive.
 
@@ -185,7 +196,7 @@ async def delete_test_plan(
     Args:
         plan_id: The numeric ID of the Test Plan to delete.
         confirm: Must be set to True to proceed with deletion.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         A formatted success message or a warning if confirmation is missing.

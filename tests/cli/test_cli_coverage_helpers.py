@@ -242,14 +242,14 @@ class TestCLICoverageHelpers:
             signature = inspect.signature(fn)
             output_param = signature.parameters.get("output_format")
             assert output_param is not None, f"{tool_name} missing output_format"
-            assert output_param.default == "plain"
+            assert output_param.default is None
 
     def test_schema_json_serializable(self) -> None:
         schemas = load_tool_schemas()
         serialized = json.dumps(schemas)
         assert "create_test_case" in serialized
 
-    def test_every_async_tool_in_src_tools_has_output_format_default_plain(self) -> None:
+    def test_every_async_tool_in_src_tools_has_output_format_default_structured(self) -> None:
         tools_dir = Path(__file__).resolve().parents[2] / "src" / "tools"
         skip_modules = {"__init__.py", "annotations.py", "test_layers.py", "output_contract.py"}
 
@@ -262,7 +262,7 @@ class TestCLICoverageHelpers:
                 signature = inspect.signature(fn)
                 output_param = signature.parameters.get("output_format")
                 assert output_param is not None, f"{module_path.name}:{fn.__name__} missing output_format"
-                assert output_param.default == "plain", f"{module_path.name}:{fn.__name__} default is not plain"
+                assert output_param.default is None, f"{module_path.name}:{fn.__name__} default is not structured"
 
     def test_every_async_tool_docstring_mentions_output_format(self) -> None:
         tools_dir = Path(__file__).resolve().parents[2] / "src" / "tools"

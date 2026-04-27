@@ -22,6 +22,7 @@ async def test_create_tool_success_output(
         project_id=project_id,
         name=run_name,
         description="Testing tool output",
+        output_format="plain",
     )
 
     # Check format: "Created Test Case ID: <id> Name: <name>"
@@ -55,7 +56,9 @@ async def test_update_tool_success_output(
     cleanup_tracker.track_test_case(created.id)
 
     # Test Update Tool
-    result = await update_test_case(test_case_id=created.id, description="New Desc", confirm=True)
+    result = await update_test_case(
+        test_case_id=created.id, description="New Desc", confirm=True, output_format="plain"
+    )
 
     # Check format: "Test Case <id> updated successfully. Changes: description"
     assert f"Test Case {created.id} updated successfully" in result

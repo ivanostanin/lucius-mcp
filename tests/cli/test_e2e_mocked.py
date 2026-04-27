@@ -165,6 +165,22 @@ class TestE2ERouting:
         mock_print.assert_called_once_with('{"ok":true}', end="")
         mock_format.assert_not_called()
 
+    def test_run_cli_json_serializes_structured_tool_result(self) -> None:
+        class StructuredResult:
+            def __init__(self) -> None:
+                self.structured_content = {"ok": True}
+
+        with (
+            patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value=StructuredResult())) as mock_call,
+            patch.object(cli_entry.console_out, "print") as mock_print,
+            patch("src.cli.cli_entry.format_output_data") as mock_format,
+        ):
+            run_cli(["test_case", "list", "--args", "{}", "--format", "json"])
+
+        mock_call.assert_awaited_once_with("list_test_cases", {"output_format": "json"})
+        mock_print.assert_called_once_with('{"ok":true}', end="")
+        mock_format.assert_not_called()
+
     def test_run_cli_plain_mode_passthrough(self) -> None:
         with (
             patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value="line1\nline2")) as mock_call,
@@ -199,6 +215,20 @@ class TestE2ERouting:
 
         mock_call.assert_awaited_once_with("list_test_cases", {"output_format": "json"})
         mock_format.assert_called_once_with([{"id": 1, "name": "Alpha"}], "csv")
+
+    def test_run_cli_executes_table_format_from_structured_tool_result(self) -> None:
+        class StructuredResult:
+            def __init__(self) -> None:
+                self.structured_content = {"items": [{"id": 1, "name": "Alpha"}], "total": 1}
+
+        with (
+            patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value=StructuredResult())) as mock_call,
+            patch("src.cli.cli_entry.format_output_data") as mock_format,
+        ):
+            run_cli(["test_case", "list", "--args", "{}", "--format", "table"])
+
+        mock_call.assert_awaited_once_with("list_test_cases", {"output_format": "json"})
+        mock_format.assert_called_once_with([{"id": 1, "name": "Alpha"}], "table")
 
     def test_run_cli_csv_rejects_invalid_json_tool_output(self) -> None:
         with patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value="not-json")):

@@ -8,7 +8,13 @@ from src.client import AllureClient
 from src.services.custom_field_service import CustomFieldService
 from src.services.shared_step_service import SharedStepService
 from src.services.test_case_service import TestCaseService
-from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_confirmation_required, render_output
+from src.tools.output_contract import (
+    DEFAULT_OUTPUT_FORMAT,
+    OutputFormat,
+    ToolOutput,
+    render_confirmation_required,
+    render_output,
+)
 
 DESTRUCTIVE_CONFIRMATION_MESSAGE = "⚠️ Destructive operation. Pass confirm=True to proceed."
 
@@ -16,16 +22,16 @@ DESTRUCTIVE_CONFIRMATION_MESSAGE = "⚠️ Destructive operation. Pass confirm=T
 async def delete_archived_test_cases(
     confirm: Annotated[bool, Field(description="Must be set to True to proceed.")] = False,
     project_id: Annotated[int | None, Field(description="Optional Allure TestOps project ID override.")] = None,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """Permanently delete all archived/deleted test cases in the current project.
 
     Args:
         confirm: Must be set to True to proceed.
         project_id: Optional Allure TestOps project ID override.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
     """
     if not confirm:
         return render_confirmation_required(
@@ -47,16 +53,16 @@ async def delete_archived_test_cases(
 async def delete_archived_shared_steps(
     confirm: Annotated[bool, Field(description="Must be set to True to proceed.")] = False,
     project_id: Annotated[int | None, Field(description="Optional Allure TestOps project ID override.")] = None,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """Permanently delete all archived shared steps in the current project.
 
     Args:
         confirm: Must be set to True to proceed.
         project_id: Optional Allure TestOps project ID override.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
     """
     if not confirm:
         return render_confirmation_required(
@@ -78,16 +84,16 @@ async def delete_archived_shared_steps(
 async def delete_unused_custom_fields(
     confirm: Annotated[bool, Field(description="Must be set to True to proceed.")] = False,
     project_id: Annotated[int | None, Field(description="Optional Allure TestOps project ID override.")] = None,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """Delete custom fields that are unused by any test case in the current project.
 
     Args:
         confirm: Must be set to True to proceed.
         project_id: Optional Allure TestOps project ID override.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
     """
     if not confirm:
         return render_confirmation_required(

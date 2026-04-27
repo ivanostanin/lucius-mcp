@@ -4,7 +4,7 @@ from pydantic import Field
 
 from src.client import AllureClient, AllureValidationError
 from src.services.search_service import SearchQueryParser, SearchService, TestCaseDetails, TestCaseListResult
-from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
 
 
 async def list_test_cases(
@@ -14,10 +14,10 @@ async def list_test_cases(
     tags: Annotated[list[str] | None, Field(description="Optional tag filters (exact match).", max_length=100)] = None,
     status: Annotated[str | None, Field(description="Optional status filter (exact match).", max_length=100)] = None,
     project_id: Annotated[int | None, Field(description="Allure TestOps project ID to list test cases from.")] = None,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """List all test cases in a project.
 
     Returns a paginated list of test cases with their IDs, names, and tags.
@@ -30,7 +30,7 @@ async def list_test_cases(
         tags: Optional list of tag names to filter by (exact match).
         status: Optional test case status name to filter by (exact match).
         project_id: Optional override for the default Project ID.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         A formatted list of test cases with pagination info.
@@ -85,10 +85,10 @@ async def search_test_cases(
     page: Annotated[int, Field(description="Zero-based page index.")] = 0,
     size: Annotated[int, Field(description="Number of results per page (max 100).", le=100)] = 20,
     project_id: Annotated[int | None, Field(description="Allure TestOps project ID to list test cases from.")] = None,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """Search for test cases by name, tag, or AQL query.
 
     Find test cases matching your search criteria. Supports simple name/tag search
@@ -123,7 +123,7 @@ async def search_test_cases(
         page: Page number (0-indexed). Default: 0.
         size: Results per page (max 100). Default: 20.
         project_id: Optional override for the default Project ID.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         List of matching test cases or descriptive error message.
@@ -182,10 +182,10 @@ async def search_test_cases(
 async def get_test_case_details(
     test_case_id: Annotated[int, Field(description="ID of the test case to retrieve.")],
     project_id: Annotated[int | None, Field(description="Allure TestOps project ID to list test cases from.")] = None,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """Get complete details of a specific test case.
 
     Retrieves all information about a test case including its steps, tags,
@@ -195,7 +195,7 @@ async def get_test_case_details(
     Args:
         test_case_id: The unique ID of the test case to retrieve.
         project_id: Optional override for the default Project ID.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         Formatted test case details including all metadata.

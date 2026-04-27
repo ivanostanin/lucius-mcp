@@ -6,7 +6,7 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.test_layer_service import TestLayerService
-from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
 
 
 async def list_test_layer_schemas(
@@ -15,10 +15,10 @@ async def list_test_layer_schemas(
     ] = None,
     page: Annotated[int, Field(description="Page number (0-based). Default is 0.")] = 0,
     size: Annotated[int, Field(description="Page size (max 100). Default is 100.")] = 100,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """List test layer schemas for a project.
 
     Test layer schemas map custom field keys to test layers within a project.
@@ -28,7 +28,7 @@ async def list_test_layer_schemas(
         project_id: Optional project ID override
         page: Page number (0-based)
         size: Page size (max 100)
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         List of test layer schemas with their IDs, keys, and linked test layers

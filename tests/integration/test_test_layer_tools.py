@@ -34,7 +34,7 @@ async def test_list_test_layers_output_format() -> None:
                 return_value=[type("TestLayerDto", (), layer) for layer in mock_layers]
             )
 
-            output = await list_test_layers(page=0, size=50)
+            output = await list_test_layers(page=0, size=50, output_format="plain")
 
             assert "Found 2 test layers:" in output
             assert "ID: 1, Name: Unit" in output

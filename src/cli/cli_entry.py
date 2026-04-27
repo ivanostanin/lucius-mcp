@@ -127,6 +127,22 @@ def _plain_text(value: typing.Any) -> str:
     return str(value).replace("\\n", "\n")
 
 
+def _structured_tool_payload(result: typing.Any) -> typing.Any | None:
+    """Extract structured content from ToolResult-like outputs."""
+    structured = getattr(result, "structured_content", None)
+    if structured is not None:
+        return structured
+    return getattr(result, "structuredContent", None)
+
+
+def _tool_result_to_json_text(result: typing.Any) -> str | None:
+    """Render structured tool output as compact JSON text for CLI formats."""
+    structured = _structured_tool_payload(result)
+    if structured is None:
+        return None
+    return json.dumps(structured, ensure_ascii=False, default=str, separators=(",", ":"))
+
+
 def _tool_schema_rows(data: dict[str, typing.Any]) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
     for tool_name in sorted(data):
@@ -666,31 +682,47 @@ def run_cli(argv: list[str]) -> None:
     tool_args = {**args_dict, "output_format": tool_output_format}
     result = asyncio.run(call_tool_function(spec.tool_name, tool_args))
 
-    if options.output_format in {"plain", "json"}:
+    if options.output_format == "plain":
         if isinstance(result, str):
             console_out.print(result, end="")
             return
         raise CLIError(
-            f"Tool '{spec.tool_name}' returned non-string output for '{options.output_format}' mode",
-            hint="Tool output contract requires plain/json modes to return serialized text output.",
+            f"Tool '{spec.tool_name}' returned non-string output for 'plain' mode",
+            hint="Tool output contract requires plain mode to return text output.",
+            exit_code=2,
+        )
+
+    if options.output_format == "json":
+        if isinstance(result, str):
+            console_out.print(result, end="")
+            return
+        json_text = _tool_result_to_json_text(result)
+        if json_text is not None:
+            console_out.print(json_text, end="")
+            return
+        raise CLIError(
+            f"Tool '{spec.tool_name}' returned non-JSON output for 'json' mode",
+            hint="Tool output contract requires json mode to return structured content or JSON text.",
             exit_code=2,
         )
 
     if not isinstance(result, str):
-        raise CLIError(
-            f"Tool '{spec.tool_name}' returned non-string output for '{options.output_format}' mode",
-            hint="Tool output contract requires JSON text output for table/csv rendering.",
-            exit_code=2,
-        )
-
-    try:
-        parsed: typing.Any = json.loads(result)
-    except json.JSONDecodeError as exc:
-        raise CLIError(
-            f"Tool '{spec.tool_name}' returned invalid JSON for '{options.output_format}' mode: {exc}",
-            hint="Tool output contract requires valid JSON text output for table/csv rendering.",
-            exit_code=2,
-        ) from None
+        parsed = _structured_tool_payload(result)
+        if parsed is None:
+            raise CLIError(
+                f"Tool '{spec.tool_name}' returned non-JSON output for '{options.output_format}' mode",
+                hint="Tool output contract requires structured content or JSON text for table/csv rendering.",
+                exit_code=2,
+            )
+    else:
+        try:
+            parsed = json.loads(result)
+        except json.JSONDecodeError as exc:
+            raise CLIError(
+                f"Tool '{spec.tool_name}' returned invalid JSON for '{options.output_format}' mode: {exc}",
+                hint="Tool output contract requires valid JSON text output for table/csv rendering.",
+                exit_code=2,
+            ) from None
 
     format_output_data(select_tabular_payload(parsed), options.output_format)
 

@@ -15,6 +15,7 @@ async def test_api_token_parameter_is_optional(project_id: int, cleanup_tracker:
     result = await create_test_case(
         project_id=project_id,
         name="Runtime Auth Optional",
+        output_format="plain",
     )
     assert "Created Test Case ID:" in result
     match = re.search(r"ID: (\d+)", result)
@@ -35,6 +36,7 @@ async def test_runtime_token_overrides_environment(
     result = await create_test_case(
         project_id=project_id,
         name="Runtime Override Test",
+        output_format="plain",
     )
     assert "Created Test Case ID:" in result
     match = re.search(r"ID: (\d+)", result)
@@ -48,6 +50,7 @@ async def test_runtime_overrides_do_not_persist_across_calls(project_id: int, cl
     first_result = await create_test_case(
         project_id=project_id,
         name="Runtime Override First Call",
+        output_format="plain",
     )
     assert "Created Test Case ID:" in first_result
     match1 = re.search(r"ID: (\d+)", first_result)
@@ -58,6 +61,7 @@ async def test_runtime_overrides_do_not_persist_across_calls(project_id: int, cl
     second_result = await create_test_case(
         project_id=project_id,
         name="Runtime Override Second Call",
+        output_format="plain",
     )
     assert "Created Test Case ID:" in second_result
     match2 = re.search(r"ID: (\d+)", second_result)

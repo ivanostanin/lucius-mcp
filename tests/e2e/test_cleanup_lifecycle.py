@@ -107,7 +107,7 @@ async def test_cleanup_archived_test_cases_e2e(
     assert archived.status in {"archived", "already_deleted"}
     assert await _wait_until_deleted_case_listed(allure_client, project_id, created.id)
 
-    output = await delete_archived_test_cases(confirm=True, project_id=project_id)
+    output = await delete_archived_test_cases(confirm=True, project_id=project_id, output_format="plain")
     assert _extract_count(output) >= 1
 
     for _ in range(10):
@@ -136,7 +136,7 @@ async def test_cleanup_archived_shared_steps_e2e(
     archived = await service.delete_shared_step(shared_step.id)
     assert archived is True
 
-    output = await delete_archived_shared_steps(confirm=True, project_id=project_id)
+    output = await delete_archived_shared_steps(confirm=True, project_id=project_id, output_format="plain")
     assert _extract_count(output) >= 1
 
     with pytest.raises(AllureNotFoundError):
@@ -145,7 +145,7 @@ async def test_cleanup_archived_shared_steps_e2e(
 
 @pytest.mark.asyncio
 async def test_delete_unused_custom_fields_requires_confirm() -> None:
-    output = await delete_unused_custom_fields(confirm=False)
+    output = await delete_unused_custom_fields(confirm=False, output_format="plain")
     assert output == DESTRUCTIVE_CONFIRMATION_MESSAGE
 
 
@@ -194,7 +194,7 @@ async def test_delete_unused_custom_fields_preserves_used_field(
     assert created.id is not None
     cleanup_tracker.track_test_case(created.id)
 
-    output = await delete_unused_custom_fields(confirm=True, project_id=project_id)
+    output = await delete_unused_custom_fields(confirm=True, project_id=project_id, output_format="plain")
     assert _extract_count(output) >= 0
 
     assert await _project_has_custom_field_id(allure_client, project_id, target_field_id)
