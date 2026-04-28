@@ -36,6 +36,7 @@ async def test_link_shared_step_flow(
         project_id=project_id,
         name=ss_name,
         steps=ss_steps,
+        output_format="plain",
     )
 
     ss_match = re.search(r"ID: (\d+)", ss_result)
@@ -56,6 +57,7 @@ async def test_link_shared_step_flow(
         project_id=project_id,
         name=tc_name,
         steps=tc_steps,
+        output_format="plain",
     )
 
     tc_match = re.search(r"ID: (\d+)", tc_result)
@@ -70,6 +72,7 @@ async def test_link_shared_step_flow(
         shared_step_id=shared_step_id,
         position=None,  # Append
         confirm=True,
+        output_format="plain",
     )
 
     assert "Linked Shared Step" in link_result
@@ -93,6 +96,7 @@ async def test_link_shared_step_flow(
         test_case_id=test_case_id,
         shared_step_id=shared_step_id,
         confirm=True,
+        output_format="plain",
     )
 
     assert "Unlinked Shared Step" in unlink_result

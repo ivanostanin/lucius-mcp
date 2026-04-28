@@ -1,3 +1,5 @@
+import re
+
 import pytest
 
 from src.client import AllureClient
@@ -40,7 +42,7 @@ async def test_e2e_issue_lifecycle(
     # Discover integrations
     from src.tools.list_integrations import list_integrations
 
-    list_output = await list_integrations(project_id=project_id)
+    list_output = await list_integrations(project_id=project_id, output_format="plain")
     assert "**Available Integrations**" in list_output
 
     integrations = await allure_client.get_project_available_integrations(project_id)
@@ -57,10 +59,15 @@ async def test_e2e_issue_lifecycle(
 
     # 1. Create with issue (pass integration_id if multiple exist, though for single it's auto-selected)
     name = "E2E Issue Link Validation"
-    result = await create_test_case(name=name, issues=[issue_key], project_id=project_id, integration_id=integration_id)
+    result = await create_test_case(
+        name=name,
+        issues=[issue_key],
+        project_id=project_id,
+        integration_id=integration_id,
+        output_format="plain",
+    )
 
     assert "Created Test Case ID:" in result
-    import re
 
     match = re.search(r"ID: (\d+)", result)
     assert match

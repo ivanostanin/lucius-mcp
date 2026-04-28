@@ -13,7 +13,7 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.test_hierarchy_service import TestHierarchyService
-from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
 
 
 async def create_test_suite(
@@ -25,10 +25,10 @@ async def create_test_suite(
     parent_suite_id: Annotated[
         int | None, Field(description="Parent suite/group node ID for nested suite creation.")
     ] = None,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """Create a new test suite node in the hierarchy tree.
 
     Args:
@@ -36,7 +36,7 @@ async def create_test_suite(
         project_id: Optional project override. If omitted, use default project from environment.
         tree_id: Optional hierarchy tree ID. If omitted, the default project tree is used.
         parent_suite_id: Optional parent suite ID. Provide to create a nested suite.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         Success message containing created suite ID and name.

@@ -7,6 +7,7 @@ from src.services.shared_step_service import SharedStepService
 from src.tools.output_contract import (
     DEFAULT_OUTPUT_FORMAT,
     OutputFormat,
+    ToolOutput,
     render_collection_output,
     render_confirmation_required,
     render_output,
@@ -28,10 +29,10 @@ async def create_shared_step(
         ),
     ] = None,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """Create a new reusable Shared Step.
 
     Args:
@@ -44,7 +45,7 @@ async def create_shared_step(
                  - name (str): Filename.
                - steps (list[dict], optional): Nested steps (recursive structure).
         project_id: Optional override for the default Project ID.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
     """
 
     async with AllureClient.from_env(project=project_id) as client:
@@ -79,10 +80,10 @@ async def list_shared_steps(
     search: Annotated[str | None, Field(description="Optional search query to filter by name.")] = None,
     archived: Annotated[bool, Field(description="Whether to include archived steps (default False).")] = False,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """List shared steps in a project to find existing ones.
 
     Args:
@@ -91,7 +92,7 @@ async def list_shared_steps(
         search: Optional search query to filter by name.
         archived: Whether to include archived steps (default False).
         project_id: Optional override for the default Project ID.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
     """
 
     async with AllureClient.from_env(project=project_id) as client:
@@ -127,10 +128,10 @@ async def update_shared_step(
     description: Annotated[str | None, Field(description="New description (optional).")] = None,
     confirm: Annotated[bool, Field(description="Must be set to True to proceed with update. Safety measure.")] = False,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """Update an existing shared step.
     ⚠️ CAUTION: Destructive.
 
@@ -147,7 +148,7 @@ async def update_shared_step(
         confirm: Must be set to True to proceed with update.
             This is a safety measure to prevent accidental updates.
         project_id: Optional override for the default Project ID.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         Confirmation message with summary of changes.
@@ -209,10 +210,10 @@ async def delete_shared_step(
     step_id: Annotated[int, Field(description="The shared step ID to delete (required).")],
     confirm: Annotated[bool, Field(description="Must be True to proceed (safety measure).")] = False,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """Delete a shared step from the library.
     ⚠️ CAUTION: Destructive.
 
@@ -223,7 +224,7 @@ async def delete_shared_step(
         step_id: The shared step ID to delete (required).
         confirm: Must be True to proceed (safety measure).
         project_id: Optional override for the default Project ID.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         Confirmation message.

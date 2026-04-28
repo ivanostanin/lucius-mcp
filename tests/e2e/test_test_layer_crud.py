@@ -148,7 +148,7 @@ async def test_e2e_list_test_layers_tool(
     E2E-TL-3: List Test Layers Tool.
     Verify that the list_test_layers tool works against real API.
     """
-    output = await list_test_layers(page=0, size=10)
+    output = await list_test_layers(page=0, size=10, output_format="plain")
 
     # Should return successful output
     assert isinstance(output, str)
@@ -165,7 +165,7 @@ async def test_e2e_create_and_delete_test_layer_tools(
     """
     # Create via tool
     layer_name = _unique_layer_name("E2E-Tool-Layer")
-    create_output = await create_test_layer(name=layer_name, project_id=project_id)
+    create_output = await create_test_layer(name=layer_name, project_id=project_id, output_format="plain")
 
     assert "✅" in create_output
     assert "created successfully" in create_output
@@ -186,7 +186,12 @@ async def test_e2e_create_and_delete_test_layer_tools(
 
     finally:
         # Delete via tool
-        delete_output = await delete_test_layer(layer_id=layer_id, project_id=project_id, confirm=True)
+        delete_output = await delete_test_layer(
+            layer_id=layer_id,
+            project_id=project_id,
+            confirm=True,
+            output_format="plain",
+        )
         assert "✅" in delete_output
         assert "deleted successfully" in delete_output
 
@@ -212,7 +217,13 @@ async def test_e2e_update_test_layer_tool(
     try:
         # Update via tool
         new_name = f"{layer_name}-Modified"
-        update_output = await update_test_layer(layer_id=layer_id, name=new_name, project_id=project_id, confirm=True)
+        update_output = await update_test_layer(
+            layer_id=layer_id,
+            name=new_name,
+            project_id=project_id,
+            confirm=True,
+            output_format="plain",
+        )
 
         assert "✅" in update_output or "[INFO]" in update_output
         assert str(layer_id) in update_output
@@ -251,6 +262,7 @@ async def test_e2e_test_layer_schema_tools(
             key=schema_key,
             test_layer_id=layer_id,
             project_id=project_id,
+            output_format="plain",
         )
 
         assert "✅" in create_output
@@ -265,7 +277,7 @@ async def test_e2e_test_layer_schema_tools(
         schema_id = int(match.group(1))
 
         # List schemas via tool
-        list_output = await list_test_layer_schemas(project_id=project_id)
+        list_output = await list_test_layer_schemas(project_id=project_id, output_format="plain")
         assert str(schema_id) in list_output or "test layer schema" in list_output.lower()
 
         # Update schema via tool
@@ -275,11 +287,17 @@ async def test_e2e_test_layer_schema_tools(
             key=new_key,
             project_id=project_id,
             confirm=True,
+            output_format="plain",
         )
         assert "✅" in update_output or "[INFO]" in update_output
 
         # Delete schema via tool
-        delete_output = await delete_test_layer_schema(schema_id=schema_id, project_id=project_id, confirm=True)
+        delete_output = await delete_test_layer_schema(
+            schema_id=schema_id,
+            project_id=project_id,
+            confirm=True,
+            output_format="plain",
+        )
         assert "✅" in delete_output
         assert "deleted successfully" in delete_output
 

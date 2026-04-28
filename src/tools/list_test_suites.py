@@ -13,7 +13,7 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.test_hierarchy_service import SuiteNode, TestHierarchyService
-from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
 
 
 def _format_suite_lines(nodes: list[SuiteNode], indent: int = 0) -> list[str]:
@@ -35,17 +35,17 @@ async def list_test_suites(
         bool,
         Field(description="Whether to include suites that have no nested child suites. Default is True."),
     ] = True,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """List hierarchy suites for a project tree.
 
     Args:
         project_id: Optional project override. If omitted, use default project from environment.
         tree_id: Optional hierarchy tree ID. If omitted, the default project tree is used.
         include_empty: Whether to include suites without nested child suites.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         Hierarchical text output with tree info and suite nodes.

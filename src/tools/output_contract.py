@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import inspect
-import json
 import typing
 import unittest.mock
 from dataclasses import asdict, is_dataclass
 
 OutputFormat = typing.Literal["plain", "json"]
+StructuredPayload = dict[str, typing.Any]
+ToolOutput = typing.Any
 SUPPORTED_OUTPUT_FORMATS: set[str] = {"plain", "json"}
-DEFAULT_OUTPUT_FORMAT: OutputFormat = "plain"
+DEFAULT_OUTPUT_FORMAT: OutputFormat | None = None
 
 
 def _to_plain_output(result: typing.Any) -> str:
@@ -47,41 +48,61 @@ def _to_json_payload(result: typing.Any) -> typing.Any:
     return str(result)
 
 
-def _validate_output_format(output_format: str) -> OutputFormat:
+def _to_structured_payload(result: typing.Any) -> StructuredPayload:
+    """Normalize tool output to a structured MCP payload."""
+    payload = _to_json_payload(result)
+    if isinstance(payload, dict):
+        return typing.cast(StructuredPayload, payload)
+    return {"result": payload}
+
+
+def _to_structured_tool_result(result: typing.Any) -> typing.Any:
+    """Return structured MCP output without a text content fallback."""
+    from fastmcp.tools.base import ToolResult
+
+    return ToolResult(content=[], structured_content=_to_structured_payload(result))
+
+
+def _validate_output_format(output_format: str | None) -> OutputFormat | None:
+    if output_format is None:
+        return None
     if output_format not in SUPPORTED_OUTPUT_FORMATS:
         supported = ", ".join(sorted(SUPPORTED_OUTPUT_FORMATS))
-        raise ValueError(f"Unsupported output_format '{output_format}'. Supported values: {supported}")
+        raise ValueError(f"Unsupported output_format '{output_format}'. Supported values: {supported}, or omit it")
     return typing.cast(OutputFormat, output_format)
 
 
-def apply_output_contract(result: typing.Any, output_format: str) -> str:
+def apply_output_contract(result: typing.Any, output_format: str | None = DEFAULT_OUTPUT_FORMAT) -> ToolOutput:
     """Render tool output according to the tool-level output contract."""
     normalized = _validate_output_format(output_format)
 
+    if normalized is None:
+        return _to_structured_tool_result(result)
     if normalized == "plain":
         return _to_plain_output(result)
 
-    payload = _to_json_payload(result)
-    return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    return _to_structured_tool_result(result)
 
 
 def render_output(
     *,
     plain: str,
     json_payload: typing.Any,
-    output_format: str = DEFAULT_OUTPUT_FORMAT,
-) -> str:
+    output_format: str | None = DEFAULT_OUTPUT_FORMAT,
+) -> ToolOutput:
     """Render explicit plain/json payloads under the output contract."""
     normalized = _validate_output_format(output_format)
+    if normalized is None:
+        return _to_structured_tool_result(json_payload)
     if normalized == "plain":
         return _to_plain_output(plain)
-    return json.dumps(_to_json_payload(json_payload), ensure_ascii=False, separators=(",", ":"))
+    return _to_structured_tool_result(json_payload)
 
 
 def render_message_output(
     message: str,
-    output_format: str = DEFAULT_OUTPUT_FORMAT,
-) -> str:
+    output_format: str | None = DEFAULT_OUTPUT_FORMAT,
+) -> ToolOutput:
     """Render message-only tool outputs (plain string + JSON message object)."""
     return render_output(
         plain=message,
@@ -94,9 +115,9 @@ def render_confirmation_required(
     *,
     action: str,
     plain: str,
-    output_format: str = DEFAULT_OUTPUT_FORMAT,
+    output_format: str | None = DEFAULT_OUTPUT_FORMAT,
     **payload_fields: typing.Any,
-) -> str:
+) -> ToolOutput:
     """Render a standard confirmation-required response envelope."""
     return render_output(
         plain=plain,
@@ -114,10 +135,10 @@ def render_collection_output(
     items: list[typing.Any],
     plain_empty: str,
     plain_lines: list[str] | None = None,
-    output_format: str = DEFAULT_OUTPUT_FORMAT,
+    output_format: str | None = DEFAULT_OUTPUT_FORMAT,
     total: int | None = None,
     **payload_fields: typing.Any,
-) -> str:
+) -> ToolOutput:
     """Render a standard collection response envelope."""
     payload = {
         **payload_fields,

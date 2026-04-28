@@ -42,6 +42,7 @@ async def test_defect_testcase_linking_lifecycle(
     create_defect_output = await create_defect(
         name=f"[{test_run_id}] Defect Link E2E",
         description="Defect used for defect-test-case linking E2E validation",
+        output_format="plain",
     )
     defect_id = _extract_id(create_defect_output, r"Defect #(\d+)")
     cleanup_tracker.track_defect(defect_id)
@@ -49,6 +50,7 @@ async def test_defect_testcase_linking_lifecycle(
     create_case_output = await create_test_case(
         name=f"[{test_run_id}] Test Case Link E2E",
         project_id=project_id,
+        output_format="plain",
     )
     test_case_id = _extract_id(create_case_output, r"Created Test Case ID: (\d+)")
     cleanup_tracker.track_test_case(test_case_id)
@@ -63,6 +65,7 @@ async def test_defect_testcase_linking_lifecycle(
                 test_case_id=test_case_id,
                 issue_key=issue_key,
                 integration_id=integration_id,
+                output_format="plain",
             )
             selected_integration_id = integration_id
             break
@@ -78,7 +81,7 @@ async def test_defect_testcase_linking_lifecycle(
     assert f"Test Case #{test_case_id}" in link_output
     assert issue_key in link_output
 
-    linked_cases_output = await list_defect_test_cases(defect_id=defect_id)
+    linked_cases_output = await list_defect_test_cases(defect_id=defect_id, output_format="plain")
     assert f"#{test_case_id}" in linked_cases_output
 
     idempotent_output = await link_defect_to_test_case(
@@ -86,12 +89,14 @@ async def test_defect_testcase_linking_lifecycle(
         test_case_id=test_case_id,
         issue_key=issue_key,
         integration_id=selected_integration_id,
+        output_format="plain",
     )
     assert "already linked" in idempotent_output.lower()
 
     reuse_output = await link_defect_to_test_case(
         defect_id=defect_id,
         test_case_id=test_case_id,
+        output_format="plain",
     )
     assert "Defect" in reuse_output
     assert "Test Case" in reuse_output

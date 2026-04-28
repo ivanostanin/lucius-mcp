@@ -6,7 +6,7 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService
-from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
 
 
 async def create_test_case(
@@ -77,10 +77,10 @@ async def create_test_case(
         ),
     ] = None,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """Create a new test case in Allure TestOps.
 
     Args:
@@ -101,7 +101,7 @@ async def create_test_case(
         integration_id: Optional integration ID for issue linking (required when multiple integrations exist).
         integration_name: Optional integration name for issue linking (mutually exclusive with integration_id).
         project_id: Optional override for the default Project ID.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         A message confirming creation with the ID and Name.

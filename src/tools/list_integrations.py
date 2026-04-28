@@ -6,7 +6,7 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.integration_service import IntegrationService
-from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
 
 
 async def list_integrations(
@@ -20,10 +20,10 @@ async def list_integrations(
             )
         ),
     ] = None,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """List available integrations (issue trackers) in Allure TestOps.
 
     Use this tool to discover which integrations (Jira, GitHub, etc.) are
@@ -33,7 +33,7 @@ async def list_integrations(
         project_id: Optional override for the default Project ID.
             When provided (or from environment default), integrations are filtered
             to those available for that project.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         A formatted list of available integrations with their IDs and names.

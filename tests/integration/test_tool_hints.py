@@ -193,7 +193,9 @@ async def test_update_test_case_tool_summary_includes_test_layer(monkeypatch):
         confirm=True,
     )
 
-    assert "test layer updated" in result
+    assert result.content == []
+    assert result.structured_content["summary"] == "test layer updated"
+    assert result.structured_content["changes"] == ["test layer updated"]
     service.get_test_case.assert_called_once_with(1)
     service.update_test_case.assert_called_once()
 

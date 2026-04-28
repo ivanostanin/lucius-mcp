@@ -24,6 +24,7 @@ from src.tools.launches import close_launch, create_launch, delete_launch, get_l
 from src.tools.link_shared_step import link_shared_step
 from src.tools.list_custom_field_values import list_custom_field_values
 from src.tools.list_integrations import list_integrations
+from src.tools.output_contract import ToolOutput
 from src.tools.plans import (
     create_test_plan,
     delete_test_plan,
@@ -110,7 +111,7 @@ __all__ = [
     "update_test_plan",
 ]
 
-ToolFn = Callable[..., Awaitable[str]]
+ToolFn = Callable[..., Awaitable[ToolOutput]]
 
 all_tools: list[ToolFn] = [
     create_test_case,

@@ -4,7 +4,7 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService, TestCaseUpdate
-from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
 from src.utils.links import normalize_links
 
 
@@ -73,10 +73,10 @@ async def update_test_case(  # noqa: C901
     ] = None,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
     confirm: Annotated[bool, Field(description="Must be set to True to proceed with update. Safety measure.")] = False,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """Update an existing test case in Allure TestOps.
     ⚠️ CAUTION: Destructive.
 
@@ -111,7 +111,7 @@ async def update_test_case(  # noqa: C901
         project_id: Optional override for the default Project ID.
         confirm: Must be set to True to proceed with update.
             This is a safety measure to prevent accidental updates.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         A confirmation message summarizing the update.

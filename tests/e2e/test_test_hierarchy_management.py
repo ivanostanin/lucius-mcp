@@ -86,6 +86,7 @@ async def test_e2e_hierarchy_assign_test_cases_to_suite(
     create_output = await create_test_case(
         name=f"E2E Hierarchy Assignment Case {run_id}",
         project_id=project_id,
+        output_format="plain",
     )
     assert "Created Test Case ID:" in create_output
 
@@ -121,7 +122,12 @@ async def test_e2e_hierarchy_assign_test_cases_to_suite(
     ]
     assert test_case_id in leaf_ids
 
-    delete_output = await delete_test_case(test_case_id=test_case_id, confirm=True, project_id=project_id)
+    delete_output = await delete_test_case(
+        test_case_id=test_case_id,
+        confirm=True,
+        project_id=project_id,
+        output_format="plain",
+    )
     assert "Archived Test Case" in delete_output or "already archived" in delete_output
 
 
@@ -134,7 +140,7 @@ async def test_e2e_hierarchy_tools_smoke(
 
     suite_name = f"E2E-Tool-Suite-{project_id}-{run_id}"
     cleanup_tracker.track_custom_field_value_name(suite_name)
-    create_output = await create_test_suite(name=suite_name, project_id=project_id)
+    create_output = await create_test_suite(name=suite_name, project_id=project_id, output_format="plain")
     assert "✅ Test suite created successfully!" in create_output
 
     match = re.search(r"ID: (\d+)", create_output)
@@ -142,10 +148,14 @@ async def test_e2e_hierarchy_tools_smoke(
     suite_id = int(match.group(1))
     cleanup_tracker.track_test_suite(suite_id)
 
-    list_output = await list_test_suites(project_id=project_id)
+    list_output = await list_test_suites(project_id=project_id, output_format="plain")
     assert "Tree:" in list_output
 
-    tc_output = await create_test_case(name=f"E2E Tool Assign Case {run_id}", project_id=project_id)
+    tc_output = await create_test_case(
+        name=f"E2E Tool Assign Case {run_id}",
+        project_id=project_id,
+        output_format="plain",
+    )
     tc_match = re.search(r"ID: (\d+)", tc_output)
     assert tc_match is not None
     tc_id = int(tc_match.group(1))
@@ -155,10 +165,13 @@ async def test_e2e_hierarchy_tools_smoke(
         suite_id=suite_id,
         test_case_ids=[tc_id],
         project_id=project_id,
+        output_format="plain",
     )
     assert "Assigned" in assign_output
 
-    delete_output = await delete_test_case(test_case_id=tc_id, confirm=True, project_id=project_id)
+    delete_output = await delete_test_case(
+        test_case_id=tc_id, confirm=True, project_id=project_id, output_format="plain"
+    )
     assert "Archived Test Case" in delete_output or "already archived" in delete_output
 
 
@@ -184,7 +197,11 @@ async def test_e2e_hierarchy_delete_suite_lifecycle(
     assert nested_suite.id is not None
     cleanup_tracker.track_test_suite(nested_suite.id)
 
-    tc_output = await create_test_case(name=f"E2E Delete Suite Case {run_id}", project_id=project_id)
+    tc_output = await create_test_case(
+        name=f"E2E Delete Suite Case {run_id}",
+        project_id=project_id,
+        output_format="plain",
+    )
     match = re.search(r"ID: (\d+)", tc_output)
     assert match is not None
     test_case_id = int(match.group(1))
@@ -194,6 +211,7 @@ async def test_e2e_hierarchy_delete_suite_lifecycle(
         suite_id=nested_suite.id,
         test_case_ids=[test_case_id],
         project_id=project_id,
+        output_format="plain",
     )
     assert "Assigned 1 test case(s)" in assign_output
 
@@ -201,6 +219,7 @@ async def test_e2e_hierarchy_delete_suite_lifecycle(
         suite_id=nested_suite.id,
         confirm=True,
         project_id=project_id,
+        output_format="plain",
     )
     assert f"✅ Test suite {nested_suite.id} deleted successfully (idempotent)." == delete_output
 
@@ -208,6 +227,7 @@ async def test_e2e_hierarchy_delete_suite_lifecycle(
         suite_id=nested_suite.id,
         confirm=True,
         project_id=project_id,
+        output_format="plain",
     )
     assert second_delete_output == delete_output
 
@@ -217,6 +237,7 @@ async def test_e2e_hierarchy_delete_suite_lifecycle(
         test_case_id=test_case_id,
         confirm=True,
         project_id=project_id,
+        output_format="plain",
     )
     assert "Archived Test Case" in delete_case_output or "already archived" in delete_case_output
 
@@ -224,6 +245,7 @@ async def test_e2e_hierarchy_delete_suite_lifecycle(
         suite_id=nested_suite.id,
         confirm=True,
         project_id=project_id,
+        output_format="plain",
     )
     assert third_delete_output == delete_output
 
@@ -254,7 +276,11 @@ async def test_e2e_hierarchy_delete_parent_suite_with_children(
     assert nested_suite.id is not None
     cleanup_tracker.track_test_suite(nested_suite.id)
 
-    tc_output = await create_test_case(name=f"E2E Delete Parent Suite Case {run_id}", project_id=project_id)
+    tc_output = await create_test_case(
+        name=f"E2E Delete Parent Suite Case {run_id}",
+        project_id=project_id,
+        output_format="plain",
+    )
     match = re.search(r"ID: (\d+)", tc_output)
     assert match is not None
     test_case_id = int(match.group(1))
@@ -264,6 +290,7 @@ async def test_e2e_hierarchy_delete_parent_suite_with_children(
         suite_id=nested_suite.id,
         test_case_ids=[test_case_id],
         project_id=project_id,
+        output_format="plain",
     )
     assert "Assigned 1 test case(s)" in assign_output
 
@@ -271,6 +298,7 @@ async def test_e2e_hierarchy_delete_parent_suite_with_children(
         suite_id=root_suite.id,
         confirm=True,
         project_id=project_id,
+        output_format="plain",
     )
     assert delete_parent_output == f"✅ Test suite {root_suite.id} deleted successfully (idempotent)."
 

@@ -23,7 +23,7 @@ async def test_defect_lifecycle(allure_client: AllureClient, cleanup_tracker: Cl
 
     # 1. Create a Defect
     defect_name = f"[{test_run_id}] E2E Defect"
-    create_output = await create_defect(name=defect_name, description="E2E description")
+    create_output = await create_defect(name=defect_name, description="E2E description", output_format="plain")
     assert "Created Defect #" in create_output
 
     # Extract ID (format: "Created Defect #<id>: ...")
@@ -31,23 +31,23 @@ async def test_defect_lifecycle(allure_client: AllureClient, cleanup_tracker: Cl
     cleanup_tracker.track_defect(defect_id)
 
     # 2. Get Defect
-    get_output = await get_defect(defect_id=defect_id)
+    get_output = await get_defect(defect_id=defect_id, output_format="plain")
     assert f"Defect #{defect_id}" in get_output
     assert "Status: Open" in get_output
     assert "E2E description" in get_output
 
     # 3. Update Defect (rename + close)
     new_name = f"[{test_run_id}] Updated Defect"
-    update_output = await update_defect(defect_id=defect_id, name=new_name, closed=True)
+    update_output = await update_defect(defect_id=defect_id, name=new_name, closed=True, output_format="plain")
     assert f"Updated Defect #{defect_id}" in update_output
     assert "Status: Closed" in update_output
 
     # 4. List Defects
-    list_output = await list_defects()
+    list_output = await list_defects(output_format="plain")
     assert f"#{defect_id}" in list_output
 
     # 5. Delete Defect
-    delete_output = await delete_defect(defect_id=defect_id, confirm=True)
+    delete_output = await delete_defect(defect_id=defect_id, confirm=True, output_format="plain")
     assert f"Deleted Defect #{defect_id}" in delete_output
 
 
@@ -57,7 +57,7 @@ async def test_defect_matcher_lifecycle(
     """Verify defect matcher lifecycle: Create defect -> Add matcher -> List -> Delete matcher -> Delete defect."""
 
     # 1. Create parent defect
-    create_output = await create_defect(name=f"[{test_run_id}] Matcher Parent")
+    create_output = await create_defect(name=f"[{test_run_id}] Matcher Parent", output_format="plain")
     defect_id = int(create_output.split("#")[1].split(":")[0])
     cleanup_tracker.track_defect(defect_id)
 
@@ -66,22 +66,23 @@ async def test_defect_matcher_lifecycle(
         defect_id=defect_id,
         name="NPE Auto-Rule",
         message_regex=".*NullPointerException.*",
+        output_format="plain",
     )
     assert "Created Defect Matcher #" in matcher_output
     matcher_id = int(matcher_output.split("Matcher #")[1].split(":")[0])
 
     # 3. List matchers
-    list_output = await list_defect_matchers(defect_id=defect_id)
+    list_output = await list_defect_matchers(defect_id=defect_id, output_format="plain")
     assert f"#{matcher_id}" in list_output
     assert "NPE Auto-Rule" in list_output
 
     # 4. Delete matcher
-    del_output = await delete_defect_matcher(matcher_id=matcher_id, confirm=True)
+    del_output = await delete_defect_matcher(matcher_id=matcher_id, confirm=True, output_format="plain")
     assert f"Deleted Defect Matcher #{matcher_id}" in del_output
 
     # 5. Verify empty matchers
-    empty_list = await list_defect_matchers(defect_id=defect_id)
+    empty_list = await list_defect_matchers(defect_id=defect_id, output_format="plain")
     assert "No matchers found" in empty_list
 
     # 6. Cleanup parent defect
-    await delete_defect(defect_id=defect_id, confirm=True)
+    await delete_defect(defect_id=defect_id, confirm=True, output_format="plain")

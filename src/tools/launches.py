@@ -8,7 +8,7 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.launch_service import LaunchDeleteResult, LaunchListResult, LaunchService
-from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
 from src.utils.auth import get_auth_context
 from src.utils.config import settings
 
@@ -27,10 +27,10 @@ async def create_launch(
     ] = None,
     tags: Annotated[list[str] | None, Field(description="Optional list of tags.")] = None,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """Create a new launch in Allure TestOps.
 
     Args:
@@ -41,7 +41,7 @@ async def create_launch(
         links: Optional list of external link dictionaries.
         tags: Optional list of launch tags.
         project_id: Optional override for the default Project ID.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         Confirmation message with launch ID and name.
@@ -75,10 +75,10 @@ async def list_launches(
         Field(description=("Sorting criteria in the format: property(,asc|desc). Example: ['createdDate,DESC']")),
     ] = None,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """List launches in a project.
 
     Args:
@@ -88,7 +88,7 @@ async def list_launches(
         filter_id: Optional filter ID.
         sort: Optional sort criteria.
         project_id: Optional override for the default Project ID.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         Formatted list of launches with pagination info.
@@ -120,16 +120,16 @@ async def list_launches(
 async def get_launch(
     launch_id: Annotated[int, Field(description="Launch ID (required).")],
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """Retrieve a specific launch and summarize its details.
 
     Args:
         launch_id: The unique ID of the launch.
         project_id: Optional override for the default Project ID.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         LLM-friendly summary of the launch details.
@@ -148,17 +148,17 @@ async def get_launch(
 async def delete_launch(
     launch_id: Annotated[int, Field(description="Launch ID to delete/archive (required).")],
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """Delete/archive a launch by ID.
     ⚠️ CAUTION: Destructive.
 
     Args:
         launch_id: The unique ID of the launch to archive.
         project_id: Optional override for the default Project ID.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         Confirmation message with launch ID and idempotent status.
@@ -183,17 +183,17 @@ async def close_launch(
     launch_id: Annotated[int, Field(description="Launch ID (required).")],
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
     api_token: Annotated[str | None, Field(description="Optional runtime API token override.")] = None,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """Close a launch and return updated launch details.
 
     Args:
         launch_id: The unique ID of the launch.
         project_id: Optional override for the default Project ID.
         api_token: Optional runtime API token override.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         LLM-friendly summary of the closed launch.
@@ -216,17 +216,17 @@ async def reopen_launch(
     launch_id: Annotated[int, Field(description="Launch ID (required).")],
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
     api_token: Annotated[str | None, Field(description="Optional runtime API token override.")] = None,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """Reopen a launch and return updated launch details.
 
     Args:
         launch_id: The unique ID of the launch.
         project_id: Optional override for the default Project ID.
         api_token: Optional runtime API token override.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         LLM-friendly summary of the reopened launch.

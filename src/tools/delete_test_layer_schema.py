@@ -6,7 +6,7 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.test_layer_service import TestLayerService
-from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
 
 
 async def delete_test_layer_schema(
@@ -15,10 +15,10 @@ async def delete_test_layer_schema(
     confirm: Annotated[
         bool, Field(description="Must be set to True to proceed with deletion. Safety measure.")
     ] = False,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """Delete a test layer schema from the project.
     ⚠️ CAUTION: Destructive.
 
@@ -27,7 +27,7 @@ async def delete_test_layer_schema(
         project_id: Optional Allure TestOps project ID override.
         confirm: Must be set to True to proceed with deletion.
             This is a safety measure to prevent accidental deletions.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         Confirmation message.

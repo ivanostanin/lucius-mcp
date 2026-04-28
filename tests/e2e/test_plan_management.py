@@ -22,7 +22,7 @@ async def test_test_plan_lifecycle(
 
     # 1. Create a Test Plan
     plan_name = f"[{test_run_id}] E2E Plan"
-    create_output = await create_test_plan(name=plan_name)
+    create_output = await create_test_plan(name=plan_name, output_format="plain")
     assert "Created Test Plan" in create_output
 
     # Extract ID (format: "Created Test Plan <id>: ...")
@@ -31,24 +31,24 @@ async def test_test_plan_lifecycle(
 
     # 2. Update Plan Name
     new_name = f"[{test_run_id}] Updated Plan"
-    update_output = await update_test_plan(plan_id=plan_id, name=new_name)
+    update_output = await update_test_plan(plan_id=plan_id, name=new_name, output_format="plain")
     assert f"Updated Test Plan {plan_id}: '{new_name}'" in update_output
 
     # 3. List Plans to verify update
-    list_output = await list_test_plans(page=0, size=100)
+    list_output = await list_test_plans(page=0, size=100, output_format="plain")
     assert f"[{plan_id}] {new_name}" in list_output
 
     # 4. Manage Content (No op essentially since we don't have stable TCs here,
     # but exercising the tool)
     # Use a safe query that should be valid syntax-wise
-    aql_output = await manage_test_plan_content(plan_id=plan_id, update_aql_filter="id > 0")
+    aql_output = await manage_test_plan_content(plan_id=plan_id, update_aql_filter="id > 0", output_format="plain")
     assert f"Updated content for Test Plan {plan_id}" in aql_output
 
     # 5. Delete Plan
-    delete_output = await delete_test_plan(plan_id=plan_id, confirm=True)
+    delete_output = await delete_test_plan(plan_id=plan_id, confirm=True, output_format="plain")
     assert f"Successfully deleted Test Plan {plan_id}" in delete_output
 
     # 6. Verify Deletion
     # Listing again should not show the plan
-    final_list = await list_test_plans(page=0, size=100)
+    final_list = await list_test_plans(page=0, size=100, output_format="plain")
     assert f"[{plan_id}]" not in final_list

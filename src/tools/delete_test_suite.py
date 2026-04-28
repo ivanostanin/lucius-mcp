@@ -6,7 +6,7 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.test_hierarchy_service import TestHierarchyService
-from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
 
 
 async def delete_test_suite(
@@ -16,10 +16,10 @@ async def delete_test_suite(
         Field(description="Must be set to True to proceed with deletion. Safety measure."),
     ] = False,
     project_id: Annotated[int | None, Field(description="Optional Allure TestOps project ID override.")] = None,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """Delete a test suite node from hierarchy.
     ⚠️ CAUTION: Destructive.
 
@@ -31,7 +31,7 @@ async def delete_test_suite(
         confirm: Must be set to True to proceed.
             This safety flag prevents accidental destructive actions.
         project_id: Optional Allure TestOps project override.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         A confirmation or safety warning message.

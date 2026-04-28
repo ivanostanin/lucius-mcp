@@ -4,22 +4,22 @@ from pydantic import Field
 
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService
-from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, render_output
+from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
 
 
 async def get_test_case_custom_fields(
     test_case_id: Annotated[int, Field(description="The ID of the test case to retrieve custom fields for")],
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
-    output_format: Annotated[OutputFormat, Field(description="Output format: 'plain' (default) or 'json'.")] = (
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
-) -> str:
+) -> ToolOutput:
     """Retrieve custom field values for a specific test case.
 
     Args:
         test_case_id: The ID of the test case.
         project_id: Optional project ID override.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         A dictionary where keys are custom field names and values are

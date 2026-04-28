@@ -10,6 +10,7 @@ from src.services.defect_service import DefectService
 from src.tools.output_contract import (
     DEFAULT_OUTPUT_FORMAT,
     OutputFormat,
+    ToolOutput,
     render_collection_output,
     render_confirmation_required,
     render_output,
@@ -19,8 +20,10 @@ from src.tools.output_contract import (
 async def create_defect(
     name: Annotated[str, "Name / title of the defect"],
     description: Annotated[str | None, "Optional markdown description"] = None,
-    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
-) -> str:
+    output_format: Annotated[
+        OutputFormat | None, "Output format: 'json' (default) or 'plain'."
+    ] = DEFAULT_OUTPUT_FORMAT,
+) -> ToolOutput:
     """Create a new defect in the current project.
 
     Use this tool to register a known defect that can later be linked
@@ -30,7 +33,7 @@ async def create_defect(
         name: Human-readable defect title. Must be non-empty.
         description: Optional markdown description providing context
             about the defect (root cause, impact, workaround, etc.).
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         A success message containing the ID and name of the created defect.
@@ -52,13 +55,15 @@ async def create_defect(
 
 async def get_defect(
     defect_id: Annotated[int, "ID of the defect to retrieve"],
-    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
-) -> str:
+    output_format: Annotated[
+        OutputFormat | None, "Output format: 'json' (default) or 'plain'."
+    ] = DEFAULT_OUTPUT_FORMAT,
+) -> ToolOutput:
     """Retrieve detailed information about a specific defect.
 
     Args:
         defect_id: Numeric ID of the defect.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         Formatted defect details: ID, name, status, description.
@@ -91,8 +96,10 @@ async def update_defect(
     name: Annotated[str | None, "New defect name"] = None,
     description: Annotated[str | None, "New markdown description"] = None,
     closed: Annotated[bool | None, "Set to true to close, false to reopen"] = None,
-    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
-) -> str:
+    output_format: Annotated[
+        OutputFormat | None, "Output format: 'json' (default) or 'plain'."
+    ] = DEFAULT_OUTPUT_FORMAT,
+) -> ToolOutput:
     """Update an existing defect's name, description, or status.
 
     At least one field must be provided. Fields set to null/None are
@@ -103,7 +110,7 @@ async def update_defect(
         name: New defect title (optional).
         description: New markdown description (optional).
         closed: Set to true to close the defect, false to reopen (optional).
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         A success message with the updated defect ID and current status.
@@ -137,8 +144,10 @@ async def delete_defect(
         bool,
         "Safety flag — must be set to true to confirm deletion",
     ] = False,
-    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
-) -> str:
+    output_format: Annotated[
+        OutputFormat | None, "Output format: 'json' (default) or 'plain'."
+    ] = DEFAULT_OUTPUT_FORMAT,
+) -> ToolOutput:
     """Permanently delete a defect and all its associated matchers.
 
     This is a destructive operation. The ``confirm`` parameter must be
@@ -148,7 +157,7 @@ async def delete_defect(
         defect_id: Numeric ID of the defect to delete.
         confirm: Must be explicitly set to true. Prevents accidental
             deletion when the agent misinterprets the user's intent.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         Confirmation or rejection message.
@@ -171,12 +180,14 @@ async def delete_defect(
 
 
 async def list_defects(
-    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
-) -> str:
+    output_format: Annotated[
+        OutputFormat | None, "Output format: 'json' (default) or 'plain'."
+    ] = DEFAULT_OUTPUT_FORMAT,
+) -> ToolOutput:
     """List all defects in the current project.
 
     Args:
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         A formatted list of defects with their IDs, names, and status.
@@ -215,8 +226,10 @@ async def link_defect_to_test_case(
         str | None,
         "Optional integration name for issue mapping. Mutually exclusive with integration_id.",
     ] = None,
-    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
-) -> str:
+    output_format: Annotated[
+        OutputFormat | None, "Output format: 'json' (default) or 'plain'."
+    ] = DEFAULT_OUTPUT_FORMAT,
+) -> ToolOutput:
     """Link a defect to a test case through a shared issue mapping.
 
     This operation ensures defect governance and test coverage are connected:
@@ -228,7 +241,7 @@ async def link_defect_to_test_case(
         issue_key: Optional issue key. If omitted, uses existing defect issue mapping.
         integration_id: Optional integration ID for issue mapping.
         integration_name: Optional integration name for issue mapping.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         Confirmation message including defect, test case, and issue mapping details.
@@ -281,15 +294,17 @@ async def list_defect_test_cases(
     defect_id: Annotated[int, "ID of the defect whose linked test cases should be listed"],
     page: Annotated[int, "Zero-based page index"] = 0,
     size: Annotated[int, "Page size (1..100)"] = 20,
-    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
-) -> str:
+    output_format: Annotated[
+        OutputFormat | None, "Output format: 'json' (default) or 'plain'."
+    ] = DEFAULT_OUTPUT_FORMAT,
+) -> ToolOutput:
     """List test cases currently linked to a defect.
 
     Args:
         defect_id: Numeric ID of the defect.
         page: Zero-based page index.
         size: Page size (1..100).
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         Paginated list of linked test cases with ID, name, and status.
@@ -337,8 +352,10 @@ async def create_defect_matcher(
         str | None,
         "Regex to match against stack traces",
     ] = None,
-    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
-) -> str:
+    output_format: Annotated[
+        OutputFormat | None, "Output format: 'json' (default) or 'plain'."
+    ] = DEFAULT_OUTPUT_FORMAT,
+) -> ToolOutput:
     """Create a defect matcher (automation rule) for a defect.
 
     Matchers automatically link future failing test results to a defect
@@ -355,7 +372,7 @@ async def create_defect_matcher(
             of failing test results. Optional if trace_regex is given.
         trace_regex: Regular expression matched against stack traces of
             failing test results. Optional if message_regex is given.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         A success message with the created matcher ID.
@@ -387,8 +404,10 @@ async def update_defect_matcher(
     name: Annotated[str | None, "New matcher name"] = None,
     message_regex: Annotated[str | None, "New message regex"] = None,
     trace_regex: Annotated[str | None, "New trace regex"] = None,
-    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
-) -> str:
+    output_format: Annotated[
+        OutputFormat | None, "Output format: 'json' (default) or 'plain'."
+    ] = DEFAULT_OUTPUT_FORMAT,
+) -> ToolOutput:
     """Update a defect matcher's name or regex patterns.
 
     At least one field must be provided.
@@ -398,7 +417,7 @@ async def update_defect_matcher(
         name: New matcher name (optional).
         message_regex: New error message regex (optional).
         trace_regex: New stack trace regex (optional).
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         A success message with the updated matcher ID.
@@ -430,8 +449,10 @@ async def delete_defect_matcher(
         bool,
         "Safety flag — must be set to true to confirm deletion",
     ] = False,
-    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
-) -> str:
+    output_format: Annotated[
+        OutputFormat | None, "Output format: 'json' (default) or 'plain'."
+    ] = DEFAULT_OUTPUT_FORMAT,
+) -> ToolOutput:
     """Permanently delete a defect matcher (automation rule).
 
     This is a destructive operation. The ``confirm`` parameter must be
@@ -441,7 +462,7 @@ async def delete_defect_matcher(
         matcher_id: Numeric ID of the matcher to delete.
         confirm: Must be explicitly set to true. Prevents accidental
             deletion when the agent misinterprets the user's intent.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         Confirmation or rejection message.
@@ -465,13 +486,15 @@ async def delete_defect_matcher(
 
 async def list_defect_matchers(
     defect_id: Annotated[int, "ID of the parent defect"],
-    output_format: Annotated[OutputFormat, "Output format: plain (default) or json."] = DEFAULT_OUTPUT_FORMAT,
-) -> str:
+    output_format: Annotated[
+        OutputFormat | None, "Output format: 'json' (default) or 'plain'."
+    ] = DEFAULT_OUTPUT_FORMAT,
+) -> ToolOutput:
     """List all matchers (automation rules) for a given defect.
 
     Args:
         defect_id: Numeric ID of the parent defect.
-        output_format: Output format: plain (default) or json.
+        output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
         Formatted list of matchers with names and regex patterns.

@@ -40,6 +40,7 @@ async def test_full_house_creation(
         tags=tags,
         attachments=attachments,
         project_id=project_id,
+        output_format="plain",
     )
 
     # Verifications
@@ -120,6 +121,7 @@ async def test_url_attachment_flow(
         project_id=project_id,
         name=name,
         attachments=attachments,
+        output_format="plain",
     )
 
     # Verifications
@@ -350,6 +352,7 @@ async def test_e2e_8_test_layer_assignment(
         name=by_id_name,
         test_layer_id=layer_id,
         project_id=project_id,
+        output_format="plain",
     )
     assert "Created Test Case ID:" in created_by_id
 
@@ -371,6 +374,7 @@ async def test_e2e_8_test_layer_assignment(
         name=by_name_name,
         test_layer_name=layer_name,
         project_id=project_id,
+        output_format="plain",
     )
     assert "Created Test Case ID:" in created_by_name
 
