@@ -13,13 +13,14 @@ async def test_full_house_creation(
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,
     pixel_b64: str,
+    test_run_id: str,
 ) -> None:
     """
     E2E-1: The "Full House" Test Case.
     Verifies creation with name, desc, steps, tags, attachments using real API.
     """
     # Test Data
-    name = "E2E Full House Real"
+    name = f"[{test_run_id}] E2E Full House Real"
     description = "# Markdown Desc"
 
     steps = [{"action": "Login", "expected": "Dashboard"}]
@@ -98,12 +99,13 @@ async def test_url_attachment_flow(
     project_id: int,
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,
+    test_run_id: str,
 ) -> None:
     """
     E2E-2: Test Case with URL Attachment.
     Verifies that the tool downloads content from URL and uploads it to Allure.
     """
-    name = "URL Attachment Test Real"
+    name = f"[{test_run_id}] URL Attachment Test Real"
     # Use a stable, high-availability public test URL (small text file)
     url = "https://www.google.com/robots.txt"
     filename = "robots.txt"
@@ -333,6 +335,7 @@ async def test_e2e_8_test_layer_assignment(
     project_id: int,
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,
+    test_run_id: str,
 ) -> None:
     """
     E2E-8: Test Layer Assignment.
@@ -340,14 +343,14 @@ async def test_e2e_8_test_layer_assignment(
     """
     layer_service = TestLayerService(client=allure_client)
 
-    layer_name = "E2E-Create-Case-Layer"
+    layer_name = f"[{test_run_id}] E2E-Create-Case-Layer"
     created_layer = await layer_service.create_test_layer(name=layer_name)
     layer_id = created_layer.id
     assert layer_id is not None
     cleanup_tracker.track_test_layer(layer_id)
 
     # Assign via test_layer_id
-    by_id_name = "E2E-Create-Case-With-Layer-ID"
+    by_id_name = f"[{test_run_id}] E2E-Create-Case-With-Layer-ID"
     created_by_id = await create_test_case(
         name=by_id_name,
         test_layer_id=layer_id,
@@ -369,7 +372,7 @@ async def test_e2e_8_test_layer_assignment(
     assert fetched_by_id.test_layer.id == layer_id
 
     # Assign via test_layer_name
-    by_name_name = "E2E-Create-Case-With-Layer-Name"
+    by_name_name = f"[{test_run_id}] E2E-Create-Case-With-Layer-Name"
     created_by_name = await create_test_case(
         name=by_name_name,
         test_layer_name=layer_name,

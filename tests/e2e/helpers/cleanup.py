@@ -4,7 +4,14 @@ import asyncio
 
 from src.client import AllureClient
 from src.client.exceptions import LaunchNotFoundError
-from src.services import CustomFieldValueService, DefectService, PlanService, TestHierarchyService, TestLayerService
+from src.services import (
+    CustomFieldValueService,
+    DefectService,
+    PlanService,
+    TestCaseService,
+    TestHierarchyService,
+    TestLayerService,
+)
 from src.services.launch_service import LaunchService
 
 
@@ -138,6 +145,28 @@ class CleanupTracker:
 
         raise AssertionError(f"Launch {launch_id} still exists after deletion attempts")
 
+    async def delete_test_case_strict(
+        self, service: TestCaseService, test_case_id: int, retries: int = 3, delay: float = 0.2
+    ) -> None:
+        """Archive a test case with retries using a cleanup-dedicated client."""
+        last_error: Exception | None = None
+
+        for _ in range(retries):
+            try:
+                result = await service.delete_test_case(test_case_id)
+                if result.status in {"archived", "already_deleted"}:
+                    return
+            except Exception as exc:  # pragma: no cover - defensive teardown path
+                last_error = exc
+
+            await asyncio.sleep(delay)
+
+        if last_error is not None:
+            raise AssertionError(
+                f"Test case {test_case_id} still exists after cleanup attempts: {last_error}"
+            ) from last_error
+        raise AssertionError(f"Test case {test_case_id} still exists after cleanup attempts")
+
     async def cleanup_all(self) -> None:
         """Delete all tracked entities.
 
@@ -165,11 +194,20 @@ class CleanupTracker:
         import logging
 
         logger = logging.getLogger(__name__)
-        for tc_id in self._test_cases:
-            try:
-                await self._client.delete_test_case(tc_id)
-            except Exception as e:
-                logger.warning(f"Failed to cleanup test case {tc_id}: {e}")
+        cleanup_failures: list[str] = []
+
+        async with AllureClient.from_env(project=self._client.get_project()) as cleanup_client:
+            service = TestCaseService(cleanup_client)
+            for tc_id in reversed(list(dict.fromkeys(self._test_cases))):
+                try:
+                    await self.delete_test_case_strict(service, tc_id)
+                except Exception as e:
+                    message = f"Failed to cleanup test case {tc_id}: {e}"
+                    cleanup_failures.append(message)
+                    logger.warning(message)
+
+        if cleanup_failures:
+            raise AssertionError("\n".join(cleanup_failures))
 
     async def _cleanup_shared_steps(self) -> None:
         import logging

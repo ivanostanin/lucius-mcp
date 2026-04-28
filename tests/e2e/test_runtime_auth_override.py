@@ -9,12 +9,14 @@ from src.utils.config import settings
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 
-async def test_api_token_parameter_is_optional(project_id: int, cleanup_tracker: CleanupTracker) -> None:
+async def test_api_token_parameter_is_optional(
+    project_id: int, cleanup_tracker: CleanupTracker, test_run_id: str
+) -> None:
     """Verify that tool works with env token."""
 
     result = await create_test_case(
         project_id=project_id,
-        name="Runtime Auth Optional",
+        name=f"[{test_run_id}] Runtime Auth Optional",
         output_format="plain",
     )
     assert "Created Test Case ID:" in result
@@ -24,7 +26,11 @@ async def test_api_token_parameter_is_optional(project_id: int, cleanup_tracker:
 
 
 async def test_runtime_token_overrides_environment(
-    monkeypatch: pytest.MonkeyPatch, project_id: int, cleanup_tracker: CleanupTracker, api_token: str
+    monkeypatch: pytest.MonkeyPatch,
+    project_id: int,
+    cleanup_tracker: CleanupTracker,
+    api_token: str,
+    test_run_id: str,
 ) -> None:
     """Verify that environment token is used when no runtime override is provided."""
     real_token = api_token
@@ -35,7 +41,7 @@ async def test_runtime_token_overrides_environment(
     # Call without runtime override
     result = await create_test_case(
         project_id=project_id,
-        name="Runtime Override Test",
+        name=f"[{test_run_id}] Runtime Override Test",
         output_format="plain",
     )
     assert "Created Test Case ID:" in result
@@ -44,12 +50,14 @@ async def test_runtime_token_overrides_environment(
         cleanup_tracker.track_test_case(int(match.group(1)))
 
 
-async def test_runtime_overrides_do_not_persist_across_calls(project_id: int, cleanup_tracker: CleanupTracker) -> None:
+async def test_runtime_overrides_do_not_persist_across_calls(
+    project_id: int, cleanup_tracker: CleanupTracker, test_run_id: str
+) -> None:
     """Verify that tool calls are stateless across invocations."""
     # First call with environment token
     first_result = await create_test_case(
         project_id=project_id,
-        name="Runtime Override First Call",
+        name=f"[{test_run_id}] Runtime Override First Call",
         output_format="plain",
     )
     assert "Created Test Case ID:" in first_result
@@ -60,7 +68,7 @@ async def test_runtime_overrides_do_not_persist_across_calls(project_id: int, cl
     # Second call also uses environment token
     second_result = await create_test_case(
         project_id=project_id,
-        name="Runtime Override Second Call",
+        name=f"[{test_run_id}] Runtime Override Second Call",
         output_format="plain",
     )
     assert "Created Test Case ID:" in second_result
