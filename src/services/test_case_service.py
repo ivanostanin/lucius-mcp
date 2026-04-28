@@ -11,7 +11,7 @@ from src.client import (
     StepWithExpected,
     TestCaseDtoWithCF,
 )
-from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError
+from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError, TestCaseNotFoundError
 from src.client.generated.models import (
     CustomFieldDto,
     CustomFieldValueDto,
@@ -525,7 +525,7 @@ class TestCaseService:
                     status="already_deleted",
                     message=f"Test Case {test_case_id} was already archived (Status: {test_case.status.name}).",
                 )
-        except AllureNotFoundError:
+        except (AllureNotFoundError, TestCaseNotFoundError):
             return DeleteResult(
                 test_case_id=test_case_id,
                 status="already_deleted",

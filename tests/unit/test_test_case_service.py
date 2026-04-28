@@ -7,7 +7,7 @@ from src.client import (
     AttachmentStepDtoWithName,
     BodyStepDtoWithSteps,
 )
-from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError
+from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError, TestCaseNotFoundError
 from src.client.generated.models import (
     CustomFieldDto,
     CustomFieldProjectDto,
@@ -837,6 +837,24 @@ async def test_delete_test_case_already_deleted(service: TestCaseService, mock_c
 
     mock_client.get_test_case.assert_called_once_with(test_case_id)
     mock_client.delete_test_case.assert_not_called()
+
+    mock_client.get_test_case.assert_called_once_with(test_case_id)
+    mock_client.delete_test_case.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_delete_test_case_already_deleted_when_get_wraps_404(
+    service: TestCaseService, mock_client: AsyncMock
+) -> None:
+    test_case_id = 123
+
+    mock_client.get_test_case.side_effect = TestCaseNotFoundError(test_case_id)
+
+    result = await service.delete_test_case(test_case_id)
+
+    assert result.test_case_id == test_case_id
+    assert result.status == "already_deleted"
+    assert "already archived" in result.message
 
     mock_client.get_test_case.assert_called_once_with(test_case_id)
     mock_client.delete_test_case.assert_not_called()
