@@ -6,28 +6,21 @@ from __future__ import annotations
 
 import json
 import sys
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from rich.console import Console
 
 from src.cli import cli_entry
-from src.cli.cli_entry import (
-    ActionSpec,
-    CLIError,
-    build_command_registry,
-    call_tool_function,
-    format_as_csv,
-    format_as_plain,
-    format_as_table,
-    format_json,
-    load_tool_schemas,
-    print_action_help,
-    resolve_action_name,
-    resolve_entity_name,
-    run_cli,
-    validate_args_against_schema,
-)
+from src.cli.cli_entry import run_cli
+from src.cli.formatting import format_as_csv, format_as_plain, format_as_table, format_json
+from src.cli.help_output import render_action_help
+from src.cli.models import ActionSpec, CLIError
+from src.cli.option_parsing import validate_args_against_schema
+from src.cli.routing import build_command_registry, resolve_action_name, resolve_entity_name
+from src.cli.runtime import call_tool_function
+from src.cli.schema_loader import load_tool_schemas
 
 
 def render_table(table: object) -> str:
@@ -41,7 +34,7 @@ class TestE2ECommandRegistry:
     """Validate entity/action registry mapping."""
 
     def test_build_registry_contains_expected_mappings(self) -> None:
-        schemas = load_tool_schemas()
+        schemas = load_tool_schemas(cli_entry.TOOL_SCHEMAS_PATH, Path(cli_entry.__file__))
         registry = build_command_registry(schemas)
 
         assert registry["test_case"]["list"].tool_name == "list_test_cases"
@@ -61,13 +54,13 @@ class TestE2ECommandRegistry:
         assert registry["test_plan"]["delete"].tool_name == "delete_test_plan"
 
     def test_resolve_entity_plural_alias(self) -> None:
-        schemas = load_tool_schemas()
+        schemas = load_tool_schemas(cli_entry.TOOL_SCHEMAS_PATH, Path(cli_entry.__file__))
         registry = build_command_registry(schemas)
         assert resolve_entity_name("integrations", registry) == "integration"
         assert resolve_entity_name("test-cases", registry) == "test_case"
 
     def test_resolve_entity_unknown(self) -> None:
-        schemas = load_tool_schemas()
+        schemas = load_tool_schemas(cli_entry.TOOL_SCHEMAS_PATH, Path(cli_entry.__file__))
         registry = build_command_registry(schemas)
         with pytest.raises(CLIError) as exc_info:
             resolve_entity_name("unknown_entity", registry)
@@ -77,14 +70,14 @@ class TestE2ECommandRegistry:
         assert "test_case" in exc_info.value.hint
 
     def test_resolve_action_alias(self) -> None:
-        schemas = load_tool_schemas()
+        schemas = load_tool_schemas(cli_entry.TOOL_SCHEMAS_PATH, Path(cli_entry.__file__))
         registry = build_command_registry(schemas)
         actions = registry["custom_field"]
         assert resolve_action_name("custom_field", "list", actions) == "get"
         assert resolve_action_name("custom_field", "delete-unused", actions) == "delete_unused"
 
     def test_resolve_action_unknown(self) -> None:
-        schemas = load_tool_schemas()
+        schemas = load_tool_schemas(cli_entry.TOOL_SCHEMAS_PATH, Path(cli_entry.__file__))
         registry = build_command_registry(schemas)
         actions = registry["test_case"]
         with pytest.raises(CLIError) as exc_info:
@@ -98,7 +91,7 @@ class TestE2EDirectToolExecution:
     @pytest.mark.asyncio
     async def test_call_tool_function_success(self) -> None:
         mock_tool = AsyncMock(return_value={"id": 123, "name": "ok"})
-        with patch("src.cli.cli_entry._load_tool_function", return_value=mock_tool):
+        with patch("src.cli.runtime.load_tool_function", return_value=mock_tool):
             result = await call_tool_function("list_test_cases", {"page": 0})
         assert result["id"] == 123
         mock_tool.assert_awaited_once_with(page=0)
@@ -106,7 +99,7 @@ class TestE2EDirectToolExecution:
     @pytest.mark.asyncio
     async def test_call_tool_function_type_error(self) -> None:
         mock_tool = AsyncMock(side_effect=TypeError("unexpected keyword argument"))
-        with patch("src.cli.cli_entry._load_tool_function", return_value=mock_tool):
+        with patch("src.cli.runtime.load_tool_function", return_value=mock_tool):
             with pytest.raises(CLIError) as exc_info:
                 await call_tool_function("list_test_cases", {"bad": 1})
         assert "Invalid parameters" in exc_info.value.message
@@ -114,7 +107,7 @@ class TestE2EDirectToolExecution:
     @pytest.mark.asyncio
     async def test_call_tool_function_runtime_error(self) -> None:
         mock_tool = AsyncMock(side_effect=Exception("401 Unauthorized"))
-        with patch("src.cli.cli_entry._load_tool_function", return_value=mock_tool):
+        with patch("src.cli.runtime.load_tool_function", return_value=mock_tool):
             with pytest.raises(CLIError) as exc_info:
                 await call_tool_function("list_test_cases", {"page": 0})
         assert "Error executing" in exc_info.value.message
@@ -145,7 +138,7 @@ class TestE2ERouting:
         with (
             patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value='{"ok":true}')) as mock_call,
             patch.object(cli_entry.console_out, "print") as mock_print,
-            patch("src.cli.cli_entry.format_output_data") as mock_format,
+            patch("src.cli.command_runner.render_output") as mock_format,
         ):
             run_cli(["test_case", "list", "--args", "{}", "--format", "json"])
 
@@ -157,7 +150,7 @@ class TestE2ERouting:
         with (
             patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value='{"ok":true}')) as mock_call,
             patch.object(cli_entry.console_out, "print") as mock_print,
-            patch("src.cli.cli_entry.format_output_data") as mock_format,
+            patch("src.cli.command_runner.render_output") as mock_format,
         ):
             run_cli(["test_case", "list", "--args", "{}"])
 
@@ -173,7 +166,7 @@ class TestE2ERouting:
         with (
             patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value=StructuredResult())) as mock_call,
             patch.object(cli_entry.console_out, "print") as mock_print,
-            patch("src.cli.cli_entry.format_output_data") as mock_format,
+            patch("src.cli.command_runner.render_output") as mock_format,
         ):
             run_cli(["test_case", "list", "--args", "{}", "--format", "json"])
 
@@ -185,7 +178,7 @@ class TestE2ERouting:
         with (
             patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value="line1\nline2")) as mock_call,
             patch.object(cli_entry.console_out, "print") as mock_print,
-            patch("src.cli.cli_entry.format_output_data") as mock_format,
+            patch("src.cli.command_runner.render_output") as mock_format,
         ):
             run_cli(["test_case", "list", "--args", "{}", "--format", "plain"])
 
@@ -196,12 +189,12 @@ class TestE2ERouting:
     def test_run_cli_executes_csv_format(self) -> None:
         with (
             patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value='[{"id":1}]')) as mock_call,
-            patch("src.cli.cli_entry.format_output_data") as mock_format,
+            patch("src.cli.command_runner.render_output") as mock_format,
         ):
             run_cli(["test_case", "list", "--args", "{}", "--format", "csv"])
 
         mock_call.assert_awaited_once_with("list_test_cases", {"output_format": "json"})
-        mock_format.assert_called_once_with([{"id": 1}], "csv")
+        mock_format.assert_called_once_with([{"id": 1}], "csv", cli_entry.console_out)
 
     def test_run_cli_executes_csv_format_from_items_envelope(self) -> None:
         with (
@@ -209,12 +202,12 @@ class TestE2ERouting:
                 "src.cli.cli_entry.call_tool_function",
                 new=AsyncMock(return_value='{"items":[{"id":1,"name":"Alpha"}],"total":1}'),
             ) as mock_call,
-            patch("src.cli.cli_entry.format_output_data") as mock_format,
+            patch("src.cli.command_runner.render_output") as mock_format,
         ):
             run_cli(["test_case", "list", "--args", "{}", "--format", "csv"])
 
         mock_call.assert_awaited_once_with("list_test_cases", {"output_format": "json"})
-        mock_format.assert_called_once_with([{"id": 1, "name": "Alpha"}], "csv")
+        mock_format.assert_called_once_with([{"id": 1, "name": "Alpha"}], "csv", cli_entry.console_out)
 
     def test_run_cli_executes_table_format_from_structured_tool_result(self) -> None:
         class StructuredResult:
@@ -223,12 +216,12 @@ class TestE2ERouting:
 
         with (
             patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value=StructuredResult())) as mock_call,
-            patch("src.cli.cli_entry.format_output_data") as mock_format,
+            patch("src.cli.command_runner.render_output") as mock_format,
         ):
             run_cli(["test_case", "list", "--args", "{}", "--format", "table"])
 
         mock_call.assert_awaited_once_with("list_test_cases", {"output_format": "json"})
-        mock_format.assert_called_once_with([{"id": 1, "name": "Alpha"}], "table")
+        mock_format.assert_called_once_with([{"id": 1, "name": "Alpha"}], "table", cli_entry.console_out)
 
     def test_run_cli_csv_rejects_invalid_json_tool_output(self) -> None:
         with patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value="not-json")):
@@ -258,7 +251,7 @@ class TestCLIImportBoundary:
         sys.modules.pop("src.main", None)
         with (
             patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value='{"ok":true}')),
-            patch("src.cli.cli_entry.format_output_data"),
+            patch("src.cli.command_runner.render_output"),
         ):
             run_cli(["test_case", "list", "--args", "{}"])
         assert "fastmcp" not in sys.modules
@@ -433,7 +426,7 @@ class TestE2EValidationAndHelp:
                 },
             },
         )
-        print_action_help(spec)
+        render_action_help(spec, cli_entry.console_out)
         output = capsys.readouterr().out
         assert "lucius test_case list" in output
         assert "List all test cases." in output

@@ -16,27 +16,15 @@ import pytest
 
 import src.cli
 from src.cli import cli_entry
-from src.cli.cli_entry import (
-    ActionSpec,
-    CLIError,
-    _build_example_args,
-    _error_hint_from_exception,
-    _first_line,
-    _format_action_list,
-    _load_tool_function,
-    all_entities_with_aliases,
-    build_command_registry,
-    format_as_csv,
-    format_as_plain,
-    format_as_table,
-    format_output_data,
-    load_tool_schemas,
-    parse_action_options,
-    print_action_help,
-    resolve_entity_name,
-    run_cli,
-)
-from src.cli.route_matrix import all_route_tool_names, iter_actions
+from src.cli.cli_entry import run_cli
+from src.cli.formatting import format_as_csv, format_as_plain, format_as_table, render_output
+from src.cli.help_output import _build_example_args, _first_line, _format_action_list, render_action_help
+from src.cli.models import ActionSpec, CLIError
+from src.cli.option_parsing import parse_action_options
+from src.cli.route_matrix import all_entities_with_aliases, all_route_tool_names, iter_actions
+from src.cli.routing import build_command_registry, resolve_entity_name
+from src.cli.runtime import call_tool_function, error_hint_from_exception, load_tool_function
+from src.cli.schema_loader import load_tool_schemas
 
 
 class TestCLICoverageHelpers:
@@ -47,18 +35,16 @@ class TestCLICoverageHelpers:
             src.cli.main()
         mocked_main.assert_called_once()
 
-    def test_load_tool_schemas_missing_file(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(cli_entry.Path, "exists", lambda _self: False)
+    def test_load_tool_schemas_missing_file(self, tmp_path: Path) -> None:
         with pytest.raises(CLIError) as exc_info:
-            load_tool_schemas()
+            load_tool_schemas(tmp_path / "tool_schemas.json", tmp_path / "cli_entry.py")
         assert "Tool schemas not found" in exc_info.value.message
 
-    def test_load_tool_schemas_invalid_json(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_load_tool_schemas_invalid_json(self, tmp_path: Path) -> None:
         invalid_file = tmp_path / "tool_schemas.json"
         invalid_file.write_text("{invalid json")
-        monkeypatch.setattr(cli_entry, "TOOL_SCHEMAS_PATH", invalid_file)
         with pytest.raises(CLIError) as exc_info:
-            load_tool_schemas()
+            load_tool_schemas(invalid_file, tmp_path / "cli_entry.py")
         assert "Invalid tool schemas JSON" in exc_info.value.message
 
     def test_format_as_table_list_variants(self) -> None:
@@ -82,22 +68,22 @@ class TestCLICoverageHelpers:
             patch.object(cli_entry.console_out, "print_json") as print_json_mock,
             patch.object(cli_entry.console_out, "print") as print_mock,
         ):
-            format_output_data({"ok": True}, "json")
-            format_output_data({"ok": True}, "table")
-            format_output_data({"ok": True}, "plain")
-            format_output_data({"ok": True}, "csv")
+            render_output({"ok": True}, "json", cli_entry.console_out)
+            render_output({"ok": True}, "table", cli_entry.console_out)
+            render_output({"ok": True}, "plain", cli_entry.console_out)
+            render_output({"ok": True}, "csv", cli_entry.console_out)
         assert print_json_mock.called
         assert print_mock.called
 
         with pytest.raises(CLIError):
-            format_output_data({}, "yaml")
+            render_output({}, "yaml", cli_entry.console_out)
 
     def test_build_registry_missing_and_extra_schema(self) -> None:
         with pytest.raises(CLIError) as missing:
             build_command_registry({})
         assert "missing" in missing.value.message.lower()
 
-        schemas = load_tool_schemas()
+        schemas = load_tool_schemas(cli_entry.TOOL_SCHEMAS_PATH, Path(cli_entry.__file__))
         schemas["unexpected_tool"] = {
             "name": "unexpected_tool",
             "description": "unexpected",
@@ -114,11 +100,11 @@ class TestCLICoverageHelpers:
         assert resolve_entity_name("test-cases", partial) == "test_case"
 
     def test_error_hint_variants(self) -> None:
-        assert "credentials" in _error_hint_from_exception(Exception("API_TOKEN not set in environment")).lower()
-        assert "permissions" in _error_hint_from_exception(Exception("401 unauthorized")).lower()
-        assert "parameters" in _error_hint_from_exception(Exception("ValidationError: field required")).lower()
-        assert "json" in _error_hint_from_exception(Exception("invalid json payload")).lower()
-        assert "review command parameters" in _error_hint_from_exception(Exception("other")).lower()
+        assert "credentials" in error_hint_from_exception(Exception("API_TOKEN not set in environment")).lower()
+        assert "permissions" in error_hint_from_exception(Exception("401 unauthorized")).lower()
+        assert "parameters" in error_hint_from_exception(Exception("ValidationError: field required")).lower()
+        assert "json" in error_hint_from_exception(Exception("invalid json payload")).lower()
+        assert "review command parameters" in error_hint_from_exception(Exception("other")).lower()
 
     def test_first_line_and_example_args(self) -> None:
         assert _first_line("one\ntwo") == "one"
@@ -153,7 +139,7 @@ class TestCLICoverageHelpers:
             action="list",
             schema={"description": "List defects", "input_schema": {"type": "object", "properties": {}}},
         )
-        print_action_help(spec)
+        render_action_help(spec, cli_entry.console_out)
         out = capsys.readouterr().out
         assert "(no parameters)" in out
 
@@ -171,23 +157,23 @@ class TestCLICoverageHelpers:
             parse_action_options(["--unknown"])
 
     def test_load_tool_function_paths(self) -> None:
-        assert callable(_load_tool_function("create_test_case"))
-        assert callable(_load_tool_function("delete_test_plan"))
+        assert callable(load_tool_function("create_test_case"))
+        assert callable(load_tool_function("delete_test_plan"))
         with pytest.raises(CLIError):
-            _load_tool_function("tool_that_does_not_exist")
+            load_tool_function("tool_that_does_not_exist")
 
     @pytest.mark.asyncio
     async def test_call_tool_function_extra_branches(self) -> None:
-        with patch("src.cli.cli_entry._load_tool_function", return_value=AsyncMock(side_effect=CLIError("x"))):
+        with patch("src.cli.runtime.load_tool_function", return_value=AsyncMock(side_effect=CLIError("x"))):
             with pytest.raises(CLIError):
-                await cli_entry.call_tool_function("a", {})
+                await call_tool_function("a", {})
 
         with patch(
-            "src.cli.cli_entry._load_tool_function",
+            "src.cli.runtime.load_tool_function",
             return_value=AsyncMock(side_effect=asyncio.CancelledError()),
         ):
             with pytest.raises(CLIError) as cancelled:
-                await cli_entry.call_tool_function("a", {})
+                await call_tool_function("a", {})
         assert "cancelled" in cancelled.value.message.lower()
 
     def test_run_cli_additional_error_paths(self) -> None:
@@ -201,7 +187,7 @@ class TestCLICoverageHelpers:
 
         with (
             patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value={"ok": True})),
-            patch("src.cli.cli_entry.format_output_data"),
+            patch("src.cli.command_runner.render_output"),
         ):
             run_cli(["test_case", "list", "--help"])
 
@@ -230,7 +216,7 @@ class TestCLICoverageHelpers:
         assert "search" in actions
 
     def test_schema_file_contains_entity_action(self) -> None:
-        schemas = load_tool_schemas()
+        schemas = load_tool_schemas(cli_entry.TOOL_SCHEMAS_PATH, Path(cli_entry.__file__))
         assert schemas["get_test_case_details"]["entity"] == "test_case"
         assert schemas["get_test_case_details"]["action"] == "get"
         assert "example_command" in schemas["get_test_case_details"]
@@ -238,14 +224,14 @@ class TestCLICoverageHelpers:
 
     def test_every_route_tool_signature_supports_output_format(self) -> None:
         for tool_name in all_route_tool_names():
-            fn = _load_tool_function(tool_name)
+            fn = load_tool_function(tool_name)
             signature = inspect.signature(fn)
             output_param = signature.parameters.get("output_format")
             assert output_param is not None, f"{tool_name} missing output_format"
             assert output_param.default is None
 
     def test_schema_json_serializable(self) -> None:
-        schemas = load_tool_schemas()
+        schemas = load_tool_schemas(cli_entry.TOOL_SCHEMAS_PATH, Path(cli_entry.__file__))
         serialized = json.dumps(schemas)
         assert "create_test_case" in serialized
 

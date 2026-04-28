@@ -6,15 +6,18 @@ from __future__ import annotations
 
 import pytest
 
-from src.cli.cli_entry import build_command_registry, load_tool_schemas, run_cli
+from src.cli import cli_entry
+from src.cli.cli_entry import run_cli
 from src.cli.route_matrix import CANONICAL_ROUTE_MATRIX, all_canonical_routes
+from src.cli.routing import build_command_registry
+from src.cli.schema_loader import load_tool_schemas
 
 
 class TestCLIRouteMatrix:
     """Guarantee canonical route coverage and representation."""
 
     def test_registry_matches_canonical_route_matrix(self) -> None:
-        schemas = load_tool_schemas()
+        schemas = load_tool_schemas(cli_entry.TOOL_SCHEMAS_PATH, cli_entry.Path(cli_entry.__file__))
         registry = build_command_registry(schemas)
 
         assert set(registry.keys()) == set(CANONICAL_ROUTE_MATRIX.keys())
