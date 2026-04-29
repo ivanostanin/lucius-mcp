@@ -5,6 +5,8 @@
 Lucius uses an entity/action grammar:
 
 ```bash
+lucius auth [--url <url>] [--token <token>] [--project <id>]
+lucius auth status
 lucius <entity>
 lucius <entity> <action> --args '<json>' [--format json|table|plain|csv]
 lucius <entity> <action> --help
@@ -15,6 +17,11 @@ lucius <entity> <action> --help
 ## Examples
 
 ```bash
+# Save CLI auth once for later commands
+lucius auth
+lucius auth --url https://example.testops.cloud --token <your_api_token> --project 123
+lucius auth status
+
 # Discover actions
 lucius test_case
 lucius integrations
@@ -29,6 +36,45 @@ lucius test_case create --args '{"name": "Smoke login"}'
 lucius launch close --args '{"launch_id": 123}' --format table
 lucius defect list --args '{}' --format plain
 ```
+
+## CLI Auth
+
+`lucius auth` stores Allure credentials for later CLI launches. It validates the
+URL, token, and project access before writing anything to disk.
+
+Interactive mode:
+
+```bash
+lucius auth
+```
+
+Non-interactive mode:
+
+```bash
+lucius auth --url https://example.testops.cloud --token <your_api_token> --project 123
+```
+
+Status:
+
+```bash
+lucius auth status
+```
+
+Stored config path:
+
+- Linux/Unix: `$XDG_CONFIG_HOME/lucius/auth.json` or `~/.config/lucius/auth.json`
+- macOS: `~/Library/Application Support/lucius/auth.json` unless XDG overrides are explicitly set
+- Windows: `%LOCALAPPDATA%\lucius\auth.json`
+
+Precedence during tool execution:
+
+1. Explicit tool args such as `api_token` or `project_id`
+2. Environment variables: `ALLURE_ENDPOINT`, `ALLURE_API_TOKEN`, `ALLURE_PROJECT_ID`
+3. Saved CLI auth config from `lucius auth`
+4. Built-in defaults
+
+The saved file contains URL, token, project ID, and timestamps. The token is never
+shown by `lucius auth status`.
 
 ## Canonical Entities
 
@@ -88,7 +134,7 @@ entity/action CLI and stored in:
 - `deployment/shell-completions/lucius.fish`
 - `deployment/shell-completions/lucius.ps1`
 
-Regenerate them after route or alias changes:
+Regenerate them after route, alias, or CLI-local auth command changes:
 
 ```bash
 python3 deployment/scripts/generate_completions.py

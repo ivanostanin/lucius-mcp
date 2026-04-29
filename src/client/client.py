@@ -501,6 +501,12 @@ class AllureClient:
         except Exception:
             return []
 
+    async def validate_project_access(self, project_id: int | None = None) -> None:
+        """Verify that the authenticated token can access the target project."""
+        target_project = project_id if project_id is not None else self._project
+        project_api = await self._get_api("_project_api", error_name="project_api")
+        await self._call_api(project_api.calculate_stats(id=target_project))
+
     async def __aenter__(self) -> AllureClient:
         """Initialize the client session within an async context.
 

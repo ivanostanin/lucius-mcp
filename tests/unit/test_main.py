@@ -7,7 +7,7 @@ from starlette.testclient import TestClient
 
 from src.main import app as global_app
 from src.main import telemetry_service
-from src.utils.telemetry import wrap_tool_with_telemetry
+from src.utils.telemetry import set_telemetry_service, wrap_tool_with_telemetry
 
 
 def test_app_initialization(client: TestClient) -> None:
@@ -99,6 +99,7 @@ async def test_wrap_tool_with_telemetry_emits_success(mocker: MockerFixture) -> 
     async def dummy_tool(value: int) -> str:
         return str(value)
 
+    set_telemetry_service(telemetry_service)
     emit_tool_usage_event = mocker.patch.object(telemetry_service, "emit_tool_usage_event")
     wrapped_tool = wrap_tool_with_telemetry(dummy_tool)
 
@@ -115,6 +116,7 @@ async def test_wrap_tool_with_telemetry_emits_error_and_reraises(mocker: MockerF
     async def failing_tool() -> str:
         raise ValueError("boom")
 
+    set_telemetry_service(telemetry_service)
     emit_tool_usage_event = mocker.patch.object(telemetry_service, "emit_tool_usage_event")
     wrapped_tool = wrap_tool_with_telemetry(failing_tool)
 

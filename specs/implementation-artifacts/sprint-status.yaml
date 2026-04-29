@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2025-12-27 18:46
-last_updated: 2026-04-26
+last_updated: 2026-04-29
 project: lucius-mcp
 project_key: lucius-mcp
 tracking_system: file-system
@@ -131,5 +131,5 @@ development_status:
   9-4-python-3-13-compatibility-for-nuitka-cli-builds: done
   9-5-nuitka-onefile-caching-for-cli-startup: done
   9-6-unified-cli-output-formats-json-table-csv-plain: review
-  9-7-cli-auth-command-persistent-configuration: ready-for-dev
+  9-7-cli-auth-command-persistent-configuration: review
   epic-9-retrospective: optional

@@ -1,6 +1,6 @@
 # Story 9.7: CLI Auth Command with Persistent Configuration
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -73,52 +73,52 @@ so that subsequent CLI launches can reuse those credentials without requiring en
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Add CLI-local auth command routing** (AC: 1, 2, 7, 8)
-  - [ ] 1.1 Handle top-level `lucius auth` in `src/cli/cli_entry.py` before entity resolution and route-matrix validation.
-  - [ ] 1.2 Support `lucius auth`, `lucius auth --help`, `lucius auth status`, and non-interactive `--url`, `--token`, `--project`.
-  - [ ] 1.3 Keep `auth` out of `CANONICAL_ROUTE_MATRIX` and `src/cli/data/tool_schemas.json`; it is CLI-local setup, not a TestOps tool route.
+- [x] **Task 1: Add CLI-local auth command routing** (AC: 1, 2, 7, 8)
+  - [x] 1.1 Handle top-level `lucius auth` in `src/cli/cli_entry.py` before entity resolution and route-matrix validation.
+  - [x] 1.2 Support `lucius auth`, `lucius auth --help`, `lucius auth status`, and non-interactive `--url`, `--token`, `--project`.
+  - [x] 1.3 Keep `auth` out of `CANONICAL_ROUTE_MATRIX` and `src/cli/data/tool_schemas.json`; it is CLI-local setup, not a TestOps tool route.
 
-- [ ] **Task 2: Implement persistent auth config helpers** (AC: 4, 5, 6)
-  - [ ] 2.1 Add a small CLI config module such as `src/cli/auth_config.py`.
-  - [ ] 2.2 Add direct dependency `platformdirs` in `pyproject.toml` using `uv add platformdirs`; do not rely on transitive lockfile entries.
-  - [ ] 2.3 Store JSON with fields `allure_endpoint`, `allure_api_token`, `allure_project_id`, `created_at`, and `updated_at`.
-  - [ ] 2.4 Use `pathlib.Path`, UTF-8 JSON, atomic temp-file replace, and POSIX `0600` permissions where `os.chmod` semantics are available.
-  - [ ] 2.5 Add config parse validation with clear repair hints for malformed JSON, missing fields, or invalid project ID.
+- [x] **Task 2: Implement persistent auth config helpers** (AC: 4, 5, 6)
+  - [x] 2.1 Add a small CLI config module such as `src/cli/auth_config.py`.
+  - [x] 2.2 Add direct dependency `platformdirs` in `pyproject.toml` using `uv add platformdirs`; do not rely on transitive lockfile entries.
+  - [x] 2.3 Store JSON with fields `allure_endpoint`, `allure_api_token`, `allure_project_id`, `created_at`, and `updated_at`.
+  - [x] 2.4 Use `pathlib.Path`, UTF-8 JSON, atomic temp-file replace, and POSIX `0600` permissions where `os.chmod` semantics are available.
+  - [x] 2.5 Add config parse validation with clear repair hints for malformed JSON, missing fields, or invalid project ID.
 
-- [ ] **Task 3: Validate credentials through existing client behavior** (AC: 3)
-  - [ ] 3.1 Add a validation helper that constructs `AllureClient(base_url=url, token=SecretStr(token), project=project_id)`.
-  - [ ] 3.2 Trigger token exchange through `async with AllureClient(...)` so invalid tokens fail before saving.
-  - [ ] 3.3 Verify project access with an existing generated Project API path or a minimal `AllureClient` helper wrapping `ProjectControllerApi.calculate_stats(id=project_id)`.
-  - [ ] 3.4 Map auth, network, permission, and validation exceptions to `CLIError` with actionable hints and no traceback.
+- [x] **Task 3: Validate credentials through existing client behavior** (AC: 3)
+  - [x] 3.1 Add a validation helper that constructs `AllureClient(base_url=url, token=SecretStr(token), project=project_id)`.
+  - [x] 3.2 Trigger token exchange through `async with AllureClient(...)` so invalid tokens fail before saving.
+  - [x] 3.3 Verify project access with an existing generated Project API path or a minimal `AllureClient` helper wrapping `ProjectControllerApi.calculate_stats(id=project_id)`.
+  - [x] 3.4 Map auth, network, permission, and validation exceptions to `CLIError` with actionable hints and no traceback.
 
-- [ ] **Task 4: Apply saved config before tool import** (AC: 6)
-  - [ ] 4.1 In action execution, load saved auth config before `_load_tool_function()` imports `src.tools`.
-  - [ ] 4.2 Inject only missing `ALLURE_ENDPOINT`, `ALLURE_API_TOKEN`, and `ALLURE_PROJECT_ID` into `os.environ` so explicit environment variables win.
-  - [ ] 4.3 Preserve existing runtime override behavior in `src/utils/auth.py`; do not store state in module globals.
-  - [ ] 4.4 Keep help/version/entity-discovery paths fast and avoid importing `src.tools`, `src.main`, or `fastmcp`.
+- [x] **Task 4: Apply saved config before tool import** (AC: 6)
+  - [x] 4.1 In action execution, load saved auth config before `_load_tool_function()` imports `src.tools`.
+  - [x] 4.2 Inject only missing `ALLURE_ENDPOINT`, `ALLURE_API_TOKEN`, and `ALLURE_PROJECT_ID` into `os.environ` so explicit environment variables win.
+  - [x] 4.3 Preserve existing runtime override behavior in `src/utils/auth.py`; do not store state in module globals.
+  - [x] 4.4 Keep help/version/entity-discovery paths fast and avoid importing `src.tools`, `src.main`, or `fastmcp`.
 
-- [ ] **Task 5: Update user-facing documentation** (AC: 8)
-  - [ ] 5.1 Document `lucius auth`, `lucius auth status`, and non-interactive usage in `docs/CLI.md`.
-  - [ ] 5.2 Update setup docs and README so users can choose either environment variables or saved CLI auth.
-  - [ ] 5.3 Document exact native config path behavior and the precedence order: explicit tool args > environment variables > saved auth config > defaults.
-  - [ ] 5.4 Document that completion scripts must be regenerated after auth command changes.
+- [x] **Task 5: Update user-facing documentation** (AC: 8)
+  - [x] 5.1 Document `lucius auth`, `lucius auth status`, and non-interactive usage in `docs/CLI.md`.
+  - [x] 5.2 Update setup docs and README so users can choose either environment variables or saved CLI auth.
+  - [x] 5.3 Document exact native config path behavior and the precedence order: explicit tool args > environment variables > saved auth config > defaults.
+  - [x] 5.4 Document that completion scripts must be regenerated after auth command changes.
 
-- [ ] **Task 6: Add focused tests** (AC: 1-8)
-  - [ ] 6.1 Unit-test config path resolution and JSON read/write behavior with monkeypatched `platformdirs.user_config_path`.
-  - [ ] 6.2 Unit-test redaction, malformed config handling, POSIX permission calls, and atomic write failure handling.
-  - [ ] 6.3 Process-test `lucius auth --url ... --token ... --project ...` with mocked validation and a temporary config root.
-  - [ ] 6.4 Process-test `lucius auth status` never displays the token.
-  - [ ] 6.5 Test config fallback by running an action command without auth env vars and asserting the tool receives env-derived auth.
-  - [ ] 6.6 Test env vars override saved config and existing `api_token` / `project_id` args override default context.
-  - [ ] 6.7 Add CLI import-boundary tests proving help/version/status paths do not import `fastmcp` or `src.main`.
-  - [ ] 6.8 Add completion-generation tests asserting `auth`, `status`, `--url`, `--token`, and `--project` appear in generated bash, zsh, fish, and PowerShell scripts.
-  - [ ] 6.9 Extend the shared `uv run lucius` CLI E2E suite with process tests for `lucius auth`, `lucius auth status`, non-interactive setup, and saved-config fallback behavior.
+- [x] **Task 6: Add focused tests** (AC: 1-8)
+  - [x] 6.1 Unit-test config path resolution and JSON read/write behavior with monkeypatched `platformdirs.user_config_path`.
+  - [x] 6.2 Unit-test redaction, malformed config handling, POSIX permission calls, and atomic write failure handling.
+  - [x] 6.3 Process-test `lucius auth --url ... --token ... --project ...` with mocked validation and a temporary config root.
+  - [x] 6.4 Process-test `lucius auth status` never displays the token.
+  - [x] 6.5 Test config fallback by running an action command without auth env vars and asserting the tool receives env-derived auth.
+  - [x] 6.6 Test env vars override saved config and existing `api_token` / `project_id` args override default context.
+  - [x] 6.7 Add CLI import-boundary tests proving help/version/status paths do not import `fastmcp` or `src.main`.
+  - [x] 6.8 Add completion-generation tests asserting `auth`, `status`, `--url`, `--token`, and `--project` appear in generated bash, zsh, fish, and PowerShell scripts.
+  - [x] 6.9 Extend the shared `uv run lucius` CLI E2E suite with process tests for `lucius auth`, `lucius auth status`, non-interactive setup, and saved-config fallback behavior.
 
-- [ ] **Task 7: Update shell completions** (AC: 8)
-  - [ ] 7.1 Update `deployment/scripts/generate_completions.py` to include CLI-local top-level commands separately from entity/action route data.
-  - [ ] 7.2 Keep `auth` out of `CANONICAL_ROUTE_MATRIX` while still completing it as a top-level command.
-  - [ ] 7.3 Complete `lucius auth status` and auth-specific options `--url`, `--token`, `--project`, `--help`, and `-h`.
-  - [ ] 7.4 Regenerate `deployment/shell-completions/lucius.bash`, `lucius.zsh`, `lucius.fish`, and `lucius.ps1`.
+- [x] **Task 7: Update shell completions** (AC: 8)
+  - [x] 7.1 Update `deployment/scripts/generate_completions.py` to include CLI-local top-level commands separately from entity/action route data.
+  - [x] 7.2 Keep `auth` out of `CANONICAL_ROUTE_MATRIX` while still completing it as a top-level command.
+  - [x] 7.3 Complete `lucius auth status` and auth-specific options `--url`, `--token`, `--project`, `--help`, and `-h`.
+  - [x] 7.4 Regenerate `deployment/shell-completions/lucius.bash`, `lucius.zsh`, `lucius.fish`, and `lucius.ps1`.
 
 ## Dev Notes
 
@@ -208,12 +208,62 @@ so that subsequent CLI launches can reuse those credentials without requiring en
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Codex GPT-5
 
 ### Debug Log References
 
+- `uv add platformdirs`
+- `python3 deployment/scripts/generate_completions.py`
+- `uv run --python 3.13 --extra dev pytest tests/cli -q`
+- `uv run ruff check src/cli tests/cli`
+- `uv run mypy src/cli`
+- `uv run --python 3.13 --extra dev pytest -q`
+
 ### Completion Notes List
 
-Ultimate context engine analysis completed - comprehensive developer guide created.
+- Added CLI-local `lucius auth` / `lucius auth status` handling ahead of entity routing, including dedicated help output and auth-specific completion tokens.
+- Added persistent auth config helpers using `platformdirs.user_config_path(...)/auth.json`, UTF-8 JSON, atomic temp-file replacement, and POSIX permission hardening where supported.
+- Added live credential validation through `AllureClient` token exchange plus `ProjectControllerApi.calculate_stats()` access checks before config persistence.
+- Injected saved auth into missing `ALLURE_ENDPOINT`, `ALLURE_API_TOKEN`, and `ALLURE_PROJECT_ID` values before tool resolution so existing env vars and runtime tool args still win.
+- Expanded CLI tests with unit, subprocess, and `uv run lucius` coverage for config persistence, redaction, precedence, import boundaries, and completion generation.
+- Updated README, CLI docs, setup docs, and regenerated bash/zsh/fish/PowerShell completions.
+- Fixed two existing CLI/telemetry test-isolation issues uncovered by full-suite regression runs:
+  - restored logging disable state after `src.cli.cli_entry.main()`
+  - restored `src.main` module references in import-boundary tests and re-bound telemetry singleton in `tests/unit/test_main.py`
+- Validation results:
+  - `uv run --python 3.13 --extra dev pytest tests/cli -q` -> 156 passed
+  - `uv run ruff check src/cli tests/cli` -> passed
+  - `uv run mypy src/cli` -> passed
+  - `python3 deployment/scripts/generate_completions.py` -> regenerated bash/zsh/fish/PowerShell completion files
+  - `uv run --python 3.13 --extra dev pytest -q` -> 701 passed, 100 skipped
 
 ### File List
+
+- README.md
+- deployment/scripts/generate_completions.py
+- deployment/shell-completions/lucius.bash
+- deployment/shell-completions/lucius.fish
+- deployment/shell-completions/lucius.ps1
+- deployment/shell-completions/lucius.zsh
+- docs/CLI.md
+- docs/setup.md
+- pyproject.toml
+- specs/implementation-artifacts/9-7-cli-auth-command-persistent-configuration.md
+- specs/implementation-artifacts/sprint-status.yaml
+- src/cli/auth_command.py
+- src/cli/auth_config.py
+- src/cli/cli_entry.py
+- src/cli/help_output.py
+- src/cli/local_commands.py
+- src/cli/runtime.py
+- src/client/client.py
+- tests/cli/subprocess_helpers.py
+- tests/cli/test_cli_auth.py
+- tests/cli/test_cli_basics.py
+- tests/cli/test_e2e_mocked.py
+- tests/unit/test_main.py
+- uv.lock
+
+### Change Log
+
+- 2026-04-29: Implemented CLI-local persistent auth command, config fallback injection, docs/completion updates, and focused CLI regression coverage.

@@ -239,23 +239,47 @@ class TestCLIImportBoundary:
     """Ensure CLI execution path doesn't import FastMCP runtime modules."""
 
     def test_help_path_does_not_import_fastmcp_or_src_main(self, capsys: pytest.CaptureFixture[str]) -> None:
+        original_fastmcp = sys.modules.get("fastmcp")
+        original_src_main = sys.modules.get("src.main")
         sys.modules.pop("fastmcp", None)
         sys.modules.pop("src.main", None)
-        run_cli(["--help"])
-        _ = capsys.readouterr()
-        assert "fastmcp" not in sys.modules
-        assert "src.main" not in sys.modules
+        try:
+            run_cli(["--help"])
+            _ = capsys.readouterr()
+            assert "fastmcp" not in sys.modules
+            assert "src.main" not in sys.modules
+        finally:
+            if original_fastmcp is not None:
+                sys.modules["fastmcp"] = original_fastmcp
+            else:
+                sys.modules.pop("fastmcp", None)
+            if original_src_main is not None:
+                sys.modules["src.main"] = original_src_main
+            else:
+                sys.modules.pop("src.main", None)
 
     def test_action_path_does_not_import_fastmcp_or_src_main(self) -> None:
+        original_fastmcp = sys.modules.get("fastmcp")
+        original_src_main = sys.modules.get("src.main")
         sys.modules.pop("fastmcp", None)
         sys.modules.pop("src.main", None)
-        with (
-            patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value='{"ok":true}')),
-            patch("src.cli.command_runner.render_output"),
-        ):
-            run_cli(["test_case", "list", "--args", "{}"])
-        assert "fastmcp" not in sys.modules
-        assert "src.main" not in sys.modules
+        try:
+            with (
+                patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value='{"ok":true}')),
+                patch("src.cli.command_runner.render_output"),
+            ):
+                run_cli(["test_case", "list", "--args", "{}"])
+            assert "fastmcp" not in sys.modules
+            assert "src.main" not in sys.modules
+        finally:
+            if original_fastmcp is not None:
+                sys.modules["fastmcp"] = original_fastmcp
+            else:
+                sys.modules.pop("fastmcp", None)
+            if original_src_main is not None:
+                sys.modules["src.main"] = original_src_main
+            else:
+                sys.modules.pop("src.main", None)
 
 
 class TestE2EFormatting:

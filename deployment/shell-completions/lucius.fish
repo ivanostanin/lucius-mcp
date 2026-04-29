@@ -4,7 +4,12 @@ complete -c lucius -f
 
 # Main command tokens
 complete -c lucius -n "__fish_use_subcommand" -a "custom-field custom-field-value custom-field-values custom-fields custom_field custom_field_value custom_field_values custom_fields defect defect-matcher defect-matchers defect_matcher defect_matchers defects integration integrations launch launches shared-step shared-steps shared_step shared_steps test-case test-cases test-layer test-layer-schema test-layer-schemas test-layers test-plan test-plans test-suite test-suites test_case test_cases test_layer test_layer_schema test_layer_schemas test_layers test_plan test_plans test_suite test_suites" -d "Entity"
-complete -c lucius -n "__fish_use_subcommand" -a "--help -h --version -V help version" -d "Global command"
+complete -c lucius -n "__fish_use_subcommand" -a "--help -h --version -V help version auth" -d "Global command"
+complete -c lucius -n "__fish_seen_subcommand_from auth" -a "status" -d "Auth command"
+complete -c lucius -n "__fish_seen_subcommand_from auth" -l url -r -d "Allure TestOps base URL"
+complete -c lucius -n "__fish_seen_subcommand_from auth" -l token -r -d "Allure API token"
+complete -c lucius -n "__fish_seen_subcommand_from auth" -l project -r -d "Default project ID"
+complete -c lucius -n "__fish_seen_subcommand_from auth" -l help -s h -d "Show auth help"
 
 complete -c lucius -n "__fish_seen_subcommand_from custom-field custom-fields custom_field custom_fields" -a "delete-unused delete_unused get list" -d "Action"
 complete -c lucius -n "__fish_seen_subcommand_from custom-field-value custom-field-values custom_field_value custom_field_values" -a "create delete list update" -d "Action"

@@ -57,9 +57,17 @@ def render_global_help(registry: dict[str, dict[str, ActionSpec]], console: typi
     console.print("Usage:")
     console.print("  lucius --help")
     console.print("  lucius --version")
+    console.print("  lucius auth [--url <url>] [--token <token>] [--project <id>]")
+    console.print("  lucius auth status")
     console.print("  lucius <entity>")
     console.print("  lucius <entity> <action> --args '<json>' [--format json|table|plain|csv]")
     console.print("  lucius <entity> <action> --help\n")
+
+    command_table = Table(title="CLI-Local Commands")
+    command_table.add_column("Command", style="cyan", no_wrap=True)
+    command_table.add_column("Description", style="green")
+    command_table.add_row("auth", "Validate and save Allure CLI credentials for later runs.")
+    console.print(command_table)
 
     table = Table(title="Available Entities")
     table.add_column("Entity", style="cyan", no_wrap=True)

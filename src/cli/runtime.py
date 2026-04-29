@@ -5,9 +5,11 @@ Runtime helpers for CLI error handling and tool invocation.
 from __future__ import annotations
 
 import asyncio
+import os
 import typing
 from collections.abc import Coroutine
 
+from src.cli.auth_config import apply_saved_auth_environment
 from src.cli.models import CLIError
 from src.cli.tool_resolver import resolve_tool_function
 
@@ -16,7 +18,9 @@ def error_hint_from_exception(error: Exception) -> str:
     """Map low-level runtime errors to user-oriented CLI hints."""
     message = str(error).lower()
     if "not set in environment" in message or "api_token" in message:
-        return "Set required credentials (ALLURE_API_TOKEN and ALLURE_API_URL) before calling commands."
+        return (
+            "Set credentials with 'lucius auth' or with ALLURE_ENDPOINT and ALLURE_API_TOKEN before calling commands."
+        )
     if "401" in message or "403" in message or "unauthorized" in message:
         return "Verify API credentials and permissions for the target project."
     if "validationerror" in message or "field required" in message:
@@ -28,6 +32,7 @@ def error_hint_from_exception(error: Exception) -> str:
 
 def load_tool_function(tool_name: str) -> typing.Callable[..., Coroutine[typing.Any, typing.Any, typing.Any]]:
     """Lazy-load a tool function by name from src.tools package."""
+    apply_saved_auth_environment(os.environ)
     try:
         resolved = resolve_tool_function(tool_name)
     except RuntimeError:

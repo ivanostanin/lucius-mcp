@@ -2,6 +2,33 @@
 
 Lucius can be run in different modes and environments. This guide covers how to get it up and running.
 
+## CLI Authentication Choice
+
+For direct CLI usage, you can either:
+
+- set `ALLURE_ENDPOINT`, `ALLURE_API_TOKEN`, and `ALLURE_PROJECT_ID` in the environment, or
+- save them once with `lucius auth`
+
+Example:
+
+```bash
+lucius auth --url https://example.testops.cloud --token <your_api_token> --project 123
+lucius auth status
+```
+
+Saved CLI auth location:
+
+- Linux/Unix: `$XDG_CONFIG_HOME/lucius/auth.json` or `~/.config/lucius/auth.json`
+- macOS: `~/Library/Application Support/lucius/auth.json` unless XDG overrides are explicitly set
+- Windows: `%LOCALAPPDATA%\lucius\auth.json`
+
+CLI auth precedence:
+
+1. Explicit tool args such as `api_token` or `project_id`
+2. Environment variables
+3. Saved CLI auth config
+4. Defaults
+
 ## ⚙️ Environment Variables
 
 The server is configured via environment variables or a `.env` file.
@@ -110,6 +137,11 @@ MCP_MODE = "stdio"
    uv sync
    ```
 
+3. **Optional: save CLI auth for local command usage**:
+   ```bash
+   uv run lucius auth
+   ```
+
 ## 🏃 Running the Server
 
 ### Stdio Mode (for Claude Code / Desktop)
@@ -127,4 +159,3 @@ MCP_MODE=http uv run --env-file .env start
 ## 🔐 Telemetry & Privacy
 
 Telemetry behavior, privacy guarantees, and the full data dictionary are documented in [Telemetry & Privacy](telemetry.md).
-

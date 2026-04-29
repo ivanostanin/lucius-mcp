@@ -1,11 +1,14 @@
 #compdef lucius
 
 _lucius() {
-    local -a entities globals formats options
+    local -a entities globals formats options authOptions authSubcommands authTokens
     entities=(custom-field custom-field-value custom-field-values custom-fields custom_field custom_field_value custom_field_values custom_fields defect defect-matcher defect-matchers defect_matcher defect_matchers defects integration integrations launch launches shared-step shared-steps shared_step shared_steps test-case test-cases test-layer test-layer-schema test-layer-schemas test-layers test-plan test-plans test-suite test-suites test_case test_cases test_layer test_layer_schema test_layer_schemas test_layers test_plan test_plans test_suite test_suites)
-    globals=(--help -h --version -V help version)
+    globals=(--help -h --version -V help version auth)
     formats=(json table plain)
     options=(--args -a --format -f --help -h)
+    authOptions=(--url --token --project --help -h)
+    authSubcommands=(status)
+    authTokens=($authSubcommands $authOptions)
 
     if (( CURRENT == 2 )); then
         _describe -t entities 'lucius entities' entities
@@ -17,6 +20,10 @@ _lucius() {
     entity="${entity//-/_}"
 
     if (( CURRENT == 3 )); then
+        if [[ "$entity" == "auth" ]]; then
+            _describe -t auth 'auth commands' authTokens
+            return 0
+        fi
         case "$entity" in
             custom_field|custom_fields)
                 local -a actions
@@ -82,6 +89,18 @@ _lucius() {
                 ;;
         esac
         return 0
+    fi
+
+    if [[ "$entity" == "auth" ]]; then
+        case "${words[CURRENT-1]}" in
+            --url|--token|--project)
+                return 0
+                ;;
+            *)
+                _describe -t auth 'auth commands' authTokens
+                return 0
+                ;;
+        esac
     fi
 
     case "${words[CURRENT-1]}" in
