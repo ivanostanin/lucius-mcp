@@ -1,6 +1,6 @@
 # Story 9.7: CLI Auth Command with Persistent Configuration
 
-Status: review
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -119,6 +119,16 @@ so that subsequent CLI launches can reuse those credentials without requiring en
   - [x] 7.2 Keep `auth` out of `CANONICAL_ROUTE_MATRIX` while still completing it as a top-level command.
   - [x] 7.3 Complete `lucius auth status` and auth-specific options `--url`, `--token`, `--project`, `--help`, and `-h`.
   - [x] 7.4 Regenerate `deployment/shell-completions/lucius.bash`, `lucius.zsh`, `lucius.fish`, and `lucius.ps1`.
+
+### Review Findings
+
+- [x] [Review][Patch] Saved auth injection leaks state through the global settings singleton [src/cli/auth_config.py:237]
+- [x] [Review][Patch] Empty `ALLURE_*` environment variables are treated as missing and silently re-enable saved auth [src/cli/auth_config.py:60]
+- [x] [Review][Patch] Validation error mapping can print raw exception text from unexpected auth failures [src/cli/auth_command.py:174]
+- [ ] [Review][Patch] `lucius auth status` still prints a token-related line instead of showing URL and project only [src/cli/auth_command.py:241]
+- [x] [Review][Patch] Saved-auth lookup creates the config directory on ordinary command execution and can fail unrelated commands [src/cli/auth_config.py:45]
+- [x] [Review][Patch] Present-but-empty `--url`, `--token`, and `--project` values do not fall back to prompting [src/cli/auth_command.py:255]
+- [x] [Review][Patch] Auth completion generation ignores subcommand and value-position context in generated shells [deployment/scripts/generate_completions.py:126]
 
 ## Dev Notes
 

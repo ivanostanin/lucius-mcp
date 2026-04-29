@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from pydantic import SecretStr
 
-from src.utils.config import settings
+from src.utils.config import get_current_settings
 from src.utils.error import AuthenticationError
 
 
@@ -36,12 +36,16 @@ class AuthContext:
         Raises:
             AuthenticationError: If ALLURE_API_TOKEN is not set.
         """
-        if not settings.ALLURE_API_TOKEN:
+        current_settings = get_current_settings()
+        if not current_settings.ALLURE_API_TOKEN:
             raise AuthenticationError(
                 "No API token configured. Set ALLURE_API_TOKEN environment variable or provide api_token argument."
             )
 
-        return cls(api_token=settings.ALLURE_API_TOKEN, project_id=settings.ALLURE_PROJECT_ID)
+        return cls(
+            api_token=current_settings.ALLURE_API_TOKEN,
+            project_id=current_settings.ALLURE_PROJECT_ID,
+        )
 
     def with_overrides(
         self,

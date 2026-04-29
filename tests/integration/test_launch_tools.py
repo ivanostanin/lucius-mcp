@@ -60,8 +60,8 @@ async def test_get_launch_tool_output() -> None:
     with patch("src.tools.launches.get_auth_context") as mock_auth_context:
         mock_auth_context.return_value = type("AuthContext", (), {"api_token": "runtime-token", "project_id": 1})
         with patch(
-            "src.tools.launches.settings",
-            type("Settings", (), {"ALLURE_ENDPOINT": "https://example.com", "ALLURE_PROJECT_ID": 1}),
+            "src.tools.launches.get_current_settings",
+            return_value=type("Settings", (), {"ALLURE_ENDPOINT": "https://example.com", "ALLURE_PROJECT_ID": 1})(),
         ):
             with patch("src.tools.launches.AllureClient") as mock_client_cls:
                 mock_client = AsyncMock()
@@ -97,8 +97,8 @@ async def test_delete_launch_tool_output_archived() -> None:
     with patch("src.tools.launches.get_auth_context") as mock_auth_context:
         mock_auth_context.return_value = type("AuthContext", (), {"api_token": "token", "project_id": 1})
         with patch(
-            "src.tools.launches.settings",
-            type("Settings", (), {"ALLURE_ENDPOINT": "https://example.com", "ALLURE_PROJECT_ID": 1}),
+            "src.tools.launches.get_current_settings",
+            return_value=type("Settings", (), {"ALLURE_ENDPOINT": "https://example.com", "ALLURE_PROJECT_ID": 1})(),
         ):
             with patch("src.tools.launches.AllureClient") as mock_client_cls:
                 mock_client = AsyncMock()
@@ -125,8 +125,8 @@ async def test_delete_launch_tool_output_already_deleted() -> None:
     with patch("src.tools.launches.get_auth_context") as mock_auth_context:
         mock_auth_context.return_value = type("AuthContext", (), {"api_token": "token", "project_id": 1})
         with patch(
-            "src.tools.launches.settings",
-            type("Settings", (), {"ALLURE_ENDPOINT": "https://example.com", "ALLURE_PROJECT_ID": 1}),
+            "src.tools.launches.get_current_settings",
+            return_value=type("Settings", (), {"ALLURE_ENDPOINT": "https://example.com", "ALLURE_PROJECT_ID": 1})(),
         ):
             with patch("src.tools.launches.AllureClient") as mock_client_cls:
                 mock_client = AsyncMock()
@@ -158,8 +158,8 @@ async def test_close_launch_tool_output() -> None:
     with patch("src.tools.launches.get_auth_context") as mock_auth_context:
         mock_auth_context.return_value = type("AuthContext", (), {"api_token": "runtime-token", "project_id": 1})
         with patch(
-            "src.tools.launches.settings",
-            type("Settings", (), {"ALLURE_ENDPOINT": "https://example.com", "ALLURE_PROJECT_ID": 1}),
+            "src.tools.launches.get_current_settings",
+            return_value=type("Settings", (), {"ALLURE_ENDPOINT": "https://example.com", "ALLURE_PROJECT_ID": 1})(),
         ):
             with patch("src.tools.launches.AllureClient") as mock_client_cls:
                 mock_client = AsyncMock()
@@ -199,8 +199,8 @@ async def test_reopen_launch_tool_output() -> None:
     with patch("src.tools.launches.get_auth_context") as mock_auth_context:
         mock_auth_context.return_value = type("AuthContext", (), {"api_token": "runtime-token", "project_id": 1})
         with patch(
-            "src.tools.launches.settings",
-            type("Settings", (), {"ALLURE_ENDPOINT": "https://example.com", "ALLURE_PROJECT_ID": 1}),
+            "src.tools.launches.get_current_settings",
+            return_value=type("Settings", (), {"ALLURE_ENDPOINT": "https://example.com", "ALLURE_PROJECT_ID": 1})(),
         ):
             with patch("src.tools.launches.AllureClient") as mock_client_cls:
                 mock_client = AsyncMock()

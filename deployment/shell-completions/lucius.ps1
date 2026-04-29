@@ -66,6 +66,13 @@ Register-ArgumentCompleter -Native -CommandName lucius -ScriptBlock {
 
     $entityToken = $commandAst.CommandElements[1].Value.ToLower().Replace('-', '_')
     if ($entityToken -eq 'auth') {
+        $lastToken = $commandAst.CommandElements[$commandAst.CommandElements.Count - 1].Value
+        if ($lastToken -eq '--url' -or $lastToken -eq '--token' -or $lastToken -eq '--project') {
+            return
+        }
+        if ($commandAst.CommandElements.Count -gt 3 -and $commandAst.CommandElements[2].Value -eq 'status') {
+            return
+        }
         ($authSubcommands + $authOptions) |
             Where-Object { $_ -like "$wordToComplete*" } |
             ForEach-Object { [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) }

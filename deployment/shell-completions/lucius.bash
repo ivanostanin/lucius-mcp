@@ -78,6 +78,9 @@ _lucius_completion() {
         if [[ $prev == "--url" || $prev == "--token" || $prev == "--project" ]]; then
             return 0
         fi
+        if [[ ${COMP_WORDS[2]//-/_} == "status" ]]; then
+            return 0
+        fi
         COMPREPLY=($(compgen -W "status --url --token --project --help -h" -- "$cur"))
         return 0
     fi

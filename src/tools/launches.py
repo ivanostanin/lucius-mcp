@@ -10,7 +10,7 @@ from src.client import AllureClient
 from src.services.launch_service import LaunchDeleteResult, LaunchListResult, LaunchService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
 from src.utils.auth import get_auth_context
-from src.utils.config import settings
+from src.utils.config import get_current_settings
 
 
 async def create_launch(
@@ -267,16 +267,17 @@ async def _launch_client_context(
     project_id: int | None = None,
     api_token: str | None = None,
 ) -> AsyncIterator[AllureClient]:
+    current_settings = get_current_settings()
     if api_token is None:
         auth_context = get_auth_context(project_id=project_id)
     else:
         auth_context = get_auth_context(api_token=api_token, project_id=project_id)
-    project = auth_context.project_id if auth_context.project_id is not None else settings.ALLURE_PROJECT_ID
+    project = auth_context.project_id if auth_context.project_id is not None else current_settings.ALLURE_PROJECT_ID
     if project is None:
         raise ValueError("Project ID is required for launch operations")
 
     async with AllureClient(
-        base_url=settings.ALLURE_ENDPOINT,
+        base_url=current_settings.ALLURE_ENDPOINT,
         token=auth_context.api_token,
         project=project,
     ) as client:

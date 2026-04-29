@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 import tempfile
 from collections.abc import MutableMapping
 from dataclasses import dataclass
@@ -12,7 +11,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import platformdirs
-from pydantic import SecretStr
 
 from src.cli.models import CLIError
 
@@ -44,7 +42,14 @@ class AuthConfig:
 
 def auth_config_path() -> Path:
     """Return the native per-user CLI auth config path."""
-    config_dir = Path(platformdirs.user_config_path("lucius", appauthor=False, ensure_exists=True))
+    try:
+        config_dir = Path(platformdirs.user_config_path("lucius", appauthor=False, ensure_exists=False))
+    except OSError as error:
+        raise CLIError(
+            f"Failed to access the CLI auth config directory: {error}",
+            hint="Check HOME, XDG_CONFIG_HOME, or LOCALAPPDATA permissions and try again.",
+            exit_code=1,
+        ) from None
     return config_dir / AUTH_CONFIG_FILENAME
 
 
@@ -58,8 +63,7 @@ def _repair_hint(path: Path) -> str:
 
 
 def _is_missing_env_var(name: str, environ: MutableMapping[str, str]) -> bool:
-    value = environ.get(name)
-    return value is None or value == ""
+    return environ.get(name) is None
 
 
 def _parse_project_id(raw_value: object, *, path: Path) -> int:
@@ -174,14 +178,17 @@ def save_auth_config(
 ) -> Path:
     """Persist CLI auth config with atomic replacement semantics."""
     resolved_path = path or auth_config_path()
-    resolved_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        resolved_path.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as error:
+        raise CLIError(
+            f"Failed to create the CLI auth config directory: {error}",
+            hint=f"Check write permissions for {resolved_path.parent}.",
+            exit_code=1,
+        ) from None
     _ensure_directory_permissions(resolved_path.parent)
 
-    existing = None
-    try:
-        existing = load_auth_config(resolved_path)
-    except CLIError:
-        existing = None
+    existing = load_auth_config(resolved_path)
 
     timestamp = now or current_timestamp()
     config = AuthConfig(
@@ -194,6 +201,7 @@ def save_auth_config(
     payload = json.dumps(config.to_dict(), indent=2, sort_keys=True) + "\n"
 
     temp_path: Path | None = None
+    pending_error: CLIError | None = None
     try:
         fd, raw_temp_path = tempfile.mkstemp(prefix=".auth.", suffix=".tmp", dir=str(resolved_path.parent))
         temp_path = Path(raw_temp_path)
@@ -203,15 +211,28 @@ def save_auth_config(
             os.fsync(handle.fileno())
         _set_file_permissions(temp_path)
         temp_path.replace(resolved_path)
+    except CLIError as error:
+        pending_error = error
     except OSError as error:
-        raise CLIError(
+        pending_error = CLIError(
             f"Failed to write saved CLI auth config: {error}",
             hint=f"Check write permissions for {resolved_path.parent}.",
             exit_code=1,
-        ) from None
+        )
     finally:
         if temp_path is not None and temp_path.exists():
-            temp_path.unlink()
+            try:
+                temp_path.unlink()
+            except OSError as error:
+                if pending_error is None:
+                    pending_error = CLIError(
+                        f"Failed to clean up a temporary CLI auth file: {error}",
+                        hint=f"Remove {temp_path} manually and try again.",
+                        exit_code=1,
+                    )
+
+    if pending_error is not None:
+        raise pending_error
 
     return resolved_path
 
@@ -233,16 +254,5 @@ def apply_saved_auth_environment(environ: MutableMapping[str, str] | None = None
         resolved_environ[AUTH_TOKEN_ENV] = config.allure_api_token
     if update_project:
         resolved_environ[AUTH_PROJECT_ENV] = str(config.allure_project_id)
-
-    config_module = sys.modules.get("src.utils.config")
-    if config_module is not None:
-        settings = getattr(config_module, "settings", None)
-        if settings is not None:
-            if update_endpoint:
-                setattr(settings, AUTH_ENDPOINT_ENV, config.allure_endpoint)
-            if update_token:
-                setattr(settings, AUTH_TOKEN_ENV, SecretStr(config.allure_api_token))
-            if update_project:
-                setattr(settings, AUTH_PROJECT_ENV, config.allure_project_id)
 
     return config

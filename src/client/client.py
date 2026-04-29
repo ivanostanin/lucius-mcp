@@ -15,7 +15,7 @@ from typing import Literal, TypeVar, cast, overload
 import httpx
 from pydantic import Field, SecretStr, ValidationError
 
-from src.utils.config import settings
+from src.utils.config import get_current_settings
 from src.utils.logger import get_logger
 
 from .exceptions import (
@@ -327,22 +327,24 @@ class AllureClient:
             KeyError: If required environment variables are missing.
             ValueError: If settings validation fails.
         """
-        if not settings.ALLURE_ENDPOINT:
+        current_settings = get_current_settings()
+
+        if not current_settings.ALLURE_ENDPOINT:
             raise KeyError("ALLURE_ENDPOINT is not set in environment or config")
-        if not settings.ALLURE_API_TOKEN:
+        if not current_settings.ALLURE_API_TOKEN:
             raise KeyError("ALLURE_API_TOKEN is not set in environment or config")
 
-        if not isinstance(settings.ALLURE_PROJECT_ID, int) or settings.ALLURE_PROJECT_ID <= 0:
+        if not isinstance(current_settings.ALLURE_PROJECT_ID, int) or current_settings.ALLURE_PROJECT_ID <= 0:
             raise ValueError("ALLURE_PROJECT_ID must be a positive integer")
 
         if project is not None:
             p = project
         else:
-            p = settings.ALLURE_PROJECT_ID
+            p = current_settings.ALLURE_PROJECT_ID
 
         return cls(
-            base_url=settings.ALLURE_ENDPOINT,
-            token=settings.ALLURE_API_TOKEN,
+            base_url=current_settings.ALLURE_ENDPOINT,
+            token=current_settings.ALLURE_API_TOKEN,
             project=p,
             timeout=timeout,
         )

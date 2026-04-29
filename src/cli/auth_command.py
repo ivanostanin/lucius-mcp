@@ -174,7 +174,7 @@ def _normalize_url(url: str) -> str:
 def _map_auth_validation_error(error: Exception, *, project_id: int) -> CLIError:
     if isinstance(error, ValueError):
         return CLIError(
-            f"Invalid Allure URL: {error}",
+            "Invalid Allure URL.",
             hint="Use a full base URL that starts with http:// or https://.",
             exit_code=1,
         )
@@ -210,7 +210,7 @@ def _map_auth_validation_error(error: Exception, *, project_id: int) -> CLIError
             exit_code=1,
         )
     return CLIError(
-        f"Unexpected auth validation error: {error}",
+        "Unexpected auth validation error.",
         hint="Verify the URL, token, and project access, then try again.",
         exit_code=1,
     )
@@ -252,11 +252,16 @@ def handle_auth_command(argv: list[str], *, context: CLIContext) -> None:
         _render_auth_status(context)
         return
 
-    url = _normalize_url(options.url) if options.url is not None else _normalize_url(_prompt_non_empty("Allure URL: "))
-    token = options.token.strip() if options.token is not None else _prompt_token()
+    raw_url = options.url.strip() if options.url is not None else ""
+    url = _normalize_url(raw_url) if raw_url else _normalize_url(_prompt_non_empty("Allure URL: "))
+
+    token = options.token.strip() if options.token is not None else ""
     if not token:
-        raise CLIError("Allure API token is required.", hint="Provide --token or answer the interactive prompt.")
-    raw_project = options.project if options.project is not None else _prompt_non_empty("Default project ID: ")
+        token = _prompt_token()
+
+    raw_project = options.project.strip() if options.project is not None else ""
+    if not raw_project:
+        raw_project = _prompt_non_empty("Default project ID: ")
     project_id = parse_project_id(raw_project.strip())
 
     asyncio.run(validate_auth_credentials(url=url, token=token, project_id=project_id))

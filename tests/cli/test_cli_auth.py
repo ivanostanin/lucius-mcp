@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from src.cli import cli_entry
-from src.cli.auth_command import parse_auth_command_options
+from src.cli.auth_command import _map_auth_validation_error, parse_auth_command_options
 from src.cli.auth_config import (
     AUTH_ENDPOINT_ENV,
     AUTH_PROJECT_ENV,
@@ -28,6 +28,7 @@ from src.cli.cli_entry import run_cli as run_cli_in_process
 from src.cli.models import CLIError
 from src.cli.route_matrix import CANONICAL_ROUTE_MATRIX
 from src.cli.schema_loader import load_tool_schemas
+from src.utils.auth import get_auth_context
 from tests.cli.subprocess_helpers import run_cli, run_uv_cli
 
 
@@ -210,9 +211,45 @@ class TestCLIAuthConfig:
         assert env[AUTH_TOKEN_ENV] == "saved-token"
         assert env[AUTH_PROJECT_ENV] == "77"
         assert config_module.settings.ALLURE_ENDPOINT == "https://demo.testops.cloud"
-        assert config_module.settings.ALLURE_API_TOKEN is not None
-        assert config_module.settings.ALLURE_API_TOKEN.get_secret_value() == "saved-token"
-        assert config_module.settings.ALLURE_PROJECT_ID == 77
+        assert config_module.settings.ALLURE_API_TOKEN is None
+        assert config_module.settings.ALLURE_PROJECT_ID is None
+
+    def test_apply_saved_auth_environment_does_not_override_explicit_empty_env(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        config_path = tmp_path / "auth.json"
+        monkeypatch.setattr("src.cli.auth_config.platformdirs.user_config_path", lambda *args, **kwargs: tmp_path)
+        save_auth_config(
+            url="https://saved.testops.cloud",
+            token="saved-token",
+            project_id=77,
+            path=config_path,
+            now="2026-04-29T10:00:00Z",
+        )
+
+        env = {
+            AUTH_ENDPOINT_ENV: "",
+            AUTH_TOKEN_ENV: "",
+            AUTH_PROJECT_ENV: "",
+        }
+        apply_saved_auth_environment(env)
+        assert env[AUTH_ENDPOINT_ENV] == ""
+        assert env[AUTH_TOKEN_ENV] == ""
+        assert env[AUTH_PROJECT_ENV] == ""
+
+    def test_save_auth_config_surfaces_existing_config_errors(self, tmp_path: Path) -> None:
+        config_path = tmp_path / "auth.json"
+        config_path.write_text("{bad-json", encoding="utf-8")
+        with pytest.raises(CLIError, match="malformed JSON"):
+            save_auth_config(
+                url="https://example.testops.cloud",
+                token="super-secret-token",
+                project_id=123,
+                path=config_path,
+                now="2026-04-29T10:00:00Z",
+            )
 
 
 class TestCLIAuthCommandUnit:
@@ -274,6 +311,43 @@ class TestCLIAuthCommandUnit:
             project_id=42,
         )
         mock_save.assert_called_once()
+
+    def test_blank_non_interactive_values_prompt_for_missing_values(self) -> None:
+        with (
+            patch("builtins.input", side_effect=["https://example.testops.cloud", "42"]) as prompt_input,
+            patch("src.cli.auth_command.getpass.getpass", return_value="masked-token") as prompt_secret,
+            patch("src.cli.auth_command.validate_auth_credentials", new=AsyncMock()) as mock_validate,
+            patch("src.cli.auth_command.save_auth_config", return_value=Path("/tmp/auth.json")) as mock_save,
+            patch.object(cli_entry.console_out, "print"),
+        ):
+            run_cli_in_process(["auth", "--url", " ", "--token", "", "--project", ""])
+
+        assert prompt_input.call_args_list == [
+            (("Allure URL: ",),),
+            (("Default project ID: ",),),
+        ]
+        prompt_secret.assert_called_once_with("Allure API token: ")
+        mock_validate.assert_awaited_once_with(
+            url="https://example.testops.cloud",
+            token="masked-token",
+            project_id=42,
+        )
+        mock_save.assert_called_once()
+
+    def test_validation_error_mapping_redacts_exception_text_with_patch(self) -> None:
+        error = _map_auth_validation_error(RuntimeError("secret-token leaked"), project_id=7)
+        assert "secret-token" not in error.message
+        assert error.message == "Unexpected auth validation error."
+
+    def test_get_auth_context_reads_live_environment_without_settings_mutation(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv(AUTH_TOKEN_ENV, "saved-token")
+        monkeypatch.setenv(AUTH_PROJECT_ENV, "77")
+        context = get_auth_context()
+        assert context.api_token.get_secret_value() == "saved-token"
+        assert context.project_id == 77
 
 
 class TestCLIAuthCommandProcess:
@@ -402,6 +476,43 @@ class TestCLIAuthCommandProcess:
         assert payload["endpoint"] == "https://env.testops.cloud"
         assert payload["token"] == "env-token"
         assert payload["project"] == "999"
+
+    def test_process_explicit_empty_env_vars_do_not_fall_back_to_saved_config(self, tmp_path: Path) -> None:
+        sitecustomize = _sitecustomize_dir(
+            tmp_path,
+            """
+            import json
+            import os
+            import src.cli.tool_resolver as tool_resolver
+
+            async def _fake_tool(**kwargs):
+                return json.dumps(
+                    {
+                        "endpoint": os.environ.get("ALLURE_ENDPOINT"),
+                        "token": os.environ.get("ALLURE_API_TOKEN"),
+                        "project": os.environ.get("ALLURE_PROJECT_ID"),
+                    }
+                )
+
+            tool_resolver.resolve_tool_function = lambda _tool_name: _fake_tool
+            """,
+        )
+        env = _subprocess_env(tmp_path, sitecustomize=sitecustomize)
+        _write_saved_config(
+            Path(env["XDG_CONFIG_HOME"]),
+            url="https://saved.testops.cloud",
+            token="saved-token",
+            project_id=321,
+        )
+        env[AUTH_ENDPOINT_ENV] = ""
+        env[AUTH_TOKEN_ENV] = ""
+        env[AUTH_PROJECT_ENV] = ""
+        result = run_cli(["launch", "close", "--args", '{"launch_id": 15}'], env=env)
+        assert result.returncode == 0
+        payload = json.loads(result.stdout)
+        assert payload["endpoint"] == ""
+        assert payload["token"] == ""
+        assert payload["project"] == ""
 
     def test_process_action_args_override_default_auth_context(self, tmp_path: Path) -> None:
         sitecustomize = _sitecustomize_dir(
@@ -539,3 +650,9 @@ class TestCLICompletionScripts:
         assert "-l url" in fish
         assert "-l token" in fish
         assert "-l project" in fish
+        assert "COMP_WORDS[2]" in bash
+        assert '"status"' in bash
+        assert "words[3]:l" in zsh
+        assert '"status"' in zsh
+        assert "not __fish_seen_subcommand_from status" in fish
+        assert "$commandAst.CommandElements[2].Value -eq 'status'" in powershell

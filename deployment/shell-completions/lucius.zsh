@@ -92,6 +92,9 @@ _lucius() {
     fi
 
     if [[ "$entity" == "auth" ]]; then
+        if (( CURRENT > 3 )) && [[ "${words[3]:l}" == "status" ]]; then
+            return 0
+        fi
         case "${words[CURRENT-1]}" in
             --url|--token|--project)
                 return 0
