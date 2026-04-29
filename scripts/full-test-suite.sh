@@ -20,8 +20,9 @@ done
 uv run ruff format scripts src tests deployment
 uv run ruff check scripts src tests deployment --fix --unsafe-fixes
 uv run mypy src
-uv run pytest tests/unit tests/integration tests/cli
+uv run pytest tests/unit tests/integration
 uv run pytest tests/docs
+uv run pytest tests/cli
 
 if [[ -f .env.test ]]; then
   uv run --env-file .env.test pytest tests/e2e -n auto -rs
