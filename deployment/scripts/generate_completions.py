@@ -326,6 +326,7 @@ def generate_powershell_completion(
     option_values = ", ".join(f'"{opt}"' for opt in ACTION_OPTIONS)
     auth_option_values = ", ".join(f'"{opt}"' for opt in AUTH_OPTIONS)
     auth_subcommand_values = ", ".join(f'"{token}"' for token in AUTH_SUBCOMMANDS)
+    list_option_values = '"--help", "-h"'
 
     normalized_alias_to_canonical: dict[str, str] = {}
     for alias, canonical in sorted(alias_to_canonical.items()):
@@ -351,6 +352,7 @@ Register-ArgumentCompleter -Native -CommandName lucius -ScriptBlock {{
     $options = @({option_values})
     $authOptions = @({auth_option_values})
     $authSubcommands = @({auth_subcommand_values})
+    $listOptions = @({list_option_values})
     $aliasToCanonical = @{{
 {alias_entries}
     }}
@@ -382,6 +384,16 @@ Register-ArgumentCompleter -Native -CommandName lucius -ScriptBlock {{
             return
         }}
         ($authSubcommands + $authOptions) |
+            Where-Object {{ $_ -like "$wordToComplete*" }} |
+            ForEach-Object {{ [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) }}
+        return
+    }}
+
+    if ($entityToken -eq 'list') {{
+        if ($commandAst.CommandElements.Count -gt 3) {{
+            return
+        }}
+        $listOptions |
             Where-Object {{ $_ -like "$wordToComplete*" }} |
             ForEach-Object {{ [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) }}
         return

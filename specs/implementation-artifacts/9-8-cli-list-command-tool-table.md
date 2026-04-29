@@ -1,6 +1,6 @@
 # Story 9.8: CLI List Command Tool Table
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -100,6 +100,10 @@ so that I can explicitly list supported CLI capabilities without relying on an e
   - [x] 7.2 Regenerate `deployment/shell-completions/lucius.bash`, `deployment/shell-completions/lucius.zsh`, `deployment/shell-completions/lucius.fish`, and `deployment/shell-completions/lucius.ps1`.
   - [x] 7.3 Add or extend tests/assertions so generated completion output includes `list` as a top-level command for every supported shell.
   - [x] 7.4 Keep `call` out of completion suggestions unless the project intentionally wants to expose rejected legacy commands.
+
+### Review Findings
+
+- [x] [Review][Patch] Bash completion regression test does not verify top-level `list` exposure [`tests/cli/test_cli_auth.py:858`]
 
 ## Dev Notes
 

@@ -9,6 +9,7 @@ Register-ArgumentCompleter -Native -CommandName lucius -ScriptBlock {
     $options = @("--args", "-a", "--format", "-f", "--help", "-h")
     $authOptions = @("--url", "--token", "--project", "--help", "-h")
     $authSubcommands = @("status", "clear")
+    $listOptions = @("--help", "-h")
     $aliasToCanonical = @{
         "custom_field" = "custom_field"
         "custom_field_value" = "custom_field_value"
@@ -74,6 +75,16 @@ Register-ArgumentCompleter -Native -CommandName lucius -ScriptBlock {
             return
         }
         ($authSubcommands + $authOptions) |
+            Where-Object { $_ -like "$wordToComplete*" } |
+            ForEach-Object { [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) }
+        return
+    }
+
+    if ($entityToken -eq 'list') {
+        if ($commandAst.CommandElements.Count -gt 3) {
+            return
+        }
+        $listOptions |
             Where-Object { $_ -like "$wordToComplete*" } |
             ForEach-Object { [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) }
         return
