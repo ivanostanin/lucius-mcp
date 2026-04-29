@@ -46,6 +46,7 @@ def _subprocess_env(tmp_path: Path, *, sitecustomize: Path | None = None) -> dic
     env.pop(AUTH_TOKEN_ENV, None)
     env.pop(AUTH_PROJECT_ENV, None)
     env["XDG_CONFIG_HOME"] = str(tmp_path / "xdg-config")
+    env["UV_CACHE_DIR"] = str(tmp_path / "uv-cache")
     if sitecustomize is not None:
         existing = env.get("PYTHONPATH")
         env["PYTHONPATH"] = str(sitecustomize) if not existing else os.pathsep.join([str(sitecustomize), existing])
@@ -240,6 +241,32 @@ class TestCLIAuthConfig:
         assert env[AUTH_TOKEN_ENV] == ""
         assert env[AUTH_PROJECT_ENV] == ""
 
+    def test_apply_saved_auth_environment_skips_load_when_env_already_has_precedence(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        env = {
+            AUTH_ENDPOINT_ENV: "https://env.testops.cloud",
+            AUTH_TOKEN_ENV: "env-token",
+            AUTH_PROJECT_ENV: "77",
+        }
+        monkeypatch.setattr("src.cli.auth_config.load_auth_config", lambda *args, **kwargs: pytest.fail("unexpected"))
+        assert apply_saved_auth_environment(env) is None
+
+    def test_apply_saved_auth_environment_skips_load_for_explicit_tool_overrides(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        env = {AUTH_ENDPOINT_ENV: "https://env.testops.cloud"}
+        monkeypatch.setattr("src.cli.auth_config.load_auth_config", lambda *args, **kwargs: pytest.fail("unexpected"))
+        assert (
+            apply_saved_auth_environment(
+                env,
+                explicit_tool_args={"api_token": "arg-token", "project_id": 77},
+            )
+            is None
+        )
+
     def test_clear_auth_config_removes_existing_file(self, tmp_path: Path) -> None:
         config_path = _write_saved_config(
             tmp_path,
@@ -253,17 +280,22 @@ class TestCLIAuthConfig:
     def test_clear_auth_config_returns_false_when_missing(self, tmp_path: Path) -> None:
         assert clear_auth_config(tmp_path / "auth.json") is False
 
-    def test_save_auth_config_surfaces_existing_config_errors(self, tmp_path: Path) -> None:
+    def test_save_auth_config_rewrites_malformed_existing_file(self, tmp_path: Path) -> None:
         config_path = tmp_path / "auth.json"
         config_path.write_text("{bad-json", encoding="utf-8")
-        with pytest.raises(CLIError, match="malformed JSON"):
-            save_auth_config(
-                url="https://example.testops.cloud",
-                token="super-secret-token",
-                project_id=123,
-                path=config_path,
-                now="2026-04-29T10:00:00Z",
-            )
+        saved_path = save_auth_config(
+            url="https://example.testops.cloud",
+            token="super-secret-token",
+            project_id=123,
+            path=config_path,
+            now="2026-04-29T10:00:00Z",
+        )
+        payload = json.loads(saved_path.read_text(encoding="utf-8"))
+        assert payload["allure_endpoint"] == "https://example.testops.cloud"
+        assert payload["allure_api_token"] == "super-secret-token"
+        assert payload["allure_project_id"] == 123
+        assert payload["created_at"] == "2026-04-29T10:00:00Z"
+        assert payload["updated_at"] == "2026-04-29T10:00:00Z"
 
 
 class TestCLIAuthCommandUnit:
@@ -537,6 +569,40 @@ class TestCLIAuthCommandProcess:
         assert payload["token"] == "env-token"
         assert payload["project"] == "999"
 
+    def test_process_malformed_saved_config_does_not_block_env_override(self, tmp_path: Path) -> None:
+        sitecustomize = _sitecustomize_dir(
+            tmp_path,
+            """
+            import json
+            import os
+            import src.cli.tool_resolver as tool_resolver
+
+            async def _fake_tool(**kwargs):
+                return json.dumps(
+                    {
+                        "endpoint": os.environ.get("ALLURE_ENDPOINT"),
+                        "token": os.environ.get("ALLURE_API_TOKEN"),
+                        "project": os.environ.get("ALLURE_PROJECT_ID"),
+                    }
+                )
+
+            tool_resolver.resolve_tool_function = lambda _tool_name: _fake_tool
+            """,
+        )
+        env = _subprocess_env(tmp_path, sitecustomize=sitecustomize)
+        config_path = Path(env["XDG_CONFIG_HOME"]) / "lucius" / "auth.json"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("{bad-json", encoding="utf-8")
+        env[AUTH_ENDPOINT_ENV] = "https://env.testops.cloud"
+        env[AUTH_TOKEN_ENV] = "env-token"
+        env[AUTH_PROJECT_ENV] = "999"
+        result = run_cli(["launch", "close", "--args", '{"launch_id": 15}'], env=env)
+        assert result.returncode == 0
+        payload = json.loads(result.stdout)
+        assert payload["endpoint"] == "https://env.testops.cloud"
+        assert payload["token"] == "env-token"
+        assert payload["project"] == "999"
+
     def test_process_explicit_empty_env_vars_do_not_fall_back_to_saved_config(self, tmp_path: Path) -> None:
         sitecustomize = _sitecustomize_dir(
             tmp_path,
@@ -611,6 +677,44 @@ class TestCLIAuthCommandProcess:
         assert result.returncode == 0
         payload = json.loads(result.stdout)
         assert payload["endpoint"] == "https://saved.testops.cloud"
+        assert payload["token"] == "arg-token"
+        assert payload["project"] == 77
+
+    def test_process_explicit_tool_args_do_not_require_readable_saved_config(self, tmp_path: Path) -> None:
+        sitecustomize = _sitecustomize_dir(
+            tmp_path,
+            """
+            import json
+            import os
+            import src.cli.tool_resolver as tool_resolver
+
+            async def _fake_tool(**kwargs):
+                from src.utils.auth import get_auth_context
+
+                context = get_auth_context(api_token=kwargs.get("api_token"), project_id=kwargs.get("project_id"))
+                return json.dumps(
+                    {
+                        "endpoint": os.environ.get("ALLURE_ENDPOINT"),
+                        "token": context.api_token.get_secret_value(),
+                        "project": context.project_id,
+                    }
+                )
+
+            tool_resolver.resolve_tool_function = lambda _tool_name: _fake_tool
+            """,
+        )
+        env = _subprocess_env(tmp_path, sitecustomize=sitecustomize)
+        config_path = Path(env["XDG_CONFIG_HOME"]) / "lucius" / "auth.json"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("{bad-json", encoding="utf-8")
+        env[AUTH_ENDPOINT_ENV] = "https://env.testops.cloud"
+        result = run_cli(
+            ["launch", "close", "--args", '{"launch_id": 15, "api_token": "arg-token", "project_id": 77}'],
+            env=env,
+        )
+        assert result.returncode == 0
+        payload = json.loads(result.stdout)
+        assert payload["endpoint"] == "https://env.testops.cloud"
         assert payload["token"] == "arg-token"
         assert payload["project"] == 77
 

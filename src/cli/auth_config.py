@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -64,6 +64,30 @@ def _repair_hint(path: Path) -> str:
 
 def _is_missing_env_var(name: str, environ: MutableMapping[str, str]) -> bool:
     return environ.get(name) is None
+
+
+def _has_explicit_tool_arg(explicit_tool_args: Mapping[str, object] | None, arg_name: str) -> bool:
+    return explicit_tool_args is not None and arg_name in explicit_tool_args
+
+
+def _load_existing_created_at(path: Path) -> str | None:
+    """Best-effort metadata recovery for rewrites over damaged configs."""
+    if not path.exists():
+        return None
+
+    try:
+        raw_data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+
+    if not isinstance(raw_data, dict):
+        return None
+
+    created_at = raw_data.get("created_at")
+    if not isinstance(created_at, str) or not created_at.strip():
+        return None
+
+    return created_at.strip()
 
 
 def _parse_project_id(raw_value: object, *, path: Path) -> int:
@@ -188,14 +212,14 @@ def save_auth_config(
         ) from None
     _ensure_directory_permissions(resolved_path.parent)
 
-    existing = load_auth_config(resolved_path)
+    existing_created_at = _load_existing_created_at(resolved_path)
 
     timestamp = now or current_timestamp()
     config = AuthConfig(
         allure_endpoint=url.rstrip("/"),
         allure_api_token=token,
         allure_project_id=project_id,
-        created_at=existing.created_at if existing else timestamp,
+        created_at=existing_created_at or timestamp,
         updated_at=timestamp,
     )
     payload = json.dumps(config.to_dict(), indent=2, sort_keys=True) + "\n"
@@ -255,16 +279,30 @@ def clear_auth_config(path: Path | None = None) -> bool:
     return True
 
 
-def apply_saved_auth_environment(environ: MutableMapping[str, str] | None = None) -> AuthConfig | None:
-    """Load saved auth config and inject it into missing environment variables."""
+def apply_saved_auth_environment(
+    environ: MutableMapping[str, str] | None = None,
+    *,
+    explicit_tool_args: Mapping[str, object] | None = None,
+) -> AuthConfig | None:
+    """Inject saved auth only for values not already supplied by higher-precedence sources."""
     resolved_environ = os.environ if environ is None else environ
+
+    update_endpoint = _is_missing_env_var(AUTH_ENDPOINT_ENV, resolved_environ)
+    update_token = _is_missing_env_var(AUTH_TOKEN_ENV, resolved_environ) and not _has_explicit_tool_arg(
+        explicit_tool_args,
+        "api_token",
+    )
+    update_project = _is_missing_env_var(AUTH_PROJECT_ENV, resolved_environ) and not _has_explicit_tool_arg(
+        explicit_tool_args,
+        "project_id",
+    )
+
+    if not any((update_endpoint, update_token, update_project)):
+        return None
+
     config = load_auth_config()
     if config is None:
         return None
-
-    update_endpoint = _is_missing_env_var(AUTH_ENDPOINT_ENV, resolved_environ)
-    update_token = _is_missing_env_var(AUTH_TOKEN_ENV, resolved_environ)
-    update_project = _is_missing_env_var(AUTH_PROJECT_ENV, resolved_environ)
 
     if update_endpoint:
         resolved_environ[AUTH_ENDPOINT_ENV] = config.allure_endpoint

@@ -32,7 +32,6 @@ def error_hint_from_exception(error: Exception) -> str:
 
 def load_tool_function(tool_name: str) -> typing.Callable[..., Coroutine[typing.Any, typing.Any, typing.Any]]:
     """Lazy-load a tool function by name from src.tools package."""
-    apply_saved_auth_environment(os.environ)
     try:
         resolved = resolve_tool_function(tool_name)
     except RuntimeError:
@@ -58,6 +57,8 @@ async def call_tool_function(
         tool_loader = load_tool_function
     if error_hint_provider is None:
         error_hint_provider = error_hint_from_exception
+    explicit_tool_args = {name: value for name, value in args.items() if name in {"api_token", "project_id"}}
+    apply_saved_auth_environment(os.environ, explicit_tool_args=explicit_tool_args)
     tool_function = tool_loader(tool_name)
     try:
         return await tool_function(**args)
