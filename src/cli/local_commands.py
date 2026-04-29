@@ -23,8 +23,9 @@ class LocalCommandSubcommand:
     description: str
 
 
-CLI_LOCAL_COMMANDS = ["auth"]
+CLI_LOCAL_COMMANDS = ["auth", "list"]
 AUTH_HELP_TOKENS = ("--help", "-h", "help")
+LIST_HELP_TOKENS = ("--help", "-h", "help")
 AUTH_CONFIGURE_OPTIONS = (
     LocalCommandOption("--url", value_name="<url>", description="Allure TestOps base URL", target_field="url"),
     LocalCommandOption("--token", value_name="<token>", description="Allure API token", target_field="token"),
@@ -67,4 +68,20 @@ def auth_usage_lines() -> list[str]:
         *option_lines,
         "\nPrecedence for later tool execution:",
         "  explicit tool args > environment variables > saved CLI auth config > defaults",
+    ]
+
+
+def list_usage_lines() -> list[str]:
+    """Build help output for `lucius list` from shared command metadata."""
+    return [
+        "CLI-local discovery command that prints the same static discovery output as `lucius` with no arguments.\n",
+        "Usage:",
+        "  lucius list",
+        "  lucius list --help\n",
+        "Options:",
+        "  --help             Show list command help",
+        "  -h                 Show list command help",
+        "\nNotes:",
+        "  - Prints local static discovery metadata only.",
+        "  - Does not require --args, saved credentials, or network access.",
     ]

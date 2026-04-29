@@ -18,8 +18,8 @@ from pathlib import Path
 
 import rich.console
 
-from src.cli.auth_command import handle_auth_command
 from src.cli.command_runner import run_cli_command
+from src.cli.list_command import handle_list_command
 from src.cli.models import CLIContext, CLIError
 from src.cli.option_parsing import parse_action_options, validate_args_against_schema
 from src.cli.routing import build_command_registry, resolve_action_name, resolve_entity_name
@@ -41,13 +41,24 @@ def run_cli(argv: list[str]) -> None:
         tool_schemas_path=TOOL_SCHEMAS_PATH,
         version=__version__,
     )
+    load_cli_tool_schemas = partial(load_tool_schemas, TOOL_SCHEMAS_PATH, Path(__file__))
     if argv and argv[0] == "auth":
+        from src.cli.auth_command import handle_auth_command
+
         handle_auth_command(argv[1:], context=context)
+        return
+    if argv and argv[0] == "list":
+        handle_list_command(
+            argv[1:],
+            context=context,
+            load_tool_schemas=load_cli_tool_schemas,
+            build_command_registry=build_command_registry,
+        )
         return
     run_cli_command(
         argv,
         context=context,
-        load_tool_schemas=partial(load_tool_schemas, TOOL_SCHEMAS_PATH, Path(__file__)),
+        load_tool_schemas=load_cli_tool_schemas,
         build_command_registry=build_command_registry,
         resolve_entity_name=resolve_entity_name,
         resolve_action_name=resolve_action_name,

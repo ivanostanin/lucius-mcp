@@ -66,7 +66,7 @@ def prepare_command(
         context.console_out.print(f"lucius {context.version}")
         return None
 
-    if argv[0] in {"list", "call"}:
+    if argv[0] == "call":
         raise CLIError(
             "Legacy command style detected",
             hint=(

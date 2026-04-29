@@ -1,6 +1,6 @@
 # Story 9.8: CLI List Command Tool Table
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -62,44 +62,44 @@ so that I can explicitly list supported CLI capabilities without relying on an e
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Add top-level `list` routing** (AC: 1, 2, 4, 5, 6)
-  - [ ] 1.1 Update `src/cli/cli_entry.py` so `argv[0] == "list"` is handled before entity resolution.
-  - [ ] 1.2 Reuse the same code path as no-argument/global help output: load static schemas, build the registry, and call the existing global discovery renderer.
-  - [ ] 1.3 Keep `argv[0] == "call"` rejected with the existing legacy-command `CLIError` and migration hint.
-  - [ ] 1.4 Do not add `list` to `src/cli/route_matrix.py`; it is CLI-local discovery, not a TestOps tool route.
+- [x] **Task 1: Add top-level `list` routing** (AC: 1, 2, 4, 5, 6)
+  - [x] 1.1 Update `src/cli/cli_entry.py` so `argv[0] == "list"` is handled before entity resolution.
+  - [x] 1.2 Reuse the same code path as no-argument/global help output: load static schemas, build the registry, and call the existing global discovery renderer.
+  - [x] 1.3 Keep `argv[0] == "call"` rejected with the existing legacy-command `CLIError` and migration hint.
+  - [x] 1.4 Do not add `list` to `src/cli/route_matrix.py`; it is CLI-local discovery, not a TestOps tool route.
 
-- [ ] **Task 2: Add explicit help for `lucius list`** (AC: 3, 4)
-  - [ ] 2.1 Support `lucius list --help` and `lucius list -h` without entering entity/action option parsing.
-  - [ ] 2.2 Document that `list` prints local static discovery metadata and requires no credentials/network.
-  - [ ] 2.3 Reject unexpected options to `lucius list` with a clean `CLIError` and no traceback.
+- [x] **Task 2: Add explicit help for `lucius list`** (AC: 3, 4)
+  - [x] 2.1 Support `lucius list --help` and `lucius list -h` without entering entity/action option parsing.
+  - [x] 2.2 Document that `list` prints local static discovery metadata and requires no credentials/network.
+  - [x] 2.3 Reject unexpected options to `lucius list` with a clean `CLIError` and no traceback.
 
-- [ ] **Task 3: Preserve static import boundary** (AC: 4, 6)
-  - [ ] 3.1 Ensure the `list` implementation imports only CLI-local modules already used by no-argument help.
-  - [ ] 3.2 Do not call `call_tool_function()`, `_load_tool_function()`, `resolve_tool_function()`, or anything under `src.tools` for `list`.
-  - [ ] 3.3 Keep `src/cli/data/tool_schemas.json` as the static metadata source; do not introspect live MCP tools at runtime.
+- [x] **Task 3: Preserve static import boundary** (AC: 4, 6)
+  - [x] 3.1 Ensure the `list` implementation imports only CLI-local modules already used by no-argument help.
+  - [x] 3.2 Do not call `call_tool_function()`, `_load_tool_function()`, `resolve_tool_function()`, or anything under `src.tools` for `list`.
+  - [x] 3.3 Keep `src/cli/data/tool_schemas.json` as the static metadata source; do not introspect live MCP tools at runtime.
 
-- [ ] **Task 4: Add CLI tests** (AC: 1, 2, 3, 5, 7)
-  - [ ] 4.1 Extend `tests/cli/test_cli_basics.py` with `lucius list` success assertions.
-  - [ ] 4.2 Add a parity assertion comparing no-argument stdout and `list` stdout for shared usage/table markers such as `Available Entities`, canonical entity names, and action names.
-  - [ ] 4.3 Add `lucius list --help` assertions for local discovery language and no credential requirement.
-  - [ ] 4.4 Keep or adjust the legacy test so `lucius call ...` remains rejected while `lucius list` is accepted.
-  - [ ] 4.5 Assert `Traceback` and Python file frames are absent from `list` error cases.
+- [x] **Task 4: Add CLI tests** (AC: 1, 2, 3, 5, 7)
+  - [x] 4.1 Extend `tests/cli/test_cli_basics.py` with `lucius list` success assertions.
+  - [x] 4.2 Add a parity assertion comparing no-argument stdout and `list` stdout for shared usage/table markers such as `Available Entities`, canonical entity names, and action names.
+  - [x] 4.3 Add `lucius list --help` assertions for local discovery language and no credential requirement.
+  - [x] 4.4 Keep or adjust the legacy test so `lucius call ...` remains rejected while `lucius list` is accepted.
+  - [x] 4.5 Assert `Traceback` and Python file frames are absent from `list` error cases.
 
-- [ ] **Task 5: Add import-boundary regression coverage** (AC: 4, 7)
-  - [ ] 5.1 Add or extend a subprocess/snippet test that blocks or detects imports of `src.tools`, `src.main`, `fastmcp`, and HTTP server modules during `run_cli(["list"])`.
-  - [ ] 5.2 Mirror the existing help/version import-boundary intent; `list` must be as lightweight as no-argument help.
-  - [ ] 5.3 If a packaging-level binary smoke test is cheap, update it to call `list` as the explicit discovery command; otherwise keep packaging coverage focused on source tests.
-  - [ ] 5.4 Extend the shared `uv run lucius` CLI E2E suite with `lucius list`, `lucius`, and `lucius list --help` parity checks.
+- [x] **Task 5: Add import-boundary regression coverage** (AC: 4, 7)
+  - [x] 5.1 Add or extend a subprocess/snippet test that blocks or detects imports of `src.tools`, `src.main`, `fastmcp`, and HTTP server modules during `run_cli(["list"])`.
+  - [x] 5.2 Mirror the existing help/version import-boundary intent; `list` must be as lightweight as no-argument help.
+  - [x] 5.3 If a packaging-level binary smoke test is cheap, update it to call `list` as the explicit discovery command; otherwise keep packaging coverage focused on source tests.
+  - [x] 5.4 Extend the shared `uv run lucius` CLI E2E suite with `lucius list`, `lucius`, and `lucius list --help` parity checks.
 
-- [ ] **Task 6: Update user-facing docs if needed** (AC: 3)
-  - [ ] 6.1 Update `docs/CLI.md` command model/examples to include `lucius list` as explicit discovery.
-  - [ ] 6.2 Update README CLI snippets only if the README already documents no-argument CLI discovery.
+- [x] **Task 6: Update user-facing docs if needed** (AC: 3)
+  - [x] 6.1 Update `docs/CLI.md` command model/examples to include `lucius list` as explicit discovery.
+  - [x] 6.2 Update README CLI snippets only if the README already documents no-argument CLI discovery.
 
-- [ ] **Task 7: Update shell completions** (AC: 8)
-  - [ ] 7.1 Update `deployment/scripts/generate_completions.py` so top-level completion tokens include `list`.
-  - [ ] 7.2 Regenerate `deployment/shell-completions/lucius.bash`, `deployment/shell-completions/lucius.zsh`, `deployment/shell-completions/lucius.fish`, and `deployment/shell-completions/lucius.ps1`.
-  - [ ] 7.3 Add or extend tests/assertions so generated completion output includes `list` as a top-level command for every supported shell.
-  - [ ] 7.4 Keep `call` out of completion suggestions unless the project intentionally wants to expose rejected legacy commands.
+- [x] **Task 7: Update shell completions** (AC: 8)
+  - [x] 7.1 Update `deployment/scripts/generate_completions.py` so top-level completion tokens include `list`.
+  - [x] 7.2 Regenerate `deployment/shell-completions/lucius.bash`, `deployment/shell-completions/lucius.zsh`, `deployment/shell-completions/lucius.fish`, and `deployment/shell-completions/lucius.ps1`.
+  - [x] 7.3 Add or extend tests/assertions so generated completion output includes `list` as a top-level command for every supported shell.
+  - [x] 7.4 Keep `call` out of completion suggestions unless the project intentionally wants to expose rejected legacy commands.
 
 ## Dev Notes
 
@@ -196,12 +196,40 @@ so that I can explicitly list supported CLI capabilities without relying on an e
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+GPT-5 Codex
 
 ### Debug Log References
 
+- `uv run --python 3.13 python deployment/scripts/generate_completions.py`
+- `uv run --python 3.13 --extra dev pytest tests/cli -q`
+- `uv run ruff check src/cli tests/cli`
+- `uv run mypy src/cli`
+
 ### Completion Notes List
 
-Ultimate context engine analysis completed - comprehensive developer guide created.
+- Added a dedicated CLI-local `list` handler that reuses the same static-schema discovery renderer as bare `lucius` and never enters entity/action execution.
+- Added explicit `lucius list --help` output and clean unsupported-option errors for the local command.
+- Made auth command loading lazy in `src/cli/cli_entry.py` so `lucius list` does not import auth/client modules that transitively pull `starlette`.
+- Extended subprocess and `uv run lucius` tests to verify output parity, help text, legacy `call` rejection, clean errors, and import-boundary enforcement.
+- Regenerated bash, zsh, fish, and PowerShell completion scripts so top-level completion includes `list`.
 
 ### File List
+
+- deployment/shell-completions/lucius.bash
+- deployment/shell-completions/lucius.zsh
+- deployment/shell-completions/lucius.fish
+- deployment/shell-completions/lucius.ps1
+- docs/CLI.md
+- src/cli/cli_entry.py
+- src/cli/command_runner.py
+- src/cli/help_output.py
+- src/cli/list_command.py
+- src/cli/local_commands.py
+- tests/cli/test_cli_auth.py
+- tests/cli/test_cli_basics.py
+- specs/implementation-artifacts/9-8-cli-list-command-tool-table.md
+- specs/implementation-artifacts/sprint-status.yaml
+
+### Change Log
+
+- 2026-04-29: Implemented CLI-local `lucius list`, added help/import-boundary regression coverage, updated docs, and regenerated shell completions.

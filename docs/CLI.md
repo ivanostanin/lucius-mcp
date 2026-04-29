@@ -8,6 +8,8 @@ Lucius uses an entity/action grammar:
 lucius auth [--url <url>] [--token <token>] [--project <id>]
 lucius auth status
 lucius auth clear
+lucius list
+lucius list --help
 lucius <entity>
 lucius <entity> <action> --args '<json>' [--format json|table|plain|csv]
 lucius <entity> <action> --help
@@ -25,6 +27,9 @@ lucius auth status
 lucius auth clear
 
 # Discover actions
+lucius
+lucius list
+lucius list --help
 lucius test_case
 lucius integrations
 
@@ -169,6 +174,8 @@ PowerShell:
 
 ## Help and Validation
 
+- `lucius` and `lucius list` print the same discovery table built from local static metadata.
+- `lucius list --help` explains the explicit discovery command and does not require `--args`, saved credentials, or network access.
 - `lucius <entity>` prints actions and short descriptions.
 - `lucius <entity> <action> --help` prints description, parameters, required/optional markers, and examples.
 - Unknown entities/actions and invalid JSON receive guided error hints.
