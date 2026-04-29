@@ -132,4 +132,5 @@ development_status:
   9-5-nuitka-onefile-caching-for-cli-startup: done
   9-6-unified-cli-output-formats-json-table-csv-plain: review
   9-7-cli-auth-command-persistent-configuration: in-progress
+  9-7-cli-auth-command-persistent-configuration: done
   epic-9-retrospective: optional
