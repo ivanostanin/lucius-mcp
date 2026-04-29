@@ -812,3 +812,41 @@ so that subsequent CLI launches can reuse those credentials without requiring en
 **And** shell completion generation includes `auth` and auth-specific subcommands/options for bash, zsh, fish, and PowerShell
 **And** the raw token is never printed, logged, or shown in status output
 **And** source-invoked CLI E2E tests run the command via `uv run lucius ...` rather than a built binary.
+
+### Story 9.8: CLI List Command Tool Table
+
+As a Developer or QA Engineer,
+I want `lucius list` to display the same available-tools discovery table as running `lucius` without arguments,
+so that I can explicitly list supported CLI capabilities without relying on an empty invocation.
+
+**Acceptance Criteria:**
+
+**Given** I run `lucius list`
+**When** the CLI starts
+**Then** it exits successfully
+**And** it prints the same discovery table content as `lucius` with no arguments.
+
+**Given** I run `lucius list --help`
+**When** help is requested
+**Then** the CLI describes `list` as a local discovery command
+**And** it does not require `--args` or TestOps credentials.
+
+**Given** the `list` command is used
+**When** output is generated
+**Then** it uses build-time static metadata from `src/cli/data/tool_schemas.json` and `src/cli/route_matrix.py`
+**And** it does not import `src.tools`, `src.main`, FastMCP, Starlette, or any HTTP server components.
+
+**Given** existing entity/action commands
+**When** `lucius list` is added
+**Then** `lucius call ...` remains rejected as legacy command style
+**And** `list` is not added to the canonical TestOps route matrix as a fake entity or action.
+
+**Given** shell completions are generated
+**When** users request top-level command completion for `lucius`
+**Then** `list` is offered alongside `help`, `version`, and entity tokens in bash, zsh, fish, and PowerShell completions
+**And** completion scripts are regenerated from `deployment/scripts/generate_completions.py`.
+
+**Given** automated tests run
+**When** CLI tests execute
+**Then** they verify `lucius list` success, content parity with no-argument output, `lucius list --help`, shell completion exposure, legacy `call` rejection, and no Python tracebacks/internal logs
+**And** process-level CLI E2E coverage invokes `uv run lucius list ...` from source, not via a built binary.
