@@ -18,6 +18,7 @@ from pathlib import Path
 
 import rich.console
 
+from src.cli.auth_command import handle_auth_command
 from src.cli.command_runner import run_cli_command
 from src.cli.models import CLIContext, CLIError
 from src.cli.option_parsing import parse_action_options, validate_args_against_schema
@@ -40,6 +41,9 @@ def run_cli(argv: list[str]) -> None:
         tool_schemas_path=TOOL_SCHEMAS_PATH,
         version=__version__,
     )
+    if argv and argv[0] == "auth":
+        handle_auth_command(argv[1:], context=context)
+        return
     run_cli_command(
         argv,
         context=context,
@@ -55,6 +59,7 @@ def run_cli(argv: list[str]) -> None:
 
 def main() -> None:
     """CLI entry point."""
+    previous_disable_level = logging.root.manager.disable
     logging.disable(logging.CRITICAL)
     try:
         run_cli(sys.argv[1:])
@@ -71,6 +76,8 @@ def main() -> None:
             ),
             console_err,
         )
+    finally:
+        logging.disable(previous_disable_level)
 
 
 if __name__ == "__main__":

@@ -13,6 +13,7 @@ def test_cli_help():
     assert result.returncode == 0
     assert "lucius" in result.stdout
     assert "Usage:" in result.stdout
+    assert "lucius auth" in result.stdout
     assert "Available Entities" in result.stdout
     assert "test_case" in result.stdout
     assert "--format json|table|plain|csv" in result.stdout

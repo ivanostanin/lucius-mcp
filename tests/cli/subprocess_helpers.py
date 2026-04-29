@@ -2,47 +2,72 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
+import tempfile
+from collections.abc import Mapping
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 UV_PYTHON_VERSION = f"{sys.version_info.major}.{sys.version_info.minor}"
 
 
-def run_cli(args: list[str]) -> subprocess.CompletedProcess[str]:
+def _subprocess_env(env: Mapping[str, str] | None = None) -> dict[str, str]:
+    resolved = dict(os.environ if env is None else env)
+    resolved.setdefault("UV_CACHE_DIR", tempfile.mkdtemp(prefix="lucius-uv-cache-"))
+    return resolved
+
+
+def run_cli(args: list[str], *, env: Mapping[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     """Run the CLI entrypoint in a subprocess."""
     return subprocess.run(
         [sys.executable, "-m", "src.cli.cli_entry", *args],
         capture_output=True,
         text=True,
         cwd=PROJECT_ROOT,
+        env=_subprocess_env(env),
     )
 
 
-def run_python_snippet(script: str) -> subprocess.CompletedProcess[str]:
+def run_python_snippet(script: str, *, env: Mapping[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     """Run a Python snippet from the project root."""
     return subprocess.run(
         [sys.executable, "-c", script],
         capture_output=True,
         text=True,
         cwd=PROJECT_ROOT,
+        env=_subprocess_env(env),
     )
 
 
-def run_uv_python_snippet(script: str) -> subprocess.CompletedProcess[str]:
+def run_uv_python_snippet(script: str, *, env: Mapping[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     """Run a Python snippet through `uv run` from the project root."""
     return subprocess.run(
         ["uv", "run", "--python", UV_PYTHON_VERSION, "python", "-c", script],
         capture_output=True,
         text=True,
         cwd=PROJECT_ROOT,
+        env=_subprocess_env(env),
+    )
+
+
+def run_uv_cli(args: list[str], *, env: Mapping[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+    """Run the installed local `lucius` console script through `uv run`."""
+    return subprocess.run(
+        ["uv", "run", "--python", UV_PYTHON_VERSION, "lucius", *args],
+        capture_output=True,
+        text=True,
+        cwd=PROJECT_ROOT,
+        env=_subprocess_env(env),
     )
 
 
 def run_cli_with_mocked_result(
     args: list[str],
     mocked_result: object,
+    *,
+    env: Mapping[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Run CLI routing in a subprocess with a mocked async tool result."""
     payload = repr(mocked_result)
@@ -56,7 +81,7 @@ def run_cli_with_mocked_result(
             f"cli_entry.run_cli({args!r})",
         ]
     )
-    return run_python_snippet(script)
+    return run_python_snippet(script, env=env)
 
 
 def run_cli_with_mocked_result_via_uv(
@@ -64,6 +89,8 @@ def run_cli_with_mocked_result_via_uv(
     tool_name: str,
     mocked_result: object,
     expected_tool_output_format: str,
+    *,
+    env: Mapping[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Run CLI via `uv run` subprocess with a stubbed tool function."""
     payload = repr(mocked_result)
@@ -81,4 +108,4 @@ def run_cli_with_mocked_result_via_uv(
             f"cli_entry.run_cli({args!r})",
         ]
     )
-    return run_uv_python_snippet(script)
+    return run_uv_python_snippet(script, env=env)

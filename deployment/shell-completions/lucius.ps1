@@ -4,9 +4,11 @@ Register-ArgumentCompleter -Native -CommandName lucius -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
 
     $entities = @("custom-field", "custom-field-value", "custom-field-values", "custom-fields", "custom_field", "custom_field_value", "custom_field_values", "custom_fields", "defect", "defect-matcher", "defect-matchers", "defect_matcher", "defect_matchers", "defects", "integration", "integrations", "launch", "launches", "shared-step", "shared-steps", "shared_step", "shared_steps", "test-case", "test-cases", "test-layer", "test-layer-schema", "test-layer-schemas", "test-layers", "test-plan", "test-plans", "test-suite", "test-suites", "test_case", "test_cases", "test_layer", "test_layer_schema", "test_layer_schemas", "test_layers", "test_plan", "test_plans", "test_suite", "test_suites")
-    $globalTokens = @("--help", "-h", "--version", "-V", "help", "version")
+    $globalTokens = @("--help", "-h", "--version", "-V", "help", "version", "auth")
     $formats = @("json", "table", "plain")
     $options = @("--args", "-a", "--format", "-f", "--help", "-h")
+    $authOptions = @("--url", "--token", "--project", "--help", "-h")
+    $authSubcommands = @("status", "clear")
     $aliasToCanonical = @{
         "custom_field" = "custom_field"
         "custom_field_value" = "custom_field_value"
@@ -63,6 +65,20 @@ Register-ArgumentCompleter -Native -CommandName lucius -ScriptBlock {
     }
 
     $entityToken = $commandAst.CommandElements[1].Value.ToLower().Replace('-', '_')
+    if ($entityToken -eq 'auth') {
+        $lastToken = $commandAst.CommandElements[$commandAst.CommandElements.Count - 1].Value
+        if ($lastToken -eq '--url' -or $lastToken -eq '--token' -or $lastToken -eq '--project') {
+            return
+        }
+        if ($commandAst.CommandElements.Count -gt 3 -and $commandAst.CommandElements[2].Value -eq 'status') {
+            return
+        }
+        ($authSubcommands + $authOptions) |
+            Where-Object { $_ -like "$wordToComplete*" } |
+            ForEach-Object { [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) }
+        return
+    }
+
     $canonicalEntity = $null
     if ($aliasToCanonical.ContainsKey($entityToken)) {
         $canonicalEntity = $aliasToCanonical[$entityToken]

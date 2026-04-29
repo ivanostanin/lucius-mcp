@@ -14,6 +14,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.cli.local_commands import AUTH_OPTIONS, AUTH_SUBCOMMANDS, CLI_LOCAL_COMMANDS  # noqa: E402
 from src.cli.route_matrix import (  # noqa: E402
     ACTION_ALIASES,
     CANONICAL_ROUTE_MATRIX,
@@ -22,7 +23,7 @@ from src.cli.route_matrix import (  # noqa: E402
 )
 
 FORMATS = ["json", "table", "plain"]
-GLOBAL_TOKENS = ["--help", "-h", "--version", "-V", "help", "version"]
+GLOBAL_TOKENS = ["--help", "-h", "--version", "-V", "help", "version", *CLI_LOCAL_COMMANDS]
 ACTION_OPTIONS = ["--args", "-a", "--format", "-f", "--help", "-h"]
 COMPLETION_DIR = PROJECT_ROOT / "deployment" / "shell-completions"
 
@@ -90,6 +91,8 @@ def generate_bash_completion(
     global_tokens = " ".join(GLOBAL_TOKENS)
     formats = " ".join(FORMATS)
     action_options = " ".join(ACTION_OPTIONS)
+    auth_options = " ".join(AUTH_OPTIONS)
+    auth_subcommands = " ".join(AUTH_SUBCOMMANDS)
     cases = "".join(case_blocks)
 
     return f"""# lucius CLI bash completion (entity/action)
@@ -109,10 +112,25 @@ _lucius_completion() {{
     entity="${{COMP_WORDS[1]//-/_}}"
 
     if [[ $COMP_CWORD -eq 2 ]]; then
+        if [[ $entity == "auth" ]]; then
+            COMPREPLY=($(compgen -W "{auth_subcommands} {auth_options}" -- "$cur"))
+            return 0
+        fi
         case "$entity" in
 {cases}            *)
                 ;;
         esac
+        return 0
+    fi
+
+    if [[ $entity == "auth" ]]; then
+        if [[ $prev == "--url" || $prev == "--token" || $prev == "--project" ]]; then
+            return 0
+        fi
+        if [[ ${{COMP_WORDS[2]//-/_}} == "status" ]]; then
+            return 0
+        fi
+        COMPREPLY=($(compgen -W "{auth_subcommands} {auth_options}" -- "$cur"))
         return 0
     fi
 
@@ -160,16 +178,21 @@ def generate_zsh_completion(
     global_values = " ".join(GLOBAL_TOKENS)
     format_values = " ".join(FORMATS)
     option_values = " ".join(ACTION_OPTIONS)
+    auth_option_values = " ".join(AUTH_OPTIONS)
+    auth_subcommand_values = " ".join(AUTH_SUBCOMMANDS)
     cases = "".join(case_blocks)
 
     return f"""#compdef lucius
 
 _lucius() {{
-    local -a entities globals formats options
+    local -a entities globals formats options authOptions authSubcommands authTokens
     entities=({entity_values})
     globals=({global_values})
     formats=({format_values})
     options=({option_values})
+    authOptions=({auth_option_values})
+    authSubcommands=({auth_subcommand_values})
+    authTokens=($authSubcommands $authOptions)
 
     if (( CURRENT == 2 )); then
         _describe -t entities 'lucius entities' entities
@@ -181,11 +204,30 @@ _lucius() {{
     entity="${{entity//-/_}}"
 
     if (( CURRENT == 3 )); then
+        if [[ "$entity" == "auth" ]]; then
+            _describe -t auth 'auth commands' authTokens
+            return 0
+        fi
         case "$entity" in
 {cases}            *)
                 ;;
         esac
         return 0
+    fi
+
+    if [[ "$entity" == "auth" ]]; then
+        if (( CURRENT > 3 )) && [[ "${{words[3]:l}}" == "status" ]]; then
+            return 0
+        fi
+        case "${{words[CURRENT-1]}}" in
+            --url|--token|--project)
+                return 0
+                ;;
+            *)
+                _describe -t auth 'auth commands' authTokens
+                return 0
+                ;;
+        esac
     fi
 
     case "${{words[CURRENT-1]}}" in
@@ -222,6 +264,26 @@ def generate_fish_completion(
         "# Main command tokens",
         f'complete -c lucius -n "__fish_use_subcommand" -a "{" ".join(entities)}" -d "Entity"',
         (f'complete -c lucius -n "__fish_use_subcommand" -a "{" ".join(GLOBAL_TOKENS)}" -d "Global command"'),
+        (
+            f'complete -c lucius -n "__fish_seen_subcommand_from auth; and not __fish_seen_subcommand_from status" '
+            f'-a "{" ".join(AUTH_SUBCOMMANDS)}" -d "Auth command"'
+        ),
+        (
+            'complete -c lucius -n "__fish_seen_subcommand_from auth; and not __fish_seen_subcommand_from status" '
+            '-l url -r -d "Allure TestOps base URL"'
+        ),
+        (
+            'complete -c lucius -n "__fish_seen_subcommand_from auth; and not __fish_seen_subcommand_from status" '
+            '-l token -r -d "Allure API token"'
+        ),
+        (
+            'complete -c lucius -n "__fish_seen_subcommand_from auth; and not __fish_seen_subcommand_from status" '
+            '-l project -r -d "Default project ID"'
+        ),
+        (
+            'complete -c lucius -n "__fish_seen_subcommand_from auth; and not __fish_seen_subcommand_from status" '
+            '-l help -s h -d "Show auth help"'
+        ),
         "",
     ]
 
@@ -262,6 +324,8 @@ def generate_powershell_completion(
     global_values = ", ".join(f'"{token}"' for token in GLOBAL_TOKENS)
     format_values = ", ".join(f'"{fmt}"' for fmt in FORMATS)
     option_values = ", ".join(f'"{opt}"' for opt in ACTION_OPTIONS)
+    auth_option_values = ", ".join(f'"{opt}"' for opt in AUTH_OPTIONS)
+    auth_subcommand_values = ", ".join(f'"{token}"' for token in AUTH_SUBCOMMANDS)
 
     normalized_alias_to_canonical: dict[str, str] = {}
     for alias, canonical in sorted(alias_to_canonical.items()):
@@ -285,6 +349,8 @@ Register-ArgumentCompleter -Native -CommandName lucius -ScriptBlock {{
     $globalTokens = @({global_values})
     $formats = @({format_values})
     $options = @({option_values})
+    $authOptions = @({auth_option_values})
+    $authSubcommands = @({auth_subcommand_values})
     $aliasToCanonical = @{{
 {alias_entries}
     }}
@@ -307,6 +373,20 @@ Register-ArgumentCompleter -Native -CommandName lucius -ScriptBlock {{
     }}
 
     $entityToken = $commandAst.CommandElements[1].Value.ToLower().Replace('-', '_')
+    if ($entityToken -eq 'auth') {{
+        $lastToken = $commandAst.CommandElements[$commandAst.CommandElements.Count - 1].Value
+        if ($lastToken -eq '--url' -or $lastToken -eq '--token' -or $lastToken -eq '--project') {{
+            return
+        }}
+        if ($commandAst.CommandElements.Count -gt 3 -and $commandAst.CommandElements[2].Value -eq 'status') {{
+            return
+        }}
+        ($authSubcommands + $authOptions) |
+            Where-Object {{ $_ -like "$wordToComplete*" }} |
+            ForEach-Object {{ [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) }}
+        return
+    }}
+
     $canonicalEntity = $null
     if ($aliasToCanonical.ContainsKey($entityToken)) {{
         $canonicalEntity = $aliasToCanonical[$entityToken]

@@ -31,7 +31,7 @@ Lucius makes this easier by giving your AI tools that are simple to use and hard
 ## 🚀 Quick Start
 
 1. **Install uv**: `curl -LsSf https://astral.sh/uv/install.sh | sh`
-2. **Setup Credentials**: Create a `.env` file with the variables below.
+2. **Setup Credentials**: Create a `.env` file with the variables below, or save CLI auth with `lucius auth`.
 3. **Run Server**: `uv run start`
 
 ### Basic `.env` for Quick Start
@@ -136,16 +136,35 @@ chmod +x lucius-linux-x86_64
 
 # Show help for a specific entity/action
 ./lucius-linux-x86_64 test_case get --help
+
+# Save reusable CLI auth
+./lucius-linux-x86_64 auth --url https://example.testops.cloud --token <your_api_token> --project 123
+./lucius-linux-x86_64 auth status
+./lucius-linux-x86_64 auth clear
 ```
 
 **CLI Features:**
 - 🎯 Type-safe entity/action invocation with validation
+- 🔐 Optional persistent CLI auth with native per-user config storage
 - 📊 Multiple output formats (JSON, table, csv, plain)
 - 🔍 Per-action help with parameters and examples
 - 🛡️ Clean error messages with guidance
 - 📦 Standalone binaries for Linux, macOS, and Windows
 
 For local CLI binary builds with Nuitka, use Python 3.13 (the build scripts and CI workflow enforce this).
+
+CLI auth precedence is:
+
+1. Explicit tool args such as `api_token` or `project_id`
+2. Environment variables
+3. Saved CLI auth config from `lucius auth`
+4. Defaults
+
+Saved CLI auth uses native config locations:
+
+- Linux/Unix: `$XDG_CONFIG_HOME/lucius/auth.json` or `~/.config/lucius/auth.json`
+- macOS: `~/Library/Application Support/lucius/auth.json` unless XDG overrides are explicitly set
+- Windows: `%LOCALAPPDATA%\lucius\auth.json`
 
 For full CLI documentation and installation instructions, see [CLI Guide](docs/CLI.md).
 
@@ -165,7 +184,7 @@ See [Telemetry & Privacy](docs/telemetry.md) for the full data dictionary and te
 
 Pre-generated shell completions are available in `deployment/shell-completions/`
 for bash, zsh, fish, and PowerShell. They are generated from the current
-entity/action route matrix:
+entity/action route matrix plus CLI-local commands such as `auth`:
 
 ```bash
 python3 deployment/scripts/generate_completions.py

@@ -2,18 +2,13 @@ import pytest
 from pydantic import SecretStr
 
 from src.utils import auth
-from src.utils.config import Settings
 from src.utils.error import AuthenticationError
-
-
-def _refresh_auth_settings(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(auth, "settings", Settings())
 
 
 def test_auth_context_from_environment_reads_values(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ALLURE_API_TOKEN", "env-token")
     monkeypatch.setenv("ALLURE_PROJECT_ID", "42")
-    _refresh_auth_settings(monkeypatch)
+    monkeypatch.setattr("src.utils.auth_resolution.load_auth_config", lambda *args, **kwargs: pytest.fail("unexpected"))
 
     context = auth.AuthContext.from_environment()
 
@@ -25,7 +20,7 @@ def test_auth_context_from_environment_reads_values(monkeypatch: pytest.MonkeyPa
 def test_auth_context_from_environment_requires_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ALLURE_API_TOKEN", raising=False)
     monkeypatch.delenv("ALLURE_PROJECT_ID", raising=False)
-    _refresh_auth_settings(monkeypatch)
+    monkeypatch.setattr("src.utils.auth_resolution.load_auth_config", lambda *args, **kwargs: None)
 
     with pytest.raises(AuthenticationError, match="ALLURE_API_TOKEN"):
         auth.AuthContext.from_environment()
@@ -44,7 +39,7 @@ def test_auth_context_with_overrides_returns_new_instance() -> None:
 
 def test_get_auth_context_prefers_runtime_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ALLURE_API_TOKEN", "env-token")
-    _refresh_auth_settings(monkeypatch)
+    monkeypatch.setattr("src.utils.auth_resolution.load_auth_config", lambda *args, **kwargs: None)
 
     context = auth.get_auth_context(api_token="runtime-token")  # noqa: S106
 
@@ -53,7 +48,7 @@ def test_get_auth_context_prefers_runtime_token(monkeypatch: pytest.MonkeyPatch)
 
 def test_get_auth_context_falls_back_to_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ALLURE_API_TOKEN", "env-token")
-    _refresh_auth_settings(monkeypatch)
+    monkeypatch.setattr("src.utils.auth_resolution.load_auth_config", lambda *args, **kwargs: None)
 
     context = auth.get_auth_context()
 
@@ -62,7 +57,7 @@ def test_get_auth_context_falls_back_to_environment(monkeypatch: pytest.MonkeyPa
 
 def test_get_auth_context_requires_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ALLURE_API_TOKEN", raising=False)
-    _refresh_auth_settings(monkeypatch)
+    monkeypatch.setattr("src.utils.auth_resolution.load_auth_config", lambda *args, **kwargs: None)
 
     with pytest.raises(AuthenticationError, match="api_token"):
         auth.get_auth_context()
@@ -70,7 +65,7 @@ def test_get_auth_context_requires_token(monkeypatch: pytest.MonkeyPatch) -> Non
 
 def test_get_auth_context_is_stateless(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ALLURE_API_TOKEN", "env-token")
-    _refresh_auth_settings(monkeypatch)
+    monkeypatch.setattr("src.utils.auth_resolution.load_auth_config", lambda *args, **kwargs: None)
 
     first = auth.get_auth_context(api_token="override")  # noqa: S106
     second = auth.get_auth_context()

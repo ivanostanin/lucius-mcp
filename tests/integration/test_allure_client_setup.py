@@ -15,31 +15,21 @@ from src.client import AllureClient
 )
 async def test_client_from_env_success() -> None:
     """Test that client can be initialized from environment variables."""
-    # We need to reload settings if we want to test the actual pydantic-settings behavior
-    # or just trust AllureClient.from_env uses the global settings object.
-    # Since settings are already initialized, we might need to mock them or reload.
-    from src.utils.config import Settings
-
-    with patch.dict(os.environ, {"ALLURE_ENDPOINT": "https://env.allure.com", "ALLURE_API_TOKEN": "env-token"}):
-        # Create a fresh settings instance for the test
-        test_settings = Settings()
-        with patch("src.client.client.settings", test_settings):
-            client = AllureClient.from_env()
-            assert client._base_url == "https://env.allure.com"
-            assert client._token.get_secret_value() == "env-token"
+    with (
+        patch.dict(os.environ, {"ALLURE_ENDPOINT": "https://env.allure.com", "ALLURE_API_TOKEN": "env-token"}),
+        patch("src.utils.auth_resolution.load_auth_config", return_value=None),
+    ):
+        client = AllureClient.from_env()
+        assert client._base_url == "https://env.allure.com"
+        assert client._token.get_secret_value() == "env-token"
 
 
 @pytest.mark.asyncio
 async def test_client_from_env_missing() -> None:
     """Test from_env raises KeyError when variables are missing."""
-    from src.utils.config import Settings
-
-    # We clear environment AND ensure Settings doesn't find the token
-    with patch.dict(os.environ, {}, clear=True):
-        test_settings = Settings(ALLURE_API_TOKEN=None)
-        with patch("src.client.client.settings", test_settings):
-            with pytest.raises(KeyError, match="ALLURE_API_TOKEN is not set"):
-                AllureClient.from_env()
+    with patch.dict(os.environ, {}, clear=True), patch("src.utils.auth_resolution.load_auth_config", return_value=None):
+        with pytest.raises(KeyError, match="ALLURE_API_TOKEN is not set"):
+            AllureClient.from_env()
 
 
 @pytest.mark.asyncio

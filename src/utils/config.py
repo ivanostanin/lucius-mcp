@@ -59,3 +59,8 @@ class TelemetryConfig:
 
 settings = Settings()
 telemetry_config = TelemetryConfig()
+
+
+def get_current_settings() -> Settings:
+    """Read current settings from the live environment and configured `.env` sources."""
+    return Settings()

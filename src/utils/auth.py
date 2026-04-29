@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from pydantic import SecretStr
 
-from src.utils.config import settings
+from src.utils.auth_resolution import resolve_auth_settings
 from src.utils.error import AuthenticationError
 
 
@@ -27,21 +27,24 @@ class AuthContext:
 
     @classmethod
     def from_environment(cls) -> AuthContext:
-        """Create context from environment variables.
+        """Create context from resolved non-runtime auth configuration.
 
-        Environment Variables:
-            ALLURE_API_TOKEN: Required API authentication token.
-            ALLURE_PROJECT_ID: Optional default project ID.
+        Resolution order:
+            environment variables -> saved CLI auth config -> defaults
 
         Raises:
             AuthenticationError: If ALLURE_API_TOKEN is not set.
         """
-        if not settings.ALLURE_API_TOKEN:
+        resolved = resolve_auth_settings(include_endpoint=False)
+        if not resolved.api_token:
             raise AuthenticationError(
                 "No API token configured. Set ALLURE_API_TOKEN environment variable or provide api_token argument."
             )
 
-        return cls(api_token=settings.ALLURE_API_TOKEN, project_id=settings.ALLURE_PROJECT_ID)
+        return cls(
+            api_token=resolved.api_token,
+            project_id=resolved.project_id,
+        )
 
     def with_overrides(
         self,
@@ -73,8 +76,10 @@ def get_auth_context(
     """Get authentication context with optional runtime overrides.
 
     Resolution order:
-    1. Runtime arguments (highest priority)
-    2. Environment variables (fallback)
+    1. Runtime arguments
+    2. Environment variables
+    3. Saved CLI auth config
+    4. Defaults
 
     This function is stateless - each call creates a fresh context.
     Overrides from one call do NOT affect subsequent calls.
@@ -89,18 +94,19 @@ def get_auth_context(
     Raises:
         AuthenticationError: If no token available from any source.
     """
-    try:
-        base_context = AuthContext.from_environment()
-    except AuthenticationError:
-        if not api_token:
-            raise AuthenticationError(
-                "Authentication required. Either:\n"
-                "1. Set ALLURE_API_TOKEN environment variable, or\n"
-                "2. Provide api_token argument to this tool"
-            ) from None
-        base_context = AuthContext(api_token=SecretStr(api_token), project_id=project_id)
+    resolved = resolve_auth_settings(
+        api_token=api_token,
+        project_id=project_id,
+        include_endpoint=False,
+    )
+    if not resolved.api_token:
+        raise AuthenticationError(
+            "Authentication required. Either:\n"
+            "1. Set ALLURE_API_TOKEN environment variable, or\n"
+            "2. Provide api_token argument to this tool"
+        ) from None
 
-    if api_token or project_id is not None:
-        return base_context.with_overrides(api_token=api_token, project_id=project_id)
-
-    return base_context
+    return AuthContext(
+        api_token=resolved.api_token,
+        project_id=resolved.project_id,
+    )

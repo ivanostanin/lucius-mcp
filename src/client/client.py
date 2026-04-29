@@ -15,7 +15,7 @@ from typing import Literal, TypeVar, cast, overload
 import httpx
 from pydantic import Field, SecretStr, ValidationError
 
-from src.utils.config import settings
+from src.utils.auth_resolution import resolve_auth_settings
 from src.utils.logger import get_logger
 
 from .exceptions import (
@@ -327,23 +327,19 @@ class AllureClient:
             KeyError: If required environment variables are missing.
             ValueError: If settings validation fails.
         """
-        if not settings.ALLURE_ENDPOINT:
+        resolved = resolve_auth_settings(project_id=project)
+
+        if not resolved.endpoint:
             raise KeyError("ALLURE_ENDPOINT is not set in environment or config")
-        if not settings.ALLURE_API_TOKEN:
+        if not resolved.api_token:
             raise KeyError("ALLURE_API_TOKEN is not set in environment or config")
-
-        if not isinstance(settings.ALLURE_PROJECT_ID, int) or settings.ALLURE_PROJECT_ID <= 0:
-            raise ValueError("ALLURE_PROJECT_ID must be a positive integer")
-
-        if project is not None:
-            p = project
-        else:
-            p = settings.ALLURE_PROJECT_ID
+        if not isinstance(resolved.project_id, int) or resolved.project_id <= 0:
+            raise ValueError("Project ID is required and must be positive")
 
         return cls(
-            base_url=settings.ALLURE_ENDPOINT,
-            token=settings.ALLURE_API_TOKEN,
-            project=p,
+            base_url=resolved.endpoint,
+            token=resolved.api_token,
+            project=resolved.project_id,
             timeout=timeout,
         )
 
@@ -500,6 +496,12 @@ class AllureClient:
             return page.content or []
         except Exception:
             return []
+
+    async def validate_project_access(self, project_id: int | None = None) -> None:
+        """Verify that the authenticated token can access the target project."""
+        target_project = project_id if project_id is not None else self._project
+        project_api = await self._get_api("_project_api", error_name="project_api")
+        await self._call_api(project_api.calculate_stats(id=target_project))
 
     async def __aenter__(self) -> AllureClient:
         """Initialize the client session within an async context.

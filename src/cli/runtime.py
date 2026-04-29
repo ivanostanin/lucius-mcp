@@ -16,7 +16,9 @@ def error_hint_from_exception(error: Exception) -> str:
     """Map low-level runtime errors to user-oriented CLI hints."""
     message = str(error).lower()
     if "not set in environment" in message or "api_token" in message:
-        return "Set required credentials (ALLURE_API_TOKEN and ALLURE_API_URL) before calling commands."
+        return (
+            "Set credentials with 'lucius auth' or with ALLURE_ENDPOINT and ALLURE_API_TOKEN before calling commands."
+        )
     if "401" in message or "403" in message or "unauthorized" in message:
         return "Verify API credentials and permissions for the target project."
     if "validationerror" in message or "field required" in message:

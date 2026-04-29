@@ -1,11 +1,10 @@
 import re
+from pathlib import Path
 
 import pytest
-from pydantic import SecretStr
 
 from src.client import AllureAuthError
 from src.tools.create_test_case import create_test_case
-from src.utils.config import settings
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 
@@ -35,8 +34,8 @@ async def test_runtime_token_overrides_environment(
     """Verify that environment token is used when no runtime override is provided."""
     real_token = api_token
 
-    # Set settings to use the real token
-    monkeypatch.setattr(settings, "ALLURE_API_TOKEN", SecretStr(real_token), raising=False)
+    # Set env to use the real token
+    monkeypatch.setenv("ALLURE_API_TOKEN", real_token)
 
     # Call without runtime override
     result = await create_test_case(
@@ -77,10 +76,10 @@ async def test_runtime_overrides_do_not_persist_across_calls(
         cleanup_tracker.track_test_case(int(match2.group(1)))
 
 
-async def test_clear_error_when_no_auth_configured(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_clear_error_when_no_auth_configured(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Verify clear error message when no env auth provided (AC#5)."""
-    # Remove configured token in settings
-    monkeypatch.setattr(settings, "ALLURE_API_TOKEN", None, raising=False)
+    monkeypatch.delenv("ALLURE_API_TOKEN", raising=False)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg-config"))
 
     with pytest.raises(KeyError, match="ALLURE_API_TOKEN is not set"):
         await create_test_case(project_id=1, name="Missing Token")
@@ -88,7 +87,7 @@ async def test_clear_error_when_no_auth_configured(monkeypatch: pytest.MonkeyPat
 
 async def test_invalid_runtime_token_fails_with_clear_error(monkeypatch: pytest.MonkeyPatch, project_id: int) -> None:
     """Verify that invalid env token produces clear auth error."""
-    monkeypatch.setattr(settings, "ALLURE_API_TOKEN", SecretStr("invalid"), raising=False)
+    monkeypatch.setenv("ALLURE_API_TOKEN", "invalid")
 
     with pytest.raises(AllureAuthError):
         await create_test_case(project_id=project_id, name="Invalid Token")

@@ -1,0 +1,70 @@
+"""Definitions for CLI-local commands that are not backed by MCP tools."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class LocalCommandOption:
+    """One CLI-local option token."""
+
+    token: str
+    value_name: str | None = None
+    description: str | None = None
+    target_field: str | None = None
+
+
+@dataclass(frozen=True)
+class LocalCommandSubcommand:
+    """One CLI-local subcommand token."""
+
+    token: str
+    description: str
+
+
+CLI_LOCAL_COMMANDS = ["auth"]
+AUTH_HELP_TOKENS = ("--help", "-h", "help")
+AUTH_CONFIGURE_OPTIONS = (
+    LocalCommandOption("--url", value_name="<url>", description="Allure TestOps base URL", target_field="url"),
+    LocalCommandOption("--token", value_name="<token>", description="Allure API token", target_field="token"),
+    LocalCommandOption(
+        "--project",
+        value_name="<id>",
+        description="Default Allure project ID (positive integer)",
+        target_field="project",
+    ),
+    LocalCommandOption("--help", description="Show auth command help"),
+    LocalCommandOption("-h", description="Show auth command help"),
+)
+AUTH_SUBCOMMAND_SPECS = (
+    LocalCommandSubcommand("status", "Show whether saved CLI auth is configured."),
+    LocalCommandSubcommand("clear", "Remove saved CLI auth configuration."),
+)
+
+AUTH_OPTIONS = [option.token for option in AUTH_CONFIGURE_OPTIONS]
+AUTH_VALUE_OPTIONS = {option.token: option for option in AUTH_CONFIGURE_OPTIONS if option.target_field is not None}
+AUTH_SUBCOMMANDS = [subcommand.token for subcommand in AUTH_SUBCOMMAND_SPECS]
+AUTH_SUBCOMMAND_BY_TOKEN = {subcommand.token: subcommand for subcommand in AUTH_SUBCOMMAND_SPECS}
+
+
+def auth_usage_lines() -> list[str]:
+    """Build help output for `lucius auth` from shared command metadata."""
+    option_lines = [
+        f"  {option.token} {option.value_name:<8} {option.description}"
+        if option.value_name is not None
+        else f"  {option.token:<19} {option.description}"
+        for option in AUTH_CONFIGURE_OPTIONS
+    ]
+    return [
+        "CLI auth stores Allure credentials for future Lucius CLI runs.\n",
+        "Usage:",
+        "  lucius auth",
+        "  lucius auth --url <url> --token <token> --project <id>",
+        *[f"  lucius auth {subcommand.token}" for subcommand in AUTH_SUBCOMMAND_SPECS],
+        "  lucius auth --help\n",
+        "Options:",
+        *option_lines,
+        "\nPrecedence for later tool execution:",
+        "  explicit tool args > environment variables > saved CLI auth config > defaults",
+    ]
