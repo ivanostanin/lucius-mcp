@@ -329,10 +329,10 @@ class AllureClient:
         """
         resolved = resolve_auth_settings(project_id=project)
 
-        if not resolved.endpoint:
-            raise KeyError("ALLURE_ENDPOINT is not set in environment or config")
         if not resolved.api_token:
             raise KeyError("ALLURE_API_TOKEN is not set in environment or config")
+        if not resolved.endpoint:
+            raise KeyError("ALLURE_ENDPOINT is not set in environment or config")
         if not isinstance(resolved.project_id, int) or resolved.project_id <= 0:
             raise ValueError("Project ID is required and must be positive")
 

@@ -1,6 +1,7 @@
 """Integration tests for AllureClient setup and environment configuration."""
 
 import os
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -29,6 +30,21 @@ async def test_client_from_env_missing() -> None:
     """Test from_env raises KeyError when variables are missing."""
     with patch.dict(os.environ, {}, clear=True), patch("src.utils.auth_resolution.load_auth_config", return_value=None):
         with pytest.raises(KeyError, match="ALLURE_API_TOKEN is not set"):
+            AllureClient.from_env()
+
+
+@pytest.mark.asyncio
+async def test_client_from_env_missing_endpoint_after_token() -> None:
+    """Test from_env raises endpoint error once token is configured."""
+    with (
+        patch.dict(os.environ, {"ALLURE_API_TOKEN": "env-token", "ALLURE_PROJECT_ID": "1"}, clear=True),
+        patch("src.utils.auth_resolution.load_auth_config", return_value=None),
+        patch(
+            "src.utils.auth_resolution.get_current_settings",
+            return_value=SimpleNamespace(ALLURE_ENDPOINT=None, ALLURE_API_TOKEN=None, ALLURE_PROJECT_ID=1),
+        ),
+    ):
+        with pytest.raises(KeyError, match="ALLURE_ENDPOINT is not set"):
             AllureClient.from_env()
 
 

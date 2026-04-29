@@ -855,6 +855,12 @@ class TestCLICompletionScripts:
             assert "auth" in rendered
             assert "status" in rendered
             assert "clear" in rendered
+        assert '--help -h --version -V help version auth list" -- "$cur"' in bash
+        assert "globals=(--help -h --version -V help version auth list)" in zsh
+        assert "--help -h --version -V help version auth list" in fish
+        assert '$globalTokens = @("--help", "-h", "--version", "-V", "help", "version", "auth", "list")' in powershell
+        assert "$entityToken -eq 'list'" in powershell
+        assert '$listOptions = @("--help", "-h")' in powershell
         for rendered in (bash, zsh, powershell):
             assert "--url" in rendered
             assert "--token" in rendered
