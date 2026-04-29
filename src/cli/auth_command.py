@@ -5,11 +5,18 @@ from __future__ import annotations
 import asyncio
 import getpass
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from pydantic import SecretStr
 
 from src.cli.auth_config import auth_config_path, clear_auth_config, load_auth_config, save_auth_config
+from src.cli.local_commands import (
+    AUTH_HELP_TOKENS,
+    AUTH_OPTIONS,
+    AUTH_SUBCOMMAND_BY_TOKEN,
+    AUTH_VALUE_OPTIONS,
+    auth_usage_lines,
+)
 from src.cli.models import CLIContext, CLIError
 from src.client.client import AllureClient
 from src.client.exceptions import AllureAPIError, AllureAuthError, AllureNotFoundError, AllureValidationError
@@ -26,28 +33,9 @@ class AuthCommandOptions:
     show_help: bool = False
 
 
-def _auth_usage_lines() -> list[str]:
-    return [
-        "CLI auth stores Allure credentials for future Lucius CLI runs.\n",
-        "Usage:",
-        "  lucius auth",
-        "  lucius auth --url <url> --token <token> --project <id>",
-        "  lucius auth status",
-        "  lucius auth clear",
-        "  lucius auth --help\n",
-        "Options:",
-        "  --url <url>        Allure TestOps base URL",
-        "  --token <token>    Allure API token",
-        "  --project <id>     Default Allure project ID (positive integer)",
-        "  --help, -h         Show auth command help\n",
-        "Precedence for later tool execution:",
-        "  explicit tool args > environment variables > saved CLI auth config > defaults",
-    ]
-
-
 def render_auth_help(console: Any) -> None:
     """Print help for the CLI-local auth command."""
-    for line in _auth_usage_lines():
+    for line in auth_usage_lines():
         console.print(line)
 
 
@@ -68,64 +56,58 @@ def _replace_auth_option(
     )
 
 
-def _parse_auth_status_options(argv: list[str]) -> AuthCommandOptions:
-    if len(argv) == 1:
-        return AuthCommandOptions(mode="status")
-    if len(argv) == 2 and argv[1] in {"--help", "-h", "help"}:
-        return AuthCommandOptions(mode="status", show_help=True)
-    raise CLIError(
-        f"Unknown option '{argv[1]}'",
-        hint="Supported auth status options: --help/-h",
-        exit_code=1,
-    )
+def _supported_auth_options_hint() -> str:
+    return f"Supported auth options: {', '.join(AUTH_OPTIONS)}"
 
 
-def _parse_auth_clear_options(argv: list[str]) -> AuthCommandOptions:
+def _parse_auth_subcommand(argv: list[str], *, mode: Literal["status", "clear"]) -> AuthCommandOptions:
     if len(argv) == 1:
-        return AuthCommandOptions(mode="clear")
-    if len(argv) == 2 and argv[1] in {"--help", "-h", "help"}:
-        return AuthCommandOptions(mode="clear", show_help=True)
+        return AuthCommandOptions(mode=mode)
+    if len(argv) == 2 and argv[1] in AUTH_HELP_TOKENS:
+        return AuthCommandOptions(mode=mode, show_help=True)
     raise CLIError(
         f"Unknown option '{argv[1]}'",
-        hint="Supported auth clear options: --help/-h",
+        hint="Supported auth subcommand options: --help/-h",
         exit_code=1,
     )
 
 
 def parse_auth_command_options(argv: list[str]) -> AuthCommandOptions:
     """Parse `lucius auth` arguments."""
-    if argv and argv[0] == "status":
-        return _parse_auth_status_options(argv)
-    if argv and argv[0] == "clear":
-        return _parse_auth_clear_options(argv)
+    if argv and argv[0] in AUTH_SUBCOMMAND_BY_TOKEN:
+        return _parse_auth_subcommand(argv, mode=cast(Literal["status", "clear"], argv[0]))
 
     options = AuthCommandOptions()
-    option_names = {"--url", "--token", "--project"}
     index = 0
     while index < len(argv):
         arg = argv[index]
-        if arg in {"--help", "-h", "help"}:
+        if arg in AUTH_HELP_TOKENS:
             options = _replace_auth_option(options, show_help=True)
             index += 1
             continue
-        if arg in option_names:
+        if arg in AUTH_VALUE_OPTIONS:
             if index + 1 >= len(argv):
                 raise CLIError(
                     f"Missing value for {arg}",
-                    hint="Supported auth options: --url, --token, --project",
+                    hint=_supported_auth_options_hint(),
                 )
             value = argv[index + 1]
-            if arg == "--url":
+            target_field = AUTH_VALUE_OPTIONS[arg].target_field
+            if target_field is None:
+                raise RuntimeError(f"Auth option '{arg}' is missing a target field")
+            if target_field == "url":
                 options = _replace_auth_option(options, url=value)
-            elif arg == "--token":
+            elif target_field == "token":
                 options = _replace_auth_option(options, token=value)
-            else:
+            elif target_field == "project":
                 options = _replace_auth_option(options, project=value)
+            else:
+                raise RuntimeError(f"Unsupported auth option target field: {target_field}")
             index += 2
             continue
         raise CLIError(
             f"Unknown option '{arg}'",
-            hint="Supported auth options: --url, --token, --project, --help/-h",
+            hint=f"{_supported_auth_options_hint()}, --help/-h",
             exit_code=1,
         )
     return options

@@ -2,13 +2,21 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
+import tempfile
 from collections.abc import Mapping
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 UV_PYTHON_VERSION = f"{sys.version_info.major}.{sys.version_info.minor}"
+
+
+def _subprocess_env(env: Mapping[str, str] | None = None) -> dict[str, str]:
+    resolved = dict(os.environ if env is None else env)
+    resolved.setdefault("UV_CACHE_DIR", tempfile.mkdtemp(prefix="lucius-uv-cache-"))
+    return resolved
 
 
 def run_cli(args: list[str], *, env: Mapping[str, str] | None = None) -> subprocess.CompletedProcess[str]:
@@ -18,7 +26,7 @@ def run_cli(args: list[str], *, env: Mapping[str, str] | None = None) -> subproc
         capture_output=True,
         text=True,
         cwd=PROJECT_ROOT,
-        env=dict(env) if env is not None else None,
+        env=_subprocess_env(env),
     )
 
 
@@ -29,7 +37,7 @@ def run_python_snippet(script: str, *, env: Mapping[str, str] | None = None) -> 
         capture_output=True,
         text=True,
         cwd=PROJECT_ROOT,
-        env=dict(env) if env is not None else None,
+        env=_subprocess_env(env),
     )
 
 
@@ -40,7 +48,7 @@ def run_uv_python_snippet(script: str, *, env: Mapping[str, str] | None = None) 
         capture_output=True,
         text=True,
         cwd=PROJECT_ROOT,
-        env=dict(env) if env is not None else None,
+        env=_subprocess_env(env),
     )
 
 
@@ -51,7 +59,7 @@ def run_uv_cli(args: list[str], *, env: Mapping[str, str] | None = None) -> subp
         capture_output=True,
         text=True,
         cwd=PROJECT_ROOT,
-        env=dict(env) if env is not None else None,
+        env=_subprocess_env(env),
     )
 
 

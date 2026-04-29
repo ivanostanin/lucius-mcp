@@ -15,7 +15,10 @@ from src.client import AllureClient
 )
 async def test_client_from_env_success() -> None:
     """Test that client can be initialized from environment variables."""
-    with patch.dict(os.environ, {"ALLURE_ENDPOINT": "https://env.allure.com", "ALLURE_API_TOKEN": "env-token"}):
+    with (
+        patch.dict(os.environ, {"ALLURE_ENDPOINT": "https://env.allure.com", "ALLURE_API_TOKEN": "env-token"}),
+        patch("src.utils.auth_resolution.load_auth_config", return_value=None),
+    ):
         client = AllureClient.from_env()
         assert client._base_url == "https://env.allure.com"
         assert client._token.get_secret_value() == "env-token"
@@ -24,7 +27,7 @@ async def test_client_from_env_success() -> None:
 @pytest.mark.asyncio
 async def test_client_from_env_missing() -> None:
     """Test from_env raises KeyError when variables are missing."""
-    with patch.dict(os.environ, {}, clear=True):
+    with patch.dict(os.environ, {}, clear=True), patch("src.utils.auth_resolution.load_auth_config", return_value=None):
         with pytest.raises(KeyError, match="ALLURE_API_TOKEN is not set"):
             AllureClient.from_env()
 

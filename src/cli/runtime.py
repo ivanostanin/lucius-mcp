@@ -5,11 +5,9 @@ Runtime helpers for CLI error handling and tool invocation.
 from __future__ import annotations
 
 import asyncio
-import os
 import typing
 from collections.abc import Coroutine
 
-from src.cli.auth_config import apply_saved_auth_environment
 from src.cli.models import CLIError
 from src.cli.tool_resolver import resolve_tool_function
 
@@ -57,8 +55,6 @@ async def call_tool_function(
         tool_loader = load_tool_function
     if error_hint_provider is None:
         error_hint_provider = error_hint_from_exception
-    explicit_tool_args = {name: value for name, value in args.items() if name in {"api_token", "project_id"}}
-    apply_saved_auth_environment(os.environ, explicit_tool_args=explicit_tool_args)
     tool_function = tool_loader(tool_name)
     try:
         return await tool_function(**args)

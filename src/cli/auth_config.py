@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -13,11 +13,16 @@ from pathlib import Path
 import platformdirs
 
 from src.cli.models import CLIError
+from src.utils.auth_constants import (
+    ALLURE_API_TOKEN_ENV,
+    ALLURE_ENDPOINT_ENV,
+    ALLURE_PROJECT_ID_ENV,
+)
 
 AUTH_CONFIG_FILENAME = "auth.json"
-AUTH_ENDPOINT_ENV = "ALLURE_ENDPOINT"
-AUTH_TOKEN_ENV = "ALLURE_API_TOKEN"  # noqa: S105
-AUTH_PROJECT_ENV = "ALLURE_PROJECT_ID"
+AUTH_ENDPOINT_ENV = ALLURE_ENDPOINT_ENV
+AUTH_TOKEN_ENV = ALLURE_API_TOKEN_ENV
+AUTH_PROJECT_ENV = ALLURE_PROJECT_ID_ENV
 
 
 @dataclass(frozen=True)
@@ -62,31 +67,80 @@ def _repair_hint(path: Path) -> str:
     return f"Repair or remove {path} and run 'lucius auth' again."
 
 
-def _is_missing_env_var(name: str, environ: MutableMapping[str, str]) -> bool:
-    return environ.get(name) is None
-
-
-def _has_explicit_tool_arg(explicit_tool_args: Mapping[str, object] | None, arg_name: str) -> bool:
-    return explicit_tool_args is not None and arg_name in explicit_tool_args
-
-
-def _load_existing_created_at(path: Path) -> str | None:
-    """Best-effort metadata recovery for rewrites over damaged configs."""
+def _read_auth_config_document(path: Path, *, strict: bool) -> Mapping[str, object] | None:
     if not path.exists():
         return None
 
     try:
         raw_data = json.loads(path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return None
+    except json.JSONDecodeError:
+        if not strict:
+            return None
+        raise CLIError(
+            "Saved CLI auth config is malformed JSON.",
+            hint=_repair_hint(path),
+            exit_code=1,
+        ) from None
+    except OSError as error:
+        if not strict:
+            return None
+        raise CLIError(
+            f"Failed to read saved CLI auth config: {error}",
+            hint=f"Check read permissions for {path}.",
+            exit_code=1,
+        ) from None
 
     if not isinstance(raw_data, dict):
-        return None
+        if not strict:
+            return None
+        raise CLIError(
+            "Saved CLI auth config must contain a JSON object.",
+            hint=_repair_hint(path),
+            exit_code=1,
+        )
+    return raw_data
 
+
+def _build_auth_config(raw_data: Mapping[str, object], *, path: Path) -> AuthConfig:
+    required_fields = {
+        "allure_endpoint",
+        "allure_api_token",
+        "allure_project_id",
+        "created_at",
+        "updated_at",
+    }
+    missing_fields = sorted(field for field in required_fields if field not in raw_data)
+    if missing_fields:
+        missing = ", ".join(missing_fields)
+        raise CLIError(
+            f"Saved CLI auth config is missing required fields: {missing}.",
+            hint=_repair_hint(path),
+            exit_code=1,
+        )
+
+    endpoint = _validate_config_value(raw_data["allure_endpoint"], field_name="allure_endpoint", path=path)
+    token = _validate_config_value(raw_data["allure_api_token"], field_name="allure_api_token", path=path)
+    created_at = _validate_config_value(raw_data["created_at"], field_name="created_at", path=path)
+    updated_at = _validate_config_value(raw_data["updated_at"], field_name="updated_at", path=path)
+    project_id = _parse_project_id(raw_data["allure_project_id"], path=path)
+
+    return AuthConfig(
+        allure_endpoint=endpoint.rstrip("/"),
+        allure_api_token=token,
+        allure_project_id=project_id,
+        created_at=created_at,
+        updated_at=updated_at,
+    )
+
+
+def _load_existing_created_at(path: Path) -> str | None:
+    """Best-effort metadata recovery for rewrites over damaged configs."""
+    raw_data = _read_auth_config_document(path, strict=False)
+    if raw_data is None:
+        return None
     created_at = raw_data.get("created_at")
     if not isinstance(created_at, str) or not created_at.strip():
         return None
-
     return created_at.strip()
 
 
@@ -113,60 +167,10 @@ def _validate_config_value(raw_value: object, *, field_name: str, path: Path) ->
 def load_auth_config(path: Path | None = None) -> AuthConfig | None:
     """Load and validate the saved CLI auth config."""
     resolved_path = path or auth_config_path()
-    if not resolved_path.exists():
+    raw_data = _read_auth_config_document(resolved_path, strict=True)
+    if raw_data is None:
         return None
-
-    try:
-        raw_data = json.loads(resolved_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        raise CLIError(
-            "Saved CLI auth config is malformed JSON.",
-            hint=_repair_hint(resolved_path),
-            exit_code=1,
-        ) from None
-    except OSError as error:
-        raise CLIError(
-            f"Failed to read saved CLI auth config: {error}",
-            hint=f"Check read permissions for {resolved_path}.",
-            exit_code=1,
-        ) from None
-
-    if not isinstance(raw_data, dict):
-        raise CLIError(
-            "Saved CLI auth config must contain a JSON object.",
-            hint=_repair_hint(resolved_path),
-            exit_code=1,
-        )
-
-    required_fields = {
-        "allure_endpoint",
-        "allure_api_token",
-        "allure_project_id",
-        "created_at",
-        "updated_at",
-    }
-    missing_fields = sorted(field for field in required_fields if field not in raw_data)
-    if missing_fields:
-        missing = ", ".join(missing_fields)
-        raise CLIError(
-            f"Saved CLI auth config is missing required fields: {missing}.",
-            hint=_repair_hint(resolved_path),
-            exit_code=1,
-        )
-
-    endpoint = _validate_config_value(raw_data["allure_endpoint"], field_name="allure_endpoint", path=resolved_path)
-    token = _validate_config_value(raw_data["allure_api_token"], field_name="allure_api_token", path=resolved_path)
-    created_at = _validate_config_value(raw_data["created_at"], field_name="created_at", path=resolved_path)
-    updated_at = _validate_config_value(raw_data["updated_at"], field_name="updated_at", path=resolved_path)
-    project_id = _parse_project_id(raw_data["allure_project_id"], path=resolved_path)
-
-    return AuthConfig(
-        allure_endpoint=endpoint.rstrip("/"),
-        allure_api_token=token,
-        allure_project_id=project_id,
-        created_at=created_at,
-        updated_at=updated_at,
-    )
+    return _build_auth_config(raw_data, path=resolved_path)
 
 
 def _ensure_directory_permissions(directory: Path) -> None:
@@ -277,38 +281,3 @@ def clear_auth_config(path: Path | None = None) -> bool:
         ) from None
 
     return True
-
-
-def apply_saved_auth_environment(
-    environ: MutableMapping[str, str] | None = None,
-    *,
-    explicit_tool_args: Mapping[str, object] | None = None,
-) -> AuthConfig | None:
-    """Inject saved auth only for values not already supplied by higher-precedence sources."""
-    resolved_environ = os.environ if environ is None else environ
-
-    update_endpoint = _is_missing_env_var(AUTH_ENDPOINT_ENV, resolved_environ)
-    update_token = _is_missing_env_var(AUTH_TOKEN_ENV, resolved_environ) and not _has_explicit_tool_arg(
-        explicit_tool_args,
-        "api_token",
-    )
-    update_project = _is_missing_env_var(AUTH_PROJECT_ENV, resolved_environ) and not _has_explicit_tool_arg(
-        explicit_tool_args,
-        "project_id",
-    )
-
-    if not any((update_endpoint, update_token, update_project)):
-        return None
-
-    config = load_auth_config()
-    if config is None:
-        return None
-
-    if update_endpoint:
-        resolved_environ[AUTH_ENDPOINT_ENV] = config.allure_endpoint
-    if update_token:
-        resolved_environ[AUTH_TOKEN_ENV] = config.allure_api_token
-    if update_project:
-        resolved_environ[AUTH_PROJECT_ENV] = str(config.allure_project_id)
-
-    return config

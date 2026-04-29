@@ -9,9 +9,11 @@ import os
 import sys
 from pathlib import Path
 from textwrap import dedent
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from pydantic import SecretStr
 
 from src.cli import cli_entry
 from src.cli.auth_command import _map_auth_validation_error, parse_auth_command_options
@@ -19,7 +21,6 @@ from src.cli.auth_config import (
     AUTH_ENDPOINT_ENV,
     AUTH_PROJECT_ENV,
     AUTH_TOKEN_ENV,
-    apply_saved_auth_environment,
     auth_config_path,
     clear_auth_config,
     load_auth_config,
@@ -30,6 +31,7 @@ from src.cli.models import CLIError
 from src.cli.route_matrix import CANONICAL_ROUTE_MATRIX
 from src.cli.schema_loader import load_tool_schemas
 from src.utils.auth import get_auth_context
+from src.utils.auth_resolution import resolve_auth_settings
 from tests.cli.subprocess_helpers import run_cli, run_uv_cli
 
 
@@ -70,6 +72,19 @@ def _write_saved_config(config_root: Path, *, url: str, token: str, project_id: 
         encoding="utf-8",
     )
     return config_path
+
+
+def _settings(
+    *,
+    endpoint: str = "https://default.testops.cloud",
+    api_token: SecretStr | None = None,
+    project_id: int | None = None,
+) -> SimpleNamespace:
+    return SimpleNamespace(
+        ALLURE_ENDPOINT=endpoint,
+        ALLURE_API_TOKEN=api_token,
+        ALLURE_PROJECT_ID=project_id,
+    )
 
 
 class TestCLIAuthConfig:
@@ -185,7 +200,7 @@ class TestCLIAuthConfig:
         assert persisted["allure_api_token"] == "old-token"
         assert persisted["allure_project_id"] == 1
 
-    def test_apply_saved_auth_environment_only_fills_missing(
+    def test_resolve_auth_settings_uses_saved_config_for_missing_values(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
@@ -199,24 +214,19 @@ class TestCLIAuthConfig:
             path=config_path,
             now="2026-04-29T10:00:00Z",
         )
-
-        import src.utils.config as config_module
-
-        monkeypatch.setattr(config_module.settings, AUTH_ENDPOINT_ENV, "https://demo.testops.cloud", raising=False)
-        monkeypatch.setattr(config_module.settings, AUTH_TOKEN_ENV, None, raising=False)
-        monkeypatch.setattr(config_module.settings, AUTH_PROJECT_ENV, None, raising=False)
+        monkeypatch.setattr(
+            "src.utils.auth_resolution.get_current_settings",
+            lambda: _settings(endpoint="https://demo.testops.cloud"),
+        )
 
         env = {AUTH_ENDPOINT_ENV: "https://env.testops.cloud"}
-        loaded = apply_saved_auth_environment(env)
-        assert loaded is not None
-        assert env[AUTH_ENDPOINT_ENV] == "https://env.testops.cloud"
-        assert env[AUTH_TOKEN_ENV] == "saved-token"
-        assert env[AUTH_PROJECT_ENV] == "77"
-        assert config_module.settings.ALLURE_ENDPOINT == "https://demo.testops.cloud"
-        assert config_module.settings.ALLURE_API_TOKEN is None
-        assert config_module.settings.ALLURE_PROJECT_ID is None
+        resolved = resolve_auth_settings(environ=env)
+        assert resolved.endpoint == "https://env.testops.cloud"
+        assert resolved.api_token is not None
+        assert resolved.api_token.get_secret_value() == "saved-token"
+        assert resolved.project_id == 77
 
-    def test_apply_saved_auth_environment_does_not_override_explicit_empty_env(
+    def test_resolve_auth_settings_does_not_override_explicit_empty_env(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
@@ -229,6 +239,10 @@ class TestCLIAuthConfig:
             project_id=77,
             path=config_path,
             now="2026-04-29T10:00:00Z",
+        )
+        monkeypatch.setattr(
+            "src.utils.auth_resolution.get_current_settings",
+            lambda: _settings(api_token=SecretStr("default-token"), project_id=5),
         )
 
         env = {
@@ -236,12 +250,12 @@ class TestCLIAuthConfig:
             AUTH_TOKEN_ENV: "",
             AUTH_PROJECT_ENV: "",
         }
-        apply_saved_auth_environment(env)
-        assert env[AUTH_ENDPOINT_ENV] == ""
-        assert env[AUTH_TOKEN_ENV] == ""
-        assert env[AUTH_PROJECT_ENV] == ""
+        resolved = resolve_auth_settings(environ=env)
+        assert resolved.endpoint == ""
+        assert resolved.api_token is None
+        assert resolved.project_id is None
 
-    def test_apply_saved_auth_environment_skips_load_when_env_already_has_precedence(
+    def test_resolve_auth_settings_skips_saved_config_load_when_env_has_precedence(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -250,22 +264,38 @@ class TestCLIAuthConfig:
             AUTH_TOKEN_ENV: "env-token",
             AUTH_PROJECT_ENV: "77",
         }
-        monkeypatch.setattr("src.cli.auth_config.load_auth_config", lambda *args, **kwargs: pytest.fail("unexpected"))
-        assert apply_saved_auth_environment(env) is None
+        monkeypatch.setattr(
+            "src.utils.auth_resolution.load_auth_config",
+            lambda *args, **kwargs: pytest.fail("unexpected"),
+        )
+        monkeypatch.setattr(
+            "src.utils.auth_resolution.get_current_settings",
+            lambda: _settings(),
+        )
+        resolved = resolve_auth_settings(environ=env)
+        assert resolved.endpoint == "https://env.testops.cloud"
+        assert resolved.api_token is not None
+        assert resolved.api_token.get_secret_value() == "env-token"
+        assert resolved.project_id == 77
 
-    def test_apply_saved_auth_environment_skips_load_for_explicit_tool_overrides(
+    def test_resolve_auth_settings_skips_saved_config_for_explicit_tool_overrides(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         env = {AUTH_ENDPOINT_ENV: "https://env.testops.cloud"}
-        monkeypatch.setattr("src.cli.auth_config.load_auth_config", lambda *args, **kwargs: pytest.fail("unexpected"))
-        assert (
-            apply_saved_auth_environment(
-                env,
-                explicit_tool_args={"api_token": "arg-token", "project_id": 77},
-            )
-            is None
+        monkeypatch.setattr(
+            "src.utils.auth_resolution.load_auth_config",
+            lambda *args, **kwargs: pytest.fail("unexpected"),
         )
+        monkeypatch.setattr(
+            "src.utils.auth_resolution.get_current_settings",
+            lambda: _settings(),
+        )
+        resolved = resolve_auth_settings(environ=env, api_token="arg-token", project_id=77)
+        assert resolved.endpoint == "https://env.testops.cloud"
+        assert resolved.api_token is not None
+        assert resolved.api_token.get_secret_value() == "arg-token"
+        assert resolved.project_id == 77
 
     def test_clear_auth_config_removes_existing_file(self, tmp_path: Path) -> None:
         config_path = _write_saved_config(
@@ -502,15 +532,19 @@ class TestCLIAuthCommandProcess:
             tmp_path,
             """
             import json
-            import os
             import src.cli.tool_resolver as tool_resolver
 
             async def _fake_tool(**kwargs):
+                from src.utils.auth import get_auth_context
+                from src.utils.auth_resolution import resolve_auth_settings
+
+                resolved = resolve_auth_settings()
+                context = get_auth_context()
                 return json.dumps(
                     {
-                        "endpoint": os.environ.get("ALLURE_ENDPOINT"),
-                        "token": os.environ.get("ALLURE_API_TOKEN"),
-                        "project": os.environ.get("ALLURE_PROJECT_ID"),
+                        "endpoint": resolved.endpoint,
+                        "token": context.api_token.get_secret_value(),
+                        "project": context.project_id,
                         "kwargs": kwargs,
                     }
                 )
@@ -530,7 +564,7 @@ class TestCLIAuthCommandProcess:
         payload = json.loads(result.stdout)
         assert payload["endpoint"] == "https://saved.testops.cloud"
         assert payload["token"] == "saved-token"
-        assert payload["project"] == "321"
+        assert payload["project"] == 321
 
     def test_process_real_env_vars_override_saved_config(self, tmp_path: Path) -> None:
         sitecustomize = _sitecustomize_dir(
@@ -645,16 +679,17 @@ class TestCLIAuthCommandProcess:
             tmp_path,
             """
             import json
-            import os
             import src.cli.tool_resolver as tool_resolver
 
             async def _fake_tool(**kwargs):
                 from src.utils.auth import get_auth_context
+                from src.utils.auth_resolution import resolve_auth_settings
 
+                resolved = resolve_auth_settings(api_token=kwargs.get("api_token"), project_id=kwargs.get("project_id"))
                 context = get_auth_context(api_token=kwargs.get("api_token"), project_id=kwargs.get("project_id"))
                 return json.dumps(
                     {
-                        "endpoint": os.environ.get("ALLURE_ENDPOINT"),
+                        "endpoint": resolved.endpoint,
                         "token": context.api_token.get_secret_value(),
                         "project": context.project_id,
                     }
@@ -766,15 +801,19 @@ class TestCLIAuthCommandProcess:
             tmp_path,
             """
             import json
-            import os
             import src.cli.tool_resolver as tool_resolver
 
             async def _fake_tool(**kwargs):
+                from src.utils.auth import get_auth_context
+                from src.utils.auth_resolution import resolve_auth_settings
+
+                resolved = resolve_auth_settings()
+                context = get_auth_context()
                 return json.dumps(
                     {
-                        "endpoint": os.environ.get("ALLURE_ENDPOINT"),
-                        "token": os.environ.get("ALLURE_API_TOKEN"),
-                        "project": os.environ.get("ALLURE_PROJECT_ID"),
+                        "endpoint": resolved.endpoint,
+                        "token": context.api_token.get_secret_value(),
+                        "project": context.project_id,
                     }
                 )
 
@@ -793,7 +832,7 @@ class TestCLIAuthCommandProcess:
         payload = json.loads(result.stdout)
         assert payload["endpoint"] == "https://saved.testops.cloud"
         assert payload["token"] == "saved-token"
-        assert payload["project"] == "321"
+        assert payload["project"] == 321
 
 
 class TestCLICompletionScripts:

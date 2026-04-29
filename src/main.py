@@ -3,7 +3,6 @@ import contextlib
 import os
 import typing
 
-import uvicorn
 from fastmcp import FastMCP
 from starlette.applications import Starlette
 from starlette.routing import Mount
@@ -105,6 +104,8 @@ def start() -> None:
         except KeyboardInterrupt:
             os._exit(0)
     elif settings.MCP_MODE == "http":
+        import uvicorn
+
         uvicorn.run("src.main:app", host=settings.HOST, port=settings.PORT, reload=True, ws="wsproto")
     else:
         raise ValueError(f"Invalid MCP mode: {settings.MCP_MODE}")

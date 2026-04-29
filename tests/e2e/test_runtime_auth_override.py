@@ -1,4 +1,5 @@
 import re
+from pathlib import Path
 
 import pytest
 
@@ -75,9 +76,10 @@ async def test_runtime_overrides_do_not_persist_across_calls(
         cleanup_tracker.track_test_case(int(match2.group(1)))
 
 
-async def test_clear_error_when_no_auth_configured(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_clear_error_when_no_auth_configured(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Verify clear error message when no env auth provided (AC#5)."""
     monkeypatch.delenv("ALLURE_API_TOKEN", raising=False)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg-config"))
 
     with pytest.raises(KeyError, match="ALLURE_API_TOKEN is not set"):
         await create_test_case(project_id=1, name="Missing Token")
