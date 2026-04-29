@@ -777,3 +777,38 @@ so that tool output is machine-friendly by default while CLI still supports huma
 **Then** every tool follows `plain|json` output contract with default `json`
 **And** CLI returns tool `plain`/`json` outputs without content changes
 **And** CLI applies output rendering transformations only for `table|csv`.
+
+### Story 9.7: CLI Auth Command with Persistent Configuration
+
+As a Developer or QA Engineer,
+I want `lucius auth` to prompt for my Allure TestOps URL, API token, and default project,
+so that subsequent CLI launches can reuse those credentials without requiring environment variables every time.
+
+**Acceptance Criteria:**
+
+**Given** I run `lucius auth`
+**When** no non-interactive values are supplied
+**Then** the CLI prompts for Allure TestOps base URL, API token, and project ID
+**And** token input is masked and never echoed.
+
+**Given** URL, token, and project ID are entered
+**When** the command validates the credentials
+**Then** it authenticates through the existing Allure client token exchange
+**And** it verifies the configured project is accessible before saving.
+
+**Given** validation succeeds
+**When** credentials are saved
+**Then** the config file is stored under the native user config directory using `platformdirs.user_config_path("lucius", appauthor=False, ensure_exists=True) / "auth.json"`
+**And** Linux/Unix, macOS, and Windows resolve to their OS-specific user config roots.
+
+**Given** a saved auth config exists
+**When** I run a subsequent CLI command
+**Then** the CLI uses saved URL, token, and project values when matching environment variables are absent
+**And** explicit tool args and real environment variables retain precedence over saved config.
+
+**Given** this story is implemented
+**When** help, docs, and tests are updated
+**Then** `lucius auth --help`, `lucius auth status`, CLI docs, setup docs, and cross-platform config tests cover the behavior
+**And** shell completion generation includes `auth` and auth-specific subcommands/options for bash, zsh, fish, and PowerShell
+**And** the raw token is never printed, logged, or shown in status output
+**And** source-invoked CLI E2E tests run the command via `uv run lucius ...` rather than a built binary.
