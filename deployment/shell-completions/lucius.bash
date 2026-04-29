@@ -16,7 +16,7 @@ _lucius_completion() {
 
     if [[ $COMP_CWORD -eq 2 ]]; then
         if [[ $entity == "auth" ]]; then
-            COMPREPLY=($(compgen -W "status --url --token --project --help -h" -- "$cur"))
+            COMPREPLY=($(compgen -W "status clear --url --token --project --help -h" -- "$cur"))
             return 0
         fi
         case "$entity" in
@@ -81,7 +81,7 @@ _lucius_completion() {
         if [[ ${COMP_WORDS[2]//-/_} == "status" ]]; then
             return 0
         fi
-        COMPREPLY=($(compgen -W "status --url --token --project --help -h" -- "$cur"))
+        COMPREPLY=($(compgen -W "status clear --url --token --project --help -h" -- "$cur"))
         return 0
     fi
 

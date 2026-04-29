@@ -3,5 +3,5 @@
 from __future__ import annotations
 
 CLI_LOCAL_COMMANDS = ["auth"]
-AUTH_SUBCOMMANDS = ["status"]
+AUTH_SUBCOMMANDS = ["status", "clear"]
 AUTH_OPTIONS = ["--url", "--token", "--project", "--help", "-h"]

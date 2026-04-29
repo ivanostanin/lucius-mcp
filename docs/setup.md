@@ -14,6 +14,7 @@ Example:
 ```bash
 lucius auth --url https://example.testops.cloud --token <your_api_token> --project 123
 lucius auth status
+lucius auth clear
 ```
 
 Saved CLI auth location:

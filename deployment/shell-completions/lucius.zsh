@@ -7,7 +7,7 @@ _lucius() {
     formats=(json table plain)
     options=(--args -a --format -f --help -h)
     authOptions=(--url --token --project --help -h)
-    authSubcommands=(status)
+    authSubcommands=(status clear)
     authTokens=($authSubcommands $authOptions)
 
     if (( CURRENT == 2 )); then

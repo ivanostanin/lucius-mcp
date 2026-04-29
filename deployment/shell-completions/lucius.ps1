@@ -8,7 +8,7 @@ Register-ArgumentCompleter -Native -CommandName lucius -ScriptBlock {
     $formats = @("json", "table", "plain")
     $options = @("--args", "-a", "--format", "-f", "--help", "-h")
     $authOptions = @("--url", "--token", "--project", "--help", "-h")
-    $authSubcommands = @("status")
+    $authSubcommands = @("status", "clear")
     $aliasToCanonical = @{
         "custom_field" = "custom_field"
         "custom_field_value" = "custom_field_value"

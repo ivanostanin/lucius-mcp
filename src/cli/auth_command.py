@@ -9,7 +9,7 @@ from typing import Any, Literal
 
 from pydantic import SecretStr
 
-from src.cli.auth_config import auth_config_path, load_auth_config, save_auth_config
+from src.cli.auth_config import auth_config_path, clear_auth_config, load_auth_config, save_auth_config
 from src.cli.models import CLIContext, CLIError
 from src.client.client import AllureClient
 from src.client.exceptions import AllureAPIError, AllureAuthError, AllureNotFoundError, AllureValidationError
@@ -19,7 +19,7 @@ from src.client.exceptions import AllureAPIError, AllureAuthError, AllureNotFoun
 class AuthCommandOptions:
     """Parsed auth command options."""
 
-    mode: Literal["configure", "status"] = "configure"
+    mode: Literal["configure", "status", "clear"] = "configure"
     url: str | None = None
     token: str | None = None
     project: str | None = None
@@ -33,6 +33,7 @@ def _auth_usage_lines() -> list[str]:
         "  lucius auth",
         "  lucius auth --url <url> --token <token> --project <id>",
         "  lucius auth status",
+        "  lucius auth clear",
         "  lucius auth --help\n",
         "Options:",
         "  --url <url>        Allure TestOps base URL",
@@ -79,10 +80,24 @@ def _parse_auth_status_options(argv: list[str]) -> AuthCommandOptions:
     )
 
 
+def _parse_auth_clear_options(argv: list[str]) -> AuthCommandOptions:
+    if len(argv) == 1:
+        return AuthCommandOptions(mode="clear")
+    if len(argv) == 2 and argv[1] in {"--help", "-h", "help"}:
+        return AuthCommandOptions(mode="clear", show_help=True)
+    raise CLIError(
+        f"Unknown option '{argv[1]}'",
+        hint="Supported auth clear options: --help/-h",
+        exit_code=1,
+    )
+
+
 def parse_auth_command_options(argv: list[str]) -> AuthCommandOptions:
     """Parse `lucius auth` arguments."""
     if argv and argv[0] == "status":
         return _parse_auth_status_options(argv)
+    if argv and argv[0] == "clear":
+        return _parse_auth_clear_options(argv)
 
     options = AuthCommandOptions()
     option_names = {"--url", "--token", "--project"}
@@ -241,6 +256,18 @@ def _render_auth_status(context: CLIContext) -> None:
     context.console_out.print("API token: configured")
 
 
+def _clear_auth(context: CLIContext) -> None:
+    path = auth_config_path()
+    removed = clear_auth_config(path)
+    if removed:
+        context.console_out.print("Cleared saved CLI auth configuration.")
+        context.console_out.print(f"Location: {path}")
+        return
+
+    context.console_out.print("CLI auth was already clear.")
+    context.console_out.print(f"Location: {path}")
+
+
 def handle_auth_command(argv: list[str], *, context: CLIContext) -> None:
     """Execute the CLI-local `lucius auth` command."""
     options = parse_auth_command_options(argv)
@@ -250,6 +277,9 @@ def handle_auth_command(argv: list[str], *, context: CLIContext) -> None:
 
     if options.mode == "status":
         _render_auth_status(context)
+        return
+    if options.mode == "clear":
+        _clear_auth(context)
         return
 
     raw_url = options.url.strip() if options.url is not None else ""

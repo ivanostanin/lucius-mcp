@@ -140,6 +140,7 @@ chmod +x lucius-linux-x86_64
 # Save reusable CLI auth
 ./lucius-linux-x86_64 auth --url https://example.testops.cloud --token <your_api_token> --project 123
 ./lucius-linux-x86_64 auth status
+./lucius-linux-x86_64 auth clear
 ```
 
 **CLI Features:**

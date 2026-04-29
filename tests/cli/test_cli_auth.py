@@ -21,6 +21,7 @@ from src.cli.auth_config import (
     AUTH_TOKEN_ENV,
     apply_saved_auth_environment,
     auth_config_path,
+    clear_auth_config,
     load_auth_config,
     save_auth_config,
 )
@@ -239,6 +240,19 @@ class TestCLIAuthConfig:
         assert env[AUTH_TOKEN_ENV] == ""
         assert env[AUTH_PROJECT_ENV] == ""
 
+    def test_clear_auth_config_removes_existing_file(self, tmp_path: Path) -> None:
+        config_path = _write_saved_config(
+            tmp_path,
+            url="https://example.testops.cloud",
+            token="clear-token",
+            project_id=123,
+        )
+        assert clear_auth_config(config_path) is True
+        assert not config_path.exists()
+
+    def test_clear_auth_config_returns_false_when_missing(self, tmp_path: Path) -> None:
+        assert clear_auth_config(tmp_path / "auth.json") is False
+
     def test_save_auth_config_surfaces_existing_config_errors(self, tmp_path: Path) -> None:
         config_path = tmp_path / "auth.json"
         config_path.write_text("{bad-json", encoding="utf-8")
@@ -264,6 +278,9 @@ class TestCLIAuthCommandUnit:
 
         status = parse_auth_command_options(["status"])
         assert status.mode == "status"
+
+        clear = parse_auth_command_options(["clear"])
+        assert clear.mode == "clear"
 
     def test_auth_help_and_status_do_not_import_fastmcp_or_src_main(self, capsys: pytest.CaptureFixture[str]) -> None:
         original_fastmcp = sys.modules.get("fastmcp")
@@ -311,6 +328,30 @@ class TestCLIAuthCommandUnit:
             project_id=42,
         )
         mock_save.assert_called_once()
+
+    def test_auth_clear_removes_saved_config_in_process(self) -> None:
+        with (
+            patch("src.cli.auth_command.clear_auth_config", return_value=True) as mock_clear,
+            patch("src.cli.auth_command.auth_config_path", return_value=Path("/tmp/auth.json")),
+            patch.object(cli_entry.console_out, "print") as mock_print,
+        ):
+            run_cli_in_process(["auth", "clear"])
+
+        mock_clear.assert_called_once_with(Path("/tmp/auth.json"))
+        printed = " ".join(str(call.args[0]) for call in mock_print.call_args_list)
+        assert "Cleared saved CLI auth configuration." in printed
+
+    def test_auth_clear_noop_in_process_when_missing(self) -> None:
+        with (
+            patch("src.cli.auth_command.clear_auth_config", return_value=False) as mock_clear,
+            patch("src.cli.auth_command.auth_config_path", return_value=Path("/tmp/auth.json")),
+            patch.object(cli_entry.console_out, "print") as mock_print,
+        ):
+            run_cli_in_process(["auth", "clear"])
+
+        mock_clear.assert_called_once_with(Path("/tmp/auth.json"))
+        printed = " ".join(str(call.args[0]) for call in mock_print.call_args_list)
+        assert "CLI auth was already clear." in printed
 
     def test_blank_non_interactive_values_prompt_for_missing_values(self) -> None:
         with (
@@ -404,6 +445,25 @@ class TestCLIAuthCommandProcess:
         assert result.returncode == 0
         assert "hidden-token" not in result.stdout
         assert "API token: configured" in result.stdout
+
+    def test_process_auth_clear_removes_saved_config(self, tmp_path: Path) -> None:
+        env = _subprocess_env(tmp_path)
+        config_path = _write_saved_config(
+            Path(env["XDG_CONFIG_HOME"]),
+            url="https://example.testops.cloud",
+            token="hidden-token",
+            project_id=123,
+        )
+        result = run_cli(["auth", "clear"], env=env)
+        assert result.returncode == 0
+        assert "Cleared saved CLI auth configuration." in result.stdout
+        assert not config_path.exists()
+
+    def test_process_auth_clear_is_idempotent_when_missing(self, tmp_path: Path) -> None:
+        env = _subprocess_env(tmp_path)
+        result = run_cli(["auth", "clear"], env=env)
+        assert result.returncode == 0
+        assert "CLI auth was already clear." in result.stdout
 
     def test_process_saved_config_fills_missing_env_before_tool_resolution(self, tmp_path: Path) -> None:
         sitecustomize = _sitecustomize_dir(
@@ -589,6 +649,14 @@ class TestCLIAuthCommandProcess:
         assert "CLI auth status: configured" in status.stdout
         assert "uv-secret-token" not in status.stdout
 
+        clear = run_uv_cli(["auth", "clear"], env=env)
+        assert clear.returncode == 0
+        assert "Cleared saved CLI auth configuration." in clear.stdout
+
+        status_after_clear = run_uv_cli(["auth", "status"], env=env)
+        assert status_after_clear.returncode == 0
+        assert "CLI auth status: not configured" in status_after_clear.stdout
+
     def test_uv_run_saved_config_fallback(self, tmp_path: Path) -> None:
         sitecustomize = _sitecustomize_dir(
             tmp_path,
@@ -643,6 +711,7 @@ class TestCLICompletionScripts:
         for rendered in (bash, zsh, fish, powershell):
             assert "auth" in rendered
             assert "status" in rendered
+            assert "clear" in rendered
         for rendered in (bash, zsh, powershell):
             assert "--url" in rendered
             assert "--token" in rendered

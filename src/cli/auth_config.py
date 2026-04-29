@@ -237,6 +237,24 @@ def save_auth_config(
     return resolved_path
 
 
+def clear_auth_config(path: Path | None = None) -> bool:
+    """Remove the saved CLI auth config if it exists."""
+    resolved_path = path or auth_config_path()
+    if not resolved_path.exists():
+        return False
+
+    try:
+        resolved_path.unlink()
+    except OSError as error:
+        raise CLIError(
+            f"Failed to remove saved CLI auth config: {error}",
+            hint=f"Check write permissions for {resolved_path} and try again.",
+            exit_code=1,
+        ) from None
+
+    return True
+
+
 def apply_saved_auth_environment(environ: MutableMapping[str, str] | None = None) -> AuthConfig | None:
     """Load saved auth config and inject it into missing environment variables."""
     resolved_environ = os.environ if environ is None else environ

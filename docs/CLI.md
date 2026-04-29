@@ -7,6 +7,7 @@ Lucius uses an entity/action grammar:
 ```bash
 lucius auth [--url <url>] [--token <token>] [--project <id>]
 lucius auth status
+lucius auth clear
 lucius <entity>
 lucius <entity> <action> --args '<json>' [--format json|table|plain|csv]
 lucius <entity> <action> --help
@@ -21,6 +22,7 @@ lucius <entity> <action> --help
 lucius auth
 lucius auth --url https://example.testops.cloud --token <your_api_token> --project 123
 lucius auth status
+lucius auth clear
 
 # Discover actions
 lucius test_case
@@ -58,6 +60,12 @@ Status:
 
 ```bash
 lucius auth status
+```
+
+Clear saved CLI auth:
+
+```bash
+lucius auth clear
 ```
 
 Stored config path:
