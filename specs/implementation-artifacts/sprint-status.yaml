@@ -134,4 +134,5 @@ development_status:
   9-7-cli-auth-command-persistent-configuration: done
   9-8-cli-list-command-tool-table: done
   9-9-cli-pretty-json-output-flag: done
+  9-10-cli-install-completions-command: ready-for-dev
   epic-9-retrospective: optional
