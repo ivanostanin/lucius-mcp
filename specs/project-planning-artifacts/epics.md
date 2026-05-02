@@ -850,3 +850,36 @@ so that I can explicitly list supported CLI capabilities without relying on an e
 **When** CLI tests execute
 **Then** they verify `lucius list` success, content parity with no-argument output, `lucius list --help`, shell completion exposure, legacy `call` rejection, and no Python tracebacks/internal logs
 **And** process-level CLI E2E coverage invokes `uv run lucius list ...` from source, not via a built binary.
+
+### Story 9.9: CLI Pretty JSON Output Flag
+
+As a Developer or QA Engineer,
+I want an optional `--pretty` flag for commands that assume JSON output,
+so that JSON responses are easy to read with line breaks and indentation while compact output remains the default.
+
+**Acceptance Criteria:**
+
+**Given** I run `lucius <entity> <action>` with `--pretty` and no explicit `--format`
+**When** the command executes successfully
+**Then** CLI still requests tool `output_format=json`
+**And** CLI renders the JSON result in pretty (multi-line indented) form.
+
+**Given** I run `lucius <entity> <action> --format json --pretty`
+**When** output is produced
+**Then** CLI renders pretty JSON deterministically
+**And** no traceback/internal logs are shown.
+
+**Given** I run commands without `--pretty`
+**When** outputs are rendered
+**Then** existing behavior remains unchanged for `json|plain|table|csv`.
+
+**Given** I pass `--pretty` with `--format plain`, `--format table`, or `--format csv`
+**When** argument validation runs
+**Then** CLI returns a clear guided error indicating `--pretty` is valid only for JSON output.
+
+**Given** help/docs/completions are updated for this feature
+**When** users inspect CLI help and shell completion
+**Then** action usage includes `--pretty`
+**And** docs clarify JSON-only applicability
+**And** generated bash/zsh/fish/PowerShell completion scripts include `--pretty` for action options
+**And** source-invoked CLI E2E tests validate `--pretty` behavior via `uv run lucius ...`.

@@ -62,7 +62,7 @@ def render_global_help(registry: dict[str, dict[str, ActionSpec]], console: typi
     console.print("  lucius list")
     console.print("  lucius list --help")
     console.print("  lucius <entity>")
-    console.print("  lucius <entity> <action> --args '<json>' [--format json|table|plain|csv]")
+    console.print("  lucius <entity> <action> --args '<json>' [--format json|table|plain|csv] [--pretty]")
     console.print("  lucius <entity> <action> --help\n")
 
     command_table = Table(title="CLI-Local Commands")
@@ -94,7 +94,7 @@ def render_entity_actions(entity: str, actions: dict[str, ActionSpec], console: 
 
     console.print(f"\nEntity: [bold cyan]{entity}[/bold cyan]\n")
     console.print("Usage:")
-    console.print(f"  lucius {entity} <action> --args '<json>' [--format json|table|plain|csv]")
+    console.print(f"  lucius {entity} <action> --args '<json>' [--format json|table|plain|csv] [--pretty]")
     console.print(f"  lucius {entity} <action> --help\n")
 
     table = Table(title=f"Actions for {entity}")
@@ -143,3 +143,6 @@ def render_action_help(spec: ActionSpec, console: typing.Any) -> None:
         example_cmd = f"lucius {spec.entity} {spec.action} --args '{{}}'"
     console.print("[yellow]Example:[/yellow]\n")
     console.print(Panel(example_cmd, title="Command"))
+    console.print("\n[yellow]Options:[/yellow]")
+    console.print("  --format json|table|plain|csv")
+    console.print("  --pretty  Pretty-print JSON output only")

@@ -12,11 +12,14 @@ from collections.abc import Coroutine
 from src.cli.formatting import (
     _structured_tool_payload,
     _tool_result_to_json_text,
+    format_json,
     render_output,
     select_tabular_payload,
 )
 from src.cli.help_output import render_action_help, render_entity_actions, render_global_help
 from src.cli.models import OUTPUT_FORMATS, CLIContext, CLIError, PreparedCommand
+
+PRETTY_JSON_HINT = "--pretty is valid only for action commands using JSON output: omit --format or use --format json."
 
 
 def parse_args_json(args_json: str) -> dict[str, typing.Any]:
@@ -57,6 +60,18 @@ def prepare_command(
     validate_args_against_schema: typing.Callable[[dict[str, typing.Any], str, dict[str, typing.Any]], None],
 ) -> PreparedCommand | None:
     """Resolve argv into a prepared action command or execute help/version flows."""
+    if "--pretty" in argv:
+        if (
+            len(argv) == 1
+            or argv[0] in {"--help", "-h", "help", "--version", "-V", "version"}
+            or (len(argv) >= 2 and argv[1] in {"--pretty", "--help", "-h", "help"})
+        ):
+            raise CLIError(
+                "Unsupported --pretty option",
+                hint=PRETTY_JSON_HINT,
+                exit_code=1,
+            )
+
     if not argv or argv[0] in {"--help", "-h", "help"}:
         registry = build_command_registry(load_tool_schemas())
         render_global_help(registry, context.console_out)
@@ -94,6 +109,13 @@ def prepare_command(
             exit_code=1,
         )
 
+    if options.pretty_json and options.output_format != "json":
+        raise CLIError(
+            f"--pretty cannot be used with --format {options.output_format}",
+            hint=PRETTY_JSON_HINT,
+            exit_code=1,
+        )
+
     if options.show_help:
         render_action_help(spec, context.console_out)
         return None
@@ -110,6 +132,35 @@ def prepare_command(
     )
 
 
+def _format_pretty_json_text(json_text: str, tool_name: str) -> str:
+    try:
+        parsed = json.loads(json_text)
+    except json.JSONDecodeError as error:
+        raise CLIError(
+            f"Tool '{tool_name}' returned invalid JSON for pretty JSON output: {error}",
+            hint="Use --pretty only when the selected action returns valid JSON text.",
+            exit_code=2,
+        ) from None
+    return format_json(parsed)
+
+
+def _render_json_result(result: typing.Any, *, pretty_json: bool, tool_name: str, console_out: typing.Any) -> None:
+    if isinstance(result, str):
+        console_out.print(_format_pretty_json_text(result, tool_name) if pretty_json else result, end="")
+        return
+
+    json_text = _tool_result_to_json_text(result)
+    if json_text is not None:
+        console_out.print(_format_pretty_json_text(json_text, tool_name) if pretty_json else json_text, end="")
+        return
+
+    raise CLIError(
+        f"Tool '{tool_name}' returned non-JSON output for 'json' mode",
+        hint="Tool output contract requires json mode to return structured content or JSON text.",
+        exit_code=2,
+    )
+
+
 def render_tool_result(
     prepared: PreparedCommand,
     result: typing.Any,
@@ -118,6 +169,7 @@ def render_tool_result(
 ) -> None:
     """Render the invoked tool result according to the requested CLI output mode."""
     output_format = prepared.options.output_format
+    pretty_json = prepared.options.pretty_json
     tool_name = prepared.spec.tool_name
 
     if output_format == "plain":
@@ -131,18 +183,8 @@ def render_tool_result(
         )
 
     if output_format == "json":
-        if isinstance(result, str):
-            console_out.print(result, end="")
-            return
-        json_text = _tool_result_to_json_text(result)
-        if json_text is not None:
-            console_out.print(json_text, end="")
-            return
-        raise CLIError(
-            f"Tool '{tool_name}' returned non-JSON output for 'json' mode",
-            hint="Tool output contract requires json mode to return structured content or JSON text.",
-            exit_code=2,
-        )
+        _render_json_result(result, pretty_json=pretty_json, tool_name=tool_name, console_out=console_out)
+        return
 
     if not isinstance(result, str):
         parsed = _structured_tool_payload(result)

@@ -14,7 +14,7 @@ from src.cli.models import CLIError
 
 def format_json(data: typing.Any) -> str:
     """Format data as JSON string."""
-    return json.dumps(data, default=str, indent=2)
+    return json.dumps(data, ensure_ascii=False, default=str, indent=2)
 
 
 def _is_tool_schema_map(data: typing.Any) -> bool:

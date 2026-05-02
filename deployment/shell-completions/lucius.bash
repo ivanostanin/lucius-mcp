@@ -87,14 +87,14 @@ _lucius_completion() {
 
     case "$prev" in
         --format|-f)
-            COMPREPLY=($(compgen -W "json table plain" -- "$cur"))
+            COMPREPLY=($(compgen -W "json table plain csv" -- "$cur"))
             return 0
             ;;
         --args|-a)
             return 0
             ;;
         *)
-            COMPREPLY=($(compgen -W "--args -a --format -f --help -h" -- "$cur"))
+            COMPREPLY=($(compgen -W "--args -a --format -f --pretty --help -h" -- "$cur"))
             return 0
             ;;
     esac

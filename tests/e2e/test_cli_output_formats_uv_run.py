@@ -19,6 +19,31 @@ def test_e2e_uv_run_cli_default_json() -> None:
     assert result.stdout.strip() == '{"ok":true,"count":2}'
 
 
+def test_e2e_uv_run_cli_default_json_pretty() -> None:
+    """With --pretty and no --format, CLI still requests json and pretty-prints stdout."""
+    result = run_cli_with_mocked_result_via_uv(
+        ["test_case", "list", "--args", "{}", "--pretty"],
+        "list_test_cases",
+        '{"ok":true,"count":2}',
+        expected_tool_output_format="json",
+    )
+    assert result.returncode == 0
+    assert result.stdout.strip() == '{\n  "ok": true,\n  "count": 2\n}'
+
+
+def test_e2e_uv_run_cli_explicit_json_pretty() -> None:
+    """With --format json --pretty, CLI requests json and re-renders only JSON formatting."""
+    result = run_cli_with_mocked_result_via_uv(
+        ["test_case", "list", "--args", "{}", "--format", "json", "--pretty"],
+        "list_test_cases",
+        '{"items":[{"id":1,"name":"Alpha"}],"total":1}',
+        expected_tool_output_format="json",
+    )
+    assert result.returncode == 0
+    assert '"items": [' in result.stdout
+    assert '      "name": "Alpha"' in result.stdout
+
+
 def test_e2e_uv_run_cli_plain() -> None:
     """With --format plain, CLI explicitly requests plain from the tool."""
     result = run_cli_with_mocked_result_via_uv(

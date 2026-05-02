@@ -4,8 +4,8 @@ _lucius() {
     local -a entities globals formats options authOptions authSubcommands authTokens
     entities=(custom-field custom-field-value custom-field-values custom-fields custom_field custom_field_value custom_field_values custom_fields defect defect-matcher defect-matchers defect_matcher defect_matchers defects integration integrations launch launches shared-step shared-steps shared_step shared_steps test-case test-cases test-layer test-layer-schema test-layer-schemas test-layers test-plan test-plans test-suite test-suites test_case test_cases test_layer test_layer_schema test_layer_schemas test_layers test_plan test_plans test_suite test_suites)
     globals=(--help -h --version -V help version auth list)
-    formats=(json table plain)
-    options=(--args -a --format -f --help -h)
+    formats=(json table plain csv)
+    options=(--args -a --format -f --pretty --help -h)
     authOptions=(--url --token --project --help -h)
     authSubcommands=(status clear)
     authTokens=($authSubcommands $authOptions)

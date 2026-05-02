@@ -10,6 +10,8 @@ from src.cli.models import ActionOptions, CLIError
 from src.cli.schema_validation import SchemaValidationError
 from src.cli.schema_validation import validate_args_against_schema as validate_schema_args
 
+PRETTY_OPTION = "--pretty"
+
 
 def parse_action_options(argv: list[str]) -> ActionOptions:
     """Parse options after <entity> <action>."""
@@ -33,9 +35,13 @@ def parse_action_options(argv: list[str]) -> ActionOptions:
             options.output_format = argv[index + 1]
             index += 2
             continue
+        if token == PRETTY_OPTION:
+            options.pretty_json = True
+            index += 1
+            continue
         raise CLIError(
             f"Unknown option '{token}'",
-            hint="Supported options: --args/-a, --format/-f, --help/-h",
+            hint="Supported options: --args/-a, --format/-f, --pretty, --help/-h",
         )
     return options
 
