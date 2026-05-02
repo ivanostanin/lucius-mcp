@@ -1,6 +1,6 @@
 # Story 9.9: CLI Pretty JSON Output Flag
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -85,6 +85,11 @@ so that I can read structured responses with line breaks and indentation while p
   - [x] 5.2 Extend `tests/cli/test_e2e_mocked.py` for argument parsing and mocked action-output pretty rendering.
   - [x] 5.3 Extend `tests/e2e/test_cli_output_formats_uv_run.py` for uv-run pretty JSON checks.
   - [x] 5.4 Extend `tests/cli/test_cli_coverage_helpers.py` for option parser branches (`--pretty`) and error-path assertions.
+
+### Review Findings
+
+- [x] [Review][Patch] Pretty JSON escapes non-ASCII text beyond reformatting [src/cli/command_runner.py:144]
+- [x] [Review][Patch] Shell completions still omit supported `csv` format [deployment/scripts/generate_completions.py:25]
 
 ## Dev Notes
 

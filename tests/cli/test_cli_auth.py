@@ -863,7 +863,9 @@ class TestCLICompletionScripts:
         assert '$listOptions = @("--help", "-h")' in powershell
         for rendered in (bash, zsh, powershell):
             assert "--pretty" in rendered
+            assert "csv" in rendered
         assert "-l pretty" in fish
+        assert "json table plain csv" in fish
         for rendered in (bash, zsh, powershell):
             assert "--url" in rendered
             assert "--token" in rendered

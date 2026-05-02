@@ -187,6 +187,16 @@ class TestE2ERouting:
         mock_print.assert_called_once_with(expected, end="")
         mock_format.assert_not_called()
 
+    def test_run_cli_pretty_json_preserves_non_ascii_text(self) -> None:
+        with (
+            patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value='{"name":"José"}')) as mock_call,
+            patch.object(cli_entry.console_out, "print") as mock_print,
+        ):
+            run_cli(["test_case", "list", "--args", "{}", "--pretty"])
+
+        mock_call.assert_awaited_once_with("list_test_cases", {"output_format": "json"})
+        mock_print.assert_called_once_with('{\n  "name": "José"\n}', end="")
+
     def test_run_cli_pretty_json_rejects_invalid_tool_json(self) -> None:
         with patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value="not-json")):
             with pytest.raises(CLIError) as exc_info:

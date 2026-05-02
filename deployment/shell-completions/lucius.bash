@@ -87,7 +87,7 @@ _lucius_completion() {
 
     case "$prev" in
         --format|-f)
-            COMPREPLY=($(compgen -W "json table plain" -- "$cur"))
+            COMPREPLY=($(compgen -W "json table plain csv" -- "$cur"))
             return 0
             ;;
         --args|-a)

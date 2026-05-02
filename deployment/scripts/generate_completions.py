@@ -22,7 +22,7 @@ from src.cli.route_matrix import (  # noqa: E402
     normalize_token,
 )
 
-FORMATS = ["json", "table", "plain"]
+FORMATS = ["json", "table", "plain", "csv"]
 GLOBAL_TOKENS = ["--help", "-h", "--version", "-V", "help", "version", *CLI_LOCAL_COMMANDS]
 ACTION_OPTIONS = ["--args", "-a", "--format", "-f", "--pretty", "--help", "-h"]
 COMPLETION_DIR = PROJECT_ROOT / "deployment" / "shell-completions"
