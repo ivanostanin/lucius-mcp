@@ -1,6 +1,6 @@
 # Story 9.10: CLI Install Completions Command
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -70,53 +70,53 @@ so that standalone CLI users can enable tab completion without locating reposito
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Add CLI-local `install-completions` routing** (AC: 1, 2, 4, 7)
-  - [ ] 1.1 Handle `argv[0] == "install-completions"` in `src/cli/cli_entry.py` before entity resolution.
-  - [ ] 1.2 Support `lucius install-completions`, `lucius install-completions --help`, and aliases only if deliberately documented; do not add this command to `CANONICAL_ROUTE_MATRIX`.
-  - [ ] 1.3 Keep `call` rejected as legacy command style and keep entity/action behavior unchanged.
-  - [ ] 1.4 Add root help usage for `lucius install-completions [--shell <shell>] [--path <file>] [--force] [--print]`.
+- [x] **Task 1: Add CLI-local `install-completions` routing** (AC: 1, 2, 4, 7)
+  - [x] 1.1 Handle `argv[0] == "install-completions"` in `src/cli/cli_entry.py` before entity resolution.
+  - [x] 1.2 Support `lucius install-completions`, `lucius install-completions --help`, and aliases only if deliberately documented; do not add this command to `CANONICAL_ROUTE_MATRIX`.
+  - [x] 1.3 Keep `call` rejected as legacy command style and keep entity/action behavior unchanged.
+  - [x] 1.4 Add root help usage for `lucius install-completions [--shell <shell>] [--path <file>] [--force] [--print]`.
 
-- [ ] **Task 2: Centralize completion generation in importable CLI code** (AC: 3, 4)
-  - [ ] 2.1 Move reusable generation logic out of `deployment/scripts/generate_completions.py` into a runtime-safe module such as `src/cli/completions.py`.
-  - [ ] 2.2 Keep generation data derived from `src/cli/route_matrix.py` plus a CLI-local command registry, not from repository completion files.
-  - [ ] 2.3 Include local top-level commands in one place, at minimum `help`, `version`, `list` if implemented, `auth` if implemented, and `install-completions`.
-  - [ ] 2.4 Keep action options synchronized with current CLI behavior, including `--format json|table|plain|csv` and `--pretty` after Story 9.9 is implemented.
-  - [ ] 2.5 Update `deployment/scripts/generate_completions.py` to become a thin file-writer around the shared `src/cli/completions.py` API.
+- [x] **Task 2: Centralize completion generation in importable CLI code** (AC: 3, 4)
+  - [x] 2.1 Move reusable generation logic out of `deployment/scripts/generate_completions.py` into a runtime-safe module such as `src/cli/completions.py`.
+  - [x] 2.2 Keep generation data derived from `src/cli/route_matrix.py` plus a CLI-local command registry, not from repository completion files.
+  - [x] 2.3 Include local top-level commands in one place, at minimum `help`, `version`, `list` if implemented, `auth` if implemented, and `install-completions`.
+  - [x] 2.4 Keep action options synchronized with current CLI behavior, including `--format json|table|plain|csv` and `--pretty` after Story 9.9 is implemented.
+  - [x] 2.5 Update `deployment/scripts/generate_completions.py` to become a thin file-writer around the shared `src/cli/completions.py` API.
 
-- [ ] **Task 3: Implement embedded completion installation helpers** (AC: 1, 3, 5, 6)
-  - [ ] 3.1 Add a focused module such as `src/cli/completion_installer.py` for shell detection, path resolution, safe writes, and profile-hook updates.
-  - [ ] 3.2 Generate or retrieve completion text from embedded code in `src/cli/completions.py`; do not read `deployment/shell-completions/` at runtime.
-  - [ ] 3.3 Use `pathlib.Path`, UTF-8 writes, temp-file replace, and POSIX `0600` file permissions where supported.
-  - [ ] 3.4 Use guarded overwrite behavior: fail with a clean message if target exists and `--force` is not supplied.
-  - [ ] 3.5 Add marker-delimited shell startup/profile hook helpers only where needed; hooks must be idempotent.
+- [x] **Task 3: Implement embedded completion installation helpers** (AC: 1, 3, 5, 6)
+  - [x] 3.1 Add a focused module such as `src/cli/completion_installer.py` for shell detection, path resolution, safe writes, and profile-hook updates.
+  - [x] 3.2 Generate or retrieve completion text from embedded code in `src/cli/completions.py`; do not read `deployment/shell-completions/` at runtime.
+  - [x] 3.3 Use `pathlib.Path`, UTF-8 writes, temp-file replace, and POSIX `0600` file permissions where supported.
+  - [x] 3.4 Use guarded overwrite behavior: fail with a clean message if target exists and `--force` is not supplied.
+  - [x] 3.5 Add marker-delimited shell startup/profile hook helpers only where needed; hooks must be idempotent.
 
-- [ ] **Task 4: Implement shell detection and option parsing** (AC: 1, 2, 6)
-  - [ ] 4.1 Parse `--shell`, `--path`, `--force`, `--print`, `--help`, and `-h` with explicit unknown-option errors.
-  - [ ] 4.2 Detection order: explicit `--shell`; then environment hints such as `$SHELL`, PowerShell-specific environment variables, and platform defaults; then clean failure with a `--shell` hint.
-  - [ ] 4.3 Normalize path-like shell values by basename and extension stripping, e.g. `/bin/zsh` -> `zsh`, `powershell.exe` -> `powershell`.
-  - [ ] 4.4 Keep the command fast and offline; it must not import `src.tools`, `src.main`, FastMCP, Starlette, uvicorn, or generated API clients.
+- [x] **Task 4: Implement shell detection and option parsing** (AC: 1, 2, 6)
+  - [x] 4.1 Parse `--shell`, `--path`, `--force`, `--print`, `--help`, and `-h` with explicit unknown-option errors.
+  - [x] 4.2 Detection order: explicit `--shell`; then environment hints such as `$SHELL`, PowerShell-specific environment variables, and platform defaults; then clean failure with a `--shell` hint.
+  - [x] 4.3 Normalize path-like shell values by basename and extension stripping, e.g. `/bin/zsh` -> `zsh`, `powershell.exe` -> `powershell`.
+  - [x] 4.4 Keep the command fast and offline; it must not import `src.tools`, `src.main`, FastMCP, Starlette, uvicorn, or generated API clients.
 
-- [ ] **Task 5: Update generated completion scripts and build packaging** (AC: 3, 4)
-  - [ ] 5.1 Regenerate `deployment/shell-completions/lucius.bash`, `lucius.zsh`, `lucius.fish`, and `lucius.ps1`.
-  - [ ] 5.2 Ensure generated top-level completion includes `install-completions`.
-  - [ ] 5.3 Ensure command-specific options include `--shell`, `--path`, `--force`, `--print`, `--help`, and `-h` where the generator supports local-command option completion.
-  - [ ] 5.4 Verify Nuitka build scripts do not need external completion data files for runtime installation; if any data file approach is used, update both Unix and Windows build scripts and add packaging tests proving the files are bundled.
+- [x] **Task 5: Update generated completion scripts and build packaging** (AC: 3, 4)
+  - [x] 5.1 Regenerate `deployment/shell-completions/lucius.bash`, `lucius.zsh`, `lucius.fish`, and `lucius.ps1`.
+  - [x] 5.2 Ensure generated top-level completion includes `install-completions`.
+  - [x] 5.3 Ensure command-specific options include `--shell`, `--path`, `--force`, `--print`, `--help`, and `-h` where the generator supports local-command option completion.
+  - [x] 5.4 Verify Nuitka build scripts do not need external completion data files for runtime installation; if any data file approach is used, update both Unix and Windows build scripts and add packaging tests proving the files are bundled.
 
-- [ ] **Task 6: Update documentation** (AC: 1, 5, 6, 7)
-  - [ ] 6.1 Update `docs/CLI.md` with `lucius install-completions` usage, supported shells, default paths, `--shell`, `--path`, `--force`, and `--print`.
-  - [ ] 6.2 Update setup docs and README CLI sections to prefer the install command over manually sourcing repository files.
-  - [ ] 6.3 Document shell-specific post-install behavior, including when users must restart their shell or source a profile.
+- [x] **Task 6: Update documentation** (AC: 1, 5, 6, 7)
+  - [x] 6.1 Update `docs/CLI.md` with `lucius install-completions` usage, supported shells, default paths, `--shell`, `--path`, `--force`, and `--print`.
+  - [x] 6.2 Update setup docs and README CLI sections to prefer the install command over manually sourcing repository files.
+  - [x] 6.3 Document shell-specific post-install behavior, including when users must restart their shell or source a profile.
 
-- [ ] **Task 7: Add focused tests** (AC: 1-7)
-  - [ ] 7.1 Add unit tests for shell normalization and detection with monkeypatched environment and platform values.
-  - [ ] 7.2 Add unit tests for default per-shell paths and custom `--path`.
-  - [ ] 7.3 Add tests proving `--print` writes completion text to stdout and does not write files.
-  - [ ] 7.4 Add tests for existing-file behavior with and without `--force`.
-  - [ ] 7.5 Add tests for idempotent marker-delimited startup/profile hooks.
-  - [ ] 7.6 Add import-boundary tests proving `install-completions --help`, `--print`, and install path resolution do not import MCP/runtime/server modules.
-  - [ ] 7.7 Add completion-generation tests asserting `install-completions` and its options appear in bash, zsh, fish, and PowerShell scripts.
-  - [ ] 7.8 Add a packaging/binary-facing test or source-level simulation proving runtime installation does not depend on `deployment/shell-completions/` files.
-  - [ ] 7.9 Extend the shared `uv run lucius` CLI E2E suite with process tests for `install-completions --help`, `--print`, explicit `--shell`, and unsupported-shell failure paths.
+- [x] **Task 7: Add focused tests** (AC: 1-7)
+  - [x] 7.1 Add unit tests for shell normalization and detection with monkeypatched environment and platform values.
+  - [x] 7.2 Add unit tests for default per-shell paths and custom `--path`.
+  - [x] 7.3 Add tests proving `--print` writes completion text to stdout and does not write files.
+  - [x] 7.4 Add tests for existing-file behavior with and without `--force`.
+  - [x] 7.5 Add tests for idempotent marker-delimited startup/profile hooks.
+  - [x] 7.6 Add import-boundary tests proving `install-completions --help`, `--print`, and install path resolution do not import MCP/runtime/server modules.
+  - [x] 7.7 Add completion-generation tests asserting `install-completions` and its options appear in bash, zsh, fish, and PowerShell scripts.
+  - [x] 7.8 Add a packaging/binary-facing test or source-level simulation proving runtime installation does not depend on `deployment/shell-completions/` files.
+  - [x] 7.9 Extend the shared `uv run lucius` CLI E2E suite with process tests for `install-completions --help`, `--print`, explicit `--shell`, and unsupported-shell failure paths.
 
 ## Dev Notes
 
@@ -226,12 +226,41 @@ so that standalone CLI users can enable tab completion without locating reposito
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+GPT-5 Codex
 
 ### Debug Log References
 
 ### Completion Notes List
 
 Ultimate context engine analysis completed - comprehensive developer guide created.
+- Implemented `lucius install-completions` as a CLI-local setup command before entity/action routing.
+- Centralized completion generation in `src/cli/completions.py` and made `deployment/scripts/generate_completions.py` a thin artifact writer.
+- Added embedded runtime install helpers for shell detection, safe writes, print-only mode, custom paths, overwrite protection, and idempotent PowerShell profile hooks.
+- Updated generated bash, zsh, fish, and PowerShell completion artifacts to include `install-completions` and its options.
+- Updated CLI docs, setup docs, and README shell completion guidance.
+- Added focused CLI tests for command routing, option parsing, shell normalization/detection, default paths, safe overwrite behavior, print mode, no-wrap script output, profile hook idempotency, import boundaries, generated completion content, and `uv run lucius` flows.
+- Validation passed: `uv run --python 3.13 --extra dev pytest tests/cli -q`; `uv run --python 3.13 --extra dev ruff check src/cli deployment/scripts tests/cli`; `uv run --python 3.13 --extra dev mypy src/cli`; `uv run --python 3.13 python deployment/scripts/generate_completions.py`; `bash scripts/full-test-suite.sh` (489 unit/integration passed, 11 docs passed, 207 CLI passed, 113 E2E passed/1 skipped, 34 packaging passed); rebuilt standalone binary smoke check `dist/cli/lucius-0.8.3-macos-arm64 install-completions --shell bash --print`.
 
 ### File List
+
+- README.md
+- deployment/scripts/generate_completions.py
+- deployment/shell-completions/lucius.bash
+- deployment/shell-completions/lucius.fish
+- deployment/shell-completions/lucius.ps1
+- deployment/shell-completions/lucius.zsh
+- docs/CLI.md
+- docs/setup.md
+- specs/implementation-artifacts/9-10-cli-install-completions-command.md
+- specs/implementation-artifacts/sprint-status.yaml
+- src/cli/cli_entry.py
+- src/cli/completion_installer.py
+- src/cli/completions.py
+- src/cli/help_output.py
+- src/cli/local_commands.py
+- tests/cli/test_cli_auth.py
+- tests/cli/test_completion_installer.py
+
+### Change Log
+
+- 2026-05-02: Implemented CLI-local embedded completion installation command and regenerated completion artifacts.

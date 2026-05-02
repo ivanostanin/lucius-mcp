@@ -61,6 +61,7 @@ def render_global_help(registry: dict[str, dict[str, ActionSpec]], console: typi
     console.print("  lucius auth status")
     console.print("  lucius list")
     console.print("  lucius list --help")
+    console.print("  lucius install-completions [--shell <shell>] [--path <file>] [--force] [--print]")
     console.print("  lucius <entity>")
     console.print("  lucius <entity> <action> --args '<json>' [--format json|table|plain|csv] [--pretty]")
     console.print("  lucius <entity> <action> --help\n")
@@ -70,6 +71,7 @@ def render_global_help(registry: dict[str, dict[str, ActionSpec]], console: typi
     command_table.add_column("Description", style="green")
     command_table.add_row("auth", "Validate and save Allure CLI credentials for later runs.")
     command_table.add_row("list", "Print local static discovery metadata without credentials or network access.")
+    command_table.add_row("install-completions", "Install or print embedded shell completion scripts.")
     console.print(command_table)
 
     table = Table(title="Available Entities")

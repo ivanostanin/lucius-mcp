@@ -23,9 +23,10 @@ class LocalCommandSubcommand:
     description: str
 
 
-CLI_LOCAL_COMMANDS = ["auth", "list"]
+CLI_LOCAL_COMMANDS = ["auth", "list", "install-completions"]
 AUTH_HELP_TOKENS = ("--help", "-h", "help")
 LIST_HELP_TOKENS = ("--help", "-h", "help")
+INSTALL_COMPLETIONS_HELP_TOKENS = ("--help", "-h", "help")
 AUTH_CONFIGURE_OPTIONS = (
     LocalCommandOption("--url", value_name="<url>", description="Allure TestOps base URL", target_field="url"),
     LocalCommandOption("--token", value_name="<token>", description="Allure API token", target_field="token"),
@@ -47,6 +48,7 @@ AUTH_OPTIONS = [option.token for option in AUTH_CONFIGURE_OPTIONS]
 AUTH_VALUE_OPTIONS = {option.token: option for option in AUTH_CONFIGURE_OPTIONS if option.target_field is not None}
 AUTH_SUBCOMMANDS = [subcommand.token for subcommand in AUTH_SUBCOMMAND_SPECS]
 AUTH_SUBCOMMAND_BY_TOKEN = {subcommand.token: subcommand for subcommand in AUTH_SUBCOMMAND_SPECS}
+INSTALL_COMPLETIONS_OPTIONS = ["--shell", "--path", "--force", "--print", "--help", "-h"]
 
 
 def auth_usage_lines() -> list[str]:
@@ -84,4 +86,25 @@ def list_usage_lines() -> list[str]:
         "\nNotes:",
         "  - Prints local static discovery metadata only.",
         "  - Does not require --args, saved credentials, or network access.",
+    ]
+
+
+def install_completions_usage_lines() -> list[str]:
+    """Build help output for `lucius install-completions`."""
+    return [
+        "Install or print embedded Lucius shell completion scripts.\n",
+        "Usage:",
+        "  lucius install-completions [--shell <shell>] [--path <file>] [--force] [--print]",
+        "  lucius install-completions --help\n",
+        "Options:",
+        "  --shell <shell>     Target shell: bash, zsh, fish, or powershell",
+        "  --path <file>       Write completion script to a custom file",
+        "  --force             Overwrite an existing completion file",
+        "  --print             Print selected completion script to stdout without writing files",
+        "  --help              Show install-completions help",
+        "  -h                  Show install-completions help",
+        "\nExamples:",
+        "  lucius install-completions --shell zsh",
+        "  lucius install-completions --shell bash --print",
+        "  lucius install-completions --shell fish --path ~/.config/fish/completions/lucius.fish --force",
     ]

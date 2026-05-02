@@ -4,12 +4,14 @@ Register-ArgumentCompleter -Native -CommandName lucius -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
 
     $entities = @("custom-field", "custom-field-value", "custom-field-values", "custom-fields", "custom_field", "custom_field_value", "custom_field_values", "custom_fields", "defect", "defect-matcher", "defect-matchers", "defect_matcher", "defect_matchers", "defects", "integration", "integrations", "launch", "launches", "shared-step", "shared-steps", "shared_step", "shared_steps", "test-case", "test-cases", "test-layer", "test-layer-schema", "test-layer-schemas", "test-layers", "test-plan", "test-plans", "test-suite", "test-suites", "test_case", "test_cases", "test_layer", "test_layer_schema", "test_layer_schemas", "test_layers", "test_plan", "test_plans", "test_suite", "test_suites")
-    $globalTokens = @("--help", "-h", "--version", "-V", "help", "version", "auth", "list")
+    $globalTokens = @("--help", "-h", "--version", "-V", "help", "version", "auth", "list", "install-completions")
     $formats = @("json", "table", "plain", "csv")
     $options = @("--args", "-a", "--format", "-f", "--pretty", "--help", "-h")
     $authOptions = @("--url", "--token", "--project", "--help", "-h")
     $authSubcommands = @("status", "clear")
     $listOptions = @("--help", "-h")
+    $installOptions = @("--shell", "--path", "--force", "--print", "--help", "-h")
+    $shells = @("bash", "zsh", "fish", "powershell")
     $aliasToCanonical = @{
         "custom_field" = "custom_field"
         "custom_field_value" = "custom_field_value"
@@ -85,6 +87,23 @@ Register-ArgumentCompleter -Native -CommandName lucius -ScriptBlock {
             return
         }
         $listOptions |
+            Where-Object { $_ -like "$wordToComplete*" } |
+            ForEach-Object { [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) }
+        return
+    }
+
+    if ($commandAst.CommandElements[1].Value -eq 'install-completions') {
+        $lastToken = $commandAst.CommandElements[$commandAst.CommandElements.Count - 1].Value
+        if ($lastToken -eq '--shell') {
+            $shells |
+                Where-Object { $_ -like "$wordToComplete*" } |
+                ForEach-Object { [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) }
+            return
+        }
+        if ($lastToken -eq '--path') {
+            return
+        }
+        $installOptions |
             Where-Object { $_ -like "$wordToComplete*" } |
             ForEach-Object { [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) }
         return

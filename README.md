@@ -182,19 +182,27 @@ See [Telemetry & Privacy](docs/telemetry.md) for the full data dictionary and te
 
 ### Shell Completions
 
-Pre-generated shell completions are available in `deployment/shell-completions/`
-for bash, zsh, fish, and PowerShell. They are generated from the current
-entity/action route matrix plus CLI-local commands such as `auth`:
+Install embedded shell completions directly from the CLI:
 
 ```bash
-python3 deployment/scripts/generate_completions.py
+lucius install-completions
+lucius install-completions --shell bash
+lucius install-completions --shell zsh
+lucius install-completions --shell fish
+lucius install-completions --shell powershell
 ```
 
-Load one in your shell profile, for example:
+Use `--print` for package managers or dotfile-managed setups, and `--path <file>`
+with `--force` for custom install locations:
 
 ```bash
-source deployment/shell-completions/lucius.bash
+lucius install-completions --shell bash --print
+lucius install-completions --shell fish --path ~/.config/fish/completions/lucius.fish --force
 ```
+
+Pre-generated release artifacts are still available in `deployment/shell-completions/`
+and are generated from the current entity/action route matrix plus CLI-local commands
+such as `auth`, `list`, and `install-completions`.
 
 ## 📂 Documentation
 
