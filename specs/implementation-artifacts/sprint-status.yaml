@@ -133,4 +133,5 @@ development_status:
   9-6-unified-cli-output-formats-json-table-csv-plain: review
   9-7-cli-auth-command-persistent-configuration: done
   9-8-cli-list-command-tool-table: done
+  9-9-cli-pretty-json-output-flag: ready-for-dev
   epic-9-retrospective: optional
