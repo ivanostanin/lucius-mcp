@@ -94,7 +94,7 @@ _lucius_completion() {
             return 0
             ;;
         *)
-            COMPREPLY=($(compgen -W "--args -a --format -f --help -h" -- "$cur"))
+            COMPREPLY=($(compgen -W "--args -a --format -f --pretty --help -h" -- "$cur"))
             return 0
             ;;
     esac

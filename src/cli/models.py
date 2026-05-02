@@ -37,6 +37,7 @@ class ActionOptions:
 
     args_json: str = "{}"
     output_format: str = "json"
+    pretty_json: bool = False
     show_help: bool = False
 
 

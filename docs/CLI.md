@@ -11,7 +11,7 @@ lucius auth clear
 lucius list
 lucius list --help
 lucius <entity>
-lucius <entity> <action> --args '<json>' [--format json|table|plain|csv]
+lucius <entity> <action> --args '<json>' [--format json|table|plain|csv] [--pretty]
 lucius <entity> <action> --help
 ```
 
@@ -40,6 +40,7 @@ lucius launch close --help
 # Execute actions
 lucius test_case get --args '{"test_case_id": 1234}'
 lucius test_case create --args '{"name": "Smoke login"}'
+lucius test_case get --args '{"test_case_id": 1234}' --pretty
 lucius launch close --args '{"launch_id": 123}' --format table
 lucius defect list --args '{}' --format plain
 ```
@@ -125,15 +126,22 @@ shown by `lucius auth status`.
 - `--format table`
 - `--format plain`
 - `--format csv`
+- `--pretty` for JSON output only
 
 Examples:
 
 ```bash
 lucius test_case list --args '{}' --format json
+lucius test_case list --args '{}' --format json --pretty
+lucius test_case get --args '{"test_case_id": 1234}' --pretty
 lucius test_case list --args '{}' --format table
 lucius test_case list --args '{}' --format plain
 lucius test_case list --args '{}' --format csv
 ```
+
+`--pretty` re-renders valid JSON output with deterministic indentation. It can be
+used with the default JSON output or with `--format json`; it is rejected with
+`plain`, `table`, or `csv`.
 
 `plain` format normalizes escaped newline markers (`\n`) into rendered line breaks.
 

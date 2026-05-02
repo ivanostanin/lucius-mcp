@@ -148,6 +148,8 @@ class TestCLICoverageHelpers:
         assert options.show_help is True
         csv_options = parse_action_options(["--format", "csv"])
         assert csv_options.output_format == "csv"
+        pretty_options = parse_action_options(["--pretty"])
+        assert pretty_options.pretty_json is True
 
         with pytest.raises(CLIError):
             parse_action_options(["--args"])

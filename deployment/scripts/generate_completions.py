@@ -24,7 +24,7 @@ from src.cli.route_matrix import (  # noqa: E402
 
 FORMATS = ["json", "table", "plain"]
 GLOBAL_TOKENS = ["--help", "-h", "--version", "-V", "help", "version", *CLI_LOCAL_COMMANDS]
-ACTION_OPTIONS = ["--args", "-a", "--format", "-f", "--help", "-h"]
+ACTION_OPTIONS = ["--args", "-a", "--format", "-f", "--pretty", "--help", "-h"]
 COMPLETION_DIR = PROJECT_ROOT / "deployment" / "shell-completions"
 
 
@@ -305,6 +305,10 @@ def generate_fish_completion(
             (
                 f'complete -c lucius -n "__fish_seen_subcommand_from {all_actions}" '
                 f'-l format -s f -r -x -a "{" ".join(FORMATS)}" -d "Output format"'
+            ),
+            (
+                f'complete -c lucius -n "__fish_seen_subcommand_from {all_actions}" '
+                '-l pretty -d "Pretty-print JSON output"'
             ),
             (f'complete -c lucius -n "__fish_seen_subcommand_from {all_actions}" -l help -s h -d "Show action help"'),
             "",

@@ -158,6 +158,42 @@ class TestE2ERouting:
         mock_print.assert_called_once_with('{"ok":true}', end="")
         mock_format.assert_not_called()
 
+    def test_run_cli_pretty_json_uses_default_json_contract(self) -> None:
+        compact_json = '{"ok":true,"count":2}'
+        with (
+            patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value=compact_json)) as mock_call,
+            patch.object(cli_entry.console_out, "print") as mock_print,
+            patch("src.cli.command_runner.render_output") as mock_format,
+        ):
+            run_cli(["test_case", "list", "--args", "{}", "--pretty"])
+
+        mock_call.assert_awaited_once_with("list_test_cases", {"output_format": "json"})
+        mock_print.assert_called_once_with('{\n  "ok": true,\n  "count": 2\n}', end="")
+        mock_format.assert_not_called()
+
+    def test_run_cli_pretty_json_with_explicit_json_format(self) -> None:
+        expected = '{\n  "items": [\n    {\n      "id": 1,\n      "name": "Alpha"\n    }\n  ],\n  "total": 1\n}'
+        with (
+            patch(
+                "src.cli.cli_entry.call_tool_function",
+                new=AsyncMock(return_value='{"items":[{"id":1,"name":"Alpha"}],"total":1}'),
+            ) as mock_call,
+            patch.object(cli_entry.console_out, "print") as mock_print,
+            patch("src.cli.command_runner.render_output") as mock_format,
+        ):
+            run_cli(["test_case", "list", "--args", "{}", "--format", "json", "--pretty"])
+
+        mock_call.assert_awaited_once_with("list_test_cases", {"output_format": "json"})
+        mock_print.assert_called_once_with(expected, end="")
+        mock_format.assert_not_called()
+
+    def test_run_cli_pretty_json_rejects_invalid_tool_json(self) -> None:
+        with patch("src.cli.cli_entry.call_tool_function", new=AsyncMock(return_value="not-json")):
+            with pytest.raises(CLIError) as exc_info:
+                run_cli(["test_case", "list", "--args", "{}", "--pretty"])
+        assert "invalid json" in exc_info.value.message.lower()
+        assert "pretty" in (exc_info.value.hint or "").lower()
+
     def test_run_cli_json_serializes_structured_tool_result(self) -> None:
         class StructuredResult:
             def __init__(self) -> None:

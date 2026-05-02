@@ -1,6 +1,6 @@
 # Story 9.9: CLI Pretty JSON Output Flag
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -59,32 +59,32 @@ so that I can read structured responses with line breaks and indentation while p
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Extend CLI action option parsing for `--pretty`** (AC: 1, 2, 4, 5)
-  - [ ] 1.1 Add `pretty_json: bool = False` to `ActionOptions` in `src/cli/cli_entry.py`.
-  - [ ] 1.2 Extend `parse_action_options()` to recognize `--pretty`.
-  - [ ] 1.3 Update option validation and error hints so `--pretty` is accepted only for JSON action output.
+- [x] **Task 1: Extend CLI action option parsing for `--pretty`** (AC: 1, 2, 4, 5)
+  - [x] 1.1 Add `pretty_json: bool = False` to `ActionOptions` in `src/cli/cli_entry.py`.
+  - [x] 1.2 Extend `parse_action_options()` to recognize `--pretty`.
+  - [x] 1.3 Update option validation and error hints so `--pretty` is accepted only for JSON action output.
 
-- [ ] **Task 2: Implement pretty JSON rendering path** (AC: 1, 2, 3)
-  - [ ] 2.1 In action execution path, keep tool request contract unchanged (`output_format=json` for default/json/table/csv and `plain` only for plain).
-  - [ ] 2.2 When effective output mode is JSON and `--pretty` is enabled, parse tool JSON and re-render with stable indentation.
-  - [ ] 2.3 If tool JSON is invalid while pretty-print is requested, return actionable `CLIError` without traceback.
+- [x] **Task 2: Implement pretty JSON rendering path** (AC: 1, 2, 3)
+  - [x] 2.1 In action execution path, keep tool request contract unchanged (`output_format=json` for default/json/table/csv and `plain` only for plain).
+  - [x] 2.2 When effective output mode is JSON and `--pretty` is enabled, parse tool JSON and re-render with stable indentation.
+  - [x] 2.3 If tool JSON is invalid while pretty-print is requested, return actionable `CLIError` without traceback.
 
-- [ ] **Task 3: Preserve existing contracts and boundaries** (AC: 3)
-  - [ ] 3.1 Keep tool output contract unchanged in `src/tools/output_contract.py` (`plain|json`, default `plain`).
-  - [ ] 3.2 Keep `table|csv` rendering logic unchanged and CLI-local.
-  - [ ] 3.3 Avoid introducing FastMCP/runtime imports in help/discovery paths.
+- [x] **Task 3: Preserve existing contracts and boundaries** (AC: 3)
+  - [x] 3.1 Keep tool output contract unchanged in `src/tools/output_contract.py` (`plain|json`, default `plain`).
+  - [x] 3.2 Keep `table|csv` rendering logic unchanged and CLI-local.
+  - [x] 3.3 Avoid introducing FastMCP/runtime imports in help/discovery paths.
 
-- [ ] **Task 4: Update help text, docs, and completion generation** (AC: 6)
-  - [ ] 4.1 Update usage/help strings in `src/cli/cli_entry.py` to include `--pretty`.
-  - [ ] 4.2 Update `docs/CLI.md` with `--pretty` examples and JSON-only applicability.
-  - [ ] 4.3 Add `--pretty` to action option completions via `deployment/scripts/generate_completions.py`.
-  - [ ] 4.4 Regenerate completion artifacts under `deployment/shell-completions/`.
+- [x] **Task 4: Update help text, docs, and completion generation** (AC: 6)
+  - [x] 4.1 Update usage/help strings in `src/cli/cli_entry.py` to include `--pretty`.
+  - [x] 4.2 Update `docs/CLI.md` with `--pretty` examples and JSON-only applicability.
+  - [x] 4.3 Add `--pretty` to action option completions via `deployment/scripts/generate_completions.py`.
+  - [x] 4.4 Regenerate completion artifacts under `deployment/shell-completions/`.
 
-- [ ] **Task 5: Add/extend tests** (AC: 7)
-  - [ ] 5.1 Extend `tests/cli/test_cli_basics.py` for process-level pretty JSON behavior and invalid flag combinations.
-  - [ ] 5.2 Extend `tests/cli/test_e2e_mocked.py` for argument parsing and mocked action-output pretty rendering.
-  - [ ] 5.3 Extend `tests/e2e/test_cli_output_formats_uv_run.py` for uv-run pretty JSON checks.
-  - [ ] 5.4 Extend `tests/cli/test_cli_coverage_helpers.py` for option parser branches (`--pretty`) and error-path assertions.
+- [x] **Task 5: Add/extend tests** (AC: 7)
+  - [x] 5.1 Extend `tests/cli/test_cli_basics.py` for process-level pretty JSON behavior and invalid flag combinations.
+  - [x] 5.2 Extend `tests/cli/test_e2e_mocked.py` for argument parsing and mocked action-output pretty rendering.
+  - [x] 5.3 Extend `tests/e2e/test_cli_output_formats_uv_run.py` for uv-run pretty JSON checks.
+  - [x] 5.4 Extend `tests/cli/test_cli_coverage_helpers.py` for option parser branches (`--pretty`) and error-path assertions.
 
 ## Dev Notes
 
@@ -142,12 +142,46 @@ so that I can read structured responses with line breaks and indentation while p
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+GPT-5 Codex
 
 ### Debug Log References
+
+- `uv run --extra dev pytest tests/cli/test_cli_coverage_helpers.py::TestCLICoverageHelpers::test_parse_action_options_error_paths tests/cli/test_e2e_mocked.py::TestE2ERouting::test_run_cli_pretty_json_uses_default_json_contract tests/cli/test_cli_basics.py::test_process_cli_default_json_pretty_output tests/e2e/test_cli_output_formats_uv_run.py::test_e2e_uv_run_cli_default_json_pretty -q` (red phase: 4 expected failures)
+- `uv run --extra dev pytest tests/cli/test_cli_basics.py tests/cli/test_e2e_mocked.py tests/cli/test_cli_coverage_helpers.py tests/e2e/test_cli_output_formats_uv_run.py tests/cli/test_cli_auth.py::TestCLICompletionScripts::test_generated_completion_script_includes_auth_tokens -q` (100 passed)
+- `uv run --extra dev ruff check src/cli tests/cli tests/e2e/test_cli_output_formats_uv_run.py deployment/scripts/generate_completions.py` (passed)
+- `uv run --extra dev mypy src/cli` (passed)
+- `bash scripts/full-test-suite.sh` (sandbox run: local/unit/docs/CLI passed; external e2e failed with Allure token exchange `httpx.ConnectError`)
+- `bash scripts/full-test-suite.sh` (escalated rerun: passed; final packaging phase 34 passed)
 
 ### Completion Notes List
 
 Ultimate context engine analysis completed - comprehensive developer guide created.
+- Added `--pretty` CLI action option parsing via the current `src/cli/models.py` and `src/cli/option_parsing.py` split; story references to `cli_entry.py` were mapped to the current module boundaries.
+- Added JSON-only validation for `--pretty`, including guided errors for `plain`, `table`, `csv`, and non-action usage.
+- Implemented pretty JSON rendering as a CLI-local JSON branch that preserves the tool request contract and leaves non-pretty passthrough/table/csv behavior unchanged.
+- Updated help output, CLI docs, completion generation, and regenerated bash/zsh/fish/PowerShell completion artifacts.
+- Added mocked, process-level, and uv-run tests for default JSON pretty output, explicit JSON pretty output, invalid combinations, parser branches, no traceback error paths, and completion generation.
 
 ### File List
+
+- deployment/scripts/generate_completions.py
+- deployment/shell-completions/lucius.bash
+- deployment/shell-completions/lucius.fish
+- deployment/shell-completions/lucius.ps1
+- deployment/shell-completions/lucius.zsh
+- docs/CLI.md
+- specs/implementation-artifacts/9-9-cli-pretty-json-output-flag.md
+- specs/implementation-artifacts/sprint-status.yaml
+- src/cli/command_runner.py
+- src/cli/help_output.py
+- src/cli/models.py
+- src/cli/option_parsing.py
+- tests/cli/test_cli_auth.py
+- tests/cli/test_cli_basics.py
+- tests/cli/test_cli_coverage_helpers.py
+- tests/cli/test_e2e_mocked.py
+- tests/e2e/test_cli_output_formats_uv_run.py
+
+### Change Log
+
+- 2026-05-02: Implemented CLI `--pretty` JSON output flag and moved story to review.

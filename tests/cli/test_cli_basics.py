@@ -91,6 +91,7 @@ def test_cli_action_help():
     assert "Command:" in result.stdout
     assert "lucius test_case list" in result.stdout
     assert "Mapped tool:" in result.stdout
+    assert "--pretty" in result.stdout
 
 
 def test_cli_invalid_entity():
@@ -154,6 +155,51 @@ def test_process_cli_default_json_output_without_format_flag():
     )
     assert result.returncode == 0
     assert result.stdout.strip() == '{"ok":true,"count":2}'
+
+
+def test_process_cli_default_json_pretty_output():
+    """Process-level check: --pretty formats default JSON output."""
+    result = run_cli_with_mocked_result(
+        ["test_case", "list", "--args", "{}", "--pretty"],
+        '{"ok":true,"count":2}',
+    )
+    assert result.returncode == 0
+    assert result.stdout.strip() == '{\n  "ok": true,\n  "count": 2\n}'
+
+
+def test_process_cli_explicit_json_pretty_output():
+    """Process-level check: --format json --pretty formats JSON output."""
+    result = run_cli_with_mocked_result(
+        ["test_case", "list", "--args", "{}", "--format", "json", "--pretty"],
+        '{"items":[{"id":1,"name":"Alpha"}],"total":1}',
+    )
+    assert result.returncode == 0
+    assert '"items": [' in result.stdout
+    assert '      "name": "Alpha"' in result.stdout
+
+
+def test_process_cli_pretty_rejects_non_json_formats_without_traceback():
+    """Process-level check: --pretty is valid only for JSON output modes."""
+    for output_format in ("plain", "table", "csv"):
+        result = run_cli(["test_case", "list", "--args", "{}", "--format", output_format, "--pretty"])
+        assert result.returncode == 1
+        output = result.stderr.lower() + result.stdout.lower()
+        assert "--pretty" in output
+        assert "json output" in output
+        assert "traceback" not in output
+        assert "file " not in output
+
+
+def test_process_cli_pretty_rejected_for_non_action_flows_without_traceback():
+    """Process-level check: unsupported non-action --pretty usage is guided."""
+    for args in (["--pretty"], ["--help", "--pretty"], ["--version", "--pretty"], ["test_case", "--pretty"]):
+        result = run_cli(args)
+        assert result.returncode == 1
+        output = result.stderr.lower() + result.stdout.lower()
+        assert "--pretty" in output
+        assert "json output" in output
+        assert "traceback" not in output
+        assert "file " not in output
 
 
 def test_process_cli_csv_output_rendering():
