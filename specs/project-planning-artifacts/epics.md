@@ -883,3 +883,41 @@ so that JSON responses are easy to read with line breaks and indentation while c
 **And** docs clarify JSON-only applicability
 **And** generated bash/zsh/fish/PowerShell completion scripts include `--pretty` for action options
 **And** source-invoked CLI E2E tests validate `--pretty` behavior via `uv run lucius ...`.
+
+### Story 9.10: CLI Install Completions Command
+
+As a Developer or QA Engineer,
+I want `lucius install-completions` to detect my shell and install the matching completion script from the binary,
+so that standalone CLI users can enable tab completion without locating repository files or manually copying generated scripts.
+
+**Acceptance Criteria:**
+
+**Given** I run `lucius install-completions`
+**When** the shell can be detected from an explicit `--shell` option or the current process environment
+**Then** the CLI installs the matching completion script for bash, zsh, fish, or PowerShell
+**And** it reports the installed path and any shell-specific reload/source instruction.
+
+**Given** I run `lucius install-completions --shell bash|zsh|fish|powershell`
+**When** the command executes
+**Then** the explicit shell value overrides auto-detection
+**And** unsupported shell values fail with a clean `CLIError` and a hint listing supported shells.
+
+**Given** the CLI is running as a Nuitka standalone or onefile binary
+**When** `install-completions` installs scripts
+**Then** the completion script content comes from code/data embedded in the binary
+**And** the command does not read `deployment/shell-completions/*`, `deployment/scripts/generate_completions.py`, the source checkout, or network resources at runtime.
+
+**Given** completion scripts are generated or installed
+**When** users request top-level command completion for `lucius`
+**Then** `install-completions` is offered alongside existing top-level commands and entity tokens in bash, zsh, fish, and PowerShell completions
+**And** the command itself supports completion/help for `--shell`, `--path`, `--force`, `--print`, `--help`, and `-h`.
+
+**Given** completion installation would overwrite an existing script or shell startup hook
+**When** the target already exists
+**Then** the command preserves existing files unless `--force` is supplied
+**And** any startup-file edits are idempotent, marker-delimited, and never duplicate prior Lucius blocks.
+
+**Given** automated tests run
+**Then** they verify shell detection, explicit shell override, per-shell install paths, embedded-content behavior without repository completion files, completion exposure for `install-completions`, clean errors/no tracebacks, and docs coverage
+**And** process-level CLI E2E coverage invokes `uv run lucius install-completions ...` from source, not via a built binary.
+

@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2025-12-27 18:46
-last_updated: 2026-05-02
+last_updated: 2026-05-03
 project: lucius-mcp
 project_key: lucius-mcp
 tracking_system: file-system
@@ -134,4 +134,5 @@ development_status:
   9-7-cli-auth-command-persistent-configuration: done
   9-8-cli-list-command-tool-table: done
   9-9-cli-pretty-json-output-flag: done
+  9-10-cli-install-completions-command: done
   epic-9-retrospective: optional

@@ -1,14 +1,16 @@
 #compdef lucius
 
 _lucius() {
-    local -a entities globals formats options authOptions authSubcommands authTokens
+    local -a entities globals formats options authOptions authSubcommands authTokens installOptions shells
     entities=(custom-field custom-field-value custom-field-values custom-fields custom_field custom_field_value custom_field_values custom_fields defect defect-matcher defect-matchers defect_matcher defect_matchers defects integration integrations launch launches shared-step shared-steps shared_step shared_steps test-case test-cases test-layer test-layer-schema test-layer-schemas test-layers test-plan test-plans test-suite test-suites test_case test_cases test_layer test_layer_schema test_layer_schemas test_layers test_plan test_plans test_suite test_suites)
-    globals=(--help -h --version -V help version auth list)
+    globals=(--help -h --version -V help version auth list install-completions)
     formats=(json table plain csv)
     options=(--args -a --format -f --pretty --help -h)
     authOptions=(--url --token --project --help -h)
     authSubcommands=(status clear)
     authTokens=($authSubcommands $authOptions)
+    installOptions=(--shell --path --force --print --help -h)
+    shells=(bash zsh fish powershell)
 
     if (( CURRENT == 2 )); then
         _describe -t entities 'lucius entities' entities
@@ -22,6 +24,10 @@ _lucius() {
     if (( CURRENT == 3 )); then
         if [[ "$entity" == "auth" ]]; then
             _describe -t auth 'auth commands' authTokens
+            return 0
+        fi
+        if [[ "${words[2]:l}" == "install-completions" ]]; then
+            _describe -t install-completions 'install-completions options' installOptions
             return 0
         fi
         case "$entity" in
@@ -101,6 +107,22 @@ _lucius() {
                 ;;
             *)
                 _describe -t auth 'auth commands' authTokens
+                return 0
+                ;;
+        esac
+    fi
+
+    if [[ "${words[2]:l}" == "install-completions" ]]; then
+        case "${words[CURRENT-1]}" in
+            --shell)
+                _describe -t shells 'supported shells' shells
+                return 0
+                ;;
+            --path)
+                return 0
+                ;;
+            *)
+                _describe -t install-completions 'install-completions options' installOptions
                 return 0
                 ;;
         esac

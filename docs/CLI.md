@@ -10,6 +10,7 @@ lucius auth status
 lucius auth clear
 lucius list
 lucius list --help
+lucius install-completions [--shell <shell>] [--path <file>] [--force] [--print]
 lucius <entity>
 lucius <entity> <action> --args '<json>' [--format json|table|plain|csv] [--pretty]
 lucius <entity> <action> --help
@@ -32,6 +33,12 @@ lucius list
 lucius list --help
 lucius test_case
 lucius integrations
+
+# Install or print embedded shell completions
+lucius install-completions
+lucius install-completions --shell zsh
+lucius install-completions --shell bash --print
+lucius install-completions --shell fish --path ~/.config/fish/completions/lucius.fish --force
 
 # Get action help
 lucius test_case get --help
@@ -147,37 +154,48 @@ used with the default JSON output or with `--format json`; it is rejected with
 
 ## Shell Completions
 
-Completion scripts for bash, zsh, fish, and PowerShell are generated for the
-entity/action CLI and stored in:
+`lucius install-completions` installs embedded completion scripts for bash, zsh,
+fish, and PowerShell. It works from an installed wheel or standalone binary and
+does not read repository completion files at runtime.
+
+```bash
+lucius install-completions
+lucius install-completions --shell bash
+lucius install-completions --shell zsh
+lucius install-completions --shell fish
+lucius install-completions --shell powershell
+```
+
+Options:
+
+- `--shell <shell>` overrides shell detection. Supported values are `bash`, `zsh`, `fish`, and `powershell`; aliases such as `pwsh`, `powershell.exe`, and `/bin/zsh` are normalized.
+- `--path <file>` writes the selected script to a custom file.
+- `--force` overwrites an existing completion file.
+- `--print` writes only the selected completion script to stdout and does not modify the filesystem.
+
+Default install targets:
+
+- bash: `${XDG_DATA_HOME:-~/.local/share}/bash-completion/completions/lucius`
+- zsh: `${XDG_DATA_HOME:-~/.local/share}/zsh/site-functions/_lucius`
+- fish: `${XDG_CONFIG_HOME:-~/.config}/fish/completions/lucius.fish`
+- PowerShell: `%LOCALAPPDATA%/lucius/completions/lucius.ps1` on Windows, or `${XDG_DATA_HOME:-~/.local/share}/lucius/completions/lucius.ps1` elsewhere, plus an idempotent profile hook.
+
+After installing, restart the shell. Bash users can also source the installed
+file directly. Zsh users can activate the default install path in the current
+session with `fpath=(${XDG_DATA_HOME:-~/.local/share}/zsh/site-functions $fpath); autoload -Uz compinit && compinit`.
+PowerShell users can start a new session after the profile hook is written.
+
+Repository completion artifacts are still generated for releases and stored in:
 
 - `deployment/shell-completions/lucius.bash`
 - `deployment/shell-completions/lucius.zsh`
 - `deployment/shell-completions/lucius.fish`
 - `deployment/shell-completions/lucius.ps1`
 
-Regenerate them after route, alias, or CLI-local auth command changes:
+Regenerate them after route, alias, or CLI-local command changes:
 
 ```bash
 python3 deployment/scripts/generate_completions.py
-```
-
-Load completion in your shell:
-
-```bash
-# Bash
-source deployment/shell-completions/lucius.bash
-
-# Zsh
-source deployment/shell-completions/lucius.zsh
-
-# Fish
-source deployment/shell-completions/lucius.fish
-```
-
-PowerShell:
-
-```powershell
-. .\deployment\shell-completions\lucius.ps1
 ```
 
 ## Help and Validation

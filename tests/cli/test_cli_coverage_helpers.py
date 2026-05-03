@@ -19,12 +19,14 @@ from src.cli import cli_entry
 from src.cli.cli_entry import run_cli
 from src.cli.formatting import format_as_csv, format_as_plain, format_as_table, render_output
 from src.cli.help_output import _build_example_args, _first_line, _format_action_list, render_action_help
-from src.cli.models import ActionSpec, CLIError
+from src.cli.list_command import handle_list_command, render_list_help
+from src.cli.models import ActionSpec, CLIContext, CLIError
 from src.cli.option_parsing import parse_action_options
 from src.cli.route_matrix import all_entities_with_aliases, all_route_tool_names, iter_actions
 from src.cli.routing import build_command_registry, resolve_entity_name
 from src.cli.runtime import call_tool_function, error_hint_from_exception, load_tool_function
 from src.cli.schema_loader import load_tool_schemas
+from src.cli.schema_validation import SchemaValidationError, validate_args_against_schema
 
 
 class TestCLICoverageHelpers:
@@ -157,6 +159,112 @@ class TestCLICoverageHelpers:
             parse_action_options(["--format"])
         with pytest.raises(CLIError):
             parse_action_options(["--unknown"])
+
+    def test_list_command_in_process_branches(self, capsys: pytest.CaptureFixture[str]) -> None:
+        context = CLIContext(
+            console_out=cli_entry.console_out,
+            console_err=cli_entry.console_err,
+            tool_schemas_path=Path("unused"),
+            version="test",
+        )
+        registry = {
+            "test_case": {
+                "list": ActionSpec(
+                    tool_name="list_test_cases",
+                    entity="test_case",
+                    action="list",
+                    schema={"description": "List test cases", "input_schema": {"properties": {}}},
+                )
+            }
+        }
+
+        render_list_help(cli_entry.console_out)
+        assert "lucius list" in capsys.readouterr().out
+
+        handle_list_command(
+            [],
+            context=context,
+            load_tool_schemas=lambda: {"schema": {}},
+            build_command_registry=lambda _schemas: registry,
+        )
+        assert "Available Entities" in capsys.readouterr().out
+
+        handle_list_command(
+            ["--help"],
+            context=context,
+            load_tool_schemas=lambda: {},
+            build_command_registry=lambda _schemas: registry,
+        )
+        assert "CLI-local discovery command" in capsys.readouterr().out
+
+        with pytest.raises(CLIError) as exc_info:
+            handle_list_command(
+                ["--bad"],
+                context=context,
+                load_tool_schemas=lambda: {},
+                build_command_registry=lambda _schemas: registry,
+            )
+        assert "Unknown option '--bad'" in exc_info.value.message
+
+    def test_schema_validation_additional_constraint_branches(self) -> None:
+        schema = {
+            "input_schema": {
+                "required": ["name"],
+                "properties": {
+                    "name": {"type": "string", "minLength": 2, "maxLength": 4},
+                    "count": {"type": "integer"},
+                    "ratio": {"type": "number"},
+                    "enabled": {"type": "boolean"},
+                    "items": {"type": "array", "items": {"type": "integer"}},
+                    "metadata": {"type": "object", "additionalProperties": {"type": "string"}},
+                    "nullable": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                },
+            }
+        }
+
+        validate_args_against_schema(
+            {
+                "name": "ok",
+                "count": 1,
+                "ratio": 1.5,
+                "enabled": False,
+                "items": [1, 2],
+                "metadata": {"k": "v"},
+                "nullable": None,
+            },
+            "demo",
+            schema,
+        )
+
+        cases = [
+            ({"name": "x"}, "length must be >="),
+            ({"name": "toolong"}, "length must be <="),
+            ({"name": "ok", "count": True}, "expected type integer"),
+            ({"name": "ok", "ratio": True}, "expected type number"),
+            ({"name": "ok", "enabled": "yes"}, "expected type boolean"),
+            ({"name": "ok", "items": ["bad"]}, "expected type integer"),
+            ({"name": "ok", "metadata": {"k": 1}}, "expected type string"),
+            ({"name": "ok", "nullable": 1}, "expected type string|null"),
+        ]
+        for args, expected in cases:
+            with pytest.raises(SchemaValidationError) as exc_info:
+                validate_args_against_schema(args, "demo", schema)
+            assert expected in exc_info.value.message
+
+    def test_schema_validation_numeric_boundaries(self) -> None:
+        def schema_for(prop_schema: dict[str, object]) -> dict[str, object]:
+            return {"input_schema": {"properties": {"value": prop_schema}}}
+
+        cases = [
+            ({"type": "number", "minimum": 2}, 1, "must be >="),
+            ({"type": "number", "exclusiveMinimum": 2}, 2, "must be >"),
+            ({"type": "number", "maximum": 2}, 3, "must be <="),
+            ({"type": "number", "exclusiveMaximum": 2}, 2, "must be <"),
+        ]
+        for prop_schema, value, expected in cases:
+            with pytest.raises(SchemaValidationError) as exc_info:
+                validate_args_against_schema({"value": value}, "demo", schema_for(prop_schema))
+            assert expected in exc_info.value.message
 
     def test_load_tool_function_paths(self) -> None:
         assert callable(load_tool_function("create_test_case"))

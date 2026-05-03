@@ -55,6 +55,11 @@ def run_cli(argv: list[str]) -> None:
             build_command_registry=build_command_registry,
         )
         return
+    if argv and argv[0] == "install-completions":
+        from src.cli.completion_installer import handle_install_completions_command
+
+        handle_install_completions_command(argv[1:], context=context)
+        return
     run_cli_command(
         argv,
         context=context,

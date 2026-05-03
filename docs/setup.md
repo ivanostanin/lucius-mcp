@@ -30,6 +30,33 @@ CLI auth precedence:
 3. Saved CLI auth config
 4. Defaults
 
+## CLI Shell Completions
+
+For standalone CLI usage, install embedded shell completions from the binary or
+wheel:
+
+```bash
+lucius install-completions
+lucius install-completions --shell bash
+lucius install-completions --shell zsh
+lucius install-completions --shell fish
+lucius install-completions --shell powershell
+```
+
+The command installs to user-level targets by default:
+
+- bash: `${XDG_DATA_HOME:-~/.local/share}/bash-completion/completions/lucius`
+- zsh: `${XDG_DATA_HOME:-~/.local/share}/zsh/site-functions/_lucius`
+- fish: `${XDG_CONFIG_HOME:-~/.config}/fish/completions/lucius.fish`
+- PowerShell: per-user Lucius completion script plus an idempotent profile hook
+
+Use `--print --shell <shell>` to send the script to stdout without changing files.
+Use `--path <file>` for custom destinations and `--force` to overwrite existing
+completion files. Restart the shell after installation. Zsh users can activate
+the default install path in the current session with
+`fpath=(${XDG_DATA_HOME:-~/.local/share}/zsh/site-functions $fpath); autoload -Uz compinit && compinit`;
+PowerShell profile hooks take effect in new sessions.
+
 ## ⚙️ Environment Variables
 
 The server is configured via environment variables or a `.env` file.
@@ -141,6 +168,11 @@ MCP_MODE = "stdio"
 3. **Optional: save CLI auth for local command usage**:
    ```bash
    uv run lucius auth
+   ```
+
+4. **Optional: install CLI shell completions**:
+   ```bash
+   uv run lucius install-completions --shell zsh
    ```
 
 ## 🏃 Running the Server
