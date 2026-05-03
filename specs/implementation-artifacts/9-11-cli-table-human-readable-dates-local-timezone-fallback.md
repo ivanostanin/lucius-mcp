@@ -1,6 +1,6 @@
 # Story 9.11: CLI Human-Readable Table Dates with Local Timezone Fallback
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -56,25 +56,33 @@ so that I can read operational timestamps quickly without manual epoch or ISO co
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Add timezone/date rendering helpers in CLI formatter path** (AC: 1, 2, 3, 5)
-  - [ ] 1.1 Add helper(s) in `src/cli/cli_entry.py` to resolve display timezone from local environment with deterministic fallback to UTC.
-  - [ ] 1.2 Add datetime parsing helper(s) for both numeric epoch values and ISO-8601 strings.
-  - [ ] 1.3 Add table-cell renderer helper(s) that apply human-readable datetime formatting only when parsing succeeds.
+- [x] **Task 1: Add timezone/date rendering helpers in CLI formatter path** (AC: 1, 2, 3, 5)
+  - [x] 1.1 Add helper(s) in `src/cli/cli_entry.py` to resolve display timezone from local environment with deterministic fallback to UTC.
+  - [x] 1.2 Add datetime parsing helper(s) for both numeric epoch values and ISO-8601 strings.
+  - [x] 1.3 Add table-cell renderer helper(s) that apply human-readable datetime formatting only when parsing succeeds.
 
-- [ ] **Task 2: Integrate datetime rendering into table mode only** (AC: 1, 2, 3, 4, 5)
-  - [ ] 2.1 Update `format_as_table()` to use datetime-aware rendering for date/time-like columns/fields.
-  - [ ] 2.2 Ensure rendered table explicitly communicates timezone used (local zone label or UTC fallback).
-  - [ ] 2.3 Keep `format_as_plain()`, `format_as_csv()`, and JSON passthrough behavior unchanged.
+- [x] **Task 2: Integrate datetime rendering into table mode only** (AC: 1, 2, 3, 4, 5)
+  - [x] 2.1 Update `format_as_table()` to use datetime-aware rendering for date/time-like columns/fields.
+  - [x] 2.2 Ensure rendered table explicitly communicates timezone used (local zone label or UTC fallback).
+  - [x] 2.3 Keep `format_as_plain()`, `format_as_csv()`, and JSON passthrough behavior unchanged.
 
-- [ ] **Task 3: Add and extend tests for formatter behavior** (AC: 1, 2, 3, 5, 6)
-  - [ ] 3.1 Extend `tests/cli/test_e2e_mocked.py` with table-format assertions for datetime conversion and timezone labeling.
-  - [ ] 3.2 Extend `tests/cli/test_cli_coverage_helpers.py` with branch tests for datetime parsing success/failure and fallback behavior.
-  - [ ] 3.3 Add tests ensuring invalid date-like values remain render-safe and do not produce tracebacks.
-  - [ ] 3.4 Extend the shared `uv run lucius` CLI E2E suite with representative table-rendering process tests for timezone resolution and UTC fallback.
+- [x] **Task 3: Add and extend tests for formatter behavior** (AC: 1, 2, 3, 5, 6)
+  - [x] 3.1 Extend `tests/cli/test_e2e_mocked.py` with table-format assertions for datetime conversion and timezone labeling.
+  - [x] 3.2 Extend `tests/cli/test_cli_coverage_helpers.py` with branch tests for datetime parsing success/failure and fallback behavior.
+  - [x] 3.3 Add tests ensuring invalid date-like values remain render-safe and do not produce tracebacks.
+  - [x] 3.4 Extend the shared `uv run lucius` CLI E2E suite with representative table-rendering process tests for timezone resolution and UTC fallback.
 
-- [ ] **Task 4: Document user-facing behavior** (AC: 2, 3, 4)
-  - [ ] 4.1 Update `docs/CLI.md` output-format documentation to describe table datetime localization behavior.
-  - [ ] 4.2 Document UTC fallback behavior and explicit timezone labeling in table output examples.
+- [x] **Task 4: Document user-facing behavior** (AC: 2, 3, 4)
+  - [x] 4.1 Update `docs/CLI.md` output-format documentation to describe table datetime localization behavior.
+  - [x] 4.2 Document UTC fallback behavior and explicit timezone labeling in table output examples.
+
+### Review Findings
+
+- [x] [Review][Patch] Absolute `TZ` values can crash table rendering [src/cli/formatting.py:42]
+- [x] [Review][Patch] Local timezone fallback uses the current fixed offset for historical/future timestamps [src/cli/formatting.py:47]
+- [x] [Review][Patch] UTC conversion fallback can still label the table with the failed timezone [src/cli/formatting.py:106]
+- [x] [Review][Patch] Naive ISO strings are silently treated as UTC despite the offset-aware contract [src/cli/formatting.py:90]
+- [x] [Review][Patch] Duration-like fields ending in `time` can be converted as wall-clock datetimes [src/cli/formatting.py:64]
 
 ## Dev Notes
 
@@ -135,12 +143,42 @@ so that I can read operational timestamps quickly without manual epoch or ISO co
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+GPT-5 Codex
 
 ### Debug Log References
+
+- `uv run --python 3.13 --extra dev pytest tests/cli/test_e2e_mocked.py tests/cli/test_cli_coverage_helpers.py tests/cli/test_cli_basics.py -q` - red run failed on missing datetime helpers, then passed after implementation (103 passed).
+- `uv run --python 3.13 --extra dev pytest tests/cli/test_e2e_mocked.py tests/cli/test_cli_coverage_helpers.py -q` - passed (76 passed).
+- `uv run --python 3.13 --extra dev ruff check src/cli tests/cli` - passed.
+- `uv run --python 3.13 --extra dev mypy src/cli` - passed.
+- `uv run --python 3.13 --extra dev pytest -q` - passed (776 passed, 100 skipped).
+- Code review fix validation: `uv run --python 3.13 --extra dev pytest tests/cli/test_e2e_mocked.py tests/cli/test_cli_coverage_helpers.py tests/cli/test_cli_basics.py -q` - passed (108 passed).
+- Code review fix validation: `uv run --python 3.13 --extra dev ruff check src/cli tests/cli` - passed.
+- Code review fix validation: `uv run --python 3.13 --extra dev mypy src/cli` - passed.
 
 ### Completion Notes List
 
 Ultimate context engine analysis completed - comprehensive developer guide created.
+- Implemented table-only datetime rendering in the actual CLI formatter module, `src/cli/formatting.py`, where `format_as_table()` and `_format_table_value()` now live in the current codebase.
+- Added standard-library timezone resolution with `TZ`/local-zone support and deterministic UTC fallback.
+- Added guarded datetime parsing for epoch seconds, epoch milliseconds, and ISO-8601 strings with `Z` or explicit offsets; invalid date-like values remain unchanged.
+- Added timezone captions to tables only when datetime values are rendered.
+- Preserved `json`, `plain`, and `csv` output behavior and the tool-layer `plain|json` contract.
+- Added direct formatter branch coverage and a process-level `uv run lucius ... --format table` regression test with a mocked tool result.
+- Addressed code review findings for absolute `TZ` handling, local timezone fallback, UTC fallback labeling, naive ISO handling, and duration-like `*time` fields.
 
 ### File List
+
+- docs/CLI.md
+- specs/implementation-artifacts/9-11-cli-table-human-readable-dates-local-timezone-fallback.md
+- specs/implementation-artifacts/sprint-status.yaml
+- src/cli/formatting.py
+- tests/cli/subprocess_helpers.py
+- tests/cli/test_cli_basics.py
+- tests/cli/test_cli_coverage_helpers.py
+- tests/cli/test_e2e_mocked.py
+
+### Change Log
+
+- 2026-05-03: Implemented CLI table datetime localization with UTC fallback, coverage, docs, and story tracking updates.
+- 2026-05-03: Resolved code review findings and marked story done.

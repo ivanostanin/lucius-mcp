@@ -9,13 +9,16 @@ import asyncio
 import inspect
 import json
 import sys
+from datetime import UTC, datetime, timedelta, tzinfo
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
+from zoneinfo import ZoneInfo
 
 import pytest
 
 import src.cli
 from src.cli import cli_entry
+from src.cli import formatting as cli_formatting
 from src.cli.cli_entry import run_cli
 from src.cli.formatting import format_as_csv, format_as_plain, format_as_table, render_output
 from src.cli.help_output import _build_example_args, _first_line, _format_action_list, render_action_help
@@ -54,6 +57,81 @@ class TestCLICoverageHelpers:
         assert format_as_table([{"a": 1}, {"a": 2, "b": 3}]) is not None
         assert format_as_table(["x", "y"]) is not None
         assert format_as_table("value") is not None
+
+    def test_datetime_parse_helper_success_and_failure(self) -> None:
+        assert cli_formatting._parse_datetime_value(1700000000, "created_at") is not None
+        assert cli_formatting._parse_datetime_value(1700000000000, "created_at") is not None
+        assert cli_formatting._parse_datetime_value("2024-01-02T03:04:05Z", "started_at") is not None
+        assert cli_formatting._parse_datetime_value("2024-01-02T03:04:05+02:00", "finished_at") is not None
+        assert cli_formatting._parse_datetime_value("2024-01-02T03:04:05", "created_at") is None
+        assert cli_formatting._parse_datetime_value("not-a-date", "created_at") is None
+        assert cli_formatting._parse_datetime_value(1700000000, "id") is None
+        assert cli_formatting._parse_datetime_value(True, "created_at") is None
+
+    def test_datetime_field_detection_avoids_duration_like_names(self) -> None:
+        assert cli_formatting._is_datetime_field_name("createdDate") is True
+        assert cli_formatting._is_datetime_field_name("lastModifiedDate") is True
+        assert cli_formatting._is_datetime_field_name("started_at") is True
+        assert cli_formatting._is_datetime_field_name("start_time") is True
+        assert cli_formatting._is_datetime_field_name("runtime") is False
+        assert cli_formatting._is_datetime_field_name("execution_time") is False
+
+    def test_timezone_resolution_falls_back_to_utc_for_invalid_tz(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("TZ", "Invalid/Zone")
+
+        display_timezone = cli_formatting._resolve_display_timezone()
+
+        assert display_timezone.tzinfo is UTC
+        assert display_timezone.label == "UTC"
+
+    def test_timezone_resolution_handles_absolute_tz_without_crashing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("TZ", "/etc/localtime")
+
+        display_timezone = cli_formatting._resolve_display_timezone()
+
+        assert display_timezone.label
+
+    def test_timezone_resolution_falls_back_to_utc_when_local_zone_is_unavailable(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("TZ", raising=False)
+
+        with patch("src.cli.formatting._timezone_from_localtime_path", return_value=None):
+            display_timezone = cli_formatting._resolve_display_timezone()
+
+        assert display_timezone.tzinfo is UTC
+        assert display_timezone.label == "UTC"
+
+    def test_table_cell_renderer_reports_when_datetime_was_rendered(self) -> None:
+        display_timezone = cli_formatting.DisplayTimezone(ZoneInfo("Europe/Podgorica"), "Europe/Podgorica")
+        rendered, used_datetime, used_utc_fallback = cli_formatting._render_table_cell(
+            1700000000, "created_at", display_timezone
+        )
+        unchanged, used_no_datetime, _ = cli_formatting._render_table_cell(1700000000, "id", display_timezone)
+
+        assert rendered == "2023-11-14 23:13:20"
+        assert used_datetime is True
+        assert used_utc_fallback is False
+        assert unchanged == "1700000000"
+        assert used_no_datetime is False
+
+    def test_table_cell_renderer_reports_utc_conversion_fallback(self) -> None:
+        class BrokenTimezone(tzinfo):
+            def utcoffset(self, dt: datetime | None) -> timedelta:
+                raise ValueError("broken timezone")
+
+            def dst(self, dt: datetime | None) -> timedelta:
+                return timedelta(0)
+
+        display_timezone = cli_formatting.DisplayTimezone(BrokenTimezone(), "Broken/Zone")
+
+        rendered, used_datetime, used_utc_fallback = cli_formatting._render_table_cell(
+            "2024-01-02T03:04:05Z", "created_at", display_timezone
+        )
+
+        assert rendered == "2024-01-02 03:04:05"
+        assert used_datetime is True
+        assert used_utc_fallback is True
 
     def test_format_as_plain_variants(self) -> None:
         assert "x" in format_as_plain(["x", "y"])

@@ -150,6 +150,18 @@ lucius test_case list --args '{}' --format csv
 used with the default JSON output or with `--format json`; it is rejected with
 `plain`, `table`, or `csv`.
 
+`table` format renders recognized date/time fields, such as `created_at`,
+`updated_at`, `started_at`, `finished_at`, `*date`, `*timestamp`, and
+start/end-style `*time` fields, as `YYYY-MM-DD HH:MM:SS`. Epoch seconds, epoch
+milliseconds, and ISO-8601 strings with `Z` or explicit offsets are converted to
+the local timezone when it can be resolved. Tables that render localized
+datetimes include a caption such as `Timezone: Europe/Podgorica` so the display
+timezone is explicit.
+
+If the local timezone cannot be resolved, `table` format falls back to UTC and
+labels the table with `Timezone: UTC`. Invalid date-like values remain unchanged,
+and `json`, `plain`, and `csv` keep the original raw values.
+
 `plain` format normalizes escaped newline markers (`\n`) into rendered line breaks.
 
 ## Shell Completions

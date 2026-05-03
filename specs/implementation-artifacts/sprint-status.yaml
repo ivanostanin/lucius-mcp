@@ -135,5 +135,5 @@ development_status:
   9-8-cli-list-command-tool-table: done
   9-9-cli-pretty-json-output-flag: done
   9-10-cli-install-completions-command: done
-  9-11-cli-table-human-readable-dates-local-timezone-fallback: ready-for-dev
+  9-11-cli-table-human-readable-dates-local-timezone-fallback: done
   epic-9-retrospective: optional

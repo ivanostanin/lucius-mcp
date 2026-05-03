@@ -3,8 +3,15 @@ Test basic CLI functionality.
 """
 
 import json
+import os
 
-from tests.cli.subprocess_helpers import run_cli, run_cli_with_mocked_result, run_python_snippet, run_uv_cli
+from tests.cli.subprocess_helpers import (
+    run_cli,
+    run_cli_with_mocked_result,
+    run_python_snippet,
+    run_uv_cli,
+    run_uv_cli_with_mocked_result,
+)
 
 
 def test_cli_help():
@@ -293,3 +300,18 @@ def test_uv_run_cli_list_parity_and_help():
     assert help_result.returncode == 0
     assert listed.stdout == bare.stdout
     assert "cli-local discovery command" in help_result.stdout.lower()
+
+
+def test_uv_run_cli_table_renders_datetime_with_timezone_label():
+    """Process-level check: uv run lucius renders table datetimes through CLI routing."""
+    result = run_uv_cli_with_mocked_result(
+        ["test_case", "list", "--args", "{}", "--format", "table"],
+        "list_test_cases",
+        '[{"id":1,"created_at":1700000000}]',
+        "json",
+        env={**os.environ, "TZ": "UTC"},
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "2023-11-14 22:13:20" in result.stdout
+    assert "Timezone: UTC" in result.stdout
