@@ -50,6 +50,7 @@ def _subprocess_env(tmp_path: Path, *, sitecustomize: Path | None = None) -> dic
     env["HOME"] = str(tmp_path / "home")
     env["XDG_CONFIG_HOME"] = str(tmp_path / "xdg-config")
     env["LOCALAPPDATA"] = str(tmp_path / "local-app-data")
+    env["WIN_PD_OVERRIDE_LOCAL_APPDATA"] = env["LOCALAPPDATA"]
     env["APPDATA"] = str(tmp_path / "app-data")
     env["USERPROFILE"] = str(tmp_path / "user-profile")
     env["UV_CACHE_DIR"] = str(tmp_path / "uv-cache")
