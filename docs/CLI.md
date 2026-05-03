@@ -181,9 +181,9 @@ Default install targets:
 - PowerShell: `%LOCALAPPDATA%/lucius/completions/lucius.ps1` on Windows, or `${XDG_DATA_HOME:-~/.local/share}/lucius/completions/lucius.ps1` elsewhere, plus an idempotent profile hook.
 
 After installing, restart the shell. Bash users can also source the installed
-file directly. Zsh users may need `autoload -Uz compinit && compinit` if their
-session has not initialized completions yet. PowerShell users can start a new
-session after the profile hook is written.
+file directly. Zsh users can activate the default install path in the current
+session with `fpath=(${XDG_DATA_HOME:-~/.local/share}/zsh/site-functions $fpath); autoload -Uz compinit && compinit`.
+PowerShell users can start a new session after the profile hook is written.
 
 Repository completion artifacts are still generated for releases and stored in:
 

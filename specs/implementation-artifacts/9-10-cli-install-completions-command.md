@@ -1,6 +1,6 @@
 # Story 9.10: CLI Install Completions Command
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -117,6 +117,20 @@ so that standalone CLI users can enable tab completion without locating reposito
   - [x] 7.7 Add completion-generation tests asserting `install-completions` and its options appear in bash, zsh, fish, and PowerShell scripts.
   - [x] 7.8 Add a packaging/binary-facing test or source-level simulation proving runtime installation does not depend on `deployment/shell-completions/` files.
   - [x] 7.9 Extend the shared `uv run lucius` CLI E2E suite with process tests for `install-completions --help`, `--print`, explicit `--shell`, and unsupported-shell failure paths.
+
+### Review Findings
+
+- [x] [Review][Patch] Custom install paths can chmod existing parent directories [src/cli/completion_installer.py:129]
+- [x] [Review][Patch] PowerShell-specific environment signals are checked after inherited `SHELL` [src/cli/completion_installer.py:72]
+- [x] [Review][Patch] Windows PowerShell profile selection can target Windows PowerShell when running PowerShell Core [src/cli/completion_installer.py:119]
+- [x] [Review][Patch] Relative PowerShell custom paths are persisted into profile hooks [src/cli/completion_installer.py:199]
+- [x] [Review][Patch] Empty explicit `--shell` value falls back to environment detection [src/cli/completion_installer.py:67]
+- [x] [Review][Patch] Corrupt or partial Lucius profile markers can create duplicate profile blocks [src/cli/completion_installer.py:167]
+- [x] [Review][Patch] Directory targets with `--force` can surface raw filesystem errors [src/cli/completion_installer.py:135]
+- [x] [Review][Patch] Zsh default install guidance omits required `fpath` activation [src/cli/completion_installer.py:181]
+- [x] [Review][Patch] Undocumented `install-completions help` alias is accepted [src/cli/local_commands.py:29]
+- [x] [Review][Patch] `uv run lucius` unsupported-shell E2E coverage is missing [tests/cli/test_completion_installer.py:212]
+- [x] [Review][Patch] Completion generator executable bit was dropped [deployment/scripts/generate_completions.py:1]
 
 ## Dev Notes
 
@@ -264,3 +278,4 @@ Ultimate context engine analysis completed - comprehensive developer guide creat
 ### Change Log
 
 - 2026-05-02: Implemented CLI-local embedded completion installation command and regenerated completion artifacts.
+- 2026-05-03: Resolved code review findings for safe path permissions, PowerShell detection/profile hooks, zsh activation guidance, and completion installer regression coverage.

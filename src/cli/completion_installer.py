@@ -66,19 +66,20 @@ def normalize_shell(value: str) -> ShellName:
 
 def detect_shell(explicit_shell: str | None) -> ShellName:
     """Detect the target shell from explicit option, environment, or platform."""
-    if explicit_shell:
+    if explicit_shell is not None:
         return normalize_shell(explicit_shell)
 
-    for env_name in ("SHELL", "ComSpec", "PSModulePath"):
+    if os.environ.get("PSModulePath"):
+        return "powershell"
+
+    for env_name in ("SHELL", "ComSpec"):
         value = os.environ.get(env_name)
         if not value:
             continue
-        candidates = value.split(os.pathsep) if env_name == "PSModulePath" else [value]
-        for candidate in candidates:
-            try:
-                return normalize_shell(candidate)
-            except CLIError:
-                continue
+        try:
+            return normalize_shell(value)
+        except CLIError:
+            continue
 
     if platform.system().lower() == "windows":
         return "powershell"
@@ -120,19 +121,30 @@ def default_powershell_profile_path() -> Path:
     """Return a per-user PowerShell profile path."""
     if platform.system().lower() == "windows":
         base = Path(os.environ.get("USERPROFILE") or _home_dir()) / "Documents"
-        if Path(os.environ.get("PSModulePath", "")).as_posix().lower().find("powershell/7") >= 0:
+        ps_module_path = os.environ.get("PSModulePath", "").lower().replace("\\", "/")
+        if "powershell/7" in ps_module_path or "/powershell/" in ps_module_path:
             return base / "PowerShell" / "Microsoft.PowerShell_profile.ps1"
         return base / "WindowsPowerShell" / "Microsoft.PowerShell_profile.ps1"
     return _xdg_config_home() / "powershell" / "Microsoft.PowerShell_profile.ps1"
 
 
-def _ensure_private_parent(path: Path) -> None:
+def _ensure_parent(path: Path, *, private: bool) -> None:
+    missing_parents = [parent for parent in reversed(path.parent.parents) if not parent.exists()]
+    if not path.parent.exists():
+        missing_parents.append(path.parent)
     path.parent.mkdir(parents=True, exist_ok=True)
-    if os.name == "posix":
-        path.parent.chmod(0o700)
+    if private and os.name == "posix":
+        for parent in missing_parents:
+            parent.chmod(0o700)
 
 
-def _write_text_atomically(path: Path, content: str, *, force: bool) -> None:
+def _write_text_atomically(path: Path, content: str, *, force: bool, private_parent: bool = False) -> None:
+    if path.is_dir():
+        raise CLIError(
+            f"Completion target is a directory: {path}",
+            hint="Provide a file path, not a directory path.",
+            exit_code=1,
+        )
     if path.exists() and not force:
         raise CLIError(
             f"Completion file already exists: {path}",
@@ -140,7 +152,7 @@ def _write_text_atomically(path: Path, content: str, *, force: bool) -> None:
             exit_code=1,
         )
 
-    _ensure_private_parent(path)
+    _ensure_parent(path, private=private_parent)
     fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
     tmp_path = Path(tmp_name)
     try:
@@ -165,17 +177,21 @@ def _powershell_profile_block(completion_path: Path) -> str:
 
 
 def _update_marker_block(path: Path, block: str) -> None:
-    _ensure_private_parent(path)
+    _ensure_parent(path, private=True)
     existing = path.read_text(encoding="utf-8") if path.exists() else ""
     start_index = existing.find(PROFILE_MARKER_START)
     end_index = existing.find(PROFILE_MARKER_END)
     if start_index >= 0 and end_index >= start_index:
         end_index += len(PROFILE_MARKER_END)
         updated = existing[:start_index].rstrip() + "\n\n" + block + existing[end_index:]
+    elif start_index >= 0:
+        updated = existing[:start_index].rstrip() + "\n\n" + block + "\n"
+    elif end_index >= 0:
+        updated = block + existing[end_index + len(PROFILE_MARKER_END) :]
     else:
         separator = "\n\n" if existing.strip() else ""
         updated = existing.rstrip() + separator + block + "\n"
-    _write_text_atomically(path, updated, force=True)
+    _write_text_atomically(path, updated, force=True, private_parent=True)
 
 
 def activation_guidance(shell: ShellName, path: Path, profile_path: Path | None = None) -> str:
@@ -183,7 +199,7 @@ def activation_guidance(shell: ShellName, path: Path, profile_path: Path | None 
     if shell == "bash":
         return f"Restart your shell or run: source {path}"
     if shell == "zsh":
-        return "Restart zsh or run: autoload -Uz compinit && compinit"
+        return f"Restart zsh or run: fpath=({path.parent} $fpath); autoload -Uz compinit && compinit"
     if shell == "fish":
         return "Restart fish or run: source ~/.config/fish/config.fish"
     if shell == "powershell":
@@ -199,12 +215,12 @@ def install_completion(*, shell_name: ShellName, path: Path | None, force: bool)
     target_path = path.expanduser() if path is not None else default_completion_path(normalized_shell)
     content = generate_completion(normalized_shell)
 
-    _write_text_atomically(target_path, content, force=force)
+    _write_text_atomically(target_path, content, force=force, private_parent=path is None)
 
     profile_path: Path | None = None
     if normalized_shell == "powershell":
         profile_path = default_powershell_profile_path()
-        _update_marker_block(profile_path, _powershell_profile_block(target_path))
+        _update_marker_block(profile_path, _powershell_profile_block(target_path.resolve()))
 
     return InstallCompletionResult(
         shell=normalized_shell,

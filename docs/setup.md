@@ -52,8 +52,10 @@ The command installs to user-level targets by default:
 
 Use `--print --shell <shell>` to send the script to stdout without changing files.
 Use `--path <file>` for custom destinations and `--force` to overwrite existing
-completion files. Restart the shell after installation; PowerShell profile hooks
-take effect in new sessions.
+completion files. Restart the shell after installation. Zsh users can activate
+the default install path in the current session with
+`fpath=(${XDG_DATA_HOME:-~/.local/share}/zsh/site-functions $fpath); autoload -Uz compinit && compinit`;
+PowerShell profile hooks take effect in new sessions.
 
 ## ⚙️ Environment Variables
 

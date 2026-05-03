@@ -88,6 +88,23 @@ def test_detect_shell_prefers_explicit_over_environment(monkeypatch: pytest.Monk
     assert detect_shell("bash") == "bash"
 
 
+def test_detect_shell_rejects_empty_explicit_value(monkeypatch: pytest.MonkeyPatch) -> None:
+    from src.cli.completion_installer import detect_shell
+
+    monkeypatch.setenv("SHELL", "/bin/zsh")
+    with pytest.raises(CLIError) as exc_info:
+        detect_shell("")
+    assert "Unsupported shell" in exc_info.value.message
+
+
+def test_detect_shell_prefers_powershell_signals_over_inherited_shell(monkeypatch: pytest.MonkeyPatch) -> None:
+    from src.cli.completion_installer import detect_shell
+
+    monkeypatch.setenv("SHELL", "/bin/zsh")
+    monkeypatch.setenv("PSModulePath", "/opt/microsoft/powershell/7/Modules")
+    assert detect_shell(None) == "powershell"
+
+
 def test_detect_shell_uses_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     from src.cli.completion_installer import detect_shell
 
@@ -127,6 +144,29 @@ def test_custom_path_install_uses_safe_overwrite(tmp_path: Path, capsys: pytest.
     assert "_lucius_completion" in target.read_text()
 
 
+def test_custom_relative_path_does_not_chmod_existing_parent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from src.cli.completion_installer import install_completion
+
+    monkeypatch.chdir(tmp_path)
+    before = tmp_path.stat().st_mode & 0o777
+
+    result = install_completion(shell_name="bash", path=Path("lucius.bash"), force=False)
+
+    assert result.path == Path("lucius.bash")
+    assert (tmp_path / "lucius.bash").exists()
+    assert tmp_path.stat().st_mode & 0o777 == before
+
+
+def test_directory_target_is_rejected_even_with_force(tmp_path: Path) -> None:
+    from src.cli.completion_installer import install_completion
+
+    with pytest.raises(CLIError) as exc_info:
+        install_completion(shell_name="fish", path=tmp_path, force=True)
+
+    assert "target is a directory" in exc_info.value.message
+    assert "file path" in (exc_info.value.hint or "")
+
+
 def test_print_mode_does_not_write_custom_path(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     target = tmp_path / "lucius.fish"
 
@@ -150,6 +190,54 @@ def test_powershell_profile_hook_is_idempotent(tmp_path: Path, monkeypatch: pyte
     profile_text = result_one.profile_path.read_text()
     assert profile_text.count("Lucius completion start") == 1
     assert profile_text.count(str(result_one.path)) == 1
+
+
+def test_powershell_profile_hook_uses_absolute_custom_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from src.cli.completion_installer import install_completion
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "localappdata"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+
+    result = install_completion(shell_name="powershell", path=Path("lucius.ps1"), force=False)
+
+    assert result.profile_path is not None
+    profile_text = result.profile_path.read_text()
+    assert str((tmp_path / "lucius.ps1").resolve()) in profile_text
+    assert "$luciusCompletion = 'lucius.ps1'" not in profile_text
+
+
+def test_powershell_profile_path_uses_core_profile_when_core_signal_present(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.cli.completion_installer import default_powershell_profile_path
+
+    monkeypatch.setattr("platform.system", lambda: "Windows")
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "user"))
+    monkeypatch.setenv("PSModulePath", r"C:\Program Files\PowerShell\7\Modules")
+
+    assert default_powershell_profile_path() == (
+        tmp_path / "user" / "Documents" / "PowerShell" / "Microsoft.PowerShell_profile.ps1"
+    )
+
+
+def test_corrupt_powershell_profile_marker_is_repaired(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from src.cli.completion_installer import install_completion
+
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "localappdata"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    profile_path = tmp_path / "config" / "powershell" / "Microsoft.PowerShell_profile.ps1"
+    profile_path.parent.mkdir(parents=True)
+    profile_path.write_text("before\n# >>> Lucius completion start >>>\nstale\n")
+
+    result = install_completion(shell_name="powershell", path=None, force=False)
+
+    assert result.profile_path == profile_path
+    profile_text = profile_path.read_text()
+    assert "stale" not in profile_text
+    assert profile_text.count("Lucius completion start") == 1
+    assert profile_text.count("Lucius completion end") == 1
 
 
 def test_completion_scripts_include_install_command_and_options() -> None:
@@ -220,6 +308,14 @@ def test_process_install_completions_rejects_unsupported_shell_without_traceback
     assert "file " not in output
 
 
+def test_install_completions_help_alias_is_rejected() -> None:
+    result = run_cli(["install-completions", "help"])
+    output = result.stdout.lower() + result.stderr.lower()
+
+    assert result.returncode == 1
+    assert "unknown option 'help'" in output
+
+
 def test_uv_run_install_completions_help_and_print() -> None:
     help_result = run_uv_cli(["install-completions", "--help"])
     print_result = run_uv_cli(["install-completions", "--shell", "bash", "--print"])
@@ -229,3 +325,13 @@ def test_uv_run_install_completions_help_and_print() -> None:
     assert print_result.returncode == 0
     assert "_lucius_completion" in print_result.stdout
     assert "install-completions" in print_result.stdout
+
+
+def test_uv_run_install_completions_rejects_unsupported_shell_without_traceback() -> None:
+    result = run_uv_cli(["install-completions", "--shell", "tcsh"])
+    output = result.stdout.lower() + result.stderr.lower()
+
+    assert result.returncode == 1
+    assert "unsupported shell" in output
+    assert "bash|zsh|fish|powershell" in output
+    assert "traceback" not in output

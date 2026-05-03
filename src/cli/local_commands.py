@@ -26,7 +26,7 @@ class LocalCommandSubcommand:
 CLI_LOCAL_COMMANDS = ["auth", "list", "install-completions"]
 AUTH_HELP_TOKENS = ("--help", "-h", "help")
 LIST_HELP_TOKENS = ("--help", "-h", "help")
-INSTALL_COMPLETIONS_HELP_TOKENS = ("--help", "-h", "help")
+INSTALL_COMPLETIONS_HELP_TOKENS = ("--help", "-h")
 AUTH_CONFIGURE_OPTIONS = (
     LocalCommandOption("--url", value_name="<url>", description="Allure TestOps base URL", target_field="url"),
     LocalCommandOption("--token", value_name="<token>", description="Allure API token", target_field="token"),
