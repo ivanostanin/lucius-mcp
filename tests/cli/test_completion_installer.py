@@ -108,6 +108,7 @@ def test_detect_shell_prefers_powershell_signals_over_inherited_shell(monkeypatc
 def test_detect_shell_uses_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     from src.cli.completion_installer import detect_shell
 
+    monkeypatch.delenv("PSModulePath", raising=False)
     monkeypatch.setenv("SHELL", "/usr/local/bin/fish")
     assert detect_shell(None) == "fish"
 
@@ -225,6 +226,7 @@ def test_powershell_profile_path_uses_core_profile_when_core_signal_present(
 def test_corrupt_powershell_profile_marker_is_repaired(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from src.cli.completion_installer import install_completion
 
+    monkeypatch.setattr("platform.system", lambda: "Linux")
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "localappdata"))
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
     profile_path = tmp_path / "config" / "powershell" / "Microsoft.PowerShell_profile.ps1"

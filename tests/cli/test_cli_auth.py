@@ -47,12 +47,30 @@ def _subprocess_env(tmp_path: Path, *, sitecustomize: Path | None = None) -> dic
     env.pop(AUTH_ENDPOINT_ENV, None)
     env.pop(AUTH_TOKEN_ENV, None)
     env.pop(AUTH_PROJECT_ENV, None)
+    env["HOME"] = str(tmp_path / "home")
     env["XDG_CONFIG_HOME"] = str(tmp_path / "xdg-config")
+    env["LOCALAPPDATA"] = str(tmp_path / "local-app-data")
+    env["APPDATA"] = str(tmp_path / "app-data")
+    env["USERPROFILE"] = str(tmp_path / "user-profile")
     env["UV_CACHE_DIR"] = str(tmp_path / "uv-cache")
     if sitecustomize is not None:
         existing = env.get("PYTHONPATH")
         env["PYTHONPATH"] = str(sitecustomize) if not existing else os.pathsep.join([str(sitecustomize), existing])
     return env
+
+
+def _subprocess_config_root(env: dict[str, str]) -> Path:
+    if os.name == "nt":
+        return Path(env["LOCALAPPDATA"])
+    if env.get("XDG_CONFIG_HOME"):
+        return Path(env["XDG_CONFIG_HOME"])
+    if sys.platform == "darwin":
+        return Path(env["HOME"]) / "Library" / "Application Support"
+    return Path(env["HOME"]) / ".config"
+
+
+def _subprocess_auth_config_path(env: dict[str, str]) -> Path:
+    return _subprocess_config_root(env) / "lucius" / "auth.json"
 
 
 def _write_saved_config(config_root: Path, *, url: str, token: str, project_id: int) -> Path:
@@ -158,8 +176,11 @@ class TestCLIAuthConfig:
             project_id=7,
             now="2026-04-29T10:00:00Z",
         )
-        assert any(mode == 0o700 and path == tmp_path for path, mode in chmod_calls)
-        assert any(mode == 0o600 and path.name.endswith(".tmp") for path, mode in chmod_calls)
+        if os.name == "nt":
+            assert chmod_calls == []
+        else:
+            assert any(mode == 0o700 and path == tmp_path for path, mode in chmod_calls)
+            assert any(mode == 0o600 and path.name.endswith(".tmp") for path, mode in chmod_calls)
 
     def test_save_auth_config_keeps_existing_file_on_replace_failure(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -489,7 +510,7 @@ class TestCLIAuthCommandProcess:
         assert result.returncode == 0
         assert "super-secret-token" not in result.stdout
 
-        config_path = Path(env["XDG_CONFIG_HOME"]) / "lucius" / "auth.json"
+        config_path = _subprocess_auth_config_path(env)
         payload = json.loads(config_path.read_text(encoding="utf-8"))
         assert payload["allure_endpoint"] == "https://example.testops.cloud"
         assert payload["allure_api_token"] == "super-secret-token"
@@ -498,7 +519,7 @@ class TestCLIAuthCommandProcess:
     def test_process_auth_status_never_displays_token(self, tmp_path: Path) -> None:
         env = _subprocess_env(tmp_path)
         _write_saved_config(
-            Path(env["XDG_CONFIG_HOME"]),
+            _subprocess_config_root(env),
             url="https://example.testops.cloud",
             token="hidden-token",
             project_id=123,
@@ -511,7 +532,7 @@ class TestCLIAuthCommandProcess:
     def test_process_auth_clear_removes_saved_config(self, tmp_path: Path) -> None:
         env = _subprocess_env(tmp_path)
         config_path = _write_saved_config(
-            Path(env["XDG_CONFIG_HOME"]),
+            _subprocess_config_root(env),
             url="https://example.testops.cloud",
             token="hidden-token",
             project_id=123,
@@ -554,7 +575,7 @@ class TestCLIAuthCommandProcess:
         )
         env = _subprocess_env(tmp_path, sitecustomize=sitecustomize)
         _write_saved_config(
-            Path(env["XDG_CONFIG_HOME"]),
+            _subprocess_config_root(env),
             url="https://saved.testops.cloud",
             token="saved-token",
             project_id=321,
@@ -588,7 +609,7 @@ class TestCLIAuthCommandProcess:
         )
         env = _subprocess_env(tmp_path, sitecustomize=sitecustomize)
         _write_saved_config(
-            Path(env["XDG_CONFIG_HOME"]),
+            _subprocess_config_root(env),
             url="https://saved.testops.cloud",
             token="saved-token",
             project_id=321,
@@ -624,7 +645,7 @@ class TestCLIAuthCommandProcess:
             """,
         )
         env = _subprocess_env(tmp_path, sitecustomize=sitecustomize)
-        config_path = Path(env["XDG_CONFIG_HOME"]) / "lucius" / "auth.json"
+        config_path = _subprocess_auth_config_path(env)
         config_path.parent.mkdir(parents=True, exist_ok=True)
         config_path.write_text("{bad-json", encoding="utf-8")
         env[AUTH_ENDPOINT_ENV] = "https://env.testops.cloud"
@@ -659,7 +680,7 @@ class TestCLIAuthCommandProcess:
         )
         env = _subprocess_env(tmp_path, sitecustomize=sitecustomize)
         _write_saved_config(
-            Path(env["XDG_CONFIG_HOME"]),
+            _subprocess_config_root(env),
             url="https://saved.testops.cloud",
             token="saved-token",
             project_id=321,
@@ -700,7 +721,7 @@ class TestCLIAuthCommandProcess:
         )
         env = _subprocess_env(tmp_path, sitecustomize=sitecustomize)
         _write_saved_config(
-            Path(env["XDG_CONFIG_HOME"]),
+            _subprocess_config_root(env),
             url="https://saved.testops.cloud",
             token="saved-token",
             project_id=321,
@@ -739,7 +760,7 @@ class TestCLIAuthCommandProcess:
             """,
         )
         env = _subprocess_env(tmp_path, sitecustomize=sitecustomize)
-        config_path = Path(env["XDG_CONFIG_HOME"]) / "lucius" / "auth.json"
+        config_path = _subprocess_auth_config_path(env)
         config_path.parent.mkdir(parents=True, exist_ok=True)
         config_path.write_text("{bad-json", encoding="utf-8")
         env[AUTH_ENDPOINT_ENV] = "https://env.testops.cloud"
@@ -822,7 +843,7 @@ class TestCLIAuthCommandProcess:
         )
         env = _subprocess_env(tmp_path, sitecustomize=sitecustomize)
         _write_saved_config(
-            Path(env["XDG_CONFIG_HOME"]),
+            _subprocess_config_root(env),
             url="https://saved.testops.cloud",
             token="saved-token",
             project_id=321,
