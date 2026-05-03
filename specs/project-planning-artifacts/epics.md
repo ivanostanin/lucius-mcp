@@ -921,3 +921,35 @@ so that standalone CLI users can enable tab completion without locating reposito
 **Then** they verify shell detection, explicit shell override, per-shell install paths, embedded-content behavior without repository completion files, completion exposure for `install-completions`, clean errors/no tracebacks, and docs coverage
 **And** process-level CLI E2E coverage invokes `uv run lucius install-completions ...` from source, not via a built binary.
 
+### Story 9.11: CLI Human-Readable Table Dates with Local Timezone Fallback
+
+As a Developer or QA Engineer,
+I want `lucius ... --format table` to render date/time values in a human-readable form using my local timezone when possible,
+so that operational data is easier to read without manual timestamp conversion.
+
+**Acceptance Criteria:**
+
+**Given** CLI table rendering receives JSON payload values that represent datetimes (for example epoch seconds/milliseconds or ISO-8601 strings)
+**When** output is rendered with `--format table`
+**Then** datetime values are shown in a human-readable datetime format
+**And** non-datetime values remain unchanged.
+
+**Given** local timezone can be resolved from the runtime environment
+**When** datetime values are rendered in table output
+**Then** values are converted to local timezone consistently for the command output
+**And** the rendered table explicitly states which timezone was used.
+
+**Given** local timezone cannot be resolved or conversion fails
+**When** table output includes datetime values
+**Then** CLI falls back to UTC conversion
+**And** the rendered output explicitly states timezone as `UTC`
+**And** command execution still succeeds without traceback/internal logs.
+
+**Given** other output modes are requested
+**When** output is rendered as `json`, `plain`, or `csv`
+**Then** existing output-contract behavior remains unchanged.
+
+**Given** automated tests run
+**When** formatter and CLI tests execute
+**Then** they verify local-timezone rendering, UTC fallback, explicit timezone labeling, deterministic formatting, and unchanged behavior for non-table formats
+**And** source-invoked CLI E2E tests validate table rendering behavior via `uv run lucius ...`.
