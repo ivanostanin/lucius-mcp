@@ -20,9 +20,8 @@ done
 uv run --extra dev ruff format scripts src tests deployment
 uv run --extra dev ruff check scripts src tests deployment --fix --unsafe-fixes
 uv run --extra dev mypy src
-uv run --extra dev pytest tests/unit tests/integration
+uv run --extra dev pytest tests/unit tests/integration --cov=src --cov-report=term-missing -v
 uv run --extra dev pytest tests/docs
-uv run --python 3.13 pytest tests/cli/ --cov=src/cli --cov-report=term-missing -v --tb=short
 if [[ -f .env.test ]]; then
   uv run --extra dev --env-file .env.test pytest tests/e2e -n auto -rs
 else

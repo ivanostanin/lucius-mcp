@@ -143,7 +143,11 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["src/cli"]
+source = ["src"]
+omit = [
+    "src/client/generated/*",
+    "**/__init__.py",
+]
 
 [tool.coverage.report]
 fail_under = 90
