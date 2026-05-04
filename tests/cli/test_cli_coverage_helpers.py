@@ -20,6 +20,13 @@ import src.cli
 from src.cli import cli_entry
 from src.cli import formatting as cli_formatting
 from src.cli.cli_entry import run_cli
+from src.cli.completions import (
+    completion_data,
+    generate_bash_completion,
+    generate_fish_completion,
+    generate_powershell_completion,
+    generate_zsh_completion,
+)
 from src.cli.formatting import format_as_csv, format_as_plain, format_as_table, render_output
 from src.cli.help_output import _build_example_args, _first_line, _format_action_list, render_action_help
 from src.cli.list_command import handle_list_command, render_list_help
@@ -402,6 +409,36 @@ class TestCLICoverageHelpers:
         actions = list(iter_actions("test_case"))
         assert "get" in actions
         assert "search" in actions
+
+    def test_completion_data_includes_short_aliases_with_canonical_actions(self) -> None:
+        entities, alias_to_canonical, actions_by_entity = completion_data()
+
+        for alias, canonical in {
+            "tc": "test_case",
+            "cf": "custom_field",
+            "cfv": "custom_field_value",
+            "tls": "test_layer_schema",
+        }.items():
+            assert alias in entities
+            assert alias_to_canonical[alias] == canonical
+
+        assert actions_by_entity[alias_to_canonical["tc"]] == actions_by_entity["test_case"]
+        assert "list" in actions_by_entity[alias_to_canonical["tc"]]
+        assert "create" in actions_by_entity[alias_to_canonical["tls"]]
+
+    def test_generated_completion_scripts_include_short_aliases(self) -> None:
+        entities, alias_to_canonical, actions_by_entity = completion_data()
+        rendered = [
+            generate_bash_completion(entities, alias_to_canonical, actions_by_entity),
+            generate_zsh_completion(entities, alias_to_canonical, actions_by_entity),
+            generate_fish_completion(entities, alias_to_canonical, actions_by_entity),
+            generate_powershell_completion(entities, alias_to_canonical, actions_by_entity),
+        ]
+
+        for script in rendered:
+            for alias in ("tc", "cf", "cfv", "tls"):
+                assert alias in script
+            assert "test_cases" in script
 
     def test_schema_file_contains_entity_action(self) -> None:
         schemas = load_tool_schemas(cli_entry.TOOL_SCHEMAS_PATH, Path(cli_entry.__file__))

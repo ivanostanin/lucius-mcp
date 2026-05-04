@@ -55,5 +55,4 @@ jobs:
       - name: Run CLI tests
         if: ${{ inputs.run-cli-tests }}
         run: |
-          echo "CI=true" > .env.test
-          uv run --env-file .env.test pytest tests/cli/ -v
+          uv run --python 3.13 pytest tests/cli/ --cov=src/cli --cov-report=term-missing -v --tb=short

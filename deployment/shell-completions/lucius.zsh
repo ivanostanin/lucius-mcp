@@ -2,7 +2,7 @@
 
 _lucius() {
     local -a entities globals formats options authOptions authSubcommands authTokens installOptions shells
-    entities=(custom-field custom-field-value custom-field-values custom-fields custom_field custom_field_value custom_field_values custom_fields defect defect-matcher defect-matchers defect_matcher defect_matchers defects integration integrations launch launches shared-step shared-steps shared_step shared_steps test-case test-cases test-layer test-layer-schema test-layer-schemas test-layers test-plan test-plans test-suite test-suites test_case test_cases test_layer test_layer_schema test_layer_schemas test_layers test_plan test_plans test_suite test_suites)
+    entities=(cf cfv custom-field custom-field-value custom-field-values custom-fields custom_field custom_field_value custom_field_values custom_fields defect defect-matcher defect-matchers defect_matcher defect_matchers defects df dm int integration integrations launch launches ln shared-step shared-steps shared_step shared_steps ss tc test-case test-cases test-layer test-layer-schema test-layer-schemas test-layers test-plan test-plans test-suite test-suites test_case test_cases test_layer test_layer_schema test_layer_schemas test_layers test_plan test_plans test_suite test_suites tl tls tp ts)
     globals=(--help -h --version -V help version auth list install-completions)
     formats=(json table plain csv)
     options=(--args -a --format -f --pretty --help -h)
@@ -31,62 +31,62 @@ _lucius() {
             return 0
         fi
         case "$entity" in
-            custom_field|custom_fields)
+            cf|custom_field|custom_fields)
                 local -a actions
                 actions=(delete-unused delete_unused get list)
                 _describe -t actions 'actions' actions
                 ;;
-            custom_field_value|custom_field_values)
+            cfv|custom_field_value|custom_field_values)
                 local -a actions
                 actions=(create delete list update)
                 _describe -t actions 'actions' actions
                 ;;
-            defect|defects)
+            defect|defects|df)
                 local -a actions
                 actions=(create delete get link-test-case link_test_case list list-test-cases list_test_cases update)
                 _describe -t actions 'actions' actions
                 ;;
-            defect_matcher|defect_matchers)
+            defect_matcher|defect_matchers|dm)
                 local -a actions
                 actions=(create delete list update)
                 _describe -t actions 'actions' actions
                 ;;
-            integration|integrations)
+            int|integration|integrations)
                 local -a actions
                 actions=(list)
                 _describe -t actions 'actions' actions
                 ;;
-            launch|launches)
+            launch|launches|ln)
                 local -a actions
                 actions=(close create delete get list reopen)
                 _describe -t actions 'actions' actions
                 ;;
-            shared_step|shared_steps)
+            shared_step|shared_steps|ss)
                 local -a actions
                 actions=(create delete delete-archived delete_archived link-test-case link_test_case list unlink-test-case unlink_test_case update)
                 _describe -t actions 'actions' actions
                 ;;
-            test_case|test_cases)
+            tc|test_case|test_cases)
                 local -a actions
                 actions=(create delete delete-archived delete_archived get get-custom-fields get_custom_fields list search update)
                 _describe -t actions 'actions' actions
                 ;;
-            test_layer|test_layers)
+            test_layer|test_layers|tl)
                 local -a actions
                 actions=(create delete list update)
                 _describe -t actions 'actions' actions
                 ;;
-            test_layer_schema|test_layer_schemas)
+            test_layer_schema|test_layer_schemas|tls)
                 local -a actions
                 actions=(create delete list update)
                 _describe -t actions 'actions' actions
                 ;;
-            test_plan|test_plans)
+            test_plan|test_plans|tp)
                 local -a actions
                 actions=(create delete list manage-content manage_content update)
                 _describe -t actions 'actions' actions
                 ;;
-            test_suite|test_suites)
+            test_suite|test_suites|ts)
                 local -a actions
                 actions=(assign-test-cases assign_test_cases create delete list)
                 _describe -t actions 'actions' actions

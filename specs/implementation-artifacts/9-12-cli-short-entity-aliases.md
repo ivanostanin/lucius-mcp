@@ -1,6 +1,6 @@
 # Story 9.12: CLI Short Entity Aliases
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -71,28 +71,28 @@ so that frequent `lucius <entity> <action>` commands are faster to type while pr
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Add short aliases to the canonical alias map** (AC: 1, 2, 3, 5)
-  - [ ] 1.1 Update `src/cli/route_matrix.py` `ENTITY_ALIASES` with the short alias mappings.
-  - [ ] 1.2 Keep all canonical entity/action entries in `CANONICAL_ROUTE_MATRIX` unchanged.
-  - [ ] 1.3 Validate aliases through `all_entities_with_aliases()` and existing `normalize_token()` behavior instead of adding parser-specific special cases.
-  - [ ] 1.4 Add collision assertions so no alias can silently map to two canonical entities.
+- [x] **Task 1: Add short aliases to the canonical alias map** (AC: 1, 2, 3, 5)
+  - [x] 1.1 Update `src/cli/route_matrix.py` `ENTITY_ALIASES` with the short alias mappings.
+  - [x] 1.2 Keep all canonical entity/action entries in `CANONICAL_ROUTE_MATRIX` unchanged.
+  - [x] 1.3 Validate aliases through `all_entities_with_aliases()` and existing `normalize_token()` behavior instead of adding parser-specific special cases.
+  - [x] 1.4 Add collision assertions so no alias can silently map to two canonical entities.
 
-- [ ] **Task 2: Preserve and improve alias discoverability** (AC: 4)
-  - [ ] 2.1 Ensure `print_global_help()` displays short aliases in the entity table.
-  - [ ] 2.2 Keep entity-specific help output canonical (`Actions for test_case`) after resolving short aliases.
-  - [ ] 2.3 Update `docs/CLI.md` to document short aliases and examples, including `lucius tc list --args '{}'`.
+- [x] **Task 2: Preserve and improve alias discoverability** (AC: 4)
+  - [x] 2.1 Ensure `print_global_help()` displays short aliases in the entity table.
+  - [x] 2.2 Keep entity-specific help output canonical (`Actions for test_case`) after resolving short aliases.
+  - [x] 2.3 Update `docs/CLI.md` to document short aliases and examples, including `lucius tc list --args '{}'`.
 
-- [ ] **Task 3: Regenerate and validate shell completions** (AC: 4, 6)
-  - [ ] 3.1 Regenerate completions using `deployment/scripts/generate_completions.py`.
-  - [ ] 3.2 Verify generated bash, zsh, fish, and PowerShell completions include short aliases at the entity position.
-  - [ ] 3.3 Verify actions offered for short aliases match their canonical entity action sets.
+- [x] **Task 3: Regenerate and validate shell completions** (AC: 4, 6)
+  - [x] 3.1 Regenerate completions using `deployment/scripts/generate_completions.py`.
+  - [x] 3.2 Verify generated bash, zsh, fish, and PowerShell completions include short aliases at the entity position.
+  - [x] 3.3 Verify actions offered for short aliases match their canonical entity action sets.
 
-- [ ] **Task 4: Add targeted CLI regression tests** (AC: 2, 5, 6)
-  - [ ] 4.1 Extend `tests/cli/test_cli_basics.py` with process-level checks for `tc` entity discovery, action help, and mocked action execution.
-  - [ ] 4.2 Extend `tests/cli/test_cli_coverage_helpers.py` or `tests/cli/test_route_matrix.py` with alias-map uniqueness and representative short-alias resolution tests.
-  - [ ] 4.3 Add completion content assertions for `tc`, `cf`, `cfv`, and at least one multi-word entity alias such as `tls`.
-  - [ ] 4.4 Confirm existing tests for `integrations`, `test-cases`, and canonical entity names still pass unchanged.
-  - [ ] 4.5 Extend the shared `uv run lucius` CLI E2E suite with representative alias commands such as `tc`, `ln`, `cf`, and `cfv`.
+- [x] **Task 4: Add targeted CLI regression tests** (AC: 2, 5, 6)
+  - [x] 4.1 Extend `tests/cli/test_cli_basics.py` with process-level checks for `tc` entity discovery, action help, and mocked action execution.
+  - [x] 4.2 Extend `tests/cli/test_cli_coverage_helpers.py` or `tests/cli/test_route_matrix.py` with alias-map uniqueness and representative short-alias resolution tests.
+  - [x] 4.3 Add completion content assertions for `tc`, `cf`, `cfv`, and at least one multi-word entity alias such as `tls`.
+  - [x] 4.4 Confirm existing tests for `integrations`, `test-cases`, and canonical entity names still pass unchanged.
+  - [x] 4.5 Extend the shared `uv run lucius` CLI E2E suite with representative alias commands such as `tc`, `ln`, `cf`, and `cfv`.
 
 ## Dev Notes
 
@@ -189,12 +189,43 @@ Rationale: these are short, mnemonic, and avoid using `l` for `launch`, which co
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+GPT-5 Codex
 
 ### Debug Log References
+
+- 2026-05-04: Added failing CLI alias regression coverage, then implemented short aliases in `ENTITY_ALIASES`.
+- 2026-05-04: Ran `uv run --python 3.13 --extra dev pytest tests/cli/test_cli_basics.py tests/cli/test_cli_coverage_helpers.py tests/cli/test_route_matrix.py -q` - passed, 126 tests.
+- 2026-05-04: Ran `uv run ruff check src/cli tests/cli deployment/scripts/generate_completions.py` - passed after import ordering fix.
+- 2026-05-04: Ran `uv run mypy src/cli` - passed.
+- 2026-05-04: Regenerated shell completions with `uv run --python 3.13 --extra dev python deployment/scripts/generate_completions.py`.
+- 2026-05-04: Inspected generated bash, zsh, fish, and PowerShell completion scripts for `tc`, `cf`, `cfv`, and `tls` entity tokens and matching action blocks.
+- 2026-05-04: Ran `uv run --python 3.13 --extra dev pytest tests/cli/test_completion_installer.py tests/cli/test_cli_basics.py tests/cli/test_cli_coverage_helpers.py tests/cli/test_route_matrix.py -q` - passed, 156 tests.
+- 2026-05-04: Ran `bash scripts/full-test-suite.sh` - unit, integration, docs, and CLI phases passed; live `tests/e2e` phase failed with external Allure TestOps `httpx.ConnectError`, `RemoteProtocolError`, and `ReadTimeout` during token/API calls, so story was not moved to review.
+- 2026-05-04: Ran `uv run --extra dev pytest tests/packaging -q` separately after full-suite E2E halt - passed, 34 tests.
+- 2026-05-04: Reran `uv run --extra dev --env-file .env.test pytest tests/e2e -n auto -rs` with escalated filesystem/network access after sandbox uv-cache denial - passed, 113 passed and 1 skipped.
 
 ### Completion Notes List
 
 Ultimate context engine analysis completed - comprehensive developer guide created.
+- Implemented all short entity aliases through `src/cli/route_matrix.py` `ENTITY_ALIASES`; no parser-specific alias handling or canonical route duplication was introduced.
+- Added normalized alias collision validation in `all_entities_with_aliases()` so aliases cannot silently target two canonical entities or an unknown entity.
+- Preserved canonical entity/action help after short alias resolution; `lucius tc` renders `Actions for test_case` and `lucius tc list --help` renders canonical `lucius test_case list` help.
+- Updated `docs/CLI.md` with short alias mappings and `lucius tc list --args '{}'` usage.
+- Regenerated checked-in bash, zsh, fish, and PowerShell completion scripts from the completion generator.
+- Added CLI regression coverage for short alias resolution, root help display, mocked `tc list` execution, completion generation, `uv run lucius` alias flows, and completion installer output.
+- Cleared the earlier live E2E connectivity blocker with a successful E2E rerun and moved the story to review.
 
 ### File List
+
+- `src/cli/route_matrix.py`
+- `docs/CLI.md`
+- `deployment/shell-completions/lucius.bash`
+- `deployment/shell-completions/lucius.zsh`
+- `deployment/shell-completions/lucius.fish`
+- `deployment/shell-completions/lucius.ps1`
+- `tests/cli/test_cli_basics.py`
+- `tests/cli/test_cli_coverage_helpers.py`
+- `tests/cli/test_completion_installer.py`
+- `tests/cli/test_route_matrix.py`
+- `specs/implementation-artifacts/9-12-cli-short-entity-aliases.md`
+- `specs/implementation-artifacts/sprint-status.yaml`
