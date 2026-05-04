@@ -52,7 +52,7 @@ def test_install_completions_print_does_not_wrap_script_lines() -> None:
     handle_install_completions_command(["--shell", "bash", "--print"], context=context)
 
     output = stream.getvalue()
-    assert '"custom-field custom-field-value custom-field-values' in output
+    assert '"cf cfv custom-field custom-field-value custom-field-values' in output
 
 
 @pytest.mark.parametrize(

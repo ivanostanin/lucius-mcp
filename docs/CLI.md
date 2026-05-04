@@ -32,6 +32,7 @@ lucius
 lucius list
 lucius list --help
 lucius test_case
+lucius tc
 lucius integrations
 
 # Install or print embedded shell completions
@@ -47,6 +48,7 @@ lucius launch close --help
 # Execute actions
 lucius test_case get --args '{"test_case_id": 1234}'
 lucius test_case create --args '{"name": "Smoke login"}'
+lucius tc list --args '{}'
 lucius test_case get --args '{"test_case_id": 1234}' --pretty
 lucius launch close --args '{"launch_id": 123}' --format table
 lucius defect list --args '{}' --format plain
@@ -114,6 +116,18 @@ shown by `lucius auth status`.
 
 ## Entity Aliases
 
+- `tc` -> `test_case`
+- `cf` -> `custom_field`
+- `cfv` -> `custom_field_value`
+- `ln` -> `launch`
+- `int` -> `integration`
+- `ss` -> `shared_step`
+- `tl` -> `test_layer`
+- `tls` -> `test_layer_schema`
+- `ts` -> `test_suite`
+- `tp` -> `test_plan`
+- `df` -> `defect`
+- `dm` -> `defect_matcher`
 - `integrations` -> `integration`
 - `test_cases` -> `test_case`
 - `launches` -> `launch`

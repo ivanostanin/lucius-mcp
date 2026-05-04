@@ -3,7 +3,7 @@
 Register-ArgumentCompleter -Native -CommandName lucius -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
 
-    $entities = @("custom-field", "custom-field-value", "custom-field-values", "custom-fields", "custom_field", "custom_field_value", "custom_field_values", "custom_fields", "defect", "defect-matcher", "defect-matchers", "defect_matcher", "defect_matchers", "defects", "integration", "integrations", "launch", "launches", "shared-step", "shared-steps", "shared_step", "shared_steps", "test-case", "test-cases", "test-layer", "test-layer-schema", "test-layer-schemas", "test-layers", "test-plan", "test-plans", "test-suite", "test-suites", "test_case", "test_cases", "test_layer", "test_layer_schema", "test_layer_schemas", "test_layers", "test_plan", "test_plans", "test_suite", "test_suites")
+    $entities = @("cf", "cfv", "custom-field", "custom-field-value", "custom-field-values", "custom-fields", "custom_field", "custom_field_value", "custom_field_values", "custom_fields", "defect", "defect-matcher", "defect-matchers", "defect_matcher", "defect_matchers", "defects", "df", "dm", "int", "integration", "integrations", "launch", "launches", "ln", "shared-step", "shared-steps", "shared_step", "shared_steps", "ss", "tc", "test-case", "test-cases", "test-layer", "test-layer-schema", "test-layer-schemas", "test-layers", "test-plan", "test-plans", "test-suite", "test-suites", "test_case", "test_cases", "test_layer", "test_layer_schema", "test_layer_schemas", "test_layers", "test_plan", "test_plans", "test_suite", "test_suites", "tl", "tls", "tp", "ts")
     $globalTokens = @("--help", "-h", "--version", "-V", "help", "version", "auth", "list", "install-completions")
     $formats = @("json", "table", "plain", "csv")
     $options = @("--args", "-a", "--format", "-f", "--pretty", "--help", "-h")
@@ -13,6 +13,8 @@ Register-ArgumentCompleter -Native -CommandName lucius -ScriptBlock {
     $installOptions = @("--shell", "--path", "--force", "--print", "--help", "-h")
     $shells = @("bash", "zsh", "fish", "powershell")
     $aliasToCanonical = @{
+        "cf" = "custom_field"
+        "cfv" = "custom_field_value"
         "custom_field" = "custom_field"
         "custom_field_value" = "custom_field_value"
         "custom_field_values" = "custom_field_value"
@@ -21,12 +23,18 @@ Register-ArgumentCompleter -Native -CommandName lucius -ScriptBlock {
         "defect_matcher" = "defect_matcher"
         "defect_matchers" = "defect_matcher"
         "defects" = "defect"
+        "df" = "defect"
+        "dm" = "defect_matcher"
+        "int" = "integration"
         "integration" = "integration"
         "integrations" = "integration"
         "launch" = "launch"
         "launches" = "launch"
+        "ln" = "launch"
         "shared_step" = "shared_step"
         "shared_steps" = "shared_step"
+        "ss" = "shared_step"
+        "tc" = "test_case"
         "test_case" = "test_case"
         "test_cases" = "test_case"
         "test_layer" = "test_layer"
@@ -37,6 +45,10 @@ Register-ArgumentCompleter -Native -CommandName lucius -ScriptBlock {
         "test_plans" = "test_plan"
         "test_suite" = "test_suite"
         "test_suites" = "test_suite"
+        "tl" = "test_layer"
+        "tls" = "test_layer_schema"
+        "tp" = "test_plan"
+        "ts" = "test_suite"
     }
     $actionsByEntity = @{
         "custom_field" = @("delete-unused", "delete_unused", "get", "list")

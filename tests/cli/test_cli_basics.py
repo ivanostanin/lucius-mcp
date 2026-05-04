@@ -91,6 +91,28 @@ def test_cli_entity_alias_plural():
     assert "Actions for integration" in result.stdout
 
 
+def test_cli_short_entity_alias_discovery_and_help():
+    """Test short entity alias resolves through discovery and action help."""
+    discovery = run_cli(["tc"])
+    assert discovery.returncode == 0
+    assert "Actions for test_case" in discovery.stdout
+
+    help_result = run_cli(["tc", "list", "--help"])
+    assert help_result.returncode == 0
+    assert "lucius test_case list" in help_result.stdout
+    assert "Mapped tool:" in help_result.stdout
+    assert "list_test_cases" in help_result.stdout
+
+
+def test_cli_root_help_exposes_short_entity_aliases():
+    """Test root help displays short aliases alongside entity aliases."""
+    result = run_cli(["--help"])
+    assert result.returncode == 0
+    assert "tc" in result.stdout
+    assert "cfv" in result.stdout
+    assert "tls" in result.stdout
+
+
 def test_cli_action_help():
     """Test lucius <entity> <action> --help displays isolated help."""
     result = run_cli(["test_case", "list", "--help"])
@@ -158,6 +180,16 @@ def test_process_cli_default_json_output_without_format_flag():
     """Process-level check: action output defaults to JSON when --format is omitted."""
     result = run_cli_with_mocked_result(
         ["test_case", "list", "--args", "{}"],
+        '{"ok":true,"count":2}',
+    )
+    assert result.returncode == 0
+    assert result.stdout.strip() == '{"ok":true,"count":2}'
+
+
+def test_process_cli_short_alias_uses_same_action_path():
+    """Process-level check: short aliases execute the same mocked action path."""
+    result = run_cli_with_mocked_result(
+        ["tc", "list", "--args", "{}"],
         '{"ok":true,"count":2}',
     )
     assert result.returncode == 0
@@ -315,3 +347,18 @@ def test_uv_run_cli_table_renders_datetime_with_timezone_label():
     assert result.returncode == 0, result.stderr
     assert "2023-11-14 22:13:20" in result.stdout
     assert "Timezone: UTC" in result.stdout
+
+
+def test_uv_run_cli_short_alias_flows():
+    """Process-level check: uv run lucius supports representative short aliases."""
+    alias_commands = [
+        (["tc"], "Actions for test_case"),
+        (["ln"], "Actions for launch"),
+        (["cf"], "Actions for custom_field"),
+        (["cfv"], "Actions for custom_field_value"),
+    ]
+
+    for args, expected in alias_commands:
+        result = run_uv_cli(args)
+        assert result.returncode == 0, result.stderr
+        assert expected in result.stdout

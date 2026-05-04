@@ -92,6 +92,18 @@ CANONICAL_ROUTE_MATRIX: dict[str, dict[str, str]] = {
 
 # Spec-defined entity aliases.
 ENTITY_ALIASES: dict[str, str] = {
+    "tc": "test_case",
+    "cf": "custom_field",
+    "cfv": "custom_field_value",
+    "ln": "launch",
+    "int": "integration",
+    "ss": "shared_step",
+    "tl": "test_layer",
+    "tls": "test_layer_schema",
+    "ts": "test_suite",
+    "tp": "test_plan",
+    "df": "defect",
+    "dm": "defect_matcher",
     "integrations": "integration",
     "test_cases": "test_case",
     "launches": "launch",
@@ -133,11 +145,20 @@ def all_entities_with_aliases() -> dict[str, set[str]]:
     """Return canonical entities mapped to all accepted aliases."""
     alias_map: dict[str, set[str]] = {entity: {entity} for entity in CANONICAL_ROUTE_MATRIX}
     for alias, entity in ENTITY_ALIASES.items():
+        if entity not in CANONICAL_ROUTE_MATRIX:
+            raise ValueError(f"Alias '{alias}' targets unknown entity '{entity}'")
         alias_map.setdefault(entity, {entity}).add(alias)
     # Accept dash-form aliases too.
     for entity, aliases in alias_map.items():
         aliases.update({item.replace("_", "-") for item in list(aliases)})
         aliases.add(entity.replace("_", "-"))
+    seen_aliases: dict[str, str] = {}
+    for entity, aliases in alias_map.items():
+        for alias in aliases:
+            normalized = normalize_token(alias)
+            existing = seen_aliases.setdefault(normalized, entity)
+            if existing != entity:
+                raise ValueError(f"Alias '{alias}' maps to both '{existing}' and '{entity}'")
     return alias_map
 
 
