@@ -109,3 +109,48 @@ def run_cli_with_mocked_result_via_uv(
         ]
     )
     return run_uv_python_snippet(script, env=env)
+
+
+def run_uv_cli_with_mocked_result(
+    args: list[str],
+    tool_name: str,
+    mocked_result: object,
+    expected_tool_output_format: str,
+    *,
+    env: Mapping[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Run the `uv run lucius` console script with a startup stubbed tool function."""
+    with tempfile.TemporaryDirectory(prefix="lucius-sitecustomize-") as patch_dir:
+        patch_path = Path(patch_dir)
+        sitecustomize = patch_path / "sitecustomize.py"
+        payload = repr(mocked_result)
+        sitecustomize.write_text(
+            "\n".join(
+                [
+                    "from src.cli import cli_entry",
+                    "import src.tools as tools",
+                    f"_payload = {payload}",
+                    f"_tool_name = {tool_name!r}",
+                    f"_expected = {expected_tool_output_format!r}",
+                    "async def _fake(**kwargs):",
+                    "    assert kwargs.get('output_format') == _expected, (_expected, kwargs)",
+                    "    return _payload",
+                    "setattr(tools, _tool_name, _fake)",
+                    "cli_entry.call_tool_function = lambda tool_name, args: _fake(**args)",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        resolved_env = _subprocess_env(env)
+        pythonpath_parts = [str(patch_path), str(PROJECT_ROOT)]
+        existing_pythonpath = resolved_env.get("PYTHONPATH")
+        if existing_pythonpath:
+            pythonpath_parts.append(existing_pythonpath)
+        resolved_env["PYTHONPATH"] = os.pathsep.join(pythonpath_parts)
+        return subprocess.run(
+            ["uv", "run", "--python", UV_PYTHON_VERSION, "lucius", *args],
+            capture_output=True,
+            text=True,
+            cwd=PROJECT_ROOT,
+            env=resolved_env,
+        )

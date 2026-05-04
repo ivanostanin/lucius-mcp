@@ -130,9 +130,10 @@ development_status:
   9-3-service-first-cli-entity-action: done
   9-4-python-3-13-compatibility-for-nuitka-cli-builds: done
   9-5-nuitka-onefile-caching-for-cli-startup: done
-  9-6-unified-cli-output-formats-json-table-csv-plain: review
+  9-6-unified-cli-output-formats-json-table-csv-plain: done
   9-7-cli-auth-command-persistent-configuration: done
   9-8-cli-list-command-tool-table: done
   9-9-cli-pretty-json-output-flag: done
   9-10-cli-install-completions-command: done
+  9-11-cli-table-human-readable-dates-local-timezone-fallback: done
   epic-9-retrospective: optional

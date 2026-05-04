@@ -6,13 +6,16 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import UTC, datetime, timedelta, tzinfo
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
+from zoneinfo import ZoneInfo
 
 import pytest
 from rich.console import Console
 
 from src.cli import cli_entry
+from src.cli import formatting as cli_formatting
 from src.cli.cli_entry import run_cli
 from src.cli.formatting import format_as_csv, format_as_plain, format_as_table, format_json
 from src.cli.help_output import render_action_help
@@ -361,6 +364,81 @@ class TestE2EFormatting:
         assert "123" in rendered
         assert "Sample" in rendered
 
+    def test_format_table_renders_epoch_seconds_and_milliseconds_in_local_timezone(self) -> None:
+        display_timezone = cli_formatting.DisplayTimezone(ZoneInfo("Europe/Podgorica"), "Europe/Podgorica")
+        rows = [
+            {
+                "id": 1,
+                "created_at": 1700000000,
+                "updated_at": 1700000000000,
+                "name": "1700000000",
+            }
+        ]
+
+        with patch("src.cli.formatting._resolve_display_timezone", return_value=display_timezone):
+            rendered = render_table(format_as_table(rows))
+
+        assert "2023-11-14 23:13:20" in rendered
+        assert "Europe/Podgorica" in rendered
+        assert "name" in rendered
+        assert "1700000000" in rendered
+
+    def test_format_table_renders_iso_z_and_offset_values_in_local_timezone(self) -> None:
+        display_timezone = cli_formatting.DisplayTimezone(ZoneInfo("Asia/Tokyo"), "Asia/Tokyo")
+        rows = [
+            {
+                "started_at": "2024-01-02T03:04:05Z",
+                "finished_at": "2024-01-02T03:04:05+02:00",
+                "note": "2024-01-02T03:04:05Z",
+            }
+        ]
+
+        with patch("src.cli.formatting._resolve_display_timezone", return_value=display_timezone):
+            rendered = render_table(format_as_table(rows))
+
+        assert "2024-01-02 12:04:05" in rendered
+        assert "2024-01-02 10:04:05" in rendered
+        assert "Asia/Tokyo" in rendered
+
+    def test_format_table_falls_back_to_utc_label_for_unresolved_timezone(self) -> None:
+        rows = [{"created_at": "2024-01-02T03:04:05Z"}]
+
+        with patch(
+            "src.cli.formatting._resolve_display_timezone",
+            return_value=cli_formatting.DisplayTimezone(UTC, "UTC"),
+        ):
+            rendered = render_table(format_as_table(rows))
+
+        assert "2024-01-02 03:04:05" in rendered
+        assert "UTC" in rendered
+
+    def test_format_table_labels_utc_when_timezone_conversion_falls_back(self) -> None:
+        class BrokenTimezone(tzinfo):
+            def utcoffset(self, dt: datetime | None) -> timedelta:
+                raise ValueError("broken timezone")
+
+            def dst(self, dt: datetime | None) -> timedelta:
+                return timedelta(0)
+
+        rows = [{"created_at": "2024-01-02T03:04:05Z"}]
+
+        with patch(
+            "src.cli.formatting._resolve_display_timezone",
+            return_value=cli_formatting.DisplayTimezone(BrokenTimezone(), "Broken/Zone"),
+        ):
+            rendered = render_table(format_as_table(rows))
+
+        assert "2024-01-02 03:04:05" in rendered
+        assert "Timezone: UTC" in rendered
+        assert "Broken/Zone" not in rendered
+
+    def test_format_table_leaves_invalid_date_like_values_render_safe(self) -> None:
+        rendered = render_table(format_as_table([{"created_at": "not-a-date", "updated_at": 999999999999999999}]))
+
+        assert "not-a-date" in rendered
+        assert "999999999999999999" in rendered
+        assert "Traceback" not in rendered
+
     def test_format_plain(self) -> None:
         result = format_as_plain({"id": 1, "name": "Test"})
         assert "id: 1" in result
@@ -393,6 +471,14 @@ class TestE2EFormatting:
         csv_output = format_as_csv([{"id": 1, "meta": {"note": long_value}}])
         assert long_value in csv_output
         assert "..." not in csv_output
+
+    def test_non_table_formats_do_not_localize_datetime_values(self) -> None:
+        payload = [{"created_at": 1700000000, "name": "Alpha"}]
+
+        assert "1700000000" in format_as_csv(payload)
+        assert "2023-11-14" not in format_as_csv(payload)
+        assert "1700000000" in format_as_plain(payload)
+        assert "2023-11-14" not in format_as_plain(payload)
 
 
 class TestE2EValidationAndHelp:
