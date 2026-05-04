@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from pydantic import SecretStr
@@ -16,10 +16,17 @@ def _resolved_auth(*, endpoint: str = "https://example.com", token: str = "token
     return SimpleNamespace(endpoint=endpoint, api_token=SecretStr(token), project_id=project_id)
 
 
+def _mock_url_context(project_id: int = 1) -> MagicMock:
+    mock_client = MagicMock()
+    mock_client.get_base_url.return_value = "https://example.com"
+    mock_client.get_project.return_value = project_id
+    return mock_client
+
+
 @pytest.mark.asyncio
 async def test_create_launch_tool_success() -> None:
     with patch("src.tools.launches.AllureClient.from_env") as mock_client_ctx:
-        mock_client = AsyncMock()
+        mock_client = _mock_url_context()
         mock_client_ctx.return_value.__aenter__.return_value = mock_client
 
         with patch("src.tools.launches.LaunchService") as mock_service_cls:
@@ -32,13 +39,14 @@ async def test_create_launch_tool_success() -> None:
             assert "Launch created successfully" in output
             assert "ID: 55" in output
             assert "Name: Launch 55" in output
+            assert "Launch URL: https://example.com/launch/55" in output
             mock_service.create_launch.assert_called_once()
 
 
 @pytest.mark.asyncio
 async def test_list_launches_tool_output() -> None:
     with patch("src.tools.launches.AllureClient.from_env") as mock_client_ctx:
-        mock_client = AsyncMock()
+        mock_client = _mock_url_context()
         mock_client_ctx.return_value.__aenter__.return_value = mock_client
 
         with patch("src.tools.launches.LaunchService") as mock_service_cls:
@@ -61,7 +69,34 @@ async def test_list_launches_tool_output() -> None:
             assert "Found 1 launches" in output
             assert "#9" in output
             assert "Launch 9" in output
+            assert "Launch URL: https://example.com/launch/9" in output
             mock_service.list_launches.assert_called_once_with(page=0, size=20, search=None, filter_id=None, sort=None)
+
+
+@pytest.mark.asyncio
+async def test_list_launches_json_items_include_urls() -> None:
+    with patch("src.tools.launches.AllureClient.from_env") as mock_client_ctx:
+        mock_client = _mock_url_context(project_id=2)
+        mock_client_ctx.return_value.__aenter__.return_value = mock_client
+
+        with patch("src.tools.launches.LaunchService") as mock_service_cls:
+            mock_service = mock_service_cls.return_value
+            result = type(
+                "LaunchListResult",
+                (),
+                {
+                    "items": [type("Launch", (), {"id": 9, "name": "Launch 9", "created_date": 321, "closed": True})],
+                    "total": 1,
+                    "page": 0,
+                    "size": 20,
+                    "total_pages": 1,
+                },
+            )
+            mock_service.list_launches = AsyncMock(return_value=result)
+
+            output = await list_launches(page=0, size=20, output_format="json")
+
+            assert output.structured_content["items"][0]["url"] == "https://example.com/launch/9"
 
 
 @pytest.mark.asyncio
@@ -71,7 +106,7 @@ async def test_get_launch_tool_output() -> None:
         return_value=_resolved_auth(token="runtime-token"),
     ):
         with patch("src.tools.launches.AllureClient") as mock_client_cls:
-            mock_client = AsyncMock()
+            mock_client = _mock_url_context()
             mock_client_cls.return_value.__aenter__.return_value = mock_client
 
             with patch("src.tools.launches.LaunchService") as mock_service_cls:
@@ -94,6 +129,7 @@ async def test_get_launch_tool_output() -> None:
                 assert "Launch details" in output
                 assert "ID: 12" in output
                 assert "Status: closed" in output
+                assert "URL: https://example.com/launch/12" in output
                 assert "Started: 100" in output
                 assert "Ended: 200" in output
 
@@ -102,7 +138,7 @@ async def test_get_launch_tool_output() -> None:
 async def test_delete_launch_tool_output_archived() -> None:
     with patch("src.tools.launches.resolve_auth_settings", return_value=_resolved_auth()):
         with patch("src.tools.launches.AllureClient") as mock_client_cls:
-            mock_client = AsyncMock()
+            mock_client = _mock_url_context()
             mock_client_cls.return_value.__aenter__.return_value = mock_client
 
             with patch("src.tools.launches.LaunchService") as mock_service_cls:
@@ -118,6 +154,7 @@ async def test_delete_launch_tool_output_archived() -> None:
 
                 assert "Archived Launch 55" in output
                 assert "Launch 55" in output
+                assert "Launch URL: https://example.com/launch/55" in output
                 mock_service.delete_launch.assert_called_once_with(55)
 
 
@@ -125,7 +162,7 @@ async def test_delete_launch_tool_output_archived() -> None:
 async def test_delete_launch_tool_output_already_deleted() -> None:
     with patch("src.tools.launches.resolve_auth_settings", return_value=_resolved_auth()):
         with patch("src.tools.launches.AllureClient") as mock_client_cls:
-            mock_client = AsyncMock()
+            mock_client = _mock_url_context()
             mock_client_cls.return_value.__aenter__.return_value = mock_client
 
             with patch("src.tools.launches.LaunchService") as mock_service_cls:
@@ -146,6 +183,7 @@ async def test_delete_launch_tool_output_already_deleted() -> None:
 
                 assert "Launch 56" in output
                 assert "already archived or doesn't exist" in output
+                assert "Launch URL: https://example.com/launch/56" in output
                 mock_service.delete_launch.assert_called_once_with(56)
 
 
@@ -157,7 +195,7 @@ async def test_close_launch_tool_output() -> None:
         return_value=_resolved_auth(token=runtime_api_token),
     ):
         with patch("src.tools.launches.AllureClient") as mock_client_cls:
-            mock_client = AsyncMock()
+            mock_client = _mock_url_context()
             mock_client_cls.return_value.__aenter__.return_value = mock_client
 
             with patch("src.tools.launches.LaunchService") as mock_service_cls:
@@ -185,6 +223,7 @@ async def test_close_launch_tool_output() -> None:
                 mock_service.close_launch.assert_called_once_with(13)
                 assert output.startswith("Launch closed successfully.")
                 assert "Status: closed" in output
+                assert "URL: https://example.com/launch/13" in output
 
 
 @pytest.mark.asyncio
@@ -195,7 +234,7 @@ async def test_reopen_launch_tool_output() -> None:
         return_value=_resolved_auth(token=runtime_api_token),
     ):
         with patch("src.tools.launches.AllureClient") as mock_client_cls:
-            mock_client = AsyncMock()
+            mock_client = _mock_url_context()
             mock_client_cls.return_value.__aenter__.return_value = mock_client
 
             with patch("src.tools.launches.LaunchService") as mock_service_cls:
@@ -223,3 +262,4 @@ async def test_reopen_launch_tool_output() -> None:
                 mock_service.reopen_launch.assert_called_once_with(14)
                 assert output.startswith("Launch reopened successfully.")
                 assert "Status: open" in output
+                assert "URL: https://example.com/launch/14" in output

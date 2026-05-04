@@ -40,6 +40,9 @@ class _SearchClient:
     def get_project(self) -> int:
         return 123
 
+    def get_base_url(self) -> str:
+        return "https://example.com"
+
 
 @pytest.fixture
 def search_client(monkeypatch: pytest.MonkeyPatch) -> _SearchClient:
@@ -58,7 +61,15 @@ async def test_search_test_cases_defaults_to_structured_payload(search_client: _
         "page": 0,
         "size": 20,
         "total_pages": 1,
-        "items": [{"id": 1, "name": "Login Flow", "status": "unknown", "tags": ["smoke"]}],
+        "items": [
+            {
+                "id": 1,
+                "name": "Login Flow",
+                "status": "unknown",
+                "tags": ["smoke"],
+                "url": "https://example.com/project/123/test-cases/1",
+            }
+        ],
         "query": "login",
     }
 
@@ -70,8 +81,10 @@ async def test_search_test_cases_preserves_explicit_text_formats(search_client: 
 
     assert isinstance(plain, str)
     assert "Found 1 test cases matching 'login':" in plain
+    assert "Test Case URL: https://example.com/project/123/test-cases/1" in plain
     assert structured_json.content == []
     assert structured_json.structured_content["items"][0]["tags"] == ["smoke"]
+    assert structured_json.structured_content["items"][0]["url"] == "https://example.com/project/123/test-cases/1"
 
 
 @pytest.mark.asyncio
@@ -85,7 +98,15 @@ async def test_fastmcp_emits_structured_content_for_default_search_output(search
         "page": 0,
         "size": 20,
         "total_pages": 1,
-        "items": [{"id": 1, "name": "Login Flow", "status": "unknown", "tags": ["smoke"]}],
+        "items": [
+            {
+                "id": 1,
+                "name": "Login Flow",
+                "status": "unknown",
+                "tags": ["smoke"],
+                "url": "https://example.com/project/123/test-cases/1",
+            }
+        ],
         "query": "login",
     }
     assert result.content == []
@@ -101,6 +122,7 @@ async def test_fastmcp_keeps_text_content_when_plain_output_is_requested(search_
     assert len(result.content) == 1
     assert result.content[0].type == "text"
     assert "Found 1 test cases matching 'login':" in result.content[0].text
+    assert "Test Case URL: https://example.com/project/123/test-cases/1" in result.content[0].text
 
 
 @pytest.mark.asyncio
@@ -114,3 +136,4 @@ async def test_fastmcp_emits_only_structured_content_when_json_output_is_request
     assert result.content == []
     assert result.structured_content is not None
     assert result.structured_content["items"][0]["tags"] == ["smoke"]
+    assert result.structured_content["items"][0]["url"] == "https://example.com/project/123/test-cases/1"

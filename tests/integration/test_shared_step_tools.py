@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.tools.shared_steps import create_shared_step, list_shared_steps
+from src.tools.shared_steps import create_shared_step, delete_shared_step, list_shared_steps, update_shared_step
 
 
 @pytest.mark.asyncio
@@ -26,7 +26,7 @@ async def test_create_shared_step_uses_resolved_project_context_in_url() -> None
 
             assert output.content == []
             assert output.structured_content["project_id"] == 456
-            assert output.structured_content["url"] == "https://example.com/project/456/settings/shared-steps/11"
+            assert output.structured_content["url"] == "https://example.com/project/456/shared-steps/11"
 
 
 @pytest.mark.asyncio
@@ -34,6 +34,7 @@ async def test_list_shared_steps_uses_resolved_project_context_in_plain_output()
     with patch("src.tools.shared_steps.AllureClient.from_env") as mock_client_ctx:
         mock_client = MagicMock()
         mock_client.get_project.return_value = 456
+        mock_client.get_base_url.return_value = "https://example.com"
         mock_client_ctx.return_value.__aenter__.return_value = mock_client
 
         with patch("src.tools.shared_steps.SharedStepService") as mock_service_cls:
@@ -46,3 +47,39 @@ async def test_list_shared_steps_uses_resolved_project_context_in_plain_output()
             assert "project 456" in output
             assert "project None" not in output
             assert "[ID: 12] Login as Admin (2 steps)" in output
+            assert "Shared Step URL: https://example.com/project/456/shared-steps/12" in output
+
+
+@pytest.mark.asyncio
+async def test_update_shared_step_includes_url_in_json_output() -> None:
+    with patch("src.tools.shared_steps.AllureClient.from_env") as mock_client_ctx:
+        mock_client = MagicMock()
+        mock_client.get_project.return_value = 456
+        mock_client.get_base_url.return_value = "https://example.com"
+        mock_client_ctx.return_value.__aenter__.return_value = mock_client
+
+        with patch("src.tools.shared_steps.SharedStepService") as mock_service_cls:
+            mock_service = mock_service_cls.return_value
+            mock_updated = type("SharedStepDto", (), {"id": 12, "name": "Login as Admin"})
+            mock_service.update_shared_step = AsyncMock(return_value=(mock_updated, True))
+
+            output = await update_shared_step(step_id=12, name="Login as Admin", confirm=True, output_format="json")
+
+            assert output.structured_content["url"] == "https://example.com/project/456/shared-steps/12"
+
+
+@pytest.mark.asyncio
+async def test_delete_shared_step_includes_url_in_json_output() -> None:
+    with patch("src.tools.shared_steps.AllureClient.from_env") as mock_client_ctx:
+        mock_client = MagicMock()
+        mock_client.get_project.return_value = 456
+        mock_client.get_base_url.return_value = "https://example.com"
+        mock_client_ctx.return_value.__aenter__.return_value = mock_client
+
+        with patch("src.tools.shared_steps.SharedStepService") as mock_service_cls:
+            mock_service = mock_service_cls.return_value
+            mock_service.delete_shared_step = AsyncMock(return_value=True)
+
+            output = await delete_shared_step(step_id=12, confirm=True, output_format="json")
+
+            assert output.structured_content["url"] == "https://example.com/project/456/shared-steps/12"

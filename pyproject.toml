@@ -65,6 +65,16 @@ package = true
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build]
+exclude = [
+    "/.codex",
+    "/.mypy_cache",
+    "/.pytest_cache",
+    "/.ruff_cache",
+    "/.venv",
+    "/dist",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
 

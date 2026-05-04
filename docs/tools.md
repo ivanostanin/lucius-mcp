@@ -3,6 +3,11 @@
 Lucius provides a suite of MCP tools categorized by feature area. All tools are optimized for AI agents and return "
 Agent Hints" on failure.
 
+Supported TestOps entity responses include browser URLs alongside stable IDs in both `plain` and `json` output. URL
+coverage currently includes test cases, launches, defects, test plans, and shared steps. Settings-only and API-only
+records such as test layers, custom fields, integrations, and defect matchers keep IDs only unless a stable browser
+route is verified.
+
 ## 📁 Test Case Management
 
 | Tool                          | Description                                                 | Key Parameters                  |

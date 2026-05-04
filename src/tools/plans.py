@@ -10,6 +10,7 @@ from src.tools.output_contract import (
     render_confirmation_required,
     render_output,
 )
+from src.utils.links import test_plan_url
 
 
 async def create_test_plan(
@@ -45,7 +46,10 @@ async def create_test_plan(
             test_case_ids=test_case_ids,
             aql_filter=aql_filter,
         )
-        message = f"Created Test Plan {plan.id}: '{plan.name}'"
+        if plan.id is None:
+            raise ValueError("Created test plan is missing an ID")
+        url = test_plan_url(client.get_base_url(), client.get_project(), plan.id)
+        message = f"Created Test Plan {plan.id}: '{plan.name}'\nTest Plan URL: {url}"
         return render_output(
             plain=message,
             json_payload={
@@ -53,6 +57,7 @@ async def create_test_plan(
                 "name": plan.name,
                 "aql_filter": aql_filter,
                 "test_case_ids": test_case_ids or [],
+                "url": url,
             },
             output_format=output_format,
         )
@@ -80,12 +85,16 @@ async def update_test_plan(
     async with AllureClient.from_env() as client:
         service = PlanService(client)
         plan = await service.update_plan(plan_id=plan_id, name=name)
-        message = f"Updated Test Plan {plan.id}: '{plan.name}'"
+        if plan.id is None:
+            raise ValueError("Updated test plan is missing an ID")
+        url = test_plan_url(client.get_base_url(), client.get_project(), plan.id)
+        message = f"Updated Test Plan {plan.id}: '{plan.name}'\nTest Plan URL: {url}"
         return render_output(
             plain=message,
             json_payload={
                 "id": plan.id,
                 "name": plan.name,
+                "url": url,
             },
             output_format=output_format,
         )
@@ -124,7 +133,8 @@ async def manage_test_plan_content(
             test_case_ids_remove=remove_test_case_ids,
             aql_filter=update_aql_filter,
         )
-        message = f"Updated content for Test Plan {plan_id}"
+        url = test_plan_url(client.get_base_url(), client.get_project(), plan_id)
+        message = f"Updated content for Test Plan {plan_id}\nTest Plan URL: {url}"
         return render_output(
             plain=message,
             json_payload={
@@ -132,6 +142,7 @@ async def manage_test_plan_content(
                 "add_test_case_ids": add_test_case_ids or [],
                 "remove_test_case_ids": remove_test_case_ids or [],
                 "aql_filter": update_aql_filter,
+                "url": url,
             },
             output_format=output_format,
         )
@@ -161,6 +172,8 @@ async def list_test_plans(
     async with AllureClient.from_env() as client:
         service = PlanService(client)
         plans = await service.list_plans(page=page, size=size)
+        base_url = client.get_base_url()
+        project_id = client.get_project()
 
         result = []
         items: list[dict[str, object]] = []
@@ -168,7 +181,12 @@ async def list_test_plans(
             # Note: test_cases_count field might be None
             count = p.test_cases_count or 0
             result.append(f"[{p.id}] {p.name} ({count} cases)")
-            items.append({"id": p.id, "name": p.name, "test_cases_count": count})
+            if p.id is not None:
+                result.append(f"  Test Plan URL: {test_plan_url(base_url, project_id, p.id)}")
+            payload: dict[str, object] = {"id": p.id, "name": p.name, "test_cases_count": count}
+            if p.id is not None:
+                payload["url"] = test_plan_url(base_url, project_id, p.id)
+            items.append(payload)
 
         return render_collection_output(
             items=items,
@@ -216,8 +234,9 @@ async def delete_test_plan(
     async with AllureClient.from_env() as client:
         service = PlanService(client)
         await service.delete_plan(plan_id=plan_id)
+        url = test_plan_url(client.get_base_url(), client.get_project(), plan_id)
         return render_output(
-            plain=f"Successfully deleted Test Plan {plan_id}.",
-            json_payload={"plan_id": plan_id, "status": "deleted"},
+            plain=f"Successfully deleted Test Plan {plan_id}.\nTest Plan URL: {url}",
+            json_payload={"plan_id": plan_id, "status": "deleted", "url": url},
             output_format=output_format,
         )

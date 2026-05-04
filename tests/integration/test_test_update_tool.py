@@ -16,8 +16,10 @@ def mock_service() -> typing.Generator[Mock]:
 @pytest.fixture
 def mock_client() -> typing.Generator[Mock]:
     with patch("src.tools.update_test_case.AllureClient") as mock:
-        instance = mock.return_value
-        instance.__aenter__.return_value = instance
+        instance = Mock()
+        instance.get_base_url.return_value = "https://example.com"
+        instance.get_project.return_value = 99
+        mock.from_env.return_value.__aenter__.return_value = instance
         yield mock
 
 
@@ -49,6 +51,7 @@ async def test_update_test_case_tool_issues(mock_service: Mock, mock_client: Moc
     )
 
     assert "99" in result
+    assert "Test Case URL: https://example.com/project/99/test-cases/99" in result
     assert "added 1 issues (PROJ-1)" in result
     assert "removed 1 issues (PROJ-2)" in result
     assert "cleared all issues" in result

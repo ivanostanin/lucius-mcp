@@ -47,6 +47,7 @@ async def test_full_house_creation(
     # Verifications
     assert "Created Test Case ID:" in result_msg
     assert name in result_msg
+    assert f"Test Case URL: {allure_client.get_base_url()}/project/{project_id}/test-cases/" in result_msg
 
     # Extract ID from message "Created Test Case ID: <id> Name: <name>"
     import re

@@ -84,9 +84,10 @@ def test_format_test_case_details_handles_fields_and_steps() -> None:
     tc.custom_fields = [CustomFieldValueWithCfDto(custom_field=CustomFieldDto(name="Layer"), name="UI")]
     details = TestCaseDetails(test_case=tc, scenario=scenario)
 
-    text = _format_test_case_details(details)
+    text = _format_test_case_details(details, base_url="https://example.com", project_id=1)
 
     assert "Test Case #1: Login" in text
+    assert "Test Case URL: https://example.com/project/1/test-cases/1" in text
     assert "Description" in text
     assert "Preconditions" in text
     assert "1. Do X → See Y" in text
@@ -196,7 +197,7 @@ def test_format_search_results_handles_empty() -> None:
     mock_client.get_project.return_value = 1
     empty_result = SearchService(client=mock_client)._build_result(empty_page)
 
-    text = _format_search_results(empty_result, "login tag:auth")
+    text = _format_search_results(empty_result, "login tag:auth", base_url="https://example.com", project_id=1)
 
     assert text == "No test cases found matching 'login tag:auth'."
 
@@ -246,12 +247,14 @@ def test_format_search_results_includes_tags_and_pagination() -> None:
     mock_client.get_project.return_value = 1
     result = SearchService(client=mock_client)._build_result(page)
 
-    text = _format_search_results(result, "login")
+    text = _format_search_results(result, "login", base_url="https://example.com", project_id=1)
 
     assert "Found 2 test cases matching 'login':" in text
     assert "[#1] Login Flow" in text
+    assert "Test Case URL: https://example.com/project/1/test-cases/1" in text
     assert "tags: smoke" in text
     assert "[#2] Logout" in text
+    assert "Test Case URL: https://example.com/project/1/test-cases/2" in text
     assert "tags: none" in text
     assert "Showing page 1 of 2" in text
 
@@ -414,8 +417,14 @@ def test_format_search_results_with_aql_query() -> None:
     mock_client.get_project.return_value = 1
     result = SearchService(client=mock_client)._build_result(page)
 
-    text = _format_search_results(result, 'status="failed" and tag="regression"')
+    text = _format_search_results(
+        result,
+        'status="failed" and tag="regression"',
+        base_url="https://example.com",
+        project_id=1,
+    )
 
     assert 'Found 1 test cases matching \'status="failed" and tag="regression"\'' in text
     assert "[#1] Failed Test" in text
+    assert "Test Case URL: https://example.com/project/1/test-cases/1" in text
     assert "tags: regression" in text

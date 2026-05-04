@@ -5,6 +5,7 @@ from pydantic import Field
 from src.client import AllureClient, AllureValidationError
 from src.services.search_service import SearchQueryParser, SearchService, TestCaseDetails, TestCaseListResult
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
+from src.utils.links import test_case_url
 
 
 async def list_test_cases(
@@ -48,10 +49,12 @@ async def list_test_cases(
             tags=tags,
             status=status,
         )
+        base_url = client.get_base_url()
+        resolved_project_id = client.get_project()
 
     return render_output(
-        plain=_format_test_case_list(result),
-        json_payload=_serialize_test_case_list_result(result),
+        plain=_format_test_case_list(result, base_url=base_url, project_id=resolved_project_id),
+        json_payload=_serialize_test_case_list_result(result, base_url=base_url, project_id=resolved_project_id),
         output_format=output_format,
     )
 
@@ -166,13 +169,15 @@ async def search_test_cases(
             size=size,
             aql=aql,
         )
+        base_url = client.get_base_url()
+        resolved_project_id = client.get_project()
 
     # Use the appropriate display query for formatting
     display_query = aql if aql else query
     return render_output(
-        plain=_format_search_results(result, display_query or ""),
+        plain=_format_search_results(result, display_query or "", base_url=base_url, project_id=resolved_project_id),
         json_payload={
-            **_serialize_test_case_list_result(result),
+            **_serialize_test_case_list_result(result, base_url=base_url, project_id=resolved_project_id),
             "query": display_query or "",
         },
         output_format=output_format,
@@ -209,15 +214,17 @@ async def get_test_case_details(
     async with AllureClient.from_env(project=project_id) as client:
         service = SearchService(client=client)
         details = await service.get_test_case_details(test_case_id)
+        base_url = client.get_base_url()
+        resolved_project_id = client.get_project()
 
     return render_output(
-        plain=_format_test_case_details(details),
-        json_payload=_serialize_test_case_details(details),
+        plain=_format_test_case_details(details, base_url=base_url, project_id=resolved_project_id),
+        json_payload=_serialize_test_case_details(details, base_url=base_url, project_id=resolved_project_id),
         output_format=output_format,
     )
 
 
-def _format_test_case_list(result: TestCaseListResult) -> str:
+def _format_test_case_list(result: TestCaseListResult, *, base_url: str = "", project_id: int = 0) -> str:
     if not result.items:
         return "No test cases found in this project."
 
@@ -227,6 +234,8 @@ def _format_test_case_list(result: TestCaseListResult) -> str:
         tags = ", ".join([t.name for t in (tc.tags or []) if t.name]) if tc.tags else "none"
         status = tc.status.name if tc.status and tc.status.name else "unknown"
         lines.append(f"- [#{tc.id}] {tc.name} (status: {status}; tags: {tags})")
+        if base_url and project_id > 0 and isinstance(tc.id, int):
+            lines.append(f"  Test Case URL: {test_case_url(base_url, project_id, tc.id)}")
 
     if result.page < result.total_pages - 1:
         lines.append(f"\nUse page={result.page + 1} to see more results.")
@@ -234,7 +243,7 @@ def _format_test_case_list(result: TestCaseListResult) -> str:
     return "\n".join(lines)
 
 
-def _serialize_test_case_summary(tc: object) -> dict[str, object]:
+def _serialize_test_case_summary(tc: object, *, base_url: str, project_id: int) -> dict[str, object]:
     status_obj = getattr(tc, "status", None)
     status_name = getattr(status_obj, "name", None) if status_obj is not None else None
 
@@ -246,16 +255,22 @@ def _serialize_test_case_summary(tc: object) -> dict[str, object]:
             if isinstance(tag_name, str):
                 tags.append(tag_name)
 
-    return {
-        "id": getattr(tc, "id", None),
+    test_case_id = getattr(tc, "id", None)
+    payload: dict[str, object] = {
+        "id": test_case_id,
         "name": getattr(tc, "name", None),
         "status": status_name or "unknown",
         "tags": tags,
     }
+    if isinstance(test_case_id, int):
+        payload["url"] = test_case_url(base_url, project_id, test_case_id)
+    return payload
 
 
-def _serialize_test_case_list_result(result: TestCaseListResult) -> dict[str, object]:
-    items = [_serialize_test_case_summary(tc) for tc in result.items]
+def _serialize_test_case_list_result(
+    result: TestCaseListResult, *, base_url: str, project_id: int
+) -> dict[str, object]:
+    items = [_serialize_test_case_summary(tc, base_url=base_url, project_id=project_id) for tc in result.items]
     return {
         "total": result.total,
         "page": result.page,
@@ -265,11 +280,13 @@ def _serialize_test_case_list_result(result: TestCaseListResult) -> dict[str, ob
     }
 
 
-def _format_test_case_details(details: TestCaseDetails) -> str:
+def _format_test_case_details(details: TestCaseDetails, *, base_url: str = "", project_id: int = 0) -> str:
     tc = details.test_case
     scenario = details.scenario
 
     lines: list[str] = [f"**Test Case #{tc.id}: {tc.name}**"]
+    if base_url and project_id > 0 and isinstance(tc.id, int):
+        lines.append(f"Test Case URL: {test_case_url(base_url, project_id, tc.id)}")
     status_line = _format_status_line(tc)
     lines.append(status_line)
 
@@ -294,7 +311,7 @@ def _format_test_case_details(details: TestCaseDetails) -> str:
     return "\n".join(lines)
 
 
-def _serialize_test_case_details(details: TestCaseDetails) -> dict[str, object]:
+def _serialize_test_case_details(details: TestCaseDetails, *, base_url: str, project_id: int) -> dict[str, object]:
     tc = details.test_case
     scenario = details.scenario
 
@@ -323,17 +340,18 @@ def _serialize_test_case_details(details: TestCaseDetails) -> dict[str, object]:
     for att in getattr(scenario, "attachments", None) or []:
         name = _get_text(att, ["name", "file_name", "filename", "title"]) or "attachment"
         attachment_id = _get_text(att, ["id", "attachment_id", "attachmentId"])
-        payload: dict[str, str] = {"name": name}
+        attachment_payload: dict[str, str] = {"name": name}
         if attachment_id:
-            payload["id"] = attachment_id
-        attachments.append(payload)
+            attachment_payload["id"] = attachment_id
+        attachments.append(attachment_payload)
 
     status_obj = getattr(tc, "status", None)
     status_name = getattr(status_obj, "name", None) if status_obj is not None else None
     tags = [t.name for t in getattr(tc, "tags", []) or [] if getattr(t, "name", None)]
 
-    return {
-        "id": getattr(tc, "id", None),
+    test_case_id = getattr(tc, "id", None)
+    details_payload: dict[str, object] = {
+        "id": test_case_id,
         "name": getattr(tc, "name", None),
         "status": status_name or "unknown",
         "description": getattr(tc, "description", None),
@@ -343,9 +361,12 @@ def _serialize_test_case_details(details: TestCaseDetails) -> dict[str, object]:
         "attachments": attachments,
         "steps": steps,
     }
+    if isinstance(test_case_id, int):
+        details_payload["url"] = test_case_url(base_url, project_id, test_case_id)
+    return details_payload
 
 
-def _format_search_results(result: TestCaseListResult, query: str) -> str:
+def _format_search_results(result: TestCaseListResult, query: str, *, base_url: str = "", project_id: int = 0) -> str:
     if not result.items:
         return f"No test cases found matching '{query}'."
 
@@ -354,6 +375,8 @@ def _format_search_results(result: TestCaseListResult, query: str) -> str:
     for tc in result.items:
         tags = ", ".join([t.name for t in (tc.tags or []) if t.name]) if tc.tags else "none"
         lines.append(f"- [#{tc.id}] {tc.name} (tags: {tags})")
+        if base_url and project_id > 0 and isinstance(tc.id, int):
+            lines.append(f"  Test Case URL: {test_case_url(base_url, project_id, tc.id)}")
 
     if result.total_pages > 1:
         lines.append(f"\nShowing page {result.page + 1} of {result.total_pages}")

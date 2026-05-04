@@ -1,6 +1,6 @@
 # Story 10.1: Include TestOps Entity URLs in Tool Responses
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -63,48 +63,48 @@ so that I can navigate users directly to the relevant TestOps objects without ma
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Add a shared TestOps URL builder** (AC: 1, 2, 3, 6)
-  - [ ] 1.1 Extend `src/utils/links.py` or add a nearby helper module for browser URL construction.
-  - [ ] 1.2 Keep `normalize_links()` intact; it is for external issue/link DTO normalization, not TestOps entity links.
-  - [ ] 1.3 Implement small typed helpers such as `test_case_url(base_url, project_id, test_case_id)`, `launch_url(...)`, `defect_url(...)`, `test_plan_url(...)`, and `shared_step_url(...)`.
-  - [ ] 1.4 Strip duplicate slashes by relying on `AllureClient.get_base_url()` already returning a trailing-slash-free base URL; do not add URL encoding unless IDs become non-integer.
-  - [ ] 1.5 Move the existing shared-step URL logic out of `src/tools/shared_steps.py` into the shared helper to avoid duplicate patterns.
+- [x] **Task 1: Add a shared TestOps URL builder** (AC: 1, 2, 3, 6)
+  - [x] 1.1 Extend `src/utils/links.py` or add a nearby helper module for browser URL construction.
+  - [x] 1.2 Keep `normalize_links()` intact; it is for external issue/link DTO normalization, not TestOps entity links.
+  - [x] 1.3 Implement small typed helpers such as `test_case_url(base_url, project_id, test_case_id)`, `launch_url(...)`, `defect_url(...)`, `test_plan_url(...)`, and `shared_step_url(...)`.
+  - [x] 1.4 Strip duplicate slashes by relying on `AllureClient.get_base_url()` already returning a trailing-slash-free base URL; do not add URL encoding unless IDs become non-integer.
+  - [x] 1.5 Move the existing shared-step URL logic out of `src/tools/shared_steps.py` into the shared helper to avoid duplicate patterns.
 
-- [ ] **Task 2: Add URLs to test case tool responses** (AC: 1, 2, 3, 5, 7)
-  - [ ] 2.1 Update `src/tools/create_test_case.py` so plain output includes `URL: ...` and JSON includes `url`.
-  - [ ] 2.2 Update `src/tools/search.py` serializers for `list_test_cases`, `search_test_cases`, and `get_test_case_details` so each test case item/detail includes `url`.
-  - [ ] 2.3 Update `src/tools/update_test_case.py` and `src/tools/delete_test_case.py` confirmation/success payloads where a test case ID is present.
-  - [ ] 2.4 Preserve existing strings such as `Created Test Case ID:` because e2e tests parse IDs from those messages.
+- [x] **Task 2: Add URLs to test case tool responses** (AC: 1, 2, 3, 5, 7)
+  - [x] 2.1 Update `src/tools/create_test_case.py` so plain output includes `URL: ...` and JSON includes `url`.
+  - [x] 2.2 Update `src/tools/search.py` serializers for `list_test_cases`, `search_test_cases`, and `get_test_case_details` so each test case item/detail includes `url`.
+  - [x] 2.3 Update `src/tools/update_test_case.py` and `src/tools/delete_test_case.py` confirmation/success payloads where a test case ID is present.
+  - [x] 2.4 Preserve existing strings such as `Created Test Case ID:` because e2e tests parse IDs from those messages.
 
-- [ ] **Task 3: Add URLs to launch tool responses** (AC: 1, 2, 3, 5, 7)
-  - [ ] 3.1 Update `src/tools/launches.py` `_launch_payload()` to include `url` when `id` and project context are available.
-  - [ ] 3.2 Because `_launch_payload()` currently receives only a launch object, change its signature to accept `base_url` and `project_id` or a compact URL context.
-  - [ ] 3.3 Add URLs to `create_launch`, `list_launches`, `get_launch`, `delete_launch`, `close_launch`, and `reopen_launch` outputs where applicable.
-  - [ ] 3.4 Keep runtime auth behavior in `_launch_client_context()` unchanged.
+- [x] **Task 3: Add URLs to launch tool responses** (AC: 1, 2, 3, 5, 7)
+  - [x] 3.1 Update `src/tools/launches.py` `_launch_payload()` to include `url` when `id` and project context are available.
+  - [x] 3.2 Because `_launch_payload()` currently receives only a launch object, change its signature to accept `base_url` and `project_id` or a compact URL context.
+  - [x] 3.3 Add URLs to `create_launch`, `list_launches`, `get_launch`, `delete_launch`, `close_launch`, and `reopen_launch` outputs where applicable.
+  - [x] 3.4 Keep runtime auth behavior in `_launch_client_context()` unchanged.
 
-- [ ] **Task 4: Add URLs to defect and defect-link responses** (AC: 1, 2, 3, 4, 5, 7)
-  - [ ] 4.1 Update `src/tools/defects.py` create/get/update/list/delete responses with defect URLs.
-  - [ ] 4.2 Update `link_defect_to_test_case` JSON payload to include both `defect_url` and `test_case_url`.
-  - [ ] 4.3 Update `list_defect_test_cases` items to include each linked test case URL and include the parent defect URL at the top level.
-  - [ ] 4.4 Do not add URLs to defect matcher responses unless a stable matcher browser URL is verified.
+- [x] **Task 4: Add URLs to defect and defect-link responses** (AC: 1, 2, 3, 4, 5, 7)
+  - [x] 4.1 Update `src/tools/defects.py` create/get/update/list/delete responses with defect URLs.
+  - [x] 4.2 Update `link_defect_to_test_case` JSON payload to include both `defect_url` and `test_case_url`.
+  - [x] 4.3 Update `list_defect_test_cases` items to include each linked test case URL and include the parent defect URL at the top level.
+  - [x] 4.4 Do not add URLs to defect matcher responses unless a stable matcher browser URL is verified.
 
-- [ ] **Task 5: Add URLs to test plan and shared-step responses** (AC: 1, 2, 3, 5, 7)
-  - [ ] 5.1 Update `src/tools/plans.py` create/update/manage/list/delete responses with test plan URLs.
-  - [ ] 5.2 Refactor `src/tools/shared_steps.py` to use the shared helper for create output.
-  - [ ] 5.3 Add shared-step URLs to `list_shared_steps`, `update_shared_step`, and `delete_shared_step` responses where a step ID is present.
-  - [ ] 5.4 Preserve existing `create_shared_step` JSON contract fields: `id`, `name`, `project_id`, and `url`.
+- [x] **Task 5: Add URLs to test plan and shared-step responses** (AC: 1, 2, 3, 5, 7)
+  - [x] 5.1 Update `src/tools/plans.py` create/update/manage/list/delete responses with test plan URLs.
+  - [x] 5.2 Refactor `src/tools/shared_steps.py` to use the shared helper for create output.
+  - [x] 5.3 Add shared-step URLs to `list_shared_steps`, `update_shared_step`, and `delete_shared_step` responses where a step ID is present.
+  - [x] 5.4 Preserve existing `create_shared_step` JSON contract fields: `id`, `name`, `project_id`, and `url`.
 
-- [ ] **Task 6: Verify or explicitly exclude other ID-bearing entities** (AC: 6)
-  - [ ] 6.1 Review ID-bearing tool outputs for `test_suite`, `test_layer`, `test_layer_schema`, `custom_field`, `custom_field_value`, `integration`, and `defect_matcher`.
-  - [ ] 6.2 For each entity, either verify a stable UI URL in the TestOps sandbox and add helper/tests, or document in this story's Dev Agent Record why no URL was added.
-  - [ ] 6.3 For test suites, prefer a verified tree/test-cases URL only if it reliably opens the suite node; otherwise do not invent a suite detail URL.
+- [x] **Task 6: Verify or explicitly exclude other ID-bearing entities** (AC: 6)
+  - [x] 6.1 Review ID-bearing tool outputs for `test_suite`, `test_layer`, `test_layer_schema`, `custom_field`, `custom_field_value`, `integration`, and `defect_matcher`.
+  - [x] 6.2 For each entity, either verify a stable UI URL in the TestOps sandbox and add helper/tests, or document in this story's Dev Agent Record why no URL was added.
+  - [x] 6.3 For test suites, prefer a verified tree/test-cases URL only if it reliably opens the suite node; otherwise do not invent a suite detail URL.
 
-- [ ] **Task 7: Add regression tests and docs** (AC: 1, 2, 3, 4, 5, 7)
-  - [ ] 7.1 Add focused unit tests for URL helper output.
-  - [ ] 7.2 Extend integration tests in `tests/integration/test_test_create_tool.py`, `tests/integration/test_launch_tools.py`, `tests/integration/test_defect_tools.py`, `tests/integration/test_plan_tools.py`, and `tests/integration/test_shared_step_tools.py`.
-  - [ ] 7.3 Update e2e tests that parse plain IDs only enough to assert URL presence without making them brittle.
-  - [ ] 7.4 Add JSON-mode tests proving URLs appear in payloads and nested collection items.
-  - [ ] 7.5 Update `docs/tools.md` to state that supported entity responses include TestOps browser URLs alongside IDs.
+- [x] **Task 7: Add regression tests and docs** (AC: 1, 2, 3, 4, 5, 7)
+  - [x] 7.1 Add focused unit tests for URL helper output.
+  - [x] 7.2 Extend integration tests in `tests/integration/test_test_create_tool.py`, `tests/integration/test_launch_tools.py`, `tests/integration/test_defect_tools.py`, `tests/integration/test_plan_tools.py`, and `tests/integration/test_shared_step_tools.py`.
+  - [x] 7.3 Update e2e tests that parse plain IDs only enough to assert URL presence without making them brittle.
+  - [x] 7.4 Add JSON-mode tests proving URLs appear in payloads and nested collection items.
+  - [x] 7.5 Update `docs/tools.md` to state that supported entity responses include TestOps browser URLs alongside IDs.
 
 ## Dev Notes
 
@@ -210,12 +210,67 @@ so that I can navigate users directly to the relevant TestOps objects without ma
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+GPT-5
 
 ### Debug Log References
+
+- 2026-05-04: Added shared URL helper tests and confirmed initial red failure for missing helper imports.
+- 2026-05-04: Added URL helpers and threaded resolved `base_url`/`project_id` through supported tool output serializers.
+- 2026-05-04: Full validation passed by component: unit/integration, docs, CLI, e2e, and packaging suites.
+
+### Implementation Plan
+
+- Implement shared URL helpers in `src/utils/links.py` for test cases, launches, defects, test plans, and shared steps.
+- Add URLs only in tool-layer serializers/output payloads so service return contracts stay unchanged.
+- Preserve existing plain ID lines and add labeled URL lines below or after current output to avoid breaking parsers.
+- Add JSON `url` fields for single-entity and collection item payloads; use explicit `defect_url` and `test_case_url` for mixed defect links.
 
 ### Completion Notes List
 
 Ultimate context engine analysis completed - comprehensive developer guide created.
 
+- Added shared TestOps entity URL helpers and reused them in shared-step output.
+- Added resolved-context URLs to test case, launch, defect, test-plan, and shared-step tool responses for both `plain` and `json` output.
+- Kept unsupported ID-bearing entities URL-free: test suites, test layers, test layer schemas, custom fields, custom field values, integrations, and defect matchers do not have verified stable detail routes in this implementation. Test suite tree-node URLs were intentionally not invented.
+- Manual UI verification is still recommended for the inferred direct routes `/launches/<launch_id>`, `/defects/<defect_id>`, and `/test-plans/<plan_id>` in a TestOps browser sandbox. Test case and shared-step patterns have verified examples in project context/tests.
+- Added Hatch build excludes for local `.codex` and cache/build artifacts after packaging validation exposed that workspace-local symlinks could enter sdists.
+- Validation: `uv run --python 3.13 --extra dev pytest tests/unit/test_links.py tests/integration/test_test_create_tool.py tests/integration/test_launch_tools.py tests/integration/test_defect_tools.py tests/integration/test_plan_tools.py tests/integration/test_shared_step_tools.py -q` passed (41 passed).
+- Validation: `uv run --python 3.13 --extra dev pytest tests/e2e/test_tool_outputs.py tests/e2e/test_defect_management.py tests/e2e/test_launches.py tests/e2e/test_plan_management.py -q` skipped all 9 tests without live e2e config in direct invocation.
+- Validation: `uv run --python 3.13 --extra dev ruff check src/tools src/utils tests/unit tests/integration` passed.
+- Validation: `uv run --python 3.13 --extra dev mypy src/tools src/utils` passed.
+- Validation: full regression components passed: 496 unit/integration, 11 docs, 233 CLI, 113 e2e with 1 skip, and 34 packaging tests.
+
 ### File List
+
+- docs/tools.md
+- pyproject.toml
+- specs/implementation-artifacts/10-1-include-testops-entity-urls-in-tool-responses.md
+- specs/implementation-artifacts/sprint-status.yaml
+- src/tools/create_test_case.py
+- src/tools/defects.py
+- src/tools/delete_test_case.py
+- src/tools/launches.py
+- src/tools/plans.py
+- src/tools/search.py
+- src/tools/shared_steps.py
+- src/tools/update_test_case.py
+- src/utils/__init__.py
+- src/utils/links.py
+- tests/e2e/test_create_test_case.py
+- tests/e2e/test_tool_outputs.py
+- tests/integration/test_defect_tools.py
+- tests/integration/test_delete_tool.py
+- tests/integration/test_integration_tools.py
+- tests/integration/test_launch_tools.py
+- tests/integration/test_plan_tools.py
+- tests/integration/test_shared_step_tools.py
+- tests/integration/test_test_create_tool.py
+- tests/integration/test_test_update_tool.py
+- tests/unit/test_launch_tools.py
+- tests/unit/test_links.py
+- tests/unit/test_search_service.py
+- tests/unit/test_tool_structured_outputs.py
+
+### Change Log
+
+- 2026-05-04: Implemented TestOps entity URLs in supported tool responses and moved story to review.
