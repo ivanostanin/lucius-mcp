@@ -123,24 +123,19 @@ For detailed setup, including Claude Desktop (MCPB) integration, see [Setup Guid
 Lucius also provides a universal CLI entry point for direct tool execution from the command line:
 
 ```bash
-# Download pre-built binary for your platform
-wget https://github.com/ivanostanin/lucius-mcp/releases/latest/download/lucius-linux-x86_64
-chmod +x lucius-linux-x86_64
-./lucius-linux-x86_64 --help
-
 # List available actions for an entity
-./lucius-linux-x86_64 test_case
+uv run lucius test_case
 
 # Execute an action
-./lucius-linux-x86_64 test_case get --args '{"test_case_id": 1234}'
+uv run lucius test_case get --args '{"test_case_id": 1234}'
 
 # Show help for a specific entity/action
-./lucius-linux-x86_64 test_case get --help
+uv run lucius test_case get --help
 
 # Save reusable CLI auth
-./lucius-linux-x86_64 auth --url https://example.testops.cloud --token <your_api_token> --project 123
-./lucius-linux-x86_64 auth status
-./lucius-linux-x86_64 auth clear
+uv run lucius auth --url https://example.testops.cloud --token <your_api_token> --project 123
+uv run lucius auth status
+uv run lucius auth clear
 ```
 
 **CLI Features:**
@@ -157,7 +152,7 @@ CLI auth precedence is:
 
 1. Explicit tool args such as `api_token` or `project_id`
 2. Environment variables
-3. Saved CLI auth config from `lucius auth`
+3. Saved CLI auth config from `uv run lucius auth`
 4. Defaults
 
 Saved CLI auth uses native config locations:
@@ -179,30 +174,6 @@ If this is acceptable in your environment, staying opted in helps improve Lucius
 No API tokens, test content, or tool arguments are sent.
 
 See [Telemetry & Privacy](docs/telemetry.md) for the full data dictionary and telemetry behavior details.
-
-### Shell Completions
-
-Install embedded shell completions directly from the CLI:
-
-```bash
-lucius install-completions
-lucius install-completions --shell bash
-lucius install-completions --shell zsh
-lucius install-completions --shell fish
-lucius install-completions --shell powershell
-```
-
-Use `--print` for package managers or dotfile-managed setups, and `--path <file>`
-with `--force` for custom install locations:
-
-```bash
-lucius install-completions --shell bash --print
-lucius install-completions --shell fish --path ~/.config/fish/completions/lucius.fish --force
-```
-
-Pre-generated release artifacts are still available in `deployment/shell-completions/`
-and are generated from the current entity/action route matrix plus CLI-local commands
-such as `auth`, `list`, and `install-completions`.
 
 ## 📂 Documentation
 
