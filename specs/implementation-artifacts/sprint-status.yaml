@@ -139,3 +139,8 @@ development_status:
   9-12-cli-short-entity-aliases: done
   9-13-cli-comprehensive-e2e-coverage-via-uv-run-lucius: done
   epic-9-retrospective: optional
+
+  # Epic 10: Quality of Life and API Coverage
+  epic-10: in-progress
+  10-1-include-testops-entity-urls-in-tool-responses: ready-for-dev
+  epic-10-retrospective: optional

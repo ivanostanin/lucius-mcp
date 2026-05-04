@@ -1030,3 +1030,48 @@ so that CLI behavior is verified end-to-end without depending on built binaries 
 **When** a story is prepared for development
 **Then** its acceptance criteria explicitly require extending the shared `uv run lucius` CLI E2E suite
 **And** story tasks identify the concrete test file(s) to update.
+
+
+## Epic 10: Quality of Life and API Coverage
+
+Goal: Improve day-to-day agent usability and close API coverage gaps without changing the service-first architecture or existing output contracts.
+
+### Story 10.1: Include TestOps Entity URLs in Tool Responses
+
+As an AI Agent,
+I want tool responses that mention TestOps entity IDs to also include browser URLs for those entities,
+so that I can navigate users directly to the relevant TestOps objects without manually reconstructing links.
+
+**Acceptance Criteria:**
+
+**Given** a tool response includes a stable TestOps entity ID
+**When** the tool returns either `plain` or `json`
+**Then** it includes the existing ID field unchanged
+**And** it includes a corresponding `url` field or plain-text `URL:` line for that same entity
+**And** existing output-format support remains limited to `plain|json`.
+
+**Given** a tool uses an optional `project_id` override or runtime auth project context
+**When** a URL is generated
+**Then** the URL uses the resolved `AllureClient.get_base_url()` and `AllureClient.get_project()` values
+**And** it does not use `settings.ALLURE_PROJECT_ID` directly after a client context has been resolved.
+
+**Given** a response contains multiple entity references, such as a defect linked to a test case
+**When** the JSON payload is rendered
+**Then** every referenced entity with a known stable browser URL includes a type-specific URL field
+**And** field names are unambiguous, for example `defect_url`, `test_case_url`, `launch_url`, or nested item `url`.
+
+**Given** entity list tools return paginated or collection payloads
+**When** each item contains an entity ID
+**Then** each item includes its own `url`
+**And** the plain output includes URLs without breaking the existing ID/name/status lines that tests and agents already parse.
+
+**Given** an entity type does not have a verified stable browser URL pattern
+**When** implementation reaches that type
+**Then** the developer must either verify the URL against a sandbox TestOps instance and add tests
+**Or** omit the URL for that entity and document why it is intentionally unsupported
+**And** the implementation must not invent unverified links for settings-only or non-navigable API records.
+
+**Given** automated tests run
+**When** unit, integration, and selected e2e tests execute
+**Then** they verify URL generation for test cases, launches, defects, test plans, and shared steps
+**And** they verify output remains backward compatible for existing ID parsing and CLI formatting.
