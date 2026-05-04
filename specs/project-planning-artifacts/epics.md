@@ -953,3 +953,36 @@ so that operational data is easier to read without manual timestamp conversion.
 **When** formatter and CLI tests execute
 **Then** they verify local-timezone rendering, UTC fallback, explicit timezone labeling, deterministic formatting, and unchanged behavior for non-table formats
 **And** source-invoked CLI E2E tests validate table rendering behavior via `uv run lucius ...`.
+
+### Story 9.12: CLI Short Entity Aliases
+
+As a Developer or QA Engineer,
+I want short aliases for common CLI entities such as `tc` for `test_case`,
+so that frequent `lucius <entity> <action>` commands are faster to type while preserving the canonical entity/action model.
+
+**Acceptance Criteria:**
+
+**Given** the canonical CLI entity/action matrix
+**When** short entity aliases are configured
+**Then** each alias resolves to exactly one canonical entity
+**And** aliases are defined in the existing route-matrix alias source, not in a parallel parser or duplicate route table.
+
+**Given** I use a supported short entity alias such as `tc`
+**When** I run entity discovery or an action command
+**Then** the CLI behaves exactly as if I used the canonical entity name
+**And** examples such as `lucius tc`, `lucius tc list --help`, and `lucius tc list --args '{}'` resolve to `test_case`.
+
+**Given** short aliases are exposed to users
+**When** I run root help, entity help, or shell completion generation
+**Then** short aliases are discoverable alongside existing canonical, plural, and dash-form aliases
+**And** generated bash, zsh, fish, and PowerShell completions include the short aliases.
+
+**Given** alias input contains uppercase letters, leading/trailing spaces, or dash/underscore variants where applicable
+**When** the CLI normalizes the token
+**Then** aliases resolve consistently using the existing `normalize_token()` behavior
+**And** invalid or ambiguous aliases produce clean guided errors without Python tracebacks.
+
+**Given** automated tests run
+**When** CLI alias and completion tests execute
+**Then** they verify short alias resolution, no canonical route duplication, root-help visibility, completion exposure, and unchanged behavior for existing canonical/plural/dash aliases
+**And** process-level CLI E2E coverage exercises representative short aliases via `uv run lucius ...`.
