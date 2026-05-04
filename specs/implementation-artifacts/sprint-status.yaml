@@ -137,4 +137,5 @@ development_status:
   9-10-cli-install-completions-command: done
   9-11-cli-table-human-readable-dates-local-timezone-fallback: done
   9-12-cli-short-entity-aliases: done
+  9-13-cli-comprehensive-e2e-coverage-via-uv-run-lucius: ready-for-dev
   epic-9-retrospective: optional
