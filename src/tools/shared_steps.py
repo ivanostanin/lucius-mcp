@@ -12,6 +12,7 @@ from src.tools.output_contract import (
     render_confirmation_required,
     render_output,
 )
+from src.utils.links import shared_step_url
 
 
 async def create_shared_step(
@@ -53,14 +54,14 @@ async def create_shared_step(
         shared_step = await service.create_shared_step(name=name, steps=steps)
         if shared_step.id is None:
             raise ValueError("Created shared step is missing an ID")
-        shared_step_url = _shared_step_url(client, shared_step.id)
+        url = shared_step_url(client.get_base_url(), client.get_project(), shared_step.id)
 
         plain_output = (
             f"Successfully created Shared Step:\n"
             f"ID: {shared_step.id}\n"
             f"Name: {shared_step.name}\n"
             f"Project ID: {shared_step.project_id}\n"
-            f"URL: {shared_step_url}"
+            f"URL: {url}"
         )
         return render_output(
             plain=plain_output,
@@ -68,7 +69,7 @@ async def create_shared_step(
                 "id": shared_step.id,
                 "name": shared_step.name,
                 "project_id": shared_step.project_id,
-                "url": shared_step_url,
+                "url": url,
             },
             output_format=output_format,
         )
@@ -99,19 +100,24 @@ async def list_shared_steps(
         service = SharedStepService(client=client)
         steps = await service.list_shared_steps(page=page, size=size, search=search, archived=archived)
         resolved_project_id = client.get_project()
-        payload_items = [
-            {
+        base_url = client.get_base_url()
+        payload_items = []
+        for s in steps:
+            item: dict[str, object] = {
                 "id": s.id,
                 "name": s.name,
                 "steps_count": s.steps_count,
             }
-            for s in steps
-        ]
+            if s.id is not None:
+                item["url"] = shared_step_url(base_url, resolved_project_id, s.id)
+            payload_items.append(item)
         output = [f"Found {len(steps)} shared steps for project {resolved_project_id}:"]
         for s in steps:
             # Format: [ID: 123] Step Name (X steps)
             count_info = f" ({s.steps_count} steps)" if s.steps_count is not None else ""
             output.append(f"- [ID: {s.id}] {s.name}{count_info}")
+            if s.id is not None:
+                output.append(f"  Shared Step URL: {shared_step_url(base_url, resolved_project_id, s.id)}")
         return render_collection_output(
             items=payload_items,
             plain_empty=f"No shared steps found for project {resolved_project_id}.",
@@ -175,20 +181,26 @@ async def update_shared_step(
     async with AllureClient.from_env(project=project_id) as client:
         service = SharedStepService(client=client)
         updated, changed = await service.update_shared_step(step_id=step_id, name=name, description=description)
+        url = shared_step_url(client.get_base_url(), client.get_project(), step_id)
 
         if not changed:
             return render_output(
                 plain=f"No changes needed for Shared Step {step_id}\n\n"
-                "The shared step already matches the requested state.",
+                f"The shared step already matches the requested state.\nShared Step URL: {url}",
                 json_payload={
                     "id": step_id,
                     "changed": False,
                     "name": getattr(updated, "name", None),
+                    "url": url,
                 },
                 output_format=output_format,
             )
 
-        msg_parts = [f"✅ Updated Shared Step {step_id}: '{updated.name}'", "\nChanges applied:"]
+        msg_parts = [
+            f"✅ Updated Shared Step {step_id}: '{updated.name}'",
+            f"Shared Step URL: {url}",
+            "\nChanges applied:",
+        ]
         if name:
             msg_parts.append(f"- name: '{name}'")
         if description:
@@ -201,6 +213,7 @@ async def update_shared_step(
                 "name": updated.name,
                 "changed": True,
                 "updated_fields": [field for field, value in (("name", name), ("description", description)) if value],
+                "url": url,
             },
             output_format=output_format,
         )
@@ -251,19 +264,19 @@ async def delete_shared_step(
     async with AllureClient.from_env(project=project_id) as client:
         service = SharedStepService(client=client)
         deleted = await service.delete_shared_step(step_id=step_id)
+        url = shared_step_url(client.get_base_url(), client.get_project(), step_id)
 
         if deleted:
             return render_output(
-                plain=f"✅ Archived Shared Step {step_id}\n\nThe shared step has been successfully archived.",
-                json_payload={"id": step_id, "status": "archived"},
+                plain=(
+                    f"✅ Archived Shared Step {step_id}\n\n"
+                    f"The shared step has been successfully archived.\nShared Step URL: {url}"
+                ),
+                json_payload={"id": step_id, "status": "archived", "url": url},
                 output_format=output_format,
             )
         return render_output(
-            plain=f"ℹ️ Shared Step {step_id} was already archived or doesn't exist.",  # noqa: RUF001
-            json_payload={"id": step_id, "status": "already_archived"},
+            plain=f"ℹ️ Shared Step {step_id} was already archived or doesn't exist.\nShared Step URL: {url}",  # noqa: RUF001
+            json_payload={"id": step_id, "status": "already_archived", "url": url},
             output_format=output_format,
         )
-
-
-def _shared_step_url(client: AllureClient, step_id: int) -> str:
-    return f"{client.get_base_url()}/project/{client.get_project()}/settings/shared-steps/{step_id}"

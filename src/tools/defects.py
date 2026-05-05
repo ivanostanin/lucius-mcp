@@ -15,6 +15,7 @@ from src.tools.output_contract import (
     render_confirmation_required,
     render_output,
 )
+from src.utils.links import defect_url, test_case_url
 
 
 async def create_defect(
@@ -41,13 +42,17 @@ async def create_defect(
     async with AllureClient.from_env() as client:
         service = DefectService(client)
         defect = await service.create_defect(name=name, description=description)
-        message = f"Created Defect #{defect.id}: '{defect.name}'"
+        if defect.id is None:
+            raise ValueError("Created defect is missing an ID")
+        url = defect_url(client.get_base_url(), client.get_project(), defect.id)
+        message = f"Created Defect #{defect.id}: '{defect.name}'\nDefect URL: {url}"
         return render_output(
             plain=message,
             json_payload={
                 "id": defect.id,
                 "name": defect.name,
                 "description": defect.description,
+                "url": url,
             },
             output_format=output_format,
         )
@@ -71,9 +76,13 @@ async def get_defect(
     async with AllureClient.from_env() as client:
         service = DefectService(client)
         defect = await service.get_defect(defect_id)
+        if defect.id is None:
+            raise ValueError("Retrieved defect is missing an ID")
+        url = defect_url(client.get_base_url(), client.get_project(), defect.id)
         status = "Closed" if defect.closed else "Open"
         lines = [
             f"Defect #{defect.id}: {defect.name}",
+            f"Defect URL: {url}",
             f"Status: {status}",
         ]
         if defect.description:
@@ -86,6 +95,7 @@ async def get_defect(
                 "closed": defect.closed,
                 "status": status,
                 "description": defect.description,
+                "url": url,
             },
             output_format=output_format,
         )
@@ -123,8 +133,11 @@ async def update_defect(
             description=description,
             closed=closed,
         )
+        if defect.id is None:
+            raise ValueError("Updated defect is missing an ID")
+        url = defect_url(client.get_base_url(), client.get_project(), defect.id)
         status = "Closed" if defect.closed else "Open"
-        message = f"Updated Defect #{defect.id}: '{defect.name}' (Status: {status})"
+        message = f"Updated Defect #{defect.id}: '{defect.name}' (Status: {status})\nDefect URL: {url}"
         return render_output(
             plain=message,
             json_payload={
@@ -133,6 +146,7 @@ async def update_defect(
                 "closed": defect.closed,
                 "status": status,
                 "description": defect.description,
+                "url": url,
             },
             output_format=output_format,
         )
@@ -172,9 +186,10 @@ async def delete_defect(
     async with AllureClient.from_env() as client:
         service = DefectService(client)
         await service.delete_defect(defect_id)
+        url = defect_url(client.get_base_url(), client.get_project(), defect_id)
         return render_output(
-            plain=f"Deleted Defect #{defect_id}",
-            json_payload={"id": defect_id, "status": "deleted"},
+            plain=f"Deleted Defect #{defect_id}\nDefect URL: {url}",
+            json_payload={"id": defect_id, "status": "deleted", "url": url},
             output_format=output_format,
         )
 
@@ -196,12 +211,19 @@ async def list_defects(
     async with AllureClient.from_env() as client:
         service = DefectService(client)
         defects = await service.list_defects()
+        base_url = client.get_base_url()
+        project_id = client.get_project()
         lines: list[str] = [f"Found {len(defects)} defect(s):"]
         items: list[dict[str, object]] = []
         for d in defects:
             status = "Closed" if d.closed else "Open"
             lines.append(f"  • #{d.id}: {d.name} ({status})")
-            items.append({"id": d.id, "name": d.name, "closed": d.closed, "status": status})
+            if d.id is not None:
+                lines.append(f"    Defect URL: {defect_url(base_url, project_id, d.id)}")
+            payload: dict[str, object] = {"id": d.id, "name": d.name, "closed": d.closed, "status": status}
+            if d.id is not None:
+                payload["url"] = defect_url(base_url, project_id, d.id)
+            items.append(payload)
         return render_collection_output(
             items=items,
             plain_empty="No defects found in the current project.",
@@ -255,17 +277,25 @@ async def link_defect_to_test_case(
             integration_id=integration_id,
             integration_name=integration_name,
         )
+        base_url = client.get_base_url()
+        project_id = client.get_project()
+        defect_link = defect_url(base_url, project_id, result.defect_id)
+        test_case_link = test_case_url(base_url, project_id, result.test_case_id)
 
         if result.already_linked:
             message = (
                 f"Defect #{result.defect_id} is already linked to Test Case #{result.test_case_id} "
-                f"via issue '{result.issue_key}' (integration ID: {result.integration_id}). No changes made."
+                f"via issue '{result.issue_key}' (integration ID: {result.integration_id}). No changes made.\n"
+                f"Defect URL: {defect_link}\n"
+                f"Test Case URL: {test_case_link}"
             )
             return render_output(
                 plain=message,
                 json_payload={
                     "defect_id": result.defect_id,
+                    "defect_url": defect_link,
                     "test_case_id": result.test_case_id,
+                    "test_case_url": test_case_link,
                     "issue_key": result.issue_key,
                     "integration_id": result.integration_id,
                     "already_linked": True,
@@ -275,13 +305,17 @@ async def link_defect_to_test_case(
 
         message = (
             f"Linked Defect #{result.defect_id} to Test Case #{result.test_case_id} "
-            f"via issue '{result.issue_key}' (integration ID: {result.integration_id})."
+            f"via issue '{result.issue_key}' (integration ID: {result.integration_id}).\n"
+            f"Defect URL: {defect_link}\n"
+            f"Test Case URL: {test_case_link}"
         )
         return render_output(
             plain=message,
             json_payload={
                 "defect_id": result.defect_id,
+                "defect_url": defect_link,
                 "test_case_id": result.test_case_id,
+                "test_case_url": test_case_link,
                 "issue_key": result.issue_key,
                 "integration_id": result.integration_id,
                 "already_linked": False,
@@ -312,11 +346,15 @@ async def list_defect_test_cases(
     async with AllureClient.from_env() as client:
         service = DefectService(client)
         result = await service.list_defect_test_cases(defect_id=defect_id, page=page, size=size)
+        base_url = client.get_base_url()
+        project_id = client.get_project()
+        parent_defect_url = defect_url(base_url, project_id, defect_id)
 
         total_pages = result.total_pages if result.total_pages > 0 else 1
         lines = [
             f"Found {result.total} linked test case(s) for Defect #{defect_id} "
-            f"(page {result.page + 1} of {total_pages}):"
+            f"(page {result.page + 1} of {total_pages}):",
+            f"Defect URL: {parent_defect_url}",
         ]
         items: list[dict[str, object]] = []
         for case in result.items:
@@ -324,12 +362,18 @@ async def list_defect_test_cases(
             case_name = case.name or "(unnamed)"
             status_name = case.status.name if case.status and case.status.name else "Unknown"
             lines.append(f"  • #{case_id}: {case_name} [{status_name}]")
-            items.append({"id": case.id, "name": case_name, "status": status_name})
+            if case.id is not None:
+                lines.append(f"    Test Case URL: {test_case_url(base_url, project_id, case.id)}")
+            payload: dict[str, object] = {"id": case.id, "name": case_name, "status": status_name}
+            if case.id is not None:
+                payload["url"] = test_case_url(base_url, project_id, case.id)
+            items.append(payload)
         return render_collection_output(
             items=items,
-            plain_empty=f"No test cases linked to Defect #{defect_id}.",
+            plain_empty=f"No test cases linked to Defect #{defect_id}.\nDefect URL: {parent_defect_url}",
             plain_lines=lines,
             defect_id=defect_id,
+            defect_url=parent_defect_url,
             page=result.page,
             size=result.size,
             total=result.total,

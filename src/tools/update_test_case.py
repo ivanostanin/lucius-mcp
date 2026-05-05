@@ -5,7 +5,7 @@ from pydantic import Field
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService, TestCaseUpdate
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
-from src.utils.links import normalize_links
+from src.utils.links import normalize_links, test_case_url
 
 
 async def update_test_case(  # noqa: C901
@@ -139,6 +139,7 @@ async def update_test_case(  # noqa: C901
     async with AllureClient.from_env(project=project_id) as client:
         service = TestCaseService(client=client)
         current_case = await service.get_test_case(test_case_id)
+        url = test_case_url(client.get_base_url(), client.get_project(), test_case_id)
         update_data = TestCaseUpdate(
             name=name,
             description=description,
@@ -225,7 +226,7 @@ async def update_test_case(  # noqa: C901
             changes.append("cleared all issues")
 
         summary = ", ".join(changes) if changes else "No changes made (idempotent)"
-        message = f"Test Case {updated_case.id} updated successfully. Changes: {summary}"
+        message = f"Test Case {updated_case.id} updated successfully. Changes: {summary}\nTest Case URL: {url}"
         return render_output(
             plain=message,
             json_payload={
@@ -233,6 +234,7 @@ async def update_test_case(  # noqa: C901
                 "name": getattr(updated_case, "name", None),
                 "summary": summary,
                 "changes": changes,
+                "url": url,
             },
             output_format=output_format,
         )

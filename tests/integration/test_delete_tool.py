@@ -20,8 +20,10 @@ def mock_service() -> typing.Generator[Mock]:
 def mock_client() -> typing.Generator[Mock]:
     """Mock AllureClient."""
     with patch("src.tools.delete_test_case.AllureClient") as mock:
-        instance = mock.return_value
-        instance.__aenter__.return_value = instance
+        instance = Mock()
+        instance.get_base_url.return_value = "https://example.com"
+        instance.get_project.return_value = 99
+        mock.from_env.return_value.__aenter__.return_value = instance
         yield mock
 
 
@@ -67,6 +69,7 @@ async def test_delete_test_case_tool_success_message(mock_service: Mock, mock_cl
     assert str(test_case_id) in result
     assert test_case_name in result
     assert f"Archived Test Case {test_case_id}: '{test_case_name}'" in result
+    assert f"Test Case URL: https://example.com/project/99/test-cases/{test_case_id}" in result
 
     # AND: Service was called correctly
     service_instance.delete_test_case.assert_called_once_with(test_case_id)
@@ -94,6 +97,7 @@ async def test_delete_test_case_tool_already_deleted_message(mock_service: Mock,
     assert result.startswith("ℹ️ Test Case")  # noqa: RUF001
     assert str(test_case_id) in result
     assert "already archived or doesn't exist" in result
+    assert f"Test Case URL: https://example.com/project/99/test-cases/{test_case_id}" in result
 
     # AND: Service was called
     service_instance.delete_test_case.assert_called_once_with(test_case_id)
@@ -116,6 +120,7 @@ async def test_delete_test_case_tool_error_handling(mock_service: Mock, mock_cli
     # THEN: Returns error message without raising exception
     assert "Error archiving test case" in result
     assert "API connection failed" in result
+    assert f"Test Case URL: https://example.com/project/99/test-cases/{test_case_id}" in result
 
     # AND: Service was called (exception caught by tool)
     service_instance.delete_test_case.assert_called_once_with(test_case_id)

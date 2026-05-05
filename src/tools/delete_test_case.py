@@ -7,6 +7,7 @@ from pydantic import Field
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
+from src.utils.links import test_case_url
 
 
 async def delete_test_case(
@@ -57,24 +58,25 @@ async def delete_test_case(
 
     async with AllureClient.from_env(project=project_id) as client:
         service = TestCaseService(client=client)
+        url = test_case_url(client.get_base_url(), client.get_project(), test_case_id)
         try:
             result = await service.delete_test_case(test_case_id)
         except Exception as e:
             return render_output(
-                plain=f"Error archiving test case: {e}",
-                json_payload={"test_case_id": test_case_id, "status": "error", "error": str(e)},
+                plain=f"Error archiving test case: {e}\nTest Case URL: {url}",
+                json_payload={"test_case_id": test_case_id, "status": "error", "error": str(e), "url": url},
                 output_format=output_format,
             )
 
         if result.status == "already_deleted":
             return render_output(
-                plain=f"ℹ️ Test Case {test_case_id} was already archived or doesn't exist.",  # noqa: RUF001
-                json_payload={"test_case_id": test_case_id, "status": "already_archived"},
+                plain=f"ℹ️ Test Case {test_case_id} was already archived or doesn't exist.\nTest Case URL: {url}",  # noqa: RUF001
+                json_payload={"test_case_id": test_case_id, "status": "already_archived", "url": url},
                 output_format=output_format,
             )
 
         return render_output(
-            plain=f"✅ Archived Test Case {result.test_case_id}: '{result.name}'",
-            json_payload={"test_case_id": result.test_case_id, "name": result.name, "status": "archived"},
+            plain=f"✅ Archived Test Case {result.test_case_id}: '{result.name}'\nTest Case URL: {url}",
+            json_payload={"test_case_id": result.test_case_id, "name": result.name, "status": "archived", "url": url},
             output_format=output_format,
         )

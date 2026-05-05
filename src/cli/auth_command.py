@@ -227,12 +227,12 @@ def _render_auth_status(context: CLIContext) -> None:
     path = auth_config_path()
     if config is None:
         context.console_out.print("CLI auth status: not configured")
-        context.console_out.print(f"Location: {path}")
+        context.console_out.print(f"Location: {path}", soft_wrap=True)
         context.console_out.print("Run 'lucius auth' to save credentials for future CLI launches.")
         return
 
     context.console_out.print("CLI auth status: configured")
-    context.console_out.print(f"Location: {path}")
+    context.console_out.print(f"Location: {path}", soft_wrap=True)
     context.console_out.print(f"URL: {config.allure_endpoint}")
     context.console_out.print(f"Project ID: {config.allure_project_id}")
     context.console_out.print("API token: configured")
@@ -243,11 +243,11 @@ def _clear_auth(context: CLIContext) -> None:
     removed = clear_auth_config(path)
     if removed:
         context.console_out.print("Cleared saved CLI auth configuration.")
-        context.console_out.print(f"Location: {path}")
+        context.console_out.print(f"Location: {path}", soft_wrap=True)
         return
 
     context.console_out.print("CLI auth was already clear.")
-    context.console_out.print(f"Location: {path}")
+    context.console_out.print(f"Location: {path}", soft_wrap=True)
 
 
 def handle_auth_command(argv: list[str], *, context: CLIContext) -> None:
@@ -280,6 +280,6 @@ def handle_auth_command(argv: list[str], *, context: CLIContext) -> None:
     saved_path = save_auth_config(url=url, token=token, project_id=project_id)
 
     context.console_out.print("Saved CLI auth configuration.")
-    context.console_out.print(f"Location: {saved_path}")
+    context.console_out.print(f"Location: {saved_path}", soft_wrap=True)
     context.console_out.print(f"URL: {url}")
     context.console_out.print(f"Project ID: {project_id}")

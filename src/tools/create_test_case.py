@@ -7,6 +7,7 @@ from pydantic import Field
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
+from src.utils.links import test_case_url
 
 
 async def create_test_case(
@@ -125,12 +126,17 @@ async def create_test_case(
             integration_id=integration_id,
             integration_name=integration_name,
         )
+        if result.id is None:
+            raise ValueError("Created test case is missing an ID")
+        url = test_case_url(client.get_base_url(), client.get_project(), result.id)
         msg = f"Created Test Case ID: {result.id} Name: {result.name}"
         if issues:
             msg += f" with {len(issues)} linked issues: {', '.join(issues)}"
+        msg += f"\nTest Case URL: {url}"
         payload = {
             "id": result.id,
             "name": result.name,
             "issues": issues or [],
+            "url": url,
         }
         return render_output(plain=msg, json_payload=payload, output_format=output_format)

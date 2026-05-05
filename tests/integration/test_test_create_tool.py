@@ -15,8 +15,10 @@ def mock_service() -> typing.Generator[Mock]:
 @pytest.fixture
 def mock_client() -> typing.Generator[Mock]:
     with patch("src.tools.create_test_case.AllureClient") as mock:
-        instance = mock.return_value
-        instance.__aenter__.return_value = instance
+        instance = Mock()
+        instance.get_base_url.return_value = "https://example.com"
+        instance.get_project.return_value = 99
+        mock.from_env.return_value.__aenter__.return_value = instance
         yield mock
 
 
@@ -49,6 +51,7 @@ async def test_create_test_case_tool_success(mock_service: Mock, mock_client: Mo
 
     assert "777" in result
     assert name in result
+    assert "Test Case URL: https://example.com/project/99/test-cases/777" in result
 
     # Verify service call
     service_instance.create_test_case.assert_called_once()
@@ -83,7 +86,23 @@ async def test_create_test_case_tool_with_issues(mock_service: Mock, mock_client
     )
 
     assert "778" in result
+    assert "Test Case URL: https://example.com/project/99/test-cases/778" in result
     service_instance.create_test_case.assert_called_once()
     actual_kwargs = service_instance.create_test_case.call_args.kwargs
     assert actual_kwargs["name"] == name
     assert actual_kwargs["issues"] == issues
+
+
+@pytest.mark.asyncio
+async def test_create_test_case_tool_json_includes_url(mock_service: Mock, mock_client: Mock) -> None:
+    name = "Tool Test JSON"
+
+    service_instance = mock_service.return_value
+    service_instance.create_test_case = AsyncMock()
+    service_instance.create_test_case.return_value = Mock(id=779, name=name)
+
+    output = await create_test_case(name=name, output_format="json")
+
+    assert output.content == []
+    assert output.structured_content["id"] == 779
+    assert output.structured_content["url"] == "https://example.com/project/99/test-cases/779"

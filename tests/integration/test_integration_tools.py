@@ -70,7 +70,10 @@ async def test_create_test_case_tool_passes_integration_params(monkeypatch):
 
     class DummyClient:
         async def __aenter__(self):
-            return AsyncMock()
+            client = Mock()
+            client.get_base_url.return_value = "https://example.com"
+            client.get_project.return_value = 1
+            return client
 
         async def __aexit__(self, exc_type, exc, tb):
             return None
@@ -100,7 +103,10 @@ async def test_update_test_case_tool_passes_integration_params(monkeypatch):
 
     class DummyClient:
         async def __aenter__(self):
-            return AsyncMock()
+            client = Mock()
+            client.get_base_url.return_value = "https://example.com"
+            client.get_project.return_value = 1
+            return client
 
         async def __aexit__(self, exc_type, exc, tb):
             return None

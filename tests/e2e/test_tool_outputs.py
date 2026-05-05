@@ -28,6 +28,7 @@ async def test_create_tool_success_output(
     # Check format: "Created Test Case ID: <id> Name: <name>"
     assert "Created Test Case ID:" in result
     assert f"Name: {run_name}" in result
+    assert f"Test Case URL: {allure_client.get_base_url()}/project/{project_id}/test-cases/" in result
     assert "{" not in result  # Should not be JSON
 
     # Extract ID to clean up
@@ -63,6 +64,7 @@ async def test_update_tool_success_output(
     # Check format: "Test Case <id> updated successfully. Changes: description"
     assert f"Test Case {created.id} updated successfully" in result
     assert "Changes: description" in result
+    assert f"Test Case URL: {allure_client.get_base_url()}/project/{project_id}/test-cases/{created.id}" in result
 
 
 async def test_update_tool_not_found_error(project_id: int):

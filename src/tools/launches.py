@@ -10,6 +10,7 @@ from src.client import AllureClient
 from src.services.launch_service import LaunchDeleteResult, LaunchListResult, LaunchService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
 from src.utils.auth_resolution import resolve_auth_settings
+from src.utils.links import launch_url
 
 
 async def create_launch(
@@ -55,11 +56,16 @@ async def create_launch(
             links=links,
             tags=tags,
         )
+        base_url = client.get_base_url()
+        resolved_project_id = client.get_project()
 
-    message = f"✅ Launch created successfully! ID: {launch.id}, Name: {launch.name}"
+    if launch.id is None:
+        raise ValueError("Created launch is missing an ID")
+    url = launch_url(base_url, resolved_project_id, launch.id)
+    message = f"✅ Launch created successfully! ID: {launch.id}, Name: {launch.name}\nLaunch URL: {url}"
     return render_output(
         plain=message,
-        json_payload=_launch_payload(launch),
+        json_payload=_launch_payload(launch, base_url=base_url, project_id=resolved_project_id),
         output_format=output_format,
     )
 
@@ -101,10 +107,12 @@ async def list_launches(
             filter_id=filter_id,
             sort=sort,
         )
+        base_url = client.get_base_url()
+        resolved_project_id = client.get_project()
 
-    items = [_launch_payload(launch) for launch in result.items]
+    items = [_launch_payload(launch, base_url=base_url, project_id=resolved_project_id) for launch in result.items]
     return render_output(
-        plain=_format_launch_list(result),
+        plain=_format_launch_list(result, base_url=base_url, project_id=resolved_project_id),
         json_payload={
             "total": result.total,
             "page": result.page,
@@ -136,10 +144,12 @@ async def get_launch(
     async with _launch_client_context(project_id=project_id) as client:
         service = LaunchService(client=client)
         launch = await service.get_launch(launch_id)
+        base_url = client.get_base_url()
+        resolved_project_id = client.get_project()
 
     return render_output(
-        plain=_format_launch_detail(launch),
-        json_payload=_launch_payload(launch),
+        plain=_format_launch_detail(launch, base_url=base_url, project_id=resolved_project_id),
+        json_payload=_launch_payload(launch, base_url=base_url, project_id=resolved_project_id),
         output_format=output_format,
     )
 
@@ -165,14 +175,18 @@ async def delete_launch(
     async with _launch_client_context(project_id=project_id) as client:
         service = LaunchService(client=client)
         result = await service.delete_launch(launch_id)
+        base_url = client.get_base_url()
+        resolved_project_id = client.get_project()
+        url = launch_url(base_url, resolved_project_id, result.launch_id)
 
     return render_output(
-        plain=_format_launch_delete(result),
+        plain=f"{_format_launch_delete(result)}\nLaunch URL: {url}",
         json_payload={
             "launch_id": result.launch_id,
             "name": result.name,
             "status": result.status,
             "message": result.message,
+            "url": url,
         },
         output_format=output_format,
     )
@@ -200,9 +214,14 @@ async def close_launch(
     async with _launch_client_context(project_id=project_id, api_token=api_token) as client:
         service = LaunchService(client=client)
         launch = await service.close_launch(launch_id)
+        base_url = client.get_base_url()
+        resolved_project_id = client.get_project()
 
-    message = f"Launch closed successfully.\n{_format_launch_detail(launch)}"
-    payload = _launch_payload(launch)
+    message = (
+        f"Launch closed successfully.\n"
+        f"{_format_launch_detail(launch, base_url=base_url, project_id=resolved_project_id)}"
+    )
+    payload = _launch_payload(launch, base_url=base_url, project_id=resolved_project_id)
     payload["operation"] = "closed"
     return render_output(
         plain=message,
@@ -233,9 +252,14 @@ async def reopen_launch(
     async with _launch_client_context(project_id=project_id, api_token=api_token) as client:
         service = LaunchService(client=client)
         launch = await service.reopen_launch(launch_id)
+        base_url = client.get_base_url()
+        resolved_project_id = client.get_project()
 
-    message = f"Launch reopened successfully.\n{_format_launch_detail(launch)}"
-    payload = _launch_payload(launch)
+    message = (
+        f"Launch reopened successfully.\n"
+        f"{_format_launch_detail(launch, base_url=base_url, project_id=resolved_project_id)}"
+    )
+    payload = _launch_payload(launch, base_url=base_url, project_id=resolved_project_id)
     payload["operation"] = "reopened"
     return render_output(
         plain=message,
@@ -244,9 +268,10 @@ async def reopen_launch(
     )
 
 
-def _launch_payload(launch: object) -> dict[str, object]:
-    return {
-        "id": getattr(launch, "id", None),
+def _launch_payload(launch: object, *, base_url: str, project_id: int) -> dict[str, object]:
+    launch_id = getattr(launch, "id", None)
+    payload: dict[str, object] = {
+        "id": launch_id,
         "name": getattr(launch, "name", None),
         "closed": getattr(launch, "closed", None),
         "created_date": getattr(launch, "created_date", None) or getattr(launch, "createdDate", None),
@@ -258,6 +283,9 @@ def _launch_payload(launch: object) -> dict[str, object]:
         or getattr(launch, "knownDefectsCount", None),
         "new_defects_count": getattr(launch, "new_defects_count", None) or getattr(launch, "newDefectsCount", None),
     }
+    if isinstance(launch_id, int):
+        payload["url"] = launch_url(base_url, project_id, launch_id)
+    return payload
 
 
 @asynccontextmanager
@@ -282,7 +310,7 @@ async def _launch_client_context(
         yield client
 
 
-def _format_launch_list(result: LaunchListResult) -> str:
+def _format_launch_list(result: LaunchListResult, *, base_url: str, project_id: int) -> str:
     if not result.items:
         return "No launches found in this project."
 
@@ -299,6 +327,8 @@ def _format_launch_list(result: LaunchListResult) -> str:
         launch_id_text = str(launch_id) if launch_id is not None else "unknown"
 
         lines.append(f"- [#{launch_id_text}] {name} ({status}; {created})")
+        if isinstance(launch_id, int):
+            lines.append(f"  Launch URL: {launch_url(base_url, project_id, launch_id)}")
 
     if result.page < result.total_pages - 1:
         lines.append(f"\nUse page={result.page + 1} to see more results.")
@@ -306,7 +336,7 @@ def _format_launch_list(result: LaunchListResult) -> str:
     return "\n".join(lines)
 
 
-def _format_launch_detail(launch: object) -> str:
+def _format_launch_detail(launch: object, *, base_url: str, project_id: int) -> str:
     launch_id = getattr(launch, "id", None)
     name = getattr(launch, "name", None) or "(unnamed)"
     closed = getattr(launch, "closed", None)
@@ -315,6 +345,8 @@ def _format_launch_detail(launch: object) -> str:
     lines = ["Launch details:"]
     _append_close_report_line(lines, launch)
     lines.append(f"- ID: {launch_id if launch_id is not None else 'unknown'}")
+    if isinstance(launch_id, int):
+        lines.append(f"- URL: {launch_url(base_url, project_id, launch_id)}")
     lines.append(f"- Name: {name}")
     lines.append(f"- Status: {status}")
 

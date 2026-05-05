@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from pydantic import SecretStr
@@ -16,10 +16,17 @@ def _resolved_auth(*, endpoint: str = "https://example.com", token: str = "token
     return SimpleNamespace(endpoint=endpoint, api_token=SecretStr(token), project_id=project_id)
 
 
+def _mock_url_context(project_id: int = 1) -> MagicMock:
+    mock_client = MagicMock()
+    mock_client.get_base_url.return_value = "https://example.com"
+    mock_client.get_project.return_value = project_id
+    return mock_client
+
+
 @pytest.mark.asyncio
 async def test_create_launch_output_format() -> None:
     with patch("src.tools.launches.AllureClient.from_env") as mock_client_ctx:
-        mock_client = AsyncMock()
+        mock_client = _mock_url_context()
         mock_client_ctx.return_value.__aenter__.return_value = mock_client
 
         with patch("src.tools.launches.LaunchService") as mock_service_cls:
@@ -37,7 +44,7 @@ async def test_create_launch_output_format() -> None:
 @pytest.mark.asyncio
 async def test_list_launches_output_format() -> None:
     with patch("src.tools.launches.AllureClient.from_env") as mock_client_ctx:
-        mock_client = AsyncMock()
+        mock_client = _mock_url_context()
         mock_client_ctx.return_value.__aenter__.return_value = mock_client
 
         with patch("src.tools.launches.LaunchService") as mock_service_cls:
@@ -65,7 +72,7 @@ async def test_list_launches_output_format() -> None:
 @pytest.mark.asyncio
 async def test_list_launches_empty() -> None:
     with patch("src.tools.launches.AllureClient.from_env") as mock_client_ctx:
-        mock_client = AsyncMock()
+        mock_client = _mock_url_context()
         mock_client_ctx.return_value.__aenter__.return_value = mock_client
 
         with patch("src.tools.launches.LaunchService") as mock_service_cls:
@@ -89,7 +96,7 @@ async def test_get_launch_project_id_fallback_uses_zero_override() -> None:
         return_value=_resolved_auth(token="runtime-token", project_id=0),
     ):
         with patch("src.tools.launches.AllureClient") as mock_client_cls:
-            mock_client = AsyncMock()
+            mock_client = _mock_url_context(project_id=0)
             mock_client_cls.return_value.__aenter__.return_value = mock_client
 
             with patch("src.tools.launches.LaunchService") as mock_service_cls:
@@ -110,7 +117,7 @@ async def test_get_launch_output_format() -> None:
         return_value=_resolved_auth(token="runtime-token"),
     ):
         with patch("src.tools.launches.AllureClient") as mock_client_cls:
-            mock_client = AsyncMock()
+            mock_client = _mock_url_context()
             mock_client_cls.return_value.__aenter__.return_value = mock_client
 
             with patch("src.tools.launches.LaunchService") as mock_service_cls:
@@ -150,7 +157,7 @@ async def test_get_launch_output_format() -> None:
 async def test_delete_launch_output_archived() -> None:
     with patch("src.tools.launches.resolve_auth_settings", return_value=_resolved_auth()):
         with patch("src.tools.launches.AllureClient") as mock_client_cls:
-            mock_client = AsyncMock()
+            mock_client = _mock_url_context()
             mock_client_cls.return_value.__aenter__.return_value = mock_client
 
             with patch("src.tools.launches.LaunchService") as mock_service_cls:
@@ -172,7 +179,7 @@ async def test_delete_launch_output_archived() -> None:
 async def test_delete_launch_output_already_deleted() -> None:
     with patch("src.tools.launches.resolve_auth_settings", return_value=_resolved_auth()):
         with patch("src.tools.launches.AllureClient") as mock_client_cls:
-            mock_client = AsyncMock()
+            mock_client = _mock_url_context()
             mock_client_cls.return_value.__aenter__.return_value = mock_client
 
             with patch("src.tools.launches.LaunchService") as mock_service_cls:
@@ -203,7 +210,7 @@ async def test_close_launch_project_id_fallback_uses_zero_override() -> None:
         return_value=_resolved_auth(token=runtime_api_token, project_id=0),
     ):
         with patch("src.tools.launches.AllureClient") as mock_client_cls:
-            mock_client = AsyncMock()
+            mock_client = _mock_url_context(project_id=0)
             mock_client_cls.return_value.__aenter__.return_value = mock_client
 
             with patch("src.tools.launches.LaunchService") as mock_service_cls:
@@ -225,7 +232,7 @@ async def test_close_launch_output_format() -> None:
         return_value=_resolved_auth(token=runtime_api_token),
     ):
         with patch("src.tools.launches.AllureClient") as mock_client_cls:
-            mock_client = AsyncMock()
+            mock_client = _mock_url_context()
             mock_client_cls.return_value.__aenter__.return_value = mock_client
 
             with patch("src.tools.launches.LaunchService") as mock_service_cls:
@@ -265,7 +272,7 @@ async def test_reopen_launch_project_id_fallback_uses_zero_override() -> None:
         return_value=_resolved_auth(token=runtime_api_token, project_id=0),
     ):
         with patch("src.tools.launches.AllureClient") as mock_client_cls:
-            mock_client = AsyncMock()
+            mock_client = _mock_url_context(project_id=0)
             mock_client_cls.return_value.__aenter__.return_value = mock_client
 
             with patch("src.tools.launches.LaunchService") as mock_service_cls:
@@ -287,7 +294,7 @@ async def test_reopen_launch_output_format() -> None:
         return_value=_resolved_auth(token=runtime_api_token),
     ):
         with patch("src.tools.launches.AllureClient") as mock_client_cls:
-            mock_client = AsyncMock()
+            mock_client = _mock_url_context()
             mock_client_cls.return_value.__aenter__.return_value = mock_client
 
             with patch("src.tools.launches.LaunchService") as mock_service_cls:
