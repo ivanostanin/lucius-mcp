@@ -56,6 +56,7 @@ Releases = "https://github.com/ivanostanin/lucius-mcp/releases"
 
 [project.scripts]
 start = "src.main:start"
+lucius-mcp = "src.main:start"
 lucius = "src.cli.cli_entry:main"
 
 [tool.uv]

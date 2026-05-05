@@ -30,6 +30,8 @@ RUN uv sync --frozen --no-dev
 # Final stage
 FROM python:3.14-slim-bookworm
 
+LABEL io.modelcontextprotocol.server.name="io.github.ivanostanin/lucius-mcp"
+
 WORKDIR /app
 
 # Copy the virtual environment from the builder stage
