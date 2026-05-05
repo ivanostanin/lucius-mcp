@@ -2,6 +2,8 @@
 
 Lucius is a specialized Model Context Protocol (MCP) server for Allure TestOps, built with `FastMCP` and `Starlette`.
 
+<!-- mcp-name: io.github.ivanostanin/lucius-mcp -->
+
 ## 🎯 Motivation
 
 Allure TestOps is a powerful tool with a huge API. When you're using an AI agent to manage your tests, it can easily get

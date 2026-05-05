@@ -1,0 +1,91 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.ivanostanin/lucius-mcp",
+  "title": "Lucius MCP",
+  "description": "MCP server for managing Allure TestOps tests, launches, plans, defects, and metadata.",
+  "repository": {
+    "url": "https://github.com/ivanostanin/lucius-mcp",
+    "source": "github"
+  },
+  "version": "0.8.3",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "lucius-mcp",
+      "version": "0.8.3",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "ALLURE_ENDPOINT",
+          "description": "Allure TestOps base URL, for example https://example.testops.cloud.",
+          "isRequired": true,
+          "format": "string",
+          "isSecret": false
+        },
+        {
+          "name": "ALLURE_PROJECT_ID",
+          "description": "Default Allure TestOps project ID.",
+          "isRequired": true,
+          "format": "number",
+          "isSecret": false
+        },
+        {
+          "name": "ALLURE_API_TOKEN",
+          "description": "Allure TestOps API token.",
+          "isRequired": true,
+          "format": "string",
+          "isSecret": true
+        }
+      ]
+    },
+    {
+      "registryType": "oci",
+      "identifier": "ghcr.io/ivanostanin/lucius-mcp:0.8.3",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "ALLURE_ENDPOINT",
+          "description": "Allure TestOps base URL, for example https://example.testops.cloud.",
+          "isRequired": true,
+          "format": "string",
+          "isSecret": false
+        },
+        {
+          "name": "ALLURE_PROJECT_ID",
+          "description": "Default Allure TestOps project ID.",
+          "isRequired": true,
+          "format": "number",
+          "isSecret": false
+        },
+        {
+          "name": "ALLURE_API_TOKEN",
+          "description": "Allure TestOps API token.",
+          "isRequired": true,
+          "format": "string",
+          "isSecret": true
+        }
+      ]
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/ivanostanin/lucius-mcp/releases/download/v0.8.3/lucius-mcp-0.8.3-uv.mcpb",
+      "fileSha256": "b527bed3ee2beeb3706813767a5e17d82156eb00a39db65c82b642f97fc8174b",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/ivanostanin/lucius-mcp/releases/download/v0.8.3/lucius-mcp-0.8.3-python.mcpb",
+      "fileSha256": "5d0fbe918b8b3180613c8bdd4612b04d0e9e27d849d6d4fecb2095e5f8ef0539",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

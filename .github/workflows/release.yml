@@ -189,3 +189,24 @@ jobs:
         uses: pypa/gh-action-pypi-publish@v1.14.0
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
+
+  mcp-registry-publish:
+    needs: [pypi-publish, docker-build, github-release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      MCP_PUBLISHER_VERSION: v1.7.8
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Install mcp-publisher
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+
+      - name: Authenticate to MCP Registry
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish to MCP Registry
+        run: ./mcp-publisher publish
