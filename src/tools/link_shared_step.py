@@ -8,9 +8,10 @@ from src.client import AllureClient
 from src.client.generated.models.shared_step_step_dto import SharedStepStepDto
 from src.services.test_case_service import TestCaseService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
+from src.utils.links import shared_step_url, test_case_url
 
 
-def _format_steps(scenario: object) -> str:
+def _format_steps(scenario: object, *, base_url: str, project_id: int) -> str:
     """Format steps for display."""
     steps = getattr(scenario, "steps", None)
     if not isinstance(steps, list) or not steps:
@@ -20,7 +21,11 @@ def _format_steps(scenario: object) -> str:
     for i, step in enumerate(steps):
         # Handle Shared Step
         if step.actual_instance and isinstance(step.actual_instance, SharedStepStepDto):
-            output.append(f"{i + 1}. [Shared Step] ID: {step.actual_instance.shared_step_id}")
+            shared_step_id = step.actual_instance.shared_step_id
+            line = f"{i + 1}. [Shared Step] ID: {shared_step_id}"
+            if isinstance(shared_step_id, int):
+                line += f" (URL: {shared_step_url(base_url, project_id, shared_step_id)})"
+            output.append(line)
         else:
             # Inline step
             body = "Step"
@@ -99,6 +104,10 @@ async def link_shared_step(
 
     async with AllureClient.from_env(project=project_id) as client:
         service = TestCaseService(client=client)
+        base_url = client.get_base_url()
+        resolved_project_id = client.get_project()
+        test_case_link = test_case_url(base_url, resolved_project_id, test_case_id)
+        shared_step_link = shared_step_url(base_url, resolved_project_id, shared_step_id)
         try:
             await service.add_shared_step_to_case(
                 test_case_id=test_case_id,
@@ -107,25 +116,36 @@ async def link_shared_step(
             )
 
             scenario = await client.get_test_case_scenario(test_case_id)
-            steps_preview = _format_steps(scenario)
+            steps_preview = _format_steps(scenario, base_url=base_url, project_id=resolved_project_id)
             message = (
-                f"✅ Linked Shared Step {shared_step_id} to Test Case {test_case_id}\n\nUpdated steps:\n{steps_preview}"
+                f"✅ Linked Shared Step {shared_step_id} to Test Case {test_case_id}\n"
+                f"Shared Step URL: {shared_step_link}\n"
+                f"Test Case URL: {test_case_link}\n\n"
+                f"Updated steps:\n{steps_preview}"
             )
             return render_output(
                 plain=message,
                 json_payload={
                     "test_case_id": test_case_id,
+                    "test_case_url": test_case_link,
                     "shared_step_id": shared_step_id,
-                    "steps": _serialize_steps(scenario),
+                    "shared_step_url": shared_step_link,
+                    "steps": _serialize_steps(scenario, base_url=base_url, project_id=resolved_project_id),
                 },
                 output_format=output_format,
             )
         except Exception as e:
             return render_output(
-                plain=f"❌ Error linking shared step: {e}",
+                plain=(
+                    f"❌ Error linking shared step: {e}\n"
+                    f"Shared Step URL: {shared_step_link}\n"
+                    f"Test Case URL: {test_case_link}"
+                ),
                 json_payload={
                     "test_case_id": test_case_id,
+                    "test_case_url": test_case_link,
                     "shared_step_id": shared_step_id,
+                    "shared_step_url": shared_step_link,
                     "status": "error",
                     "error": str(e),
                 },
@@ -133,7 +153,7 @@ async def link_shared_step(
             )
 
 
-def _serialize_steps(scenario: object) -> list[dict[str, object]]:
+def _serialize_steps(scenario: object, *, base_url: str, project_id: int) -> list[dict[str, object]]:
     steps = getattr(scenario, "steps", None)
     if not isinstance(steps, list):
         return []
@@ -141,13 +161,15 @@ def _serialize_steps(scenario: object) -> list[dict[str, object]]:
     serialized: list[dict[str, object]] = []
     for index, step in enumerate(steps, 1):
         if step.actual_instance and isinstance(step.actual_instance, SharedStepStepDto):
-            serialized.append(
-                {
-                    "index": index,
-                    "type": "shared_step",
-                    "shared_step_id": step.actual_instance.shared_step_id,
-                }
-            )
+            shared_step_id = step.actual_instance.shared_step_id
+            payload: dict[str, object] = {
+                "index": index,
+                "type": "shared_step",
+                "shared_step_id": shared_step_id,
+            }
+            if isinstance(shared_step_id, int):
+                payload["shared_step_url"] = shared_step_url(base_url, project_id, shared_step_id)
+            serialized.append(payload)
             continue
 
         body = "Step"

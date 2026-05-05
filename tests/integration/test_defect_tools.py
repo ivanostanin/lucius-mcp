@@ -324,6 +324,30 @@ async def test_list_defect_test_cases_tool() -> None:
             mock_svc.list_defect_test_cases.assert_called_once_with(defect_id=10, page=0, size=20)
 
 
+@pytest.mark.asyncio
+async def test_list_defect_test_cases_empty_plain_includes_defect_url() -> None:
+    with patch("src.tools.defects.AllureClient.from_env") as mock_ctx:
+        mock_client = _mock_url_context()
+        mock_ctx.return_value.__aenter__.return_value = mock_client
+
+        with patch("src.tools.defects.DefectService") as mock_svc_cls:
+            mock_svc = mock_svc_cls.return_value
+            mock_svc.list_defect_test_cases = AsyncMock(
+                return_value=DefectTestCaseListResult(
+                    items=[],
+                    total=0,
+                    page=0,
+                    size=20,
+                    total_pages=0,
+                )
+            )
+
+            output = await list_defect_test_cases(defect_id=10, page=0, size=20, output_format="plain")
+
+            assert "No test cases linked to Defect #10." in output
+            assert "Defect URL: https://example.com/project/1/defects/10" in output
+
+
 # ── Defect Matcher tools ────────────────────────────────────────
 
 

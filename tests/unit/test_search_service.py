@@ -8,7 +8,7 @@ from src.client.generated.models.custom_field_dto import CustomFieldDto
 from src.client.generated.models.custom_field_value_with_cf_dto import CustomFieldValueWithCfDto
 from src.client.generated.models.test_tag_dto import TestTagDto
 from src.services.search_service import SearchQueryParser, SearchService, TestCaseDetails
-from src.tools.search import _format_search_results, _format_test_case_details
+from src.tools.search import _format_search_results, _format_test_case_details, _format_test_case_list
 
 
 @pytest.fixture
@@ -257,6 +257,18 @@ def test_format_search_results_includes_tags_and_pagination() -> None:
     assert "Test Case URL: https://example.com/project/1/test-cases/2" in text
     assert "tags: none" in text
     assert "Showing page 1 of 2" in text
+
+
+def test_format_test_case_list_includes_url_for_project_zero() -> None:
+    tc = TestCaseDto(id=1, name="Login")
+    page = PageTestCaseDto(content=[tc], total_elements=1, total_pages=1, number=0, size=20)
+    mock_client = MagicMock()
+    mock_client.get_project.return_value = 0
+    result = SearchService(client=mock_client)._build_result(page)
+
+    text = _format_test_case_list(result, base_url="https://example.com", project_id=0)
+
+    assert "Test Case URL: https://example.com/project/0/test-cases/1" in text
 
 
 # =============================================

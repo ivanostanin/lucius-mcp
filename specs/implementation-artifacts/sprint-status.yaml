@@ -142,5 +142,5 @@ development_status:
 
   # Epic 10: Quality of Life and API Coverage
   epic-10: in-progress
-  10-1-include-testops-entity-urls-in-tool-responses: review
+  10-1-include-testops-entity-urls-in-tool-responses: done
   epic-10-retrospective: optional

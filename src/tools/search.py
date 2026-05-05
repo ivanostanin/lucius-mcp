@@ -234,7 +234,7 @@ def _format_test_case_list(result: TestCaseListResult, *, base_url: str = "", pr
         tags = ", ".join([t.name for t in (tc.tags or []) if t.name]) if tc.tags else "none"
         status = tc.status.name if tc.status and tc.status.name else "unknown"
         lines.append(f"- [#{tc.id}] {tc.name} (status: {status}; tags: {tags})")
-        if base_url and project_id > 0 and isinstance(tc.id, int):
+        if base_url and isinstance(tc.id, int):
             lines.append(f"  Test Case URL: {test_case_url(base_url, project_id, tc.id)}")
 
     if result.page < result.total_pages - 1:
@@ -285,7 +285,7 @@ def _format_test_case_details(details: TestCaseDetails, *, base_url: str = "", p
     scenario = details.scenario
 
     lines: list[str] = [f"**Test Case #{tc.id}: {tc.name}**"]
-    if base_url and project_id > 0 and isinstance(tc.id, int):
+    if base_url and isinstance(tc.id, int):
         lines.append(f"Test Case URL: {test_case_url(base_url, project_id, tc.id)}")
     status_line = _format_status_line(tc)
     lines.append(status_line)
@@ -375,7 +375,7 @@ def _format_search_results(result: TestCaseListResult, query: str, *, base_url: 
     for tc in result.items:
         tags = ", ".join([t.name for t in (tc.tags or []) if t.name]) if tc.tags else "none"
         lines.append(f"- [#{tc.id}] {tc.name} (tags: {tags})")
-        if base_url and project_id > 0 and isinstance(tc.id, int):
+        if base_url and isinstance(tc.id, int):
             lines.append(f"  Test Case URL: {test_case_url(base_url, project_id, tc.id)}")
 
     if result.total_pages > 1:

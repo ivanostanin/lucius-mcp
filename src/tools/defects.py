@@ -370,7 +370,7 @@ async def list_defect_test_cases(
             items.append(payload)
         return render_collection_output(
             items=items,
-            plain_empty=f"No test cases linked to Defect #{defect_id}.",
+            plain_empty=f"No test cases linked to Defect #{defect_id}.\nDefect URL: {parent_defect_url}",
             plain_lines=lines,
             defect_id=defect_id,
             defect_url=parent_defect_url,

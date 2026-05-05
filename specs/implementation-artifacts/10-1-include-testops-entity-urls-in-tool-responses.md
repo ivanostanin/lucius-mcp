@@ -1,6 +1,6 @@
 # Story 10.1: Include TestOps Entity URLs in Tool Responses
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -30,10 +30,10 @@ so that I can navigate users directly to the relevant TestOps objects without ma
   - **When** URLs are added
   - **Then** use this initial map:
     - `test_case`: `<base_url>/project/<project_id>/test-cases/<test_case_id>`
-    - `launch`: `<base_url>/project/<project_id>/launches/<launch_id>`
+    - `launch`: `<base_url>/launch/<launch_id>`
     - `defect`: `<base_url>/project/<project_id>/defects/<defect_id>`
-    - `test_plan`: `<base_url>/project/<project_id>/test-plans/<plan_id>`
-    - `shared_step`: `<base_url>/project/<project_id>/settings/shared-steps/<shared_step_id>`
+    - `test_plan`: `<base_url>/testplan/<plan_id>`
+    - `shared_step`: `<base_url>/project/<project_id>/shared-steps/<shared_step_id>`
   - **And** any additional entity pattern must be verified against a sandbox TestOps UI before being used.
 
 4. **Multiple entity references are unambiguous**
@@ -106,6 +106,14 @@ so that I can navigate users directly to the relevant TestOps objects without ma
   - [x] 7.4 Add JSON-mode tests proving URLs appear in payloads and nested collection items.
   - [x] 7.5 Update `docs/tools.md` to state that supported entity responses include TestOps browser URLs alongside IDs.
 
+### Review Findings
+
+- [x] [Review][Spec] Kept launch, test-plan, and shared-step helper routes as designed and updated AC3/story notes to match implementation [src/utils/links.py:10]
+- [x] [Review][Patch] Add test-case and shared-step URLs to link_shared_step and unlink_shared_step outputs that still return supported entity IDs without URLs [src/tools/link_shared_step.py:111]
+- [x] [Review][Patch] Include parent defect URL in empty plain output for list_defect_test_cases [src/tools/defects.py:373]
+- [x] [Review][Patch] Remove project_id > 0 guards that make search plain output omit URLs for resolved project 0 while JSON includes them [src/tools/search.py:237]
+- [x] [Review][Patch] Add test-case URL fields for test_case_ids echoed by create/manage test-plan responses [src/tools/plans.py:55]
+
 ## Dev Notes
 
 ### Current Implementation Snapshot
@@ -114,7 +122,7 @@ so that I can navigate users directly to the relevant TestOps objects without ma
 - Tools still support only `plain|json`; do not add `table` or `csv` to tool-level output modes.
 - `AllureClient` stores a normalized trailing-slash-free base URL and exposes it via `get_base_url()`.
 - `AllureClient.get_project()` returns the resolved project for the active client, including explicit `project_id` overrides.
-- `src/tools/shared_steps.py` already includes a local `_shared_step_url()` helper and an integration test proving `create_shared_step(..., output_format="json")` returns `https://example.com/project/456/settings/shared-steps/11`.
+- `src/tools/shared_steps.py` already includes a local `_shared_step_url()` helper and an integration test proving `create_shared_step(..., output_format="json")` returns `https://example.com/project/456/shared-steps/11`.
 - Existing test case e2e tests parse IDs from plain text like `Created Test Case ID: 123 Name: ...`; preserve that substring and append URL information rather than rewriting the message format.
 
 ### URL Pattern Research
@@ -122,8 +130,8 @@ so that I can navigate users directly to the relevant TestOps objects without ma
 - User-provided verified test case example: `https://<testops-url>/project/<project-id>/test-cases/<test-case-id>`.
 - Official Allure TestOps documentation describes project sections for Test cases, Launches, Defects, and Test plans; use their section names as the first-pass path names.
 - Qameta Help Desk gives a concrete TestOps URL example for the test case section: `https://demo.testops.cloud/project/338/test-cases?treeId=0`, plus the deleted-list route `.../project/1/test-cases-list`.
-- Existing project code already uses and tests shared-step URLs under `/project/<project_id>/settings/shared-steps/<step_id>`.
-- Launch, defect, and test-plan direct detail paths are inferred from documented section names and common TestOps routing. Validate these against a sandbox instance during implementation; if a route redirects but still lands on the entity, keep it and document the behavior.
+- Existing project code now uses and tests shared-step URLs under `/project/<project_id>/shared-steps/<step_id>`.
+- Launch and test-plan detail paths intentionally use `/launch/<launch_id>` and `/testplan/<plan_id>` based on implementation-verified routing; defect URLs remain project-scoped.
 
 ### Implementation Guardrails
 
@@ -232,13 +240,18 @@ Ultimate context engine analysis completed - comprehensive developer guide creat
 - Added shared TestOps entity URL helpers and reused them in shared-step output.
 - Added resolved-context URLs to test case, launch, defect, test-plan, and shared-step tool responses for both `plain` and `json` output.
 - Kept unsupported ID-bearing entities URL-free: test suites, test layers, test layer schemas, custom fields, custom field values, integrations, and defect matchers do not have verified stable detail routes in this implementation. Test suite tree-node URLs were intentionally not invented.
-- Manual UI verification is still recommended for the inferred direct routes `/launches/<launch_id>`, `/defects/<defect_id>`, and `/test-plans/<plan_id>` in a TestOps browser sandbox. Test case and shared-step patterns have verified examples in project context/tests.
+- Manual UI verification is still recommended for direct routes `/launch/<launch_id>`, `/defects/<defect_id>`, and `/testplan/<plan_id>` in a TestOps browser sandbox. Test case and shared-step patterns have verified examples in project context/tests.
 - Added Hatch build excludes for local `.codex` and cache/build artifacts after packaging validation exposed that workspace-local symlinks could enter sdists.
 - Validation: `uv run --python 3.13 --extra dev pytest tests/unit/test_links.py tests/integration/test_test_create_tool.py tests/integration/test_launch_tools.py tests/integration/test_defect_tools.py tests/integration/test_plan_tools.py tests/integration/test_shared_step_tools.py -q` passed (41 passed).
 - Validation: `uv run --python 3.13 --extra dev pytest tests/e2e/test_tool_outputs.py tests/e2e/test_defect_management.py tests/e2e/test_launches.py tests/e2e/test_plan_management.py -q` skipped all 9 tests without live e2e config in direct invocation.
 - Validation: `uv run --python 3.13 --extra dev ruff check src/tools src/utils tests/unit tests/integration` passed.
 - Validation: `uv run --python 3.13 --extra dev mypy src/tools src/utils` passed.
 - Validation: full regression components passed: 496 unit/integration, 11 docs, 233 CLI, 113 e2e with 1 skip, and 34 packaging tests.
+- Review follow-up: kept launch/test-plan/shared-step URL helper routes as implementation-approved and updated AC3/story notes accordingly.
+- Review follow-up: added URLs to shared-step link/unlink outputs, empty defect linked-test-case output, project 0 plain search output, and test-plan test-case ID echoes.
+- Review validation: `uv run --python 3.13 --extra dev pytest tests/unit/test_links.py tests/unit/test_search_service.py tests/integration/test_test_create_tool.py tests/integration/test_launch_tools.py tests/integration/test_defect_tools.py tests/integration/test_plan_tools.py tests/integration/test_shared_step_tools.py tests/integration/test_shared_step_link_tools.py -q` passed (69 passed).
+- Review validation: `uv run --python 3.13 --extra dev ruff check src/tools/link_shared_step.py src/tools/unlink_shared_step.py src/tools/defects.py src/tools/search.py src/tools/plans.py tests/integration/test_shared_step_link_tools.py tests/integration/test_defect_tools.py tests/integration/test_plan_tools.py tests/unit/test_search_service.py` passed.
+- Review validation: `uv run --python 3.13 --extra dev mypy src/tools/link_shared_step.py src/tools/unlink_shared_step.py src/tools/defects.py src/tools/search.py src/tools/plans.py` passed.
 
 ### File List
 
@@ -250,9 +263,11 @@ Ultimate context engine analysis completed - comprehensive developer guide creat
 - src/tools/defects.py
 - src/tools/delete_test_case.py
 - src/tools/launches.py
+- src/tools/link_shared_step.py
 - src/tools/plans.py
 - src/tools/search.py
 - src/tools/shared_steps.py
+- src/tools/unlink_shared_step.py
 - src/tools/update_test_case.py
 - src/utils/__init__.py
 - src/utils/links.py
@@ -264,6 +279,7 @@ Ultimate context engine analysis completed - comprehensive developer guide creat
 - tests/integration/test_launch_tools.py
 - tests/integration/test_plan_tools.py
 - tests/integration/test_shared_step_tools.py
+- tests/integration/test_shared_step_link_tools.py
 - tests/integration/test_test_create_tool.py
 - tests/integration/test_test_update_tool.py
 - tests/unit/test_launch_tools.py

@@ -36,6 +36,9 @@ async def test_create_test_plan_tool() -> None:
 
             assert "Created Test Plan 100: 'Plan 100'" in output
             assert "Test Plan URL: https://example.com/testplan/100" in output
+            assert "Test Case URLs:" in output
+            assert "https://example.com/project/1/test-cases/1" in output
+            assert "https://example.com/project/1/test-cases/2" in output
             mock_service.create_plan.assert_called_once_with(
                 name="Plan 100",
                 test_case_ids=[1, 2],
@@ -57,6 +60,10 @@ async def test_create_test_plan_json_includes_url() -> None:
             output = await create_test_plan(name="Plan 100", test_case_ids=[1, 2], output_format="json")
 
             assert output.structured_content["url"] == "https://example.com/testplan/100"
+            assert output.structured_content["test_case_urls"] == [
+                "https://example.com/project/2/test-cases/1",
+                "https://example.com/project/2/test-cases/2",
+            ]
 
 
 @pytest.mark.asyncio
@@ -92,9 +99,32 @@ async def test_manage_test_plan_content_tool() -> None:
 
             assert "Updated content for Test Plan 100" in output
             assert "Test Plan URL: https://example.com/testplan/100" in output
+            assert "Added Test Case URLs:" in output
+            assert "https://example.com/project/1/test-cases/10" in output
             mock_service.update_plan_content.assert_called_once_with(
                 plan_id=100, test_case_ids_add=[10], test_case_ids_remove=None, aql_filter=None
             )
+
+
+@pytest.mark.asyncio
+async def test_manage_test_plan_content_json_includes_test_case_urls() -> None:
+    with patch("src.tools.plans.AllureClient.from_env") as mock_client_ctx:
+        mock_client = _mock_url_context(project_id=2)
+        mock_client_ctx.return_value.__aenter__.return_value = mock_client
+
+        with patch("src.tools.plans.PlanService") as mock_service_cls:
+            mock_service = mock_service_cls.return_value
+            mock_service.update_plan_content = AsyncMock()
+
+            output = await manage_test_plan_content(
+                plan_id=100,
+                add_test_case_ids=[10],
+                remove_test_case_ids=[11],
+                output_format="json",
+            )
+
+            assert output.structured_content["add_test_case_urls"] == ["https://example.com/project/2/test-cases/10"]
+            assert output.structured_content["remove_test_case_urls"] == ["https://example.com/project/2/test-cases/11"]
 
 
 @pytest.mark.asyncio

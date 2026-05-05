@@ -10,7 +10,18 @@ from src.tools.output_contract import (
     render_confirmation_required,
     render_output,
 )
-from src.utils.links import test_plan_url
+from src.utils.links import test_case_url, test_plan_url
+
+
+def _test_case_urls(base_url: str, project_id: int, test_case_ids: list[int] | None) -> list[str]:
+    return [test_case_url(base_url, project_id, test_case_id) for test_case_id in test_case_ids or []]
+
+
+def _append_test_case_urls(lines: list[str], label: str, urls: list[str]) -> None:
+    if not urls:
+        return
+    lines.append(f"{label}:")
+    lines.extend(f"- {url}" for url in urls)
 
 
 async def create_test_plan(
@@ -48,15 +59,20 @@ async def create_test_plan(
         )
         if plan.id is None:
             raise ValueError("Created test plan is missing an ID")
-        url = test_plan_url(client.get_base_url(), client.get_project(), plan.id)
-        message = f"Created Test Plan {plan.id}: '{plan.name}'\nTest Plan URL: {url}"
+        base_url = client.get_base_url()
+        project_id = client.get_project()
+        url = test_plan_url(base_url, project_id, plan.id)
+        test_case_urls = _test_case_urls(base_url, project_id, test_case_ids)
+        message_lines = [f"Created Test Plan {plan.id}: '{plan.name}'", f"Test Plan URL: {url}"]
+        _append_test_case_urls(message_lines, "Test Case URLs", test_case_urls)
         return render_output(
-            plain=message,
+            plain="\n".join(message_lines),
             json_payload={
                 "id": plan.id,
                 "name": plan.name,
                 "aql_filter": aql_filter,
                 "test_case_ids": test_case_ids or [],
+                "test_case_urls": test_case_urls,
                 "url": url,
             },
             output_format=output_format,
@@ -133,14 +149,22 @@ async def manage_test_plan_content(
             test_case_ids_remove=remove_test_case_ids,
             aql_filter=update_aql_filter,
         )
-        url = test_plan_url(client.get_base_url(), client.get_project(), plan_id)
-        message = f"Updated content for Test Plan {plan_id}\nTest Plan URL: {url}"
+        base_url = client.get_base_url()
+        project_id = client.get_project()
+        url = test_plan_url(base_url, project_id, plan_id)
+        add_test_case_urls = _test_case_urls(base_url, project_id, add_test_case_ids)
+        remove_test_case_urls = _test_case_urls(base_url, project_id, remove_test_case_ids)
+        message_lines = [f"Updated content for Test Plan {plan_id}", f"Test Plan URL: {url}"]
+        _append_test_case_urls(message_lines, "Added Test Case URLs", add_test_case_urls)
+        _append_test_case_urls(message_lines, "Removed Test Case URLs", remove_test_case_urls)
         return render_output(
-            plain=message,
+            plain="\n".join(message_lines),
             json_payload={
                 "plan_id": plan_id,
                 "add_test_case_ids": add_test_case_ids or [],
+                "add_test_case_urls": add_test_case_urls,
                 "remove_test_case_ids": remove_test_case_ids or [],
+                "remove_test_case_urls": remove_test_case_urls,
                 "aql_filter": update_aql_filter,
                 "url": url,
             },
