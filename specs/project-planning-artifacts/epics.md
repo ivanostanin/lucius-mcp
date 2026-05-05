@@ -986,3 +986,47 @@ so that frequent `lucius <entity> <action>` commands are faster to type while pr
 **When** CLI alias and completion tests execute
 **Then** they verify short alias resolution, no canonical route duplication, root-help visibility, completion exposure, and unchanged behavior for existing canonical/plural/dash aliases
 **And** process-level CLI E2E coverage exercises representative short aliases via `uv run lucius ...`.
+
+### Story 9.13: CLI Comprehensive E2E Coverage via uv run lucius
+
+As a Developer or QA Engineer,
+I want comprehensive CLI command E2E coverage executed from source with `uv run lucius`,
+so that CLI behavior is verified end-to-end without depending on built binaries and regressions in local commands or high-priority entity flows are caught early.
+
+**Acceptance Criteria:**
+
+**Given** the CLI E2E suite is executed
+**When** command processes are launched
+**Then** commands are invoked from source via `uv run lucius ...`
+**And** the suite does not require building a Nuitka or wheel binary to validate CLI behavior.
+
+**Given** CLI commands that do not call a TestOps tool directly
+**When** process-level E2E tests run
+**Then** coverage includes `lucius`, `lucius --help`, `lucius --version`, `lucius <entity>`, `lucius <entity> <action> --help`, and each CLI-local command introduced in Epic 9 such as `list`, `auth`, `auth status`, and `install-completions`
+**And** those tests verify clean exit codes, no tracebacks/internal logs, and expected discovery/help text.
+
+**Given** high-priority `test_case` command flows
+**When** source-invoked CLI E2E tests run
+**Then** they cover representative discovery, help, and execution paths for `test_case`
+**And** they verify default JSON routing plus CLI rendering for `plain`, `table`, and `csv`
+**And** they continue to validate escaped-newline handling in plain output.
+
+**Given** high-priority `launch` command flows
+**When** source-invoked CLI E2E tests run
+**Then** they cover representative discovery, help, and execution paths for `launch`
+**And** they validate at least one list/read flow and at least one state-transition flow relevant to launch lifecycle behavior.
+
+**Given** high-priority custom-field flows
+**When** source-invoked CLI E2E tests run
+**Then** they cover representative discovery, help, and execution paths for `custom_field` and `custom_field_value`
+**And** they validate behavior for both entity-level operations and value-level CRUD-style flows.
+
+**Given** staged CLI features such as pretty JSON, local-timezone table rendering, and short aliases
+**When** those features are implemented
+**Then** the source-invoked E2E suite contains representative process tests for them
+**And** aliases such as `tc`, `ln`, `cf`, or `cfv` are covered where the corresponding story makes them available.
+
+**Given** future CLI-local commands or CLI-only rendering behaviors are added
+**When** a story is prepared for development
+**Then** its acceptance criteria explicitly require extending the shared `uv run lucius` CLI E2E suite
+**And** story tasks identify the concrete test file(s) to update.

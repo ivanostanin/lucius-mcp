@@ -67,6 +67,20 @@ Requires access to a sandbox Allure TestOps instance and all environment variabl
 uv run --env-file .env.test pytest tests/e2e -n auto
 ```
 
+CLI command E2E tests that do not need live TestOps access run from source with
+`uv run lucius`. When adding CLI-local commands, entity/action routes, aliases,
+or CLI-only rendering behavior, extend the focused shared suite:
+
+```bash
+uv run --python 3.13 --extra dev pytest tests/e2e/test_cli_*uv_run*.py -q
+```
+
+Use `tests/e2e/test_cli_local_commands_uv_run.py` for top-level CLI-local
+commands such as `list`, `auth`, and `install-completions`; use
+`tests/e2e/test_cli_entity_commands_uv_run.py` or
+`tests/e2e/test_cli_output_formats_uv_run.py` for entity/action routing and
+output-format behavior.
+
 ### Full Linting and Testing Suite
 
 ```bash
@@ -141,4 +155,4 @@ uv run pytest tests/packaging/
 3. Write release notes in `CHANGELOG.md`.
 4. Commit changes and push them to `main` via PR.
 5. Create a tag for the new version on `main`.
-6. Push tag.
+6. Push the tag.
