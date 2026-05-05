@@ -1,6 +1,6 @@
 # Story 9.13: CLI Comprehensive E2E Coverage via uv run lucius
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -58,35 +58,43 @@ so that CLI behavior is verified end-to-end without depending on built binaries 
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Consolidate reusable `uv run lucius` CLI process helpers** (AC: 1, 2, 3, 4, 5, 6)
-  - [ ] 1.1 Review and extend `tests/cli/subprocess_helpers.py` so source-invoked CLI execution is centralized and reused consistently.
-  - [ ] 1.2 Keep helper coverage explicit for both direct CLI invocation through `uv run lucius` and patched/stubbed tool execution through equivalent source-invoked wrappers.
-  - [ ] 1.3 Avoid introducing binary-build assumptions into the helper layer.
+- [x] **Task 1: Consolidate reusable `uv run lucius` CLI process helpers** (AC: 1, 2, 3, 4, 5, 6)
+  - [x] 1.1 Review and extend `tests/cli/subprocess_helpers.py` so source-invoked CLI execution is centralized and reused consistently.
+  - [x] 1.2 Keep helper coverage explicit for both direct CLI invocation through `uv run lucius` and patched/stubbed tool execution through equivalent source-invoked wrappers.
+  - [x] 1.3 Avoid introducing binary-build assumptions into the helper layer.
 
-- [ ] **Task 2: Add non-tool-call command coverage** (AC: 2)
-  - [ ] 2.1 Extend or create a focused file such as `tests/e2e/test_cli_local_commands_uv_run.py`.
-  - [ ] 2.2 Cover `lucius`, `lucius --help`, and `lucius --version`.
-  - [ ] 2.3 Cover `lucius <entity>` discovery and `lucius <entity> <action> --help` through real subprocess execution.
-  - [ ] 2.4 Cover CLI-local commands added by Epic 9 stories, including `list`, `auth`, `auth status`, and `install-completions`.
-  - [ ] 2.5 Assert clean exit codes, stable help/discovery text markers, and absence of tracebacks/internal logs.
+- [x] **Task 2: Add non-tool-call command coverage** (AC: 2)
+  - [x] 2.1 Extend or create a focused file such as `tests/e2e/test_cli_local_commands_uv_run.py`.
+  - [x] 2.2 Cover `lucius`, `lucius --help`, and `lucius --version`.
+  - [x] 2.3 Cover `lucius <entity>` discovery and `lucius <entity> <action> --help` through real subprocess execution.
+  - [x] 2.4 Cover CLI-local commands added by Epic 9 stories, including `list`, `auth`, `auth status`, and `install-completions`.
+  - [x] 2.5 Assert clean exit codes, stable help/discovery text markers, and absence of tracebacks/internal logs.
 
-- [ ] **Task 3: Expand high-priority entity command coverage** (AC: 3, 4, 5, 6)
-  - [ ] 3.1 Extend `tests/e2e/test_cli_output_formats_uv_run.py` or add a sibling file such as `tests/e2e/test_cli_entity_commands_uv_run.py`.
-  - [ ] 3.2 Add representative `test_case` process tests for default JSON, plain output, and CLI table/csv rendering.
-  - [ ] 3.3 Add representative `launch` process tests for discovery/help plus at least one list/read flow and one lifecycle flow.
-  - [ ] 3.4 Add representative `custom_field` and `custom_field_value` process tests for discovery/help and value-management flows.
-  - [ ] 3.5 Reuse mocked tool injection where appropriate so routing/output behavior is tested without introducing live-network dependence.
+- [x] **Task 3: Expand high-priority entity command coverage** (AC: 3, 4, 5, 6)
+  - [x] 3.1 Extend `tests/e2e/test_cli_output_formats_uv_run.py` or add a sibling file such as `tests/e2e/test_cli_entity_commands_uv_run.py`.
+  - [x] 3.2 Add representative `test_case` process tests for default JSON, plain output, and CLI table/csv rendering.
+  - [x] 3.3 Add representative `launch` process tests for discovery/help plus at least one list/read flow and one lifecycle flow.
+  - [x] 3.4 Add representative `custom_field` and `custom_field_value` process tests for discovery/help and value-management flows.
+  - [x] 3.5 Reuse mocked tool injection where appropriate so routing/output behavior is tested without introducing live-network dependence.
 
-- [ ] **Task 4: Wire staged CLI-only features into the shared suite** (AC: 6, 7)
-  - [ ] 4.1 Ensure Story 9.9 coverage extends the shared `uv run lucius` suite for `--pretty`.
-  - [ ] 4.2 Ensure Story 9.11 coverage extends the shared `uv run lucius` suite for table datetime localization/fallback.
-  - [ ] 4.3 Ensure Story 9.12 coverage extends the shared `uv run lucius` suite for short aliases such as `tc`, `ln`, `cf`, and `cfv`.
-  - [ ] 4.4 Reference the shared suite from adjacent CLI stories so future developers know exactly where command-level E2E coverage belongs.
+- [x] **Task 4: Wire staged CLI-only features into the shared suite** (AC: 6, 7)
+  - [x] 4.1 Ensure Story 9.9 coverage extends the shared `uv run lucius` suite for `--pretty`.
+  - [x] 4.2 Ensure Story 9.11 coverage extends the shared `uv run lucius` suite for table datetime localization/fallback.
+  - [x] 4.3 Ensure Story 9.12 coverage extends the shared `uv run lucius` suite for short aliases such as `tc`, `ln`, `cf`, and `cfv`.
+  - [x] 4.4 Reference the shared suite from adjacent CLI stories so future developers know exactly where command-level E2E coverage belongs.
 
-- [ ] **Task 5: Document and validate the CLI E2E strategy** (AC: 1, 2, 7)
-  - [ ] 5.1 Update CLI testing notes in story docs and, if needed, in `docs/development.md` or equivalent contributor guidance.
-  - [ ] 5.2 Add or update a small coverage inventory comment/assertion so new CLI-local commands are less likely to ship without source-invoked E2E tests.
-  - [ ] 5.3 Define the targeted validation command(s) for developers, centered on `uv run --python 3.13 --extra dev pytest tests/e2e/test_cli_* -q` or the equivalent focused files.
+- [x] **Task 5: Document and validate the CLI E2E strategy** (AC: 1, 2, 7)
+  - [x] 5.1 Update CLI testing notes in story docs and, if needed, in `docs/development.md` or equivalent contributor guidance.
+  - [x] 5.2 Add or update a small coverage inventory comment/assertion so new CLI-local commands are less likely to ship without source-invoked E2E tests.
+  - [x] 5.3 Define the targeted validation command(s) for developers, centered on `uv run --python 3.13 --extra dev pytest tests/e2e/test_cli_* -q` or the equivalent focused files.
+
+### Review Findings
+
+- [x] [Review][Patch] Mocked `uv run lucius` helper does not assert the routed tool name [tests/cli/subprocess_helpers.py:162]
+- [x] [Review][Patch] Non-tool-call route coverage does not cover every entity discovery and action-help path [tests/e2e/test_cli_local_commands_uv_run.py:61]
+- [x] [Review][Patch] Shared E2E suite does not cover the `lucius auth` setup flow [tests/e2e/test_cli_local_commands_uv_run.py:71]
+- [x] [Review][Patch] Escaped-newline plain output is not covered through the `uv run lucius` console-script path [tests/e2e/test_cli_entity_commands_uv_run.py:56]
+- [x] [Review][Patch] Timezone fallback rendering is not covered through the process boundary [tests/e2e/test_cli_entity_commands_uv_run.py:103]
 
 ## Dev Notes
 
@@ -172,12 +180,40 @@ so that CLI behavior is verified end-to-end without depending on built binaries 
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+GPT-5 Codex
 
 ### Debug Log References
+
+- 2026-05-04: Red phase: `uv run --python 3.13 --extra dev pytest tests/e2e/test_cli_local_commands_uv_run.py tests/e2e/test_cli_entity_commands_uv_run.py -q` failed during collection because `assert_clean_cli_result` / `assert_uses_uv_lucius_command` helpers were not yet implemented.
+- 2026-05-04: Green phase: `uv run --python 3.13 --extra dev pytest tests/e2e/test_cli_local_commands_uv_run.py tests/e2e/test_cli_entity_commands_uv_run.py -q` passed after helper consolidation and assertion cleanup (39 passed).
+- 2026-05-04: Validation passed: `uv run --python 3.13 --extra dev pytest tests/e2e/test_cli_output_formats_uv_run.py -q` (9 passed).
+- 2026-05-04: Validation passed: `uv run --python 3.13 --extra dev pytest tests/e2e/test_cli_*uv_run*.py -q` (48 passed).
+- 2026-05-04: Validation passed: `uv run --python 3.13 --extra dev pytest tests/cli/test_cli_basics.py tests/cli/test_e2e_mocked.py tests/cli/test_cli_coverage_helpers.py -q` (114 passed).
+- 2026-05-04: Validation passed: `uv run --python 3.13 --extra dev ruff check tests/cli/subprocess_helpers.py tests/e2e/test_cli_local_commands_uv_run.py tests/e2e/test_cli_entity_commands_uv_run.py`.
+- 2026-05-04: Full regression passed: `bash scripts/full-test-suite.sh` (ruff format/check, mypy, 787 unit/integration passed, 11 docs passed, 152 E2E passed/1 skipped, 34 packaging passed).
+- 2026-05-04: Review fixes validation passed: `uv run --python 3.13 --extra dev ruff check tests/cli/subprocess_helpers.py tests/e2e/test_cli_local_commands_uv_run.py tests/e2e/test_cli_entity_commands_uv_run.py`.
+- 2026-05-04: Review fixes validation passed: `uv run --python 3.13 --extra dev pytest tests/e2e/test_cli_local_commands_uv_run.py tests/e2e/test_cli_entity_commands_uv_run.py -q` (101 passed).
+- 2026-05-04: Review fixes validation passed: `uv run --python 3.13 --extra dev pytest tests/e2e/test_cli_*uv_run*.py -q` (110 passed).
+- 2026-05-04: Review fixes validation passed: `uv run --python 3.13 --extra dev pytest tests/e2e/test_cli_output_formats_uv_run.py tests/cli/test_cli_basics.py tests/cli/test_e2e_mocked.py tests/cli/test_cli_coverage_helpers.py -q` (123 passed).
 
 ### Completion Notes List
 
 Ultimate context engine analysis completed - comprehensive developer guide created.
+- Consolidated `uv run lucius` subprocess command construction in shared helpers and added clean-output assertions for source-invoked CLI E2E tests.
+- Added focused CLI-local E2E coverage for root discovery/help/version, entity discovery, action help, `list`, `auth`, `auth status`, and `install-completions` through `uv run lucius`.
+- Added high-priority entity E2E coverage for `test_case`, `launch`, `custom_field`, `custom_field_value`, short aliases, JSON/plain/table/csv rendering, pretty JSON, timezone table rendering, and mocked tool execution through `uv run lucius`.
+- Documented the shared CLI E2E strategy and validation command in `docs/development.md`.
+- Addressed review findings by asserting routed tool names in the mocked `uv run lucius` helper, expanding route help coverage across the canonical matrix, adding auth setup coverage, and adding console-script coverage for escaped plain newlines and timezone fallback.
 
 ### File List
+
+- docs/development.md
+- specs/implementation-artifacts/9-13-cli-comprehensive-e2e-coverage-via-uv-run-lucius.md
+- specs/implementation-artifacts/sprint-status.yaml
+- tests/cli/subprocess_helpers.py
+- tests/e2e/test_cli_entity_commands_uv_run.py
+- tests/e2e/test_cli_local_commands_uv_run.py
+
+### Change Log
+
+- 2026-05-04: Implemented comprehensive source-invoked CLI E2E coverage and moved story to review.
