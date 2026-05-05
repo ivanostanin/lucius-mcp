@@ -437,6 +437,16 @@ class TestCLIAuthCommandUnit:
         printed = " ".join(str(call.args[0]) for call in mock_print.call_args_list)
         assert "CLI auth was already clear." in printed
 
+    def test_auth_status_prints_location_without_rich_wrapping(self) -> None:
+        with (
+            patch("src.cli.auth_command.load_auth_config", return_value=None),
+            patch("src.cli.auth_command.auth_config_path", return_value=Path("/tmp/config/lucius/auth.json")),
+            patch.object(cli_entry.console_out, "print") as mock_print,
+        ):
+            run_cli_in_process(["auth", "status"])
+
+        mock_print.assert_any_call("Location: /tmp/config/lucius/auth.json", soft_wrap=True)
+
     def test_blank_non_interactive_values_prompt_for_missing_values(self) -> None:
         with (
             patch("builtins.input", side_effect=["https://example.testops.cloud", "42"]) as prompt_input,

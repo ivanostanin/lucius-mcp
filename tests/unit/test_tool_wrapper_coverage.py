@@ -15,6 +15,9 @@ unlink_tool = importlib.import_module("src.tools.unlink_shared_step")
 search_tool = importlib.import_module("src.tools.search")
 update_tool = importlib.import_module("src.tools.update_test_case")
 
+BASE_URL = "https://allure.example"
+PROJECT_ID = 7
+
 
 class AsyncClientContext:
     def __init__(self, client: object) -> None:
@@ -43,21 +46,32 @@ def _scenario() -> SimpleNamespace:
 def test_shared_step_formatters_cover_shared_inline_and_empty_steps() -> None:
     scenario = _scenario()
 
-    assert "1. [Shared Step] ID: 55" in link_tool._format_steps(scenario)
-    assert "2. Inline action" in unlink_tool._format_steps(scenario)
-    assert link_tool._format_steps(SimpleNamespace(steps=[])) == "No steps."
-    assert unlink_tool._format_steps(SimpleNamespace(steps=None)) == "No steps."
-    assert link_tool._serialize_steps(scenario) == [
-        {"index": 1, "type": "shared_step", "shared_step_id": 55},
+    assert "1. [Shared Step] ID: 55" in link_tool._format_steps(scenario, base_url=BASE_URL, project_id=PROJECT_ID)
+    assert "2. Inline action" in unlink_tool._format_steps(scenario, base_url=BASE_URL, project_id=PROJECT_ID)
+    assert link_tool._format_steps(SimpleNamespace(steps=[]), base_url=BASE_URL, project_id=PROJECT_ID) == "No steps."
+    assert (
+        unlink_tool._format_steps(SimpleNamespace(steps=None), base_url=BASE_URL, project_id=PROJECT_ID) == "No steps."
+    )
+    assert link_tool._serialize_steps(scenario, base_url=BASE_URL, project_id=PROJECT_ID) == [
+        {
+            "index": 1,
+            "type": "shared_step",
+            "shared_step_id": 55,
+            "shared_step_url": f"{BASE_URL}/project/{PROJECT_ID}/shared-steps/55",
+        },
         {"index": 2, "type": "inline", "action": "Inline action"},
         {"index": 3, "type": "inline", "action": "Step"},
     ]
-    assert unlink_tool._serialize_steps(SimpleNamespace(steps="bad")) == []
+    assert unlink_tool._serialize_steps(SimpleNamespace(steps="bad"), base_url=BASE_URL, project_id=PROJECT_ID) == []
 
 
 @pytest.mark.asyncio
 async def test_link_and_unlink_success_and_error_paths(monkeypatch: pytest.MonkeyPatch) -> None:
-    client = SimpleNamespace(get_test_case_scenario=lambda _test_case_id: _scenario())
+    client = SimpleNamespace(
+        get_base_url=lambda: BASE_URL,
+        get_project=lambda: PROJECT_ID,
+        get_test_case_scenario=lambda _test_case_id: _scenario(),
+    )
 
     async def get_test_case_scenario(test_case_id: int) -> SimpleNamespace:
         return _scenario()
@@ -126,7 +140,7 @@ def test_search_formatters_serialize_details_and_pagination() -> None:
 
     list_text = search_tool._format_test_case_list(result)
     details_text = search_tool._format_test_case_details(details)
-    serialized = search_tool._serialize_test_case_details(details)
+    serialized = search_tool._serialize_test_case_details(details, base_url=BASE_URL, project_id=PROJECT_ID)
 
     assert "Use page=1" in list_text
     assert "Open" in details_text
@@ -178,7 +192,8 @@ async def test_update_test_case_reports_all_change_categories(monkeypatch: pytes
             assert update_data.name == "New"
             return updated_case
 
-    monkeypatch.setattr(update_tool.AllureClient, "from_env", lambda project=None: AsyncClientContext(object()))
+    client = SimpleNamespace(get_base_url=lambda: BASE_URL, get_project=lambda: PROJECT_ID)
+    monkeypatch.setattr(update_tool.AllureClient, "from_env", lambda project=None: AsyncClientContext(client))
     monkeypatch.setattr(update_tool, "TestCaseService", UpdateService)
 
     result = await update_tool.update_test_case(
