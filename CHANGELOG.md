@@ -7,14 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.9.0] - 2026-05-12
+
 ### Added
 - Added a standalone `lucius` CLI with packaged binaries, route mapping, and shell completion support for direct tool execution outside MCP clients (#85).
+- Added persistent CLI authentication with `lucius auth` and native per-user config storage (#162).
+- Added `lucius list` for discovering available entities and commands from the CLI (#163).
+- Added `lucius install-completions` for shell completion installation across supported shells (#165).
+- Added short CLI entity aliases for faster command entry (#167).
+- Added TestOps entity URLs to tool responses so CLI and MCP users can jump directly to created or updated resources (#177).
+- Added a release workflow feature flag to control CLI artifact publishing behavior in CI/CD (#126).
+- Added MCP registry publication preparation, including metadata refresh tooling and release workflow updates (#178).
+- Added comprehensive CLI E2E coverage for local and entity commands executed through `uv run lucius` (#176).
 
 ### Changed
-- Unified output formats across CLI commands and MCP tools (`json`, `table`, `csv`, `plain`) for consistent machine- and human-readable responses (#97).
+- Unified output formats across CLI commands and MCP tools (`json`, `table`, `csv`, `plain`) and made structured JSON the default tool output format (#97, #159).
 - Enabled XDG-based CLI caching to improve startup performance and artifact reuse in builds (#96).
-- Improved quick-start and CLI documentation for clearer setup and usage guidance (#94, #95).
-- Added a release workflow feature flag to control CLI artifact publishing behavior in CI/CD (#126).
+- Refactored the CLI entrypoint into dedicated routing, runtime, formatting, schema loading, and command modules (#161).
+- Improved CLI JSON output formatting for readability (#164).
+- Made date values human-readable in CLI table output (#166).
+- Improved quick-start, CLI, setup, development, and root README documentation for clearer setup and usage guidance (#94, #95, #175).
+- Expanded unit and E2E test reliability for CLI, runtime auth, and cleanup flows (#160, #173).
+- Updated runtime and tooling dependencies, including `pydantic`, `pydantic-settings`, `cyclopts`, `ruff`, `mypy`, `platformdirs`, `allure-pytest`, `uvicorn`, `authlib`, `openapi-generator-cli`, `pre-commit`, `urllib3`, and `python-multipart` (#158, #168, #169, #170, #171, #172, #184, #185).
 
 ### Fixed
 - Fixed CI/release packaging so CLI binaries are included in release assets with correct versioned artifact naming (#100, #102).
@@ -197,7 +211,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.8.3...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.9.0...HEAD
+[v0.9.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.8.3...v0.9.0
 [v0.8.3]: https://github.com/ivanostanin/lucius-mcp/compare/v0.8.2...v0.8.3
 [v0.8.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.8.1...v0.8.2
 [v0.8.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.8.0...v0.8.1
