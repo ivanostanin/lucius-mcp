@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.9.1] - 2026-05-19
+
+### Changed
+- Updated locked dependency versions for `authlib`, `cyclopts`, `pydantic-settings`, `python-multipart`, and `uvicorn` (#192).
+
 ## [v0.9.0] - 2026-05-12
 
 ### Added
@@ -211,7 +216,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.9.1...HEAD
+[v0.9.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.9.0...v0.9.1
 [v0.9.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.8.3...v0.9.0
 [v0.8.3]: https://github.com/ivanostanin/lucius-mcp/compare/v0.8.2...v0.8.3
 [v0.8.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.8.1...v0.8.2
