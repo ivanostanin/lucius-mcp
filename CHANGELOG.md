@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.9.2] - 2026-05-26
+
+### Changed
+- Updated locked runtime and tooling dependencies, including Cyclopts 4.16.0, FastMCP 3.3.1, Idna 3.15, Mypy 2.1.0, Ruff 0.15.14, and Uvicorn 0.48.0 (#204).
+- Updated GitHub Actions dependencies for Docker publishing and changelog extraction (`docker/login-action`, `docker/build-push-action`, `docker/setup-buildx-action`, and `mindsers/changelog-reader-action`) (#194, #195, #204).
+
 ## [v0.9.1] - 2026-05-19
 
 ### Changed
@@ -216,7 +222,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.9.2...HEAD
+[v0.9.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.9.1...v0.9.2
 [v0.9.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.9.0...v0.9.1
 [v0.9.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.8.3...v0.9.0
 [v0.8.3]: https://github.com/ivanostanin/lucius-mcp/compare/v0.8.2...v0.8.3
