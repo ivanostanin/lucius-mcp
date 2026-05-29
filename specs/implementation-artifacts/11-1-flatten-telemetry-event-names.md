@@ -57,6 +57,10 @@ so that downstream dashboards can group events consistently while keeping the sa
 - [x] **Task 3: Update telemetry docs** (AC: 5)
   - [x] 3.1 Update `docs/telemetry.md` to document the flat event taxonomy and note that dimensionality stays in payload fields.
 
+- [x] **Review Follow-ups (AI)**
+  - [x] [AI-Review][Medium] Add unit coverage proving auth- and API-classified failures still emit the flat `tool_error` event name while preserving `error_category`.
+  - [x] [AI-Review][Medium] Add integration coverage that emits a failing tool event and asserts the flattened `tool_error` contract at the transport boundary.
+
 ## Dev Notes
 
 ### Scope
@@ -80,3 +84,44 @@ so that downstream dashboards can group events consistently while keeping the sa
 ### Agent Model Used
 
 GPT-5 Codex
+
+### File List
+
+- `src/services/telemetry_service.py`
+- `tests/unit/test_telemetry_service.py`
+- `tests/integration/test_telemetry_integration.py`
+- `tests/e2e/test_telemetry_collection_e2e.py`
+- `docs/telemetry.md`
+- `AGENTS.md`
+- `specs/project-planning-artifacts/epics.md`
+- `specs/implementation-artifacts/11-1-flatten-telemetry-event-names.md`
+- `specs/implementation-artifacts/sprint-status.yaml`
+
+### Change Log
+
+- 2026-05-29: Story 11.1 created and implementation/tests/docs updated for flat telemetry event names.
+- 2026-05-29: BMAD `code-review` workflow run against Story 11.1; review outcome was Changes Requested and the story moved back to `in-progress`.
+- 2026-05-29: Added auth/API telemetry regression coverage, transport-boundary failure coverage, and repo `AGENTS.md` guidance; story moved back to `review`.
+
+## Senior Developer Review (AI)
+
+**Review Date:** 2026-05-29
+**Reviewer:** Codex via BMAD `code-review` workflow
+**Workflow Artifacts:** `/home/node/.openclaw/bmad-method/src/bmm/workflows/4-implementation/code-review/{workflow.yaml,instructions.xml,checklist.md}`
+**Outcome:** Changes Requested
+
+### Summary
+
+The telemetry implementation itself matches the flattening requirement, and the story's changed-file inventory now matches the git diff. The remaining gaps are in regression coverage: Acceptance Criterion 3 explicitly calls out validation, auth, API, and unexpected failures, but the updated review branch only proves the flattened `tool_error` name for validation and unexpected paths, and integration coverage never exercises an error event at all.
+
+### Findings
+
+1. **Medium:** AC 3 is only partially verified in automated coverage. The updated tests prove `tool_error` for validation and unexpected failures, but there is still no assertion covering auth- or API-classified failures after the event-name flattening change. Evidence: [src/services/telemetry_service.py](/home/node/.openclaw/codespaces/lucius-mcp-change-tracking/src/services/telemetry_service.py:431), [tests/unit/test_telemetry_service.py](/home/node/.openclaw/codespaces/lucius-mcp-change-tracking/tests/unit/test_telemetry_service.py:53), [tests/e2e/test_telemetry_collection_e2e.py](/home/node/.openclaw/codespaces/lucius-mcp-change-tracking/tests/e2e/test_telemetry_collection_e2e.py:157).
+2. **Medium:** Integration coverage no longer validates any failing telemetry emission, so the flat `tool_error` contract is not exercised at the HTTP transport boundary. The only integration assertions are for `startup` and a successful `tool_use` event. Evidence: [tests/integration/test_telemetry_integration.py](/home/node/.openclaw/codespaces/lucius-mcp-change-tracking/tests/integration/test_telemetry_integration.py:13).
+3. **Low:** The story entered review without a Dev Agent Record `File List` or `Change Log`, so changed-file traceability had to be reconstructed from `git diff main...HEAD` instead of the story artifact itself. This review updated those sections, but future submissions should include them before moving to `review`. Evidence: [specs/implementation-artifacts/11-1-flatten-telemetry-event-names.md](/home/node/.openclaw/codespaces/lucius-mcp-change-tracking/specs/implementation-artifacts/11-1-flatten-telemetry-event-names.md:1).
+
+### Verification Notes
+
+- BMAD resolver confirmed the official workflow path: `python3 /home/node/.openclaw/workspace/bin/bmad_resolver.py resolve code-review`.
+- Git-reviewed files matched the implementation scope: `docs/telemetry.md`, `src/services/telemetry_service.py`, telemetry tests, epic/story artifacts, and sprint status.
+- Runtime test execution could not be completed in this environment because only `python3` 3.11 is present and `pytest` is not installed (`python3 -m pytest ...` fails with `No module named pytest`), while the project requires Python 3.13+ in [pyproject.toml](/home/node/.openclaw/codespaces/lucius-mcp-change-tracking/pyproject.toml:1).

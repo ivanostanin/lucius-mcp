@@ -10,6 +10,7 @@ import respx
 
 from src.services.telemetry_service import TelemetryService
 from src.utils.config import settings
+from src.utils.error import AllureAPIError, AuthenticationError
 
 
 @pytest.mark.asyncio
@@ -108,6 +109,46 @@ async def test_tool_event_non_validation_error_uses_other_error_event() -> None:
     payload = event_payload["data"]
     assert event_payload["name"] == "tool_error"
     assert payload["error_category"] == "unexpected"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "expected_category"),
+    [
+        (AuthenticationError("bad token"), "auth"),
+        (AllureAPIError("upstream API failed"), "api"),
+        (httpx.TimeoutException("request timed out"), "api"),
+    ],
+)
+@respx.mock
+async def test_tool_event_error_preserves_flat_name_for_auth_and_api_failures(
+    error: Exception,
+    expected_category: str,
+) -> None:
+    service = TelemetryService(
+        enabled=True,
+        umami_base_url="https://cloud.umami.is",
+        umami_website_id="website-1",
+        umami_hostname="lucius.test",
+    )
+    route = respx.post("https://cloud.umami.is/api/send").mock(return_value=httpx.Response(204))
+
+    service.emit_tool_usage_event(
+        tool_name="list_test_cases",
+        outcome="error",
+        duration_ms=120.0,
+        error=error,
+    )
+    await service.drain()
+
+    assert route.called
+    body = json.loads(route.calls.last.request.content.decode("utf-8"))
+    event_payload = body["payload"]
+    payload = event_payload["data"]
+    assert event_payload["name"] == "tool_error"
+    assert payload["tool_name"] == "list_test_cases"
+    assert payload["outcome"] == "error"
+    assert payload["error_category"] == expected_category
 
 
 @pytest.mark.asyncio
