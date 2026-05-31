@@ -339,3 +339,127 @@ class TestIssueLinking:
         assert len(request_dto.issues) == 1
         assert request_dto.issues[0].name == "PROJ-123"
         assert request_dto.issues[0].integration_id == 1
+
+    @pytest.mark.asyncio
+    @patch("src.client.generated.api.test_case_bulk_controller_api.TestCaseBulkControllerApi")
+    async def test_clear_issues_uses_test_case_project_context(
+        self, mock_bulk_api, service: TestCaseService
+    ) -> None:
+        """clear_issues should use the test case's own project_id for the bulk API call."""
+        test_case_id = 100
+
+        issue1 = Mock()
+        issue1.name = "PROJ-100"
+        issue1.id = 1001
+        issue2 = Mock()
+        issue2.name = "PROJ-200"
+        issue2.id = 2001
+
+        mock_case = Mock(issues=[issue1, issue2], project_id=166)
+        mock_case.test_layer = None
+        mock_case.description = None
+        mock_case.precondition = None
+        mock_case.tags = None
+        mock_case.custom_fields = None
+        mock_case.automated = None
+        mock_case.status = None
+        mock_case.workflow_id = None
+        mock_case.links = None
+        mock_case.expected_result = None
+        mock_case.attachments = None
+        mock_case.name = "Test"
+        mock_case.id = test_case_id
+        service.get_test_case = AsyncMock(return_value=mock_case)
+        service._prepare_field_updates = AsyncMock(return_value=({}, False))
+
+        mock_bulk_instance = mock_bulk_api.return_value
+        mock_bulk_instance.issue_remove1 = AsyncMock()
+
+        update_data = TestCaseUpdate(clear_issues=True)
+        await service.update_test_case(test_case_id, update_data)
+
+        mock_bulk_instance.issue_remove1.assert_called_once()
+        req = mock_bulk_instance.issue_remove1.call_args[0][0]
+        assert req.selection.project_id == 166
+        assert sorted(req.ids) == [1001, 2001]
+
+    @pytest.mark.asyncio
+    @patch("src.client.generated.api.test_case_bulk_controller_api.TestCaseBulkControllerApi")
+    async def test_remove_issues_uses_test_case_project_context(
+        self, mock_bulk_api, service: TestCaseService
+    ) -> None:
+        """remove_issues should use the test case's own project_id for the bulk API call."""
+        test_case_id = 100
+
+        mock_issue = Mock()
+        mock_issue.name = "PROJ-123"
+        mock_issue.id = 999
+        mock_case = Mock(issues=[mock_issue], project_id=166)
+        mock_case.test_layer = None
+        mock_case.description = None
+        mock_case.precondition = None
+        mock_case.tags = None
+        mock_case.custom_fields = None
+        mock_case.automated = None
+        mock_case.status = None
+        mock_case.workflow_id = None
+        mock_case.links = None
+        mock_case.expected_result = None
+        mock_case.attachments = None
+        mock_case.name = "Test"
+        mock_case.id = test_case_id
+        service.get_test_case = AsyncMock(return_value=mock_case)
+        service._prepare_field_updates = AsyncMock(return_value=({}, False))
+
+        mock_bulk_instance = mock_bulk_api.return_value
+        mock_bulk_instance.issue_remove1 = AsyncMock()
+
+        update_data = TestCaseUpdate(remove_issues=["PROJ-123"])
+        await service.update_test_case(test_case_id, update_data)
+
+        mock_bulk_instance.issue_remove1.assert_called_once()
+        req = mock_bulk_instance.issue_remove1.call_args[0][0]
+        assert req.selection.project_id == 166
+
+    @pytest.mark.asyncio
+    @patch("src.services.integration_service.IntegrationService")
+    @patch("src.client.generated.api.test_case_bulk_controller_api.TestCaseBulkControllerApi")
+    async def test_add_issues_in_update_uses_test_case_project_context(
+        self, mock_bulk_api, mock_integration_service, service: TestCaseService
+    ) -> None:
+        """add_issues in update_test_case should use the test case's own project_id."""
+        test_case_id = 100
+
+        mock_case = Mock(issues=[], project_id=166)
+        mock_case.test_layer = None
+        mock_case.description = None
+        mock_case.precondition = None
+        mock_case.tags = None
+        mock_case.custom_fields = None
+        mock_case.automated = None
+        mock_case.status = None
+        mock_case.workflow_id = None
+        mock_case.links = None
+        mock_case.expected_result = None
+        mock_case.attachments = None
+        mock_case.name = "Test"
+        mock_case.id = test_case_id
+        service.get_test_case = AsyncMock(return_value=mock_case)
+        service._prepare_field_updates = AsyncMock(return_value=({}, False))
+
+        mock_int_service_instance = mock_integration_service.return_value
+        mock_int_service_instance.resolve_integration_for_issues = AsyncMock(return_value=1)
+        mock_bulk_instance = mock_bulk_api.return_value
+        mock_bulk_instance.issue_add1 = AsyncMock()
+
+        update_data = TestCaseUpdate(issues=["PROJ-123"])
+        await service.update_test_case(test_case_id, update_data)
+
+        # Integration resolution should use project_id=166 from the test case
+        mock_int_service_instance.resolve_integration_for_issues.assert_called_once_with(
+            integration_id=None,
+            integration_name=None,
+            project_id=166,
+        )
+        req = mock_bulk_instance.issue_add1.call_args[0][0]
+        assert req.selection.project_id == 166

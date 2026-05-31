@@ -387,15 +387,17 @@ class TestCaseService:
             updated_case = await self.get_test_case(test_case_id)
             return updated_case if updated_case is not None else current_case
 
+        resolved_project_id = current_case.project_id or self._project_id if current_case else self._project_id
+
         if data.clear_issues:
             # Use current_case fetched at step 1 instead of re-fetching
             if current_case and current_case.issues:
                 existing_keys = [i.name for i in current_case.issues if i.name]
                 if existing_keys:
-                    await self.remove_issues_from_test_case(test_case_id, existing_keys)
+                    await self.remove_issues_from_test_case(test_case_id, existing_keys, project_id=resolved_project_id)
 
         if data.remove_issues:
-            await self.remove_issues_from_test_case(test_case_id, data.remove_issues)
+            await self.remove_issues_from_test_case(test_case_id, data.remove_issues, project_id=resolved_project_id)
 
         if data.issues:
             await self.add_issues_to_test_case(
@@ -403,6 +405,7 @@ class TestCaseService:
                 data.issues,
                 integration_id=data.integration_id,
                 integration_name=data.integration_name,
+                project_id=resolved_project_id,
             )
 
         # 4. Handle Metadata Patches
