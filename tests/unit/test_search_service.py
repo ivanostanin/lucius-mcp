@@ -210,6 +210,22 @@ async def test_search_test_cases_normalizes_tag_shorthand_aql(
 
 
 @pytest.mark.asyncio
+async def test_search_test_cases_normalizes_grouped_tag_shorthand_aql(
+    service: SearchService, mock_client: AllureClient
+) -> None:
+    page = PageTestCaseDto(content=[], total_elements=0, number=0, size=20, total_pages=0)
+    mock_client.validate_test_case_query = AsyncMock(return_value=(True, 0))
+    mock_client.search_test_cases_aql = AsyncMock(return_value=page)
+
+    await service.search_test_cases(aql="(tag:smoke tag:regression)")
+
+    mock_client.validate_test_case_query.assert_awaited_once_with(
+        project_id=123,
+        rql='(tag = "smoke" and tag = "regression")',
+    )
+
+
+@pytest.mark.asyncio
 async def test_search_test_cases_normalizes_mixed_tag_shorthand_aql(
     service: SearchService, mock_client: AllureClient
 ) -> None:

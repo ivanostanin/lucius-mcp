@@ -1,8 +1,5 @@
 """Helpers for normalizing user-facing AQL inputs."""
 
-import re
-
-_TAG_QUERY_PATTERN = re.compile(r"tag:(?P<tag>\S+)", re.IGNORECASE)
 _OPERATORS = ("!=", "~=", ">=", "<=", "=", ">", "<")
 
 
@@ -15,10 +12,9 @@ def normalize_aql(query: str) -> str:
     """
     normalized = query.strip()
 
-    if normalized and all(part.lower().startswith("tag:") for part in normalized.split()):
-        tags = [match.group("tag") for match in _TAG_QUERY_PATTERN.finditer(normalized)]
-        if tags:
-            return " and ".join(f'tag = "{quote_aql_string(tag)}"' for tag in tags)
+    pure_tag_query = _normalize_pure_tag_query(normalized)
+    if pure_tag_query is not None:
+        return pure_tag_query
 
     result: list[str] = []
     i = 0
@@ -81,6 +77,32 @@ def _is_tag_shorthand_start(query: str, index: int) -> bool:
         return True
 
     return query[index - 1].isspace() or query[index - 1] == "("
+
+
+def _normalize_pure_tag_query(query: str) -> str | None:
+    """Convert tag-only shorthand queries into explicit AND expressions."""
+    parts = query.split()
+    if not parts:
+        return None
+
+    normalized_parts: list[str] = []
+    for part in parts:
+        leading_parens = len(part) - len(part.lstrip("("))
+        trailing_parens = len(part) - len(part.rstrip(")"))
+        core_end = len(part) - trailing_parens if trailing_parens else len(part)
+        core = part[leading_parens:core_end]
+        if not core.lower().startswith("tag:"):
+            return None
+
+        tag = core[4:]
+        if not tag:
+            return None
+
+        normalized_parts.append(
+            f'{"(" * leading_parens}tag = "{quote_aql_string(tag)}"{")" * trailing_parens}'
+        )
+
+    return " and ".join(normalized_parts)
 
 
 def _consume_tag_value(query: str, start: int) -> tuple[str, int]:
