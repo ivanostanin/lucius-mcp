@@ -129,9 +129,7 @@ async def test_list_launches_does_not_fallback_when_filter_scope_is_present(
 
 
 @pytest.mark.asyncio
-async def test_list_launches_treats_blank_search_as_no_filter(
-    service: LaunchService, mock_client: MagicMock
-) -> None:
+async def test_list_launches_treats_blank_search_as_no_filter(service: LaunchService, mock_client: MagicMock) -> None:
     page = PageLaunchDto(
         content=[LaunchDto(id=5, name="No Filter")],
         total_elements=1,

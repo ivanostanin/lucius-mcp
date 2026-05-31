@@ -98,9 +98,7 @@ def _normalize_pure_tag_query(query: str) -> str | None:
         if not tag:
             return None
 
-        normalized_parts.append(
-            f'{"(" * leading_parens}tag = "{quote_aql_string(tag)}"{")" * trailing_parens}'
-        )
+        normalized_parts.append(f'{"(" * leading_parens}tag = "{quote_aql_string(tag)}"{")" * trailing_parens}')
 
     return " and ".join(normalized_parts)
 

@@ -17,7 +17,7 @@ from typing import Literal
 from urllib.parse import urlparse
 
 import httpx
-import umami
+import umami  # type: ignore[import-untyped]
 from pydantic import ValidationError
 
 from src.utils.config import settings, telemetry_config

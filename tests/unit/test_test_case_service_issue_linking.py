@@ -342,9 +342,7 @@ class TestIssueLinking:
 
     @pytest.mark.asyncio
     @patch("src.client.generated.api.test_case_bulk_controller_api.TestCaseBulkControllerApi")
-    async def test_clear_issues_uses_test_case_project_context(
-        self, mock_bulk_api, service: TestCaseService
-    ) -> None:
+    async def test_clear_issues_uses_test_case_project_context(self, mock_bulk_api, service: TestCaseService) -> None:
         """clear_issues should use the test case's own project_id for the bulk API call."""
         test_case_id = 100
 
@@ -385,9 +383,7 @@ class TestIssueLinking:
 
     @pytest.mark.asyncio
     @patch("src.client.generated.api.test_case_bulk_controller_api.TestCaseBulkControllerApi")
-    async def test_remove_issues_uses_test_case_project_context(
-        self, mock_bulk_api, service: TestCaseService
-    ) -> None:
+    async def test_remove_issues_uses_test_case_project_context(self, mock_bulk_api, service: TestCaseService) -> None:
         """remove_issues should use the test case's own project_id for the bulk API call."""
         test_case_id = 100
 
