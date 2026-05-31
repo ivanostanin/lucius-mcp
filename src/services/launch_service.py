@@ -142,7 +142,8 @@ class LaunchService:
 
             # normalized_search is guaranteed non-None here: _should_fallback_to_aql
             # returns False for None/empty search, so we never reach this line otherwise.
-            assert normalized_search is not None
+            if normalized_search is None:  # pragma: no cover
+                raise AllureValidationError("Search fallback reached with empty query") from None
             return await self.search_launches_aql(
                 rql=f'name ~= "{quote_aql_string(normalized_search)}"',
                 page=page,
