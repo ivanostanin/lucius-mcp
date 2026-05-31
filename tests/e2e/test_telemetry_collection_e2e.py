@@ -137,8 +137,7 @@ async def test_telemetry_startup_event_emitted(
         (
             item
             for item in captures
-            if isinstance(item.body.get("payload"), dict)
-            and str(item.body["payload"].get("name", "")) == "startup"
+            if isinstance(item.body.get("payload"), dict) and str(item.body["payload"].get("name", "")) == "startup"
         ),
         None,
     )

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.10.0] - 2026-05-31
+
+### Changed
+- Flattened telemetry event names to the stable `startup`, `tool_use`, and `tool_error` taxonomy while preserving deployment method, tool name, and error category in payload fields (#206).
+
 ## [v0.9.2] - 2026-05-26
 
 ### Changed
@@ -222,7 +227,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.9.2...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.0...HEAD
+[v0.10.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.9.2...v0.10.0
 [v0.9.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.9.1...v0.9.2
 [v0.9.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.9.0...v0.9.1
 [v0.9.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.8.3...v0.9.0
