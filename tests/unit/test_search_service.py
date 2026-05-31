@@ -6,6 +6,7 @@ from src.client import AllureClient, PageTestCaseDto, TestCaseDto, TestCaseDtoWi
 from src.client.exceptions import AllureNotFoundError, AllureValidationError, TestCaseNotFoundError
 from src.client.generated.models.custom_field_dto import CustomFieldDto
 from src.client.generated.models.custom_field_value_with_cf_dto import CustomFieldValueWithCfDto
+from src.client.generated.models.shared_step_step_dto import SharedStepStepDto
 from src.client.generated.models.test_tag_dto import TestTagDto
 from src.services.search_service import SearchQueryParser, SearchService, TestCaseDetails
 from src.tools.search import _format_search_results, _format_test_case_details, _format_test_case_list
@@ -98,6 +99,18 @@ def test_format_test_case_details_handles_fields_and_steps() -> None:
     assert "Attachments" in text
     assert "log.txt" in text
     assert "id: 10" in text
+
+
+def test_format_test_case_details_handles_direct_shared_step_nodes() -> None:
+    tc = TestCaseDtoWithCF(id=1, name="Login", tags=[])
+    shared_step = SharedStepStepDto.model_construct(type="SharedStepStepDto", shared_step_id=42)
+    scenario = TestCaseScenarioV2Dto.model_construct(steps=[shared_step])
+    details = TestCaseDetails(test_case=tc, scenario=scenario)
+
+    text = _format_test_case_details(details, base_url="https://example.com", project_id=7)
+
+    assert "[Shared Step] ID: 42" in text
+    assert "https://example.com/project/7/shared-steps/42" in text
 
 
 @pytest.mark.asyncio

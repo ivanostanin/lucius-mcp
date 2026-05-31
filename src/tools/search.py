@@ -434,9 +434,9 @@ def _get_text(obj: object, names: list[str]) -> str | None:
 def _serialize_step(step: object, index: int, *, base_url: str = "", project_id: int = 0) -> dict[str, object]:
     """Serialize a single step, handling shared step references."""
     actual = _get_raw(step, ["actual_instance"]) or _get_raw(step, ["actual"])
-
-    if actual and isinstance(actual, SharedStepStepDto):
-        shared_step_id = getattr(actual, "shared_step_id", None)
+    shared_step_ref = _get_shared_step_ref(step, actual)
+    if shared_step_ref is not None:
+        shared_step_id = _get_shared_step_id(shared_step_ref)
         payload: dict[str, object] = {"index": index, "type": "shared_step", "shared_step_id": shared_step_id}
         if isinstance(shared_step_id, int) and base_url:
             payload["shared_step_url"] = shared_step_url(base_url, project_id, shared_step_id)
@@ -467,16 +467,17 @@ def _get_raw(obj: object, names: list[str]) -> object | None:
 
 def _format_step(step: object, index: str, out: list[str], *, base_url: str = "", project_id: int = 0) -> None:
     actual = _get_raw(step, ["actual_instance"]) or _get_raw(step, ["actual"])
+    shared_step_ref = _get_shared_step_ref(step, actual)
 
     # Detect shared step references
-    if actual and isinstance(actual, SharedStepStepDto):
-        shared_step_id = getattr(actual, "shared_step_id", None)
+    if shared_step_ref is not None:
+        shared_step_id = _get_shared_step_id(shared_step_ref)
         line = f"{index}. [Shared Step] ID: {shared_step_id}"
         if shared_step_id and isinstance(shared_step_id, int) and base_url:
             line += f" ({shared_step_url(base_url, project_id, shared_step_id)})"
         out.append(line)
         # Recurse into nested steps if any
-        child_steps = _get_raw(actual, ["steps"])
+        child_steps = _get_raw(shared_step_ref, ["steps"]) or _get_raw(step, ["steps"])
         if isinstance(child_steps, list):
             for j, child in enumerate(child_steps, 1):
                 _format_step(child, f"{index}.{j}", out, base_url=base_url, project_id=project_id)
@@ -495,6 +496,24 @@ def _format_step(step: object, index: str, out: list[str], *, base_url: str = ""
     if isinstance(child_steps, list):
         for j, child in enumerate(child_steps, 1):
             _format_step(child, f"{index}.{j}", out, base_url=base_url, project_id=project_id)
+
+
+def _get_shared_step_ref(step: object, actual: object | None = None) -> object | None:
+    candidate = actual if actual is not None else step
+    if isinstance(candidate, SharedStepStepDto):
+        return candidate
+
+    if isinstance(candidate, dict) and ("shared_step_id" in candidate or "sharedStepId" in candidate):
+        return candidate
+
+    if actual is None and isinstance(step, SharedStepStepDto):
+        return step
+
+    return None
+
+
+def _get_shared_step_id(step: object) -> object | None:
+    return _get_raw(step, ["shared_step_id", "sharedStepId"])
 
 
 def _append_tags(lines: list[str], tc: object) -> None:
