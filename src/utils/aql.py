@@ -26,7 +26,7 @@ def normalize_aql(query: str) -> str:
     while i < len(normalized):
         char = normalized[i]
 
-        if char == '"' and (i == 0 or normalized[i - 1] != "\\"):
+        if char == '"' and _is_unescaped_quote(normalized, i):
             in_quotes = not in_quotes
             result.append(char)
             i += 1
@@ -60,6 +60,16 @@ def normalize_aql(query: str) -> str:
 def quote_aql_string(value: str) -> str:
     """Quote a raw string so it is safe inside an AQL string literal."""
     return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _is_unescaped_quote(query: str, index: int) -> bool:
+    """Return True when a quote is not escaped by an odd backslash run."""
+    backslash_count = 0
+    cursor = index - 1
+    while cursor >= 0 and query[cursor] == "\\":
+        backslash_count += 1
+        cursor -= 1
+    return backslash_count % 2 == 0
 
 
 def _is_tag_shorthand_start(query: str, index: int) -> bool:

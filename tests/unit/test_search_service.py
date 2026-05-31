@@ -229,6 +229,12 @@ def test_normalize_aql_preserves_quoted_operator_characters() -> None:
     assert normalize_aql('name ~= "a=b" and status="Draft"') == 'name ~= "a=b" and status = "Draft"'
 
 
+def test_normalize_aql_closes_strings_after_even_backslashes() -> None:
+    query = r'name ~= "C:\\Temp\\\\" and status="Draft"'
+
+    assert normalize_aql(query) == r'name ~= "C:\\Temp\\\\" and status = "Draft"'
+
+
 @pytest.mark.asyncio
 async def test_list_test_cases_validates_project_id(service: SearchService) -> None:
     service._project_id = 0
