@@ -316,36 +316,7 @@ def _serialize_test_case_details(details: TestCaseDetails, *, base_url: str, pro
     tc = details.test_case
     scenario = details.scenario
 
-    steps: list[dict[str, object]] = []
-    for i, step in enumerate(getattr(scenario, "steps", []) or [], 1):
-        actual = _get_raw(step, ["actual_instance"]) or _get_raw(step, ["actual"])
-
-        # Detect shared step references
-        if actual and isinstance(actual, SharedStepStepDto):
-            shared_step_id = getattr(actual, "shared_step_id", None)
-            step_payload: dict[str, object] = {"index": i, "type": "shared_step", "shared_step_id": shared_step_id}
-            if isinstance(shared_step_id, int):
-                step_payload["shared_step_url"] = shared_step_url(base_url, project_id, shared_step_id)
-            # Recurse into nested steps
-            child_steps = _get_raw(actual, ["steps"])
-            if isinstance(child_steps, list):
-                nested: list[dict[str, object]] = []
-                for j, child in enumerate(child_steps, 1):
-                    nested_payload = _serialize_step(child, j, base_url=base_url, project_id=project_id)
-                    nested.append(nested_payload)
-                if nested:
-                    step_payload["steps"] = nested
-            steps.append(step_payload)
-            continue
-
-        body = _get_text(actual, ["body", "description", "action"]) or _get_text(step, ["body", "description"])
-        expected = _get_text(actual, ["expected", "expected_result", "expectedResult"]) or _get_text(
-            step, ["expected", "expected_result", "expectedResult"]
-        )
-        step_payload = {"index": i, "action": body or "Step"}
-        if expected is not None:
-            step_payload["expected"] = expected
-        steps.append(step_payload)
+    steps = [_serialize_step(step, i, base_url=base_url, project_id=project_id) for i, step in enumerate(getattr(scenario, "steps", []) or [], 1)]
 
     custom_fields: list[dict[str, str]] = []
     for cf in getattr(tc, "custom_fields", None) or []:
@@ -440,6 +411,11 @@ def _serialize_step(step: object, index: int, *, base_url: str = "", project_id:
         payload: dict[str, object] = {"index": index, "type": "shared_step", "shared_step_id": shared_step_id}
         if isinstance(shared_step_id, int) and base_url:
             payload["shared_step_url"] = shared_step_url(base_url, project_id, shared_step_id)
+        child_steps = _get_raw(shared_step_ref, ["steps"]) or _get_raw(step, ["steps"])
+        if isinstance(child_steps, list):
+            nested = [_serialize_step(child, child_index, base_url=base_url, project_id=project_id) for child_index, child in enumerate(child_steps, 1)]
+            if nested:
+                payload["steps"] = nested
         return payload
 
     body = _get_text(actual, ["body", "description", "action"]) or _get_text(step, ["body", "description"]) or "Step"

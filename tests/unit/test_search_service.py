@@ -9,7 +9,7 @@ from src.client.generated.models.custom_field_value_with_cf_dto import CustomFie
 from src.client.generated.models.shared_step_step_dto import SharedStepStepDto
 from src.client.generated.models.test_tag_dto import TestTagDto
 from src.services.search_service import SearchQueryParser, SearchService, TestCaseDetails
-from src.tools.search import _format_search_results, _format_test_case_details, _format_test_case_list
+from src.tools.search import _format_search_results, _format_test_case_details, _format_test_case_list, _serialize_test_case_details
 from src.utils.aql import normalize_aql
 
 
@@ -111,6 +111,30 @@ def test_format_test_case_details_handles_direct_shared_step_nodes() -> None:
 
     assert "[Shared Step] ID: 42" in text
     assert "https://example.com/project/7/shared-steps/42" in text
+
+
+def test_serialize_test_case_details_uses_consistent_shared_step_payloads() -> None:
+    tc = TestCaseDtoWithCF(id=1, name="Login", tags=[])
+    shared_step = SharedStepStepDto.model_construct(type="SharedStepStepDto", shared_step_id=42)
+    child = {"body": "Click login"}
+    scenario = TestCaseScenarioV2Dto.model_construct(steps=[{"sharedStepId": 42, "steps": [child]}, shared_step])
+    details = TestCaseDetails(test_case=tc, scenario=scenario)
+
+    payload = _serialize_test_case_details(details, base_url="", project_id=7)
+
+    assert payload["steps"] == [
+        {
+            "index": 1,
+            "type": "shared_step",
+            "shared_step_id": 42,
+            "steps": [{"index": 1, "action": "Click login"}],
+        },
+        {
+            "index": 2,
+            "type": "shared_step",
+            "shared_step_id": 42,
+        },
+    ]
 
 
 @pytest.mark.asyncio
