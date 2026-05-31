@@ -316,7 +316,8 @@ def _serialize_test_case_details(details: TestCaseDetails, *, base_url: str, pro
     tc = details.test_case
     scenario = details.scenario
 
-    steps = [_serialize_step(step, i, base_url=base_url, project_id=project_id) for i, step in enumerate(getattr(scenario, "steps", []) or [], 1)]
+    raw_steps = getattr(scenario, "steps", []) or []
+    steps = [_serialize_step(step, i, base_url=base_url, project_id=project_id) for i, step in enumerate(raw_steps, 1)]
 
     custom_fields: list[dict[str, str]] = []
     for cf in getattr(tc, "custom_fields", None) or []:
@@ -413,7 +414,10 @@ def _serialize_step(step: object, index: int, *, base_url: str = "", project_id:
             payload["shared_step_url"] = shared_step_url(base_url, project_id, shared_step_id)
         child_steps = _get_raw(shared_step_ref, ["steps"]) or _get_raw(step, ["steps"])
         if isinstance(child_steps, list):
-            nested = [_serialize_step(child, child_index, base_url=base_url, project_id=project_id) for child_index, child in enumerate(child_steps, 1)]
+            nested = [
+                _serialize_step(child, ci, base_url=base_url, project_id=project_id)
+                for ci, child in enumerate(child_steps, 1)
+            ]
             if nested:
                 payload["steps"] = nested
         return payload

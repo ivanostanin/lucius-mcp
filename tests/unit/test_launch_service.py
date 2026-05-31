@@ -132,7 +132,13 @@ async def test_list_launches_does_not_fallback_when_filter_scope_is_present(
 async def test_list_launches_treats_blank_search_as_no_filter(
     service: LaunchService, mock_client: MagicMock
 ) -> None:
-    page = PageLaunchDto(content=[LaunchDto(id=5, name="No Filter")], total_elements=1, number=0, size=20, total_pages=1)
+    page = PageLaunchDto(
+        content=[LaunchDto(id=5, name="No Filter")],
+        total_elements=1,
+        number=0,
+        size=20,
+        total_pages=1,
+    )
     mock_client.list_launches.return_value = FindAll29200Response(page)
 
     result = await service.list_launches(search="   ")

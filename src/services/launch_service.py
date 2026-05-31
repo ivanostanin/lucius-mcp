@@ -140,6 +140,9 @@ class LaunchService:
             if not self._should_fallback_to_aql(search=normalized_search, filter_id=filter_id, error=exc):
                 raise
 
+            # normalized_search is guaranteed non-None here: _should_fallback_to_aql
+            # returns False for None/empty search, so we never reach this line otherwise.
+            assert normalized_search is not None
             return await self.search_launches_aql(
                 rql=f'name ~= "{quote_aql_string(normalized_search)}"',
                 page=page,

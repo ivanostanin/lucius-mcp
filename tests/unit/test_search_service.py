@@ -9,7 +9,12 @@ from src.client.generated.models.custom_field_value_with_cf_dto import CustomFie
 from src.client.generated.models.shared_step_step_dto import SharedStepStepDto
 from src.client.generated.models.test_tag_dto import TestTagDto
 from src.services.search_service import SearchQueryParser, SearchService, TestCaseDetails
-from src.tools.search import _format_search_results, _format_test_case_details, _format_test_case_list, _serialize_test_case_details
+from src.tools.search import (
+    _format_search_results,
+    _format_test_case_details,
+    _format_test_case_list,
+    _serialize_test_case_details,
+)
 from src.utils.aql import normalize_aql
 
 
