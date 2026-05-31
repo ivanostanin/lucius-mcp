@@ -18,7 +18,7 @@ def normalize_aql(query: str) -> str:
     if normalized and all(part.lower().startswith("tag:") for part in normalized.split()):
         tags = [match.group("tag") for match in _TAG_QUERY_PATTERN.finditer(normalized)]
         if tags:
-            return " and ".join(f'tag = "{tag}"' for tag in tags)
+            return " and ".join(f'tag = "{quote_aql_string(tag)}"' for tag in tags)
 
     result: list[str] = []
     i = 0
@@ -33,6 +33,13 @@ def normalize_aql(query: str) -> str:
             continue
 
         if not in_quotes:
+            if _is_tag_shorthand_start(normalized, i):
+                tag_value, next_index = _consume_tag_value(normalized, i + 4)
+                if tag_value:
+                    result.append(f'tag = "{quote_aql_string(tag_value)}"')
+                    i = next_index
+                    continue
+
             operator = next((op for op in _OPERATORS if normalized.startswith(op, i)), None)
             if operator is not None:
                 if result and result[-1] not in {" ", "\t"}:
@@ -53,3 +60,22 @@ def normalize_aql(query: str) -> str:
 def quote_aql_string(value: str) -> str:
     """Quote a raw string so it is safe inside an AQL string literal."""
     return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _is_tag_shorthand_start(query: str, index: int) -> bool:
+    """Return True when ``query[index:]`` starts a standalone ``tag:`` token."""
+    if not query[index : index + 4].lower() == "tag:":
+        return False
+
+    if index == 0:
+        return True
+
+    return query[index - 1].isspace() or query[index - 1] == "("
+
+
+def _consume_tag_value(query: str, start: int) -> tuple[str, int]:
+    """Read a tag shorthand value until whitespace or a closing parenthesis."""
+    end = start
+    while end < len(query) and not query[end].isspace() and query[end] != ")":
+        end += 1
+    return query[start:end], end

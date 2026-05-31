@@ -101,6 +101,9 @@ class PlanService:
         aql_filter: str | None = None,
     ) -> TestPlanDto:
         """Update plan content (selection/filter)."""
+        if aql_filter is not None and not aql_filter.strip():
+            raise AllureValidationError("AQL filter must be a non-empty string when provided")
+
         current = await self.get_plan(plan_id)
         normalized_aql = normalize_aql(aql_filter) if aql_filter is not None else None
 
