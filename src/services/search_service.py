@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 from src.client import AllureClient, PageTestCaseDto, TestCaseDto, TestCaseScenarioV2Dto
 from src.client.exceptions import AllureNotFoundError, AllureValidationError, TestCaseNotFoundError
+from src.utils.aql import normalize_aql
 
 
 @dataclass
@@ -165,22 +166,23 @@ class SearchService:
         if aql is not None:
             if not isinstance(aql, str) or not aql.strip():
                 raise AllureValidationError("AQL query must be a non-empty string")
+            normalized_aql = normalize_aql(aql)
 
             # Optionally validate AQL syntax before executing
             is_valid, _count = await self._client.validate_test_case_query(
                 project_id=self._project_id,
-                rql=aql,
+                rql=normalized_aql,
             )
             if not is_valid:
                 raise AllureValidationError(
                     f"Invalid AQL syntax: '{aql}'. "
                     "Use operators: and, or, not. Strings must be double-quoted. "
-                    'Example: \'status="failed" and tag="regression"\''
+                    'Example: \'status = "failed" and tag = "regression"\''
                 )
 
             response = await self._client.search_test_cases_aql(
                 project_id=self._project_id,
-                rql=aql,
+                rql=normalized_aql,
                 page=page,
                 size=size,
             )

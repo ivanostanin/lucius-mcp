@@ -67,10 +67,10 @@ async def test_create_plan_manual(service: PlanService, mock_client: AsyncMock) 
 async def test_create_plan_filter(service: PlanService, mock_client: AsyncMock) -> None:
     """Test creating a plan with AQL filter."""
     name = "Filter Plan"
-    aql = "status = 'active'"
+    aql = 'status="active"'
 
     created_plan = TestPlanDto(id=2, name=name)
-    updated_plan = TestPlanDto(id=2, name=name, base_rql=aql)
+    updated_plan = TestPlanDto(id=2, name=name, base_rql='status = "active"')
 
     with patch("src.services.plan_service.TestPlanControllerApi") as mock_controller:
         mock_api = mock_controller.return_value
@@ -83,11 +83,43 @@ async def test_create_plan_filter(service: PlanService, mock_client: AsyncMock) 
 
         result = await service.create_plan(name, aql_filter=aql)
 
-        assert result.base_rql == aql
+        assert result.base_rql == 'status = "active"'
 
         # Verify Patch call
         patch_dto = mock_api.patch7.call_args.kwargs["test_plan_patch_dto"]
-        assert patch_dto.base_rql == aql
+        assert patch_dto.base_rql == 'status = "active"'
+
+
+@pytest.mark.asyncio
+async def test_update_plan_content_normalizes_tag_shorthand_aql(service: PlanService, mock_client: AsyncMock) -> None:
+    plan_id = 1
+    current_plan = TestPlanDto(id=plan_id, tree_selection=TreeSelectionDto(leafs_include=[]))
+    updated_plan = TestPlanDto(id=plan_id, base_rql='tag = "smoke" and tag = "regression"')
+
+    with patch("src.services.plan_service.TestPlanControllerApi") as mock_controller:
+        mock_api = mock_controller.return_value
+        mock_api.find_one6.return_value = "find_coro"
+        mock_api.patch7.return_value = "patch_coro"
+
+        mock_client._call_api.side_effect = [current_plan, "patch_res", updated_plan]
+
+        result = await service.update_plan_content(plan_id=plan_id, aql_filter="tag:smoke tag:regression")
+
+        assert result.base_rql == 'tag = "smoke" and tag = "regression"'
+        patch_dto = mock_api.patch7.call_args.kwargs["test_plan_patch_dto"]
+        assert patch_dto.base_rql == 'tag = "smoke" and tag = "regression"'
+
+
+@pytest.mark.asyncio
+async def test_create_plan_rejects_blank_aql_filter(service: PlanService) -> None:
+    with pytest.raises(Exception, match="AQL filter must be a non-empty string when provided"):
+        await service.create_plan("Blank Filter Plan", aql_filter="   ")
+
+
+@pytest.mark.asyncio
+async def test_update_plan_content_rejects_blank_aql_filter(service: PlanService) -> None:
+    with pytest.raises(Exception, match="AQL filter must be a non-empty string when provided"):
+        await service.update_plan_content(plan_id=1, aql_filter="   ")
 
 
 @pytest.mark.asyncio

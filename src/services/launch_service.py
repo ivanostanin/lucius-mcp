@@ -16,6 +16,7 @@ from src.client.generated.models.launch_preview_dto import LaunchPreviewDto
 from src.client.generated.models.launch_tag_dto import LaunchTagDto
 from src.client.generated.models.page_launch_dto import PageLaunchDto
 from src.client.generated.models.page_launch_preview_dto import PageLaunchPreviewDto
+from src.utils.aql import quote_aql_string
 from src.utils.schema_hint import generate_schema_hint
 
 MAX_NAME_LENGTH = 255
@@ -122,15 +123,33 @@ class LaunchService:
         """
         self._validate_project_id(self._project_id)
         self._validate_pagination(page, size)
+        normalized_search = search.strip() if isinstance(search, str) else search
+        if normalized_search == "":
+            normalized_search = None
 
-        response = await self._client.list_launches(
-            project_id=self._project_id,
-            page=page,
-            size=size,
-            search=search,
-            filter_id=filter_id,
-            sort=sort,
-        )
+        try:
+            response = await self._client.list_launches(
+                project_id=self._project_id,
+                page=page,
+                size=size,
+                search=normalized_search,
+                filter_id=filter_id,
+                sort=sort,
+            )
+        except AllureValidationError as exc:
+            if not self._should_fallback_to_aql(search=normalized_search, filter_id=filter_id, error=exc):
+                raise
+
+            # normalized_search is guaranteed non-None here: _should_fallback_to_aql
+            # returns False for None/empty search, so we never reach this line otherwise.
+            if normalized_search is None:  # pragma: no cover
+                raise AllureValidationError("Search fallback reached with empty query") from None
+            return await self.search_launches_aql(
+                rql=f'name ~= "{quote_aql_string(normalized_search)}"',
+                page=page,
+                size=size,
+                sort=sort,
+            )
 
         page_data = self._extract_page(response)
 
@@ -350,6 +369,14 @@ class LaunchService:
             raise AllureValidationError("Launch name is required")
         if len(name) > MAX_NAME_LENGTH:
             raise AllureValidationError(f"Launch name must be {MAX_NAME_LENGTH} characters or less")
+
+    @staticmethod
+    def _should_fallback_to_aql(search: str | None, filter_id: int | None, error: AllureValidationError) -> bool:
+        if not search or filter_id is not None:
+            return False
+
+        message = str(error).lower()
+        return "invalid search" in message or ("search" in message and "invalid" in message)
 
     @staticmethod
     def _validate_tags(tags: list[str] | None) -> None:

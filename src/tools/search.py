@@ -3,9 +3,10 @@ from typing import Annotated
 from pydantic import Field
 
 from src.client import AllureClient, AllureValidationError
+from src.client.generated.models.shared_step_step_dto import SharedStepStepDto
 from src.services.search_service import SearchQueryParser, SearchService, TestCaseDetails, TestCaseListResult
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
-from src.utils.links import test_case_url
+from src.utils.links import shared_step_url, test_case_url
 
 
 async def list_test_cases(
@@ -301,7 +302,7 @@ def _format_test_case_details(details: TestCaseDetails, *, base_url: str = "", p
     if scenario and getattr(scenario, "steps", None):
         lines.append("**Steps:**")
         for i, step in enumerate(getattr(scenario, "steps", []) or [], 1):
-            _format_step(step, str(i), lines)
+            _format_step(step, str(i), lines, base_url=base_url, project_id=project_id)
         lines.append("")
 
     _append_tags(lines, tc)
@@ -315,17 +316,8 @@ def _serialize_test_case_details(details: TestCaseDetails, *, base_url: str, pro
     tc = details.test_case
     scenario = details.scenario
 
-    steps: list[dict[str, object]] = []
-    for i, step in enumerate(getattr(scenario, "steps", []) or [], 1):
-        actual = _get_raw(step, ["actual_instance"]) or _get_raw(step, ["actual"])
-        body = _get_text(actual, ["body", "description", "action"]) or _get_text(step, ["body", "description"])
-        expected = _get_text(actual, ["expected", "expected_result", "expectedResult"]) or _get_text(
-            step, ["expected", "expected_result", "expectedResult"]
-        )
-        step_payload: dict[str, object] = {"index": i, "action": body or "Step"}
-        if expected is not None:
-            step_payload["expected"] = expected
-        steps.append(step_payload)
+    raw_steps = getattr(scenario, "steps", []) or []
+    steps = [_serialize_step(step, i, base_url=base_url, project_id=project_id) for i, step in enumerate(raw_steps, 1)]
 
     custom_fields: list[dict[str, str]] = []
     for cf in getattr(tc, "custom_fields", None) or []:
@@ -411,6 +403,35 @@ def _get_text(obj: object, names: list[str]) -> str | None:
     return None
 
 
+def _serialize_step(step: object, index: int, *, base_url: str = "", project_id: int = 0) -> dict[str, object]:
+    """Serialize a single step, handling shared step references."""
+    actual = _get_raw(step, ["actual_instance"]) or _get_raw(step, ["actual"])
+    shared_step_ref = _get_shared_step_ref(step, actual)
+    if shared_step_ref is not None:
+        shared_step_id = _get_shared_step_id(shared_step_ref)
+        payload: dict[str, object] = {"index": index, "type": "shared_step", "shared_step_id": shared_step_id}
+        if isinstance(shared_step_id, int) and base_url:
+            payload["shared_step_url"] = shared_step_url(base_url, project_id, shared_step_id)
+        child_steps = _get_raw(shared_step_ref, ["steps"]) or _get_raw(step, ["steps"])
+        if isinstance(child_steps, list):
+            nested = [
+                _serialize_step(child, ci, base_url=base_url, project_id=project_id)
+                for ci, child in enumerate(child_steps, 1)
+            ]
+            if nested:
+                payload["steps"] = nested
+        return payload
+
+    body = _get_text(actual, ["body", "description", "action"]) or _get_text(step, ["body", "description"]) or "Step"
+    expected = _get_text(actual, ["expected", "expected_result", "expectedResult"]) or _get_text(
+        step, ["expected", "expected_result", "expectedResult"]
+    )
+    step_payload: dict[str, object] = {"index": index, "action": body}
+    if expected is not None:
+        step_payload["expected"] = expected
+    return step_payload
+
+
 def _get_raw(obj: object, names: list[str]) -> object | None:
     for name in names:
         if hasattr(obj, name):
@@ -424,8 +445,24 @@ def _get_raw(obj: object, names: list[str]) -> object | None:
     return None
 
 
-def _format_step(step: object, index: str, out: list[str]) -> None:
+def _format_step(step: object, index: str, out: list[str], *, base_url: str = "", project_id: int = 0) -> None:
     actual = _get_raw(step, ["actual_instance"]) or _get_raw(step, ["actual"])
+    shared_step_ref = _get_shared_step_ref(step, actual)
+
+    # Detect shared step references
+    if shared_step_ref is not None:
+        shared_step_id = _get_shared_step_id(shared_step_ref)
+        line = f"{index}. [Shared Step] ID: {shared_step_id}"
+        if shared_step_id and isinstance(shared_step_id, int) and base_url:
+            line += f" ({shared_step_url(base_url, project_id, shared_step_id)})"
+        out.append(line)
+        # Recurse into nested steps if any
+        child_steps = _get_raw(shared_step_ref, ["steps"]) or _get_raw(step, ["steps"])
+        if isinstance(child_steps, list):
+            for j, child in enumerate(child_steps, 1):
+                _format_step(child, f"{index}.{j}", out, base_url=base_url, project_id=project_id)
+        return
+
     body = _get_text(actual, ["body", "description", "action"]) or _get_text(step, ["body", "description"]) or "Step"
     expected = _get_text(actual, ["expected", "expected_result", "expectedResult"]) or _get_text(
         step, ["expected", "expected_result", "expectedResult"]
@@ -438,7 +475,25 @@ def _format_step(step: object, index: str, out: list[str]) -> None:
     child_steps = _get_raw(actual, ["steps"]) or _get_raw(step, ["steps"])
     if isinstance(child_steps, list):
         for j, child in enumerate(child_steps, 1):
-            _format_step(child, f"{index}.{j}", out)
+            _format_step(child, f"{index}.{j}", out, base_url=base_url, project_id=project_id)
+
+
+def _get_shared_step_ref(step: object, actual: object | None = None) -> object | None:
+    candidate = actual if actual is not None else step
+    if isinstance(candidate, SharedStepStepDto):
+        return candidate
+
+    if isinstance(candidate, dict) and ("shared_step_id" in candidate or "sharedStepId" in candidate):
+        return candidate
+
+    if actual is None and isinstance(step, SharedStepStepDto):
+        return step
+
+    return None
+
+
+def _get_shared_step_id(step: object) -> object | None:
+    return _get_raw(step, ["shared_step_id", "sharedStepId"])
 
 
 def _append_tags(lines: list[str], tc: object) -> None:

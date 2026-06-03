@@ -6,9 +6,16 @@ from src.client import AllureClient, PageTestCaseDto, TestCaseDto, TestCaseDtoWi
 from src.client.exceptions import AllureNotFoundError, AllureValidationError, TestCaseNotFoundError
 from src.client.generated.models.custom_field_dto import CustomFieldDto
 from src.client.generated.models.custom_field_value_with_cf_dto import CustomFieldValueWithCfDto
+from src.client.generated.models.shared_step_step_dto import SharedStepStepDto
 from src.client.generated.models.test_tag_dto import TestTagDto
 from src.services.search_service import SearchQueryParser, SearchService, TestCaseDetails
-from src.tools.search import _format_search_results, _format_test_case_details, _format_test_case_list
+from src.tools.search import (
+    _format_search_results,
+    _format_test_case_details,
+    _format_test_case_list,
+    _serialize_test_case_details,
+)
+from src.utils.aql import normalize_aql
 
 
 @pytest.fixture
@@ -99,6 +106,42 @@ def test_format_test_case_details_handles_fields_and_steps() -> None:
     assert "id: 10" in text
 
 
+def test_format_test_case_details_handles_direct_shared_step_nodes() -> None:
+    tc = TestCaseDtoWithCF(id=1, name="Login", tags=[])
+    shared_step = SharedStepStepDto.model_construct(type="SharedStepStepDto", shared_step_id=42)
+    scenario = TestCaseScenarioV2Dto.model_construct(steps=[shared_step])
+    details = TestCaseDetails(test_case=tc, scenario=scenario)
+
+    text = _format_test_case_details(details, base_url="https://example.com", project_id=7)
+
+    assert "[Shared Step] ID: 42" in text
+    assert "https://example.com/project/7/shared-steps/42" in text
+
+
+def test_serialize_test_case_details_uses_consistent_shared_step_payloads() -> None:
+    tc = TestCaseDtoWithCF(id=1, name="Login", tags=[])
+    shared_step = SharedStepStepDto.model_construct(type="SharedStepStepDto", shared_step_id=42)
+    child = {"body": "Click login"}
+    scenario = TestCaseScenarioV2Dto.model_construct(steps=[{"sharedStepId": 42, "steps": [child]}, shared_step])
+    details = TestCaseDetails(test_case=tc, scenario=scenario)
+
+    payload = _serialize_test_case_details(details, base_url="", project_id=7)
+
+    assert payload["steps"] == [
+        {
+            "index": 1,
+            "type": "shared_step",
+            "shared_step_id": 42,
+            "steps": [{"index": 1, "action": "Click login"}],
+        },
+        {
+            "index": 2,
+            "type": "shared_step",
+            "shared_step_id": 42,
+        },
+    ]
+
+
 @pytest.mark.asyncio
 async def test_list_test_cases_returns_paginated_results(service: SearchService, mock_client: AllureClient) -> None:
     page = PageTestCaseDto(
@@ -170,6 +213,84 @@ async def test_search_test_cases_parses_query(service: SearchService, mock_clien
         status=None,
     )
     assert SearchService.search_test_cases.__doc__
+
+
+@pytest.mark.asyncio
+async def test_search_test_cases_normalizes_compact_aql(service: SearchService, mock_client: AllureClient) -> None:
+    page = PageTestCaseDto(content=[], total_elements=0, number=0, size=20, total_pages=0)
+    mock_client.validate_test_case_query = AsyncMock(return_value=(True, 0))
+    mock_client.search_test_cases_aql = AsyncMock(return_value=page)
+
+    await service.search_test_cases(aql='status="Draft" and automated=true')
+
+    mock_client.validate_test_case_query.assert_awaited_once_with(
+        project_id=123,
+        rql='status = "Draft" and automated = true',
+    )
+    mock_client.search_test_cases_aql.assert_awaited_once_with(
+        project_id=123,
+        rql='status = "Draft" and automated = true',
+        page=0,
+        size=20,
+    )
+
+
+@pytest.mark.asyncio
+async def test_search_test_cases_normalizes_tag_shorthand_aql(
+    service: SearchService, mock_client: AllureClient
+) -> None:
+    page = PageTestCaseDto(content=[], total_elements=0, number=0, size=20, total_pages=0)
+    mock_client.validate_test_case_query = AsyncMock(return_value=(True, 0))
+    mock_client.search_test_cases_aql = AsyncMock(return_value=page)
+
+    await service.search_test_cases(aql="tag:smoke tag:regression")
+
+    mock_client.validate_test_case_query.assert_awaited_once_with(
+        project_id=123,
+        rql='tag = "smoke" and tag = "regression"',
+    )
+
+
+@pytest.mark.asyncio
+async def test_search_test_cases_normalizes_grouped_tag_shorthand_aql(
+    service: SearchService, mock_client: AllureClient
+) -> None:
+    page = PageTestCaseDto(content=[], total_elements=0, number=0, size=20, total_pages=0)
+    mock_client.validate_test_case_query = AsyncMock(return_value=(True, 0))
+    mock_client.search_test_cases_aql = AsyncMock(return_value=page)
+
+    await service.search_test_cases(aql="(tag:smoke tag:regression)")
+
+    mock_client.validate_test_case_query.assert_awaited_once_with(
+        project_id=123,
+        rql='(tag = "smoke" and tag = "regression")',
+    )
+
+
+@pytest.mark.asyncio
+async def test_search_test_cases_normalizes_mixed_tag_shorthand_aql(
+    service: SearchService, mock_client: AllureClient
+) -> None:
+    page = PageTestCaseDto(content=[], total_elements=0, number=0, size=20, total_pages=0)
+    mock_client.validate_test_case_query = AsyncMock(return_value=(True, 0))
+    mock_client.search_test_cases_aql = AsyncMock(return_value=page)
+
+    await service.search_test_cases(aql='tag:smoke and status="Draft"')
+
+    mock_client.validate_test_case_query.assert_awaited_once_with(
+        project_id=123,
+        rql='tag = "smoke" and status = "Draft"',
+    )
+
+
+def test_normalize_aql_preserves_quoted_operator_characters() -> None:
+    assert normalize_aql('name ~= "a=b" and status="Draft"') == 'name ~= "a=b" and status = "Draft"'
+
+
+def test_normalize_aql_closes_strings_after_even_backslashes() -> None:
+    query = r'name ~= "C:\\Temp\\\\" and status="Draft"'
+
+    assert normalize_aql(query) == r'name ~= "C:\\Temp\\\\" and status = "Draft"'
 
 
 @pytest.mark.asyncio
@@ -319,11 +440,11 @@ async def test_search_test_cases_aql_bypasses_parser(
     assert result.items[0].name == "Failed Test"
     mock_client_with_aql.validate_test_case_query.assert_awaited_once_with(
         project_id=123,
-        rql='status="failed" and tag="regression"',
+        rql='status = "failed" and tag = "regression"',
     )
     mock_client_with_aql.search_test_cases_aql.assert_awaited_once_with(
         project_id=123,
-        rql='status="failed" and tag="regression"',
+        rql='status = "failed" and tag = "regression"',
         page=0,
         size=20,
     )

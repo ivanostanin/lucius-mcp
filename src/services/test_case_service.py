@@ -387,15 +387,17 @@ class TestCaseService:
             updated_case = await self.get_test_case(test_case_id)
             return updated_case if updated_case is not None else current_case
 
+        resolved_project_id = current_case.project_id or self._project_id if current_case else self._project_id
+
         if data.clear_issues:
             # Use current_case fetched at step 1 instead of re-fetching
             if current_case and current_case.issues:
                 existing_keys = [i.name for i in current_case.issues if i.name]
                 if existing_keys:
-                    await self.remove_issues_from_test_case(test_case_id, existing_keys)
+                    await self.remove_issues_from_test_case(test_case_id, existing_keys, project_id=resolved_project_id)
 
         if data.remove_issues:
-            await self.remove_issues_from_test_case(test_case_id, data.remove_issues)
+            await self.remove_issues_from_test_case(test_case_id, data.remove_issues, project_id=resolved_project_id)
 
         if data.issues:
             await self.add_issues_to_test_case(
@@ -403,6 +405,7 @@ class TestCaseService:
                 data.issues,
                 integration_id=data.integration_id,
                 integration_name=data.integration_name,
+                project_id=resolved_project_id,
             )
 
         # 4. Handle Metadata Patches
@@ -682,6 +685,7 @@ class TestCaseService:
         issues: list[str],
         integration_id: int | None = None,
         integration_name: str | None = None,
+        project_id: int | None = None,
     ) -> None:
         """Add issue links to a test case.
 
@@ -695,14 +699,17 @@ class TestCaseService:
             return
 
         # 1. Resolve integrations and build IssueDtos
+        current_case = await self.get_test_case(test_case_id)
+        resolved_project_id = project_id or current_case.project_id or self._project_id
+
         issue_dtos = await self._build_issue_dtos(
             issues,
             integration_id=integration_id,
             integration_name=integration_name,
+            project_id=resolved_project_id,
         )
 
         # Idempotency Filter: Only link issues not already present for the same integration
-        current_case = await self.get_test_case(test_case_id)
         existing_issue_pairs = {(i.name.upper(), i.integration_id) for i in (current_case.issues or []) if i.name}
         issue_dtos = [
             io
@@ -714,7 +721,7 @@ class TestCaseService:
             return
 
         # 2. Build selection
-        selection = TestCaseTreeSelectionDto(project_id=self._project_id, leafs_include=[test_case_id])
+        selection = TestCaseTreeSelectionDto(project_id=resolved_project_id, leafs_include=[test_case_id])
 
         # 3. Call Bulk API
         from src.client.generated.api.test_case_bulk_controller_api import TestCaseBulkControllerApi
@@ -724,7 +731,9 @@ class TestCaseService:
         bulk_dto = TestCaseBulkIssueDto(issues=issue_dtos, selection=selection)
         await bulk_api.issue_add1(bulk_dto)
 
-    async def remove_issues_from_test_case(self, test_case_id: int, issues: list[str]) -> None:
+    async def remove_issues_from_test_case(
+        self, test_case_id: int, issues: list[str], project_id: int | None = None
+    ) -> None:
         """Remove issue links from a test case.
 
         Args:
@@ -738,6 +747,7 @@ class TestCaseService:
         current_case = await self.get_test_case(test_case_id)
         if not current_case.issues:
             return
+        resolved_project_id = project_id or current_case.project_id or self._project_id
 
         # 2. Find IDs of issues to remove
         issues_to_remove_ids = []
@@ -751,7 +761,7 @@ class TestCaseService:
             return
 
         # 3. Call Bulk API with IDs
-        selection = TestCaseTreeSelectionDto(project_id=self._project_id, leafs_include=[test_case_id])
+        selection = TestCaseTreeSelectionDto(project_id=resolved_project_id, leafs_include=[test_case_id])
 
         from src.client.generated.api.test_case_bulk_controller_api import TestCaseBulkControllerApi
         from src.client.generated.models.test_case_bulk_entity_ids_dto import TestCaseBulkEntityIdsDto
@@ -769,6 +779,7 @@ class TestCaseService:
         issues: list[str],
         integration_id: int | None = None,
         integration_name: str | None = None,
+        project_id: int | None = None,
     ) -> list[IssueDto]:
         """Convert issue keys to IssueDto objects with resolved integration IDs.
 
@@ -803,7 +814,7 @@ class TestCaseService:
         target_integration_id = await integration_service.resolve_integration_for_issues(
             integration_id=integration_id,
             integration_name=integration_name,
-            project_id=self._project_id,
+            project_id=project_id or self._project_id,
         )
 
         # 3. Build DTOs

@@ -221,6 +221,9 @@ class DefectService:
 
         issue_name: str
         target_integration_id: int
+        test_case_service = TestCaseService(self._client)
+        current_case = await test_case_service.get_test_case(test_case_id)
+        test_case_project_id = current_case.project_id or self._project_id
 
         if issue_key is not None:
             issue_name = self._normalize_issue_key(issue_key)
@@ -228,7 +231,7 @@ class DefectService:
             target_integration_id = await integration_service.resolve_integration_for_issues(
                 integration_id=integration_id,
                 integration_name=integration_name,
-                project_id=self._project_id,
+                project_id=test_case_project_id,
             )
         else:
             defect = await self.get_defect(defect_id)
@@ -245,7 +248,7 @@ class DefectService:
                 target_integration_id = await integration_service.resolve_integration_for_issues(
                     integration_id=integration_id,
                     integration_name=integration_name,
-                    project_id=self._project_id,
+                    project_id=test_case_project_id,
                 )
 
         try:
@@ -273,8 +276,6 @@ class DefectService:
             else:
                 raise
 
-        test_case_service = TestCaseService(self._client)
-        current_case = await test_case_service.get_test_case(test_case_id)
         already_linked = any(
             issue.name
             and self._normalize_issue_key(issue.name) == issue_name
@@ -287,6 +288,7 @@ class DefectService:
                 test_case_id,
                 [issue_name],
                 integration_id=target_integration_id,
+                project_id=test_case_project_id,
             )
 
         return DefectTestCaseLinkResult(

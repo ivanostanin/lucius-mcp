@@ -91,6 +91,69 @@ async def test_list_launches_page_launch_preview_dto(service: LaunchService, moc
 
 
 @pytest.mark.asyncio
+async def test_list_launches_falls_back_to_aql_when_search_is_rejected(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    page = PageLaunchDto(
+        content=[LaunchDto(id=4, name="[Agent] Launch")],
+        total_elements=1,
+        number=0,
+        size=20,
+        total_pages=1,
+    )
+    mock_client.list_launches.side_effect = AllureValidationError("invalid search")
+    mock_client.search_launches_aql.return_value = page
+
+    result = await service.list_launches(search="[Agent]")
+
+    assert result.total == 1
+    mock_client.search_launches_aql.assert_awaited_once_with(
+        project_id=1,
+        rql='name ~= "[Agent]"',
+        page=0,
+        size=20,
+        sort=None,
+    )
+
+
+@pytest.mark.asyncio
+async def test_list_launches_does_not_fallback_when_filter_scope_is_present(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    mock_client.list_launches.side_effect = AllureValidationError("invalid search")
+
+    with pytest.raises(AllureValidationError, match="invalid search"):
+        await service.list_launches(search="[Agent]", filter_id=42)
+
+    mock_client.search_launches_aql.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_list_launches_treats_blank_search_as_no_filter(service: LaunchService, mock_client: MagicMock) -> None:
+    page = PageLaunchDto(
+        content=[LaunchDto(id=5, name="No Filter")],
+        total_elements=1,
+        number=0,
+        size=20,
+        total_pages=1,
+    )
+    mock_client.list_launches.return_value = FindAll29200Response(page)
+
+    result = await service.list_launches(search="   ")
+
+    assert result.total == 1
+    mock_client.list_launches.assert_awaited_once_with(
+        project_id=1,
+        page=0,
+        size=20,
+        search=None,
+        filter_id=None,
+        sort=None,
+    )
+    mock_client.search_launches_aql.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_search_launches_aql(service: LaunchService, mock_client: MagicMock) -> None:
     page = PageLaunchDto(content=[LaunchDto(id=3, name="AQL")], total_elements=1, number=0, size=20, total_pages=1)
     mock_client.search_launches_aql.return_value = page

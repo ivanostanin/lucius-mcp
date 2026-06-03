@@ -168,7 +168,7 @@ async def test_link_defect_to_test_case_explicit_mapping(service: DefectService)
         mock_api.link_issue = AsyncMock(return_value=DefectOverviewDto(id=10, name="Bug"))
 
         mock_tc = mock_tc_cls.return_value
-        mock_tc.get_test_case = AsyncMock(return_value=Mock(issues=[]))
+        mock_tc.get_test_case = AsyncMock(return_value=Mock(issues=[], project_id=166))
         mock_tc.add_issues_to_test_case = AsyncMock(return_value=None)
 
         mock_int = mock_int_cls.return_value
@@ -190,7 +190,12 @@ async def test_link_defect_to_test_case_explicit_mapping(service: DefectService)
         dto = mock_api.link_issue.call_args.kwargs["defect_issue_link_dto"]
         assert dto.name == "PROJ-123"
         assert dto.integration_id == 7
-        mock_tc.add_issues_to_test_case.assert_called_once_with(20, ["PROJ-123"], integration_id=7)
+        mock_int.resolve_integration_for_issues.assert_called_once_with(
+            integration_id=7,
+            integration_name=None,
+            project_id=166,
+        )
+        mock_tc.add_issues_to_test_case.assert_called_once_with(20, ["PROJ-123"], integration_id=7, project_id=166)
 
 
 @pytest.mark.asyncio
@@ -204,7 +209,7 @@ async def test_link_defect_to_test_case_explicit_mapping_by_integration_name(ser
         mock_api.link_issue = AsyncMock(return_value=DefectOverviewDto(id=10, name="Bug"))
 
         mock_tc = mock_tc_cls.return_value
-        mock_tc.get_test_case = AsyncMock(return_value=Mock(issues=[]))
+        mock_tc.get_test_case = AsyncMock(return_value=Mock(issues=[], project_id=166))
         mock_tc.add_issues_to_test_case = AsyncMock(return_value=None)
 
         mock_int = mock_int_cls.return_value
@@ -221,9 +226,9 @@ async def test_link_defect_to_test_case_explicit_mapping_by_integration_name(ser
         mock_int.resolve_integration_for_issues.assert_called_once_with(
             integration_id=None,
             integration_name="Jira",
-            project_id=1,
+            project_id=166,
         )
-        mock_tc.add_issues_to_test_case.assert_called_once_with(20, ["PROJ-123"], integration_id=11)
+        mock_tc.add_issues_to_test_case.assert_called_once_with(20, ["PROJ-123"], integration_id=11, project_id=166)
 
 
 @pytest.mark.asyncio
@@ -237,7 +242,9 @@ async def test_link_defect_to_test_case_idempotent_when_already_linked(service: 
         mock_api.link_issue = AsyncMock(return_value=DefectOverviewDto(id=10, name="Bug"))
 
         mock_tc = mock_tc_cls.return_value
-        mock_tc.get_test_case = AsyncMock(return_value=Mock(issues=[IssueDto(name="PROJ-123", integration_id=7)]))
+        mock_tc.get_test_case = AsyncMock(
+            return_value=Mock(issues=[IssueDto(name="PROJ-123", integration_id=7)], project_id=1)
+        )
         mock_tc.add_issues_to_test_case = AsyncMock(return_value=None)
 
         mock_int = mock_int_cls.return_value
@@ -265,7 +272,9 @@ async def test_link_defect_to_test_case_same_key_different_integration_not_idemp
         mock_api.link_issue = AsyncMock(return_value=DefectOverviewDto(id=10, name="Bug"))
 
         mock_tc = mock_tc_cls.return_value
-        mock_tc.get_test_case = AsyncMock(return_value=Mock(issues=[IssueDto(name="PROJ-123", integration_id=8)]))
+        mock_tc.get_test_case = AsyncMock(
+            return_value=Mock(issues=[IssueDto(name="PROJ-123", integration_id=8)], project_id=1)
+        )
         mock_tc.add_issues_to_test_case = AsyncMock(return_value=None)
 
         mock_int = mock_int_cls.return_value
@@ -279,7 +288,7 @@ async def test_link_defect_to_test_case_same_key_different_integration_not_idemp
         )
 
         assert result.already_linked is False
-        mock_tc.add_issues_to_test_case.assert_called_once_with(20, ["PROJ-123"], integration_id=7)
+        mock_tc.add_issues_to_test_case.assert_called_once_with(20, ["PROJ-123"], integration_id=7, project_id=1)
 
 
 @pytest.mark.asyncio
@@ -303,14 +312,14 @@ async def test_link_defect_to_test_case_reuses_existing_defect_issue(service: De
         mock_api.link_issue = AsyncMock(return_value=DefectOverviewDto(id=10, name="Bug"))
 
         mock_tc = mock_tc_cls.return_value
-        mock_tc.get_test_case = AsyncMock(return_value=Mock(issues=[]))
+        mock_tc.get_test_case = AsyncMock(return_value=Mock(issues=[], project_id=1))
         mock_tc.add_issues_to_test_case = AsyncMock(return_value=None)
 
         result = await service.link_defect_to_test_case(defect_id=10, test_case_id=20)
 
         assert result.issue_key == "PROJ-456"
         assert result.integration_id == 3
-        mock_tc.add_issues_to_test_case.assert_called_once_with(20, ["PROJ-456"], integration_id=3)
+        mock_tc.add_issues_to_test_case.assert_called_once_with(20, ["PROJ-456"], integration_id=3, project_id=1)
 
 
 @pytest.mark.asyncio
@@ -326,11 +335,12 @@ async def test_link_defect_to_test_case_integration_ambiguity_propagates_validat
 ) -> None:
     with (
         patch("src.services.defect_service.DefectControllerApi") as mock_ctl,
-        patch("src.services.defect_service.TestCaseService"),
+        patch("src.services.defect_service.TestCaseService") as mock_tc_cls,
         patch("src.services.defect_service.IntegrationService") as mock_int_cls,
     ):
         mock_api = mock_ctl.return_value
         mock_api.link_issue = AsyncMock()
+        mock_tc_cls.return_value.get_test_case = AsyncMock(return_value=Mock(issues=[], project_id=1))
 
         mock_int = mock_int_cls.return_value
         mock_int.resolve_integration_for_issues = AsyncMock(
@@ -351,7 +361,7 @@ async def test_link_defect_to_test_case_integration_ambiguity_propagates_validat
 async def test_link_defect_to_test_case_409_conflict_raises_validation_error(service: DefectService) -> None:
     with (
         patch("src.services.defect_service.DefectControllerApi") as mock_ctl,
-        patch("src.services.defect_service.TestCaseService"),
+        patch("src.services.defect_service.TestCaseService") as mock_tc_cls,
         patch.object(
             service,
             "get_defect",
@@ -363,6 +373,7 @@ async def test_link_defect_to_test_case_409_conflict_raises_validation_error(ser
     ):
         mock_api = mock_ctl.return_value
         mock_api.link_issue = AsyncMock(side_effect=ApiException(status=409, reason="Conflict"))
+        mock_tc_cls.return_value.get_test_case = AsyncMock(return_value=Mock(issues=[], project_id=1))
 
         mock_int = mock_int_cls.return_value
         mock_int.resolve_integration_for_issues = AsyncMock(return_value=7)
@@ -394,7 +405,7 @@ async def test_link_defect_to_test_case_409_duplicate_allows_flow(service: Defec
         mock_api.link_issue = AsyncMock(side_effect=ApiException(status=409, reason="Conflict"))
 
         mock_tc = mock_tc_cls.return_value
-        mock_tc.get_test_case = AsyncMock(return_value=Mock(issues=[]))
+        mock_tc.get_test_case = AsyncMock(return_value=Mock(issues=[], project_id=1))
         mock_tc.add_issues_to_test_case = AsyncMock(return_value=None)
 
         mock_int = mock_int_cls.return_value
@@ -408,7 +419,7 @@ async def test_link_defect_to_test_case_409_duplicate_allows_flow(service: Defec
         )
 
         assert result.already_linked is False
-        mock_tc.add_issues_to_test_case.assert_called_once_with(20, ["PROJ-123"], integration_id=7)
+        mock_tc.add_issues_to_test_case.assert_called_once_with(20, ["PROJ-123"], integration_id=7, project_id=1)
 
 
 @pytest.mark.asyncio

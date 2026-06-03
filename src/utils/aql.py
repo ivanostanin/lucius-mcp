@@ -1,0 +1,111 @@
+"""Helpers for normalizing user-facing AQL inputs."""
+
+_OPERATORS = ("!=", "~=", ">=", "<=", "=", ">", "<")
+
+
+def normalize_aql(query: str) -> str:
+    """Normalize a user-provided AQL string into backend-friendly syntax.
+
+    This keeps valid AQL intact while smoothing over common user shortcuts:
+    - compact operators such as ``status="Draft"`` -> ``status = "Draft"``
+    - simple tag shorthand such as ``tag:smoke`` -> ``tag = "smoke"``
+    """
+    normalized = query.strip()
+
+    pure_tag_query = _normalize_pure_tag_query(normalized)
+    if pure_tag_query is not None:
+        return pure_tag_query
+
+    result: list[str] = []
+    i = 0
+    in_quotes = False
+    while i < len(normalized):
+        char = normalized[i]
+
+        if char == '"' and _is_unescaped_quote(normalized, i):
+            in_quotes = not in_quotes
+            result.append(char)
+            i += 1
+            continue
+
+        if not in_quotes:
+            if _is_tag_shorthand_start(normalized, i):
+                tag_value, next_index = _consume_tag_value(normalized, i + 4)
+                if tag_value:
+                    result.append(f'tag = "{quote_aql_string(tag_value)}"')
+                    i = next_index
+                    continue
+
+            operator = next((op for op in _OPERATORS if normalized.startswith(op, i)), None)
+            if operator is not None:
+                if result and result[-1] not in {" ", "\t"}:
+                    result.append(" ")
+                result.append(operator)
+                next_index = i + len(operator)
+                if next_index < len(normalized) and normalized[next_index] not in {" ", "\t"}:
+                    result.append(" ")
+                i = next_index
+                continue
+
+        result.append(char)
+        i += 1
+
+    return "".join(result)
+
+
+def quote_aql_string(value: str) -> str:
+    """Quote a raw string so it is safe inside an AQL string literal."""
+    return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _is_unescaped_quote(query: str, index: int) -> bool:
+    """Return True when a quote is not escaped by an odd backslash run."""
+    backslash_count = 0
+    cursor = index - 1
+    while cursor >= 0 and query[cursor] == "\\":
+        backslash_count += 1
+        cursor -= 1
+    return backslash_count % 2 == 0
+
+
+def _is_tag_shorthand_start(query: str, index: int) -> bool:
+    """Return True when ``query[index:]`` starts a standalone ``tag:`` token."""
+    if not query[index : index + 4].lower() == "tag:":
+        return False
+
+    if index == 0:
+        return True
+
+    return query[index - 1].isspace() or query[index - 1] == "("
+
+
+def _normalize_pure_tag_query(query: str) -> str | None:
+    """Convert tag-only shorthand queries into explicit AND expressions."""
+    parts = query.split()
+    if not parts:
+        return None
+
+    normalized_parts: list[str] = []
+    for part in parts:
+        leading_parens = len(part) - len(part.lstrip("("))
+        trailing_parens = len(part) - len(part.rstrip(")"))
+        core_end = len(part) - trailing_parens if trailing_parens else len(part)
+        core = part[leading_parens:core_end]
+        if not core.lower().startswith("tag:"):
+            return None
+
+        tag = core[4:]
+        if not tag:
+            return None
+
+        normalized_parts.append(f'{"(" * leading_parens}tag = "{quote_aql_string(tag)}"{")" * trailing_parens}')
+
+    return " and ".join(normalized_parts)
+
+
+def _consume_tag_value(query: str, start: int) -> tuple[str, int]:
+    """Read a tag shorthand value until whitespace or a closing parenthesis."""
+    end = start
+    while end < len(query) and not query[end].isspace() and query[end] != ")":
+        end += 1
+    return query[start:end], end
