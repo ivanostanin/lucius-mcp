@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.10.1] - 2026-06-03
+
+### Changed
+- Updated locked runtime and workflow dependencies, including Starlette 1.2.1 and the GitHub Actions Python setup flow used across CI and release automation (#215, #216).
+
+### Fixed
+- Improved AQL normalization, project-context defect issue linking, launch search fallback behavior, and `delete_test_plan` tool coverage/registration (#207).
+
 ## [v0.10.0] - 2026-05-31
 
 ### Changed
@@ -227,7 +235,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.1...HEAD
+[v0.10.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.0...v0.10.1
 [v0.10.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.9.2...v0.10.0
 [v0.9.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.9.1...v0.9.2
 [v0.9.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.9.0...v0.9.1
