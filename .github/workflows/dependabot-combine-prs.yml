@@ -15,3 +15,5 @@ jobs:
       - name: Combine Dependabot PRs
         id: combine-prs
         uses: github/combine-prs@v5.2.0
+        with:
+          pr_title: 'chore: update dependencies'
