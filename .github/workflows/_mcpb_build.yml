@@ -27,7 +27,7 @@ jobs:
           node-version: '22'
       
       - name: Set up Python Environment
-        uses: ./.github/actions/python-setup
+        uses: ./.github/actions/setup-python
         with:
           python-version: ${{ vars.PYTHON_VERSION }}
 
