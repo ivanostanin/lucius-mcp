@@ -4,11 +4,14 @@ This guide is for developers looking to extend or contribute to Lucius MCP.
 
 ## Prerequisites
 
-Install Python packages
+Create or refresh the repo-local virtual environment and install git hooks:
 
 ```bash
 uv sync --all-extras
+uv run pre-commit install --install-hooks --hook-type pre-commit --hook-type pre-push
 ```
+
+Use `uv run ...` for project commands; activating `.venv` manually is optional.
 
 ## 🛠️ Adding a New Tool
 

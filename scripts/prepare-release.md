@@ -15,13 +15,18 @@ Before initiating any release steps, run the full validation suite. A release MU
 ### 0. Prepare Environment
 - Checkout the `main` branch.
 - Create a release branch from `main` with name `release/v0.x.x`.
+- Create or refresh the repo-local virtual environment and reinstall the git hooks for this checkout.
+```bash
+uv sync --all-extras
+uv run pre-commit install --install-hooks --hook-type pre-commit --hook-type pre-push
+```
 
 ### 1. Version Bump
 - Update the `version` field in `pyproject.toml`.
 - Follow Semantic Versioning (SemVer) principles.
 
 ### 2. Dependency Sync
-- Update project lockfiles and synchronized environments.
+- Update project lockfiles and synchronized environments if anything changed after the initial bootstrap.
 ```bash
 uv sync --all-extras
 ```
