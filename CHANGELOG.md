@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.10.2] - 2026-06-08
+
+### Changed
+- Added repo-local `uv sync --all-extras` and pre-commit hook bootstrap steps to the development and release preparation workflow documentation (#218).
+- Updated locked runtime and GitHub Actions dependencies, including the release, CI, Docker, Pages, and CLI build workflows (#225).
+
 ## [v0.10.1] - 2026-06-03
 
 ### Changed
@@ -235,7 +241,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.1...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.2...HEAD
+[v0.10.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.1...v0.10.2
 [v0.10.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.0...v0.10.1
 [v0.10.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.9.2...v0.10.0
 [v0.9.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.9.1...v0.9.2
