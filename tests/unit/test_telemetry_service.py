@@ -1,12 +1,11 @@
 import asyncio
 import hashlib
 import hmac
-import json
 from pathlib import Path
 
 import httpx
 import pytest
-import respx
+import umami
 
 from src.services.telemetry_service import TelemetryService
 from src.utils.config import settings
@@ -14,10 +13,13 @@ from src.utils.error import AllureAPIError, AuthenticationError
 
 
 @pytest.mark.asyncio
-@respx.mock
-async def test_startup_event_payload_and_user_agent(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_startup_event_payload_and_user_agent(
+    monkeypatch: pytest.MonkeyPatch,
+    umami_async_post_recorder,
+) -> None:
     monkeypatch.setattr(settings, "ALLURE_ENDPOINT", "https://example.testops.cloud")
     monkeypatch.setattr(settings, "ALLURE_PROJECT_ID", 123)
+    calls = umami_async_post_recorder()
 
     service = TelemetryService(
         enabled=True,
@@ -28,18 +30,18 @@ async def test_startup_event_payload_and_user_agent(monkeypatch: pytest.MonkeyPa
         mcp_mode="http",
         server_version="1.2.3",
     )
-    route = respx.post("https://cloud.umami.is/api/send").mock(return_value=httpx.Response(204))
 
     service.emit_startup_event()
     await service.drain()
 
-    assert route.called
-    request = route.calls.last.request
-    body = json.loads(request.content.decode("utf-8"))
+    assert len(calls) == 1
+    request = calls[-1]
+    body = request["json"]
     event_payload = body["payload"]
     payload = event_payload["data"]
 
-    assert request.headers["User-Agent"]
+    assert request["url"] == "https://cloud.umami.is/api/send"
+    assert request["headers"]["User-Agent"] == umami.impl.event_user_agent
     assert body["type"] == "event"
     assert event_payload["name"] == "startup"
     assert payload["server_version"] == "1.2.3"
@@ -50,10 +52,13 @@ async def test_startup_event_payload_and_user_agent(monkeypatch: pytest.MonkeyPa
 
 
 @pytest.mark.asyncio
-@respx.mock
-async def test_tool_event_error_contains_classification(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_tool_event_error_contains_classification(
+    monkeypatch: pytest.MonkeyPatch,
+    umami_async_post_recorder,
+) -> None:
     monkeypatch.setattr(settings, "ALLURE_ENDPOINT", "https://example.testops.cloud")
     monkeypatch.setattr(settings, "ALLURE_PROJECT_ID", 321)
+    calls = umami_async_post_recorder()
 
     service = TelemetryService(
         enabled=True,
@@ -63,7 +68,6 @@ async def test_tool_event_error_contains_classification(monkeypatch: pytest.Monk
         hash_salt="telemetry-salt",
         mcp_mode="stdio",
     )
-    route = respx.post("https://cloud.umami.is/api/send").mock(return_value=httpx.Response(204))
 
     service.emit_tool_usage_event(
         tool_name="create_test_case",
@@ -73,8 +77,8 @@ async def test_tool_event_error_contains_classification(monkeypatch: pytest.Monk
     )
     await service.drain()
 
-    assert route.called
-    body = json.loads(route.calls.last.request.content.decode("utf-8"))
+    assert len(calls) == 1
+    body = calls[-1]["json"]
     event_payload = body["payload"]
     payload = event_payload["data"]
     assert event_payload["name"] == "tool_error"
@@ -85,15 +89,14 @@ async def test_tool_event_error_contains_classification(monkeypatch: pytest.Monk
 
 
 @pytest.mark.asyncio
-@respx.mock
-async def test_tool_event_non_validation_error_uses_other_error_event() -> None:
+async def test_tool_event_non_validation_error_uses_other_error_event(umami_async_post_recorder) -> None:
+    calls = umami_async_post_recorder()
     service = TelemetryService(
         enabled=True,
         umami_base_url="https://cloud.umami.is",
         umami_website_id="website-1",
         umami_hostname="lucius.test",
     )
-    route = respx.post("https://cloud.umami.is/api/send").mock(return_value=httpx.Response(204))
 
     service.emit_tool_usage_event(
         tool_name="search_test_cases",
@@ -103,8 +106,8 @@ async def test_tool_event_non_validation_error_uses_other_error_event() -> None:
     )
     await service.drain()
 
-    assert route.called
-    body = json.loads(route.calls.last.request.content.decode("utf-8"))
+    assert len(calls) == 1
+    body = calls[-1]["json"]
     event_payload = body["payload"]
     payload = event_payload["data"]
     assert event_payload["name"] == "tool_error"
@@ -120,18 +123,18 @@ async def test_tool_event_non_validation_error_uses_other_error_event() -> None:
         (httpx.TimeoutException("request timed out"), "api"),
     ],
 )
-@respx.mock
 async def test_tool_event_error_preserves_flat_name_for_auth_and_api_failures(
     error: Exception,
     expected_category: str,
+    umami_async_post_recorder,
 ) -> None:
+    calls = umami_async_post_recorder()
     service = TelemetryService(
         enabled=True,
         umami_base_url="https://cloud.umami.is",
         umami_website_id="website-1",
         umami_hostname="lucius.test",
     )
-    route = respx.post("https://cloud.umami.is/api/send").mock(return_value=httpx.Response(204))
 
     service.emit_tool_usage_event(
         tool_name="list_test_cases",
@@ -141,8 +144,8 @@ async def test_tool_event_error_preserves_flat_name_for_auth_and_api_failures(
     )
     await service.drain()
 
-    assert route.called
-    body = json.loads(route.calls.last.request.content.decode("utf-8"))
+    assert len(calls) == 1
+    body = calls[-1]["json"]
     event_payload = body["payload"]
     payload = event_payload["data"]
     assert event_payload["name"] == "tool_error"
@@ -152,21 +155,20 @@ async def test_tool_event_error_preserves_flat_name_for_auth_and_api_failures(
 
 
 @pytest.mark.asyncio
-@respx.mock
-async def test_opt_out_disables_http_requests() -> None:
+async def test_opt_out_disables_http_requests(umami_async_post_recorder) -> None:
+    calls = umami_async_post_recorder()
     service = TelemetryService(
         enabled=False,
         umami_base_url="https://cloud.umami.is",
         umami_website_id="website-1",
         umami_hostname="lucius.test",
     )
-    route = respx.post("https://cloud.umami.is/api/send").mock(return_value=httpx.Response(204))
 
     service.emit_startup_event()
     service.emit_tool_usage_event(tool_name="list_test_cases", outcome="success", duration_ms=20.0)
     await service.drain()
 
-    assert not route.called
+    assert not calls
 
 
 def test_opt_out_does_not_persist_telemetry_state(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -268,22 +270,24 @@ def test_state_creation_tolerates_chmod_failure(monkeypatch: pytest.MonkeyPatch,
 
 
 @pytest.mark.asyncio
-@respx.mock
-async def test_env_opt_out_disables_http_requests(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_env_opt_out_disables_http_requests(
+    monkeypatch: pytest.MonkeyPatch,
+    umami_async_post_recorder,
+) -> None:
     monkeypatch.setattr(settings, "TELEMETRY_ENABLED", False)
+    calls = umami_async_post_recorder()
     service = TelemetryService(
         umami_base_url="https://cloud.umami.is",
         umami_website_id="website-1",
         umami_hostname="lucius.test",
     )
-    route = respx.post("https://cloud.umami.is/api/send").mock(return_value=httpx.Response(204))
 
     service.emit_startup_event()
     service.emit_tool_usage_event(tool_name="list_test_cases", outcome="success", duration_ms=20.0)
     await service.drain()
 
     assert service.is_enabled is False
-    assert not route.called
+    assert not calls
 
 
 def test_env_overrides_umami_website_id_and_hostname(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -311,15 +315,17 @@ def test_explicit_umami_values_override_env(monkeypatch: pytest.MonkeyPatch) -> 
 
 
 @pytest.mark.asyncio
-@respx.mock
-async def test_send_failures_are_swallowed(caplog: pytest.LogCaptureFixture) -> None:
+async def test_send_failures_are_swallowed(
+    caplog: pytest.LogCaptureFixture,
+    umami_async_post_recorder,
+) -> None:
+    umami_async_post_recorder(side_effect=umami.impl.httpx.ConnectError("down"))
     service = TelemetryService(
         enabled=True,
         umami_base_url="https://cloud.umami.is",
         umami_website_id="website-1",
         umami_hostname="lucius.test",
     )
-    respx.post("https://cloud.umami.is/api/send").mock(side_effect=httpx.ConnectError("down"))
 
     service.emit_tool_usage_event(tool_name="list_test_cases", outcome="success", duration_ms=10.0)
     await service.drain()

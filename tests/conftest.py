@@ -1,4 +1,5 @@
 import pytest
+import umami
 from starlette.applications import Starlette
 from starlette.routing import Mount
 
@@ -41,3 +42,50 @@ def app() -> Starlette:
             break
 
     return src.main.app
+
+
+@pytest.fixture
+def umami_async_post_recorder(monkeypatch: pytest.MonkeyPatch):
+    def factory(
+        *,
+        status_code: int = 200,
+        response_json: dict[str, object] | None = None,
+        side_effect: Exception | None = None,
+    ) -> list[dict[str, object]]:
+        calls: list[dict[str, object]] = []
+
+        class FakeAsyncClient:
+            async def __aenter__(self) -> "FakeAsyncClient":
+                return self
+
+            async def __aexit__(self, exc_type: object, exc: object, tb: object) -> bool:
+                return False
+
+            async def post(
+                self,
+                url: str,
+                *,
+                json: dict[str, object] | None = None,
+                headers: dict[str, str] | None = None,
+                follow_redirects: bool = False,
+                **kwargs: object,
+            ):
+                calls.append(
+                    {
+                        "url": url,
+                        "json": json,
+                        "headers": headers or {},
+                        "follow_redirects": follow_redirects,
+                        "kwargs": kwargs,
+                    }
+                )
+                if side_effect is not None:
+                    raise side_effect
+
+                request = umami.impl.httpx.Request("POST", url, headers=headers)
+                return umami.impl.httpx.Response(status_code, json=response_json or {"ok": True}, request=request)
+
+        monkeypatch.setattr(umami.impl.httpx, "AsyncClient", FakeAsyncClient)
+        return calls
+
+    return factory
