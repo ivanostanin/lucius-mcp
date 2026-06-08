@@ -15,7 +15,7 @@ jobs:
     if: github.event_name != 'pull_request' || vars.ALLURE_ENDPOINT != ''
     
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
 
       - name: Set up Python Environment
         uses: ./.github/actions/setup-python

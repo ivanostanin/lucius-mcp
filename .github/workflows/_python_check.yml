@@ -31,7 +31,7 @@ jobs:
   python-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
 
       - name: Set up Python Environment
         uses: ./.github/actions/setup-python
