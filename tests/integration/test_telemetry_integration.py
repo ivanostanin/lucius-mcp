@@ -1,8 +1,5 @@
-import json
-
 import httpx
 import pytest
-import respx
 
 from src.services.telemetry_service import TelemetryService
 from src.utils.config import settings
@@ -10,10 +7,13 @@ from src.utils.error import AuthenticationError
 
 
 @pytest.mark.asyncio
-@respx.mock
-async def test_startup_and_tool_events_sent_to_umami(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_startup_and_tool_events_sent_to_umami(
+    monkeypatch: pytest.MonkeyPatch,
+    umami_async_post_recorder,
+) -> None:
     monkeypatch.setattr(settings, "ALLURE_ENDPOINT", "https://example.testops.cloud")
     monkeypatch.setattr(settings, "ALLURE_PROJECT_ID", 999)
+    calls = umami_async_post_recorder()
 
     service = TelemetryService(
         enabled=True,
@@ -22,16 +22,15 @@ async def test_startup_and_tool_events_sent_to_umami(monkeypatch: pytest.MonkeyP
         umami_hostname="lucius.test",
         hash_salt="integration-salt",
     )
-    route = respx.post("https://cloud.umami.is/api/send").mock(return_value=httpx.Response(204))
 
     service.emit_startup_event()
     service.emit_tool_usage_event(tool_name="search_test_cases", outcome="success", duration_ms=55.0)
     await service.drain()
 
-    assert route.call_count == 2
+    assert len(calls) == 2
 
-    startup_event = json.loads(route.calls[0].request.content.decode("utf-8"))["payload"]
-    tool_event = json.loads(route.calls[1].request.content.decode("utf-8"))["payload"]
+    startup_event = calls[0]["json"]["payload"]
+    tool_event = calls[1]["json"]["payload"]
     startup_payload = startup_event["data"]
     tool_payload = tool_event["data"]
 
@@ -52,14 +51,15 @@ async def test_startup_and_tool_events_sent_to_umami(monkeypatch: pytest.MonkeyP
         (httpx.TimeoutException("request timed out"), "api"),
     ],
 )
-@respx.mock
 async def test_tool_error_events_sent_to_umami_transport_boundary(
     monkeypatch: pytest.MonkeyPatch,
     error: Exception,
     expected_category: str,
+    umami_async_post_recorder,
 ) -> None:
     monkeypatch.setattr(settings, "ALLURE_ENDPOINT", "https://example.testops.cloud")
     monkeypatch.setattr(settings, "ALLURE_PROJECT_ID", 999)
+    calls = umami_async_post_recorder()
 
     service = TelemetryService(
         enabled=True,
@@ -68,14 +68,13 @@ async def test_tool_error_events_sent_to_umami_transport_boundary(
         umami_hostname="lucius.test",
         hash_salt="integration-salt",
     )
-    route = respx.post("https://cloud.umami.is/api/send").mock(return_value=httpx.Response(204))
 
     service.emit_tool_usage_event(tool_name="search_test_cases", outcome="error", duration_ms=550.0, error=error)
     await service.drain()
 
-    assert route.call_count == 1
+    assert len(calls) == 1
 
-    tool_event = json.loads(route.calls[0].request.content.decode("utf-8"))["payload"]
+    tool_event = calls[0]["json"]["payload"]
     tool_payload = tool_event["data"]
 
     assert tool_event["name"] == "tool_error"

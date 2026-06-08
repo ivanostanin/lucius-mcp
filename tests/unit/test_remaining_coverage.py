@@ -384,10 +384,17 @@ async def test_telemetry_helpers_and_error_paths(monkeypatch: pytest.MonkeyPatch
     service._schedule_event("event", {})
     service._schedule_event("event", {})
 
-    async def raises_status(**_kwargs: object) -> None:
-        response = httpx.Response(500, request=httpx.Request("POST", "https://u.example"))
-        raise httpx.HTTPStatusError("bad", request=response.request, response=response)
+    class RaisingAsyncClient:
+        async def __aenter__(self) -> RaisingAsyncClient:
+            return self
 
-    monkeypatch.setattr("src.services.telemetry_service.umami.new_event_async", raises_status)
+        async def __aexit__(self, exc_type: object, exc: object, tb: object) -> bool:
+            return False
+
+        async def post(self, *args: object, **kwargs: object):
+            request = httpx.Request("POST", "https://u.example/api/send")
+            raise httpx.HTTPStatusError("bad", request=request, response=httpx.Response(500, request=request))
+
+    monkeypatch.setattr("src.services.telemetry_service.umami.impl.httpx.AsyncClient", RaisingAsyncClient)
     service._website_id = "site"
     await service._send_event(event_name="event", payload={})
