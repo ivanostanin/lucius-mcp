@@ -1865,15 +1865,15 @@ wheels = [
 
 [[package]]
 name = "umami-analytics"
-version = "0.6.25"
+version = "1.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx2" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c4/7c/c7839eb1dbf11b6c71386c1a7c7f429b2c3e65a57efdc35055d98727466e/umami_analytics-0.6.25.tar.gz", hash = "sha256:e2347d5ea8a2b1d200072214e2437c63dbbf76809c54092da298756344295966", size = 13196, upload-time = "2026-06-07T23:21:30.599Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/64/6a/6df75771e83932b82a5b2bb78fba42b883e237ea9ef5465ca0490bc6de69/umami_analytics-1.0.0.tar.gz", hash = "sha256:33bf1c47e23cf1932a2400f0d811d97f73ad32e8df61165adc0f1deb322759a9", size = 23124, upload-time = "2026-06-11T17:46:31.674Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/92/c6/3207b88cb7a30f51a27cb6672db5e8544941ea9d793224b005648eb2b0cd/umami_analytics-0.6.25-py3-none-any.whl", hash = "sha256:bf4eb70b382c5a7e7c8d576500bc9790aa53fce96d6f804fdbe15f294b2a1659", size = 14166, upload-time = "2026-06-07T23:21:29.162Z" },
+    { url = "https://files.pythonhosted.org/packages/41/54/1a87ea786c9333c8113734e63416967c5cdcc7a4fdbb8e6c57f099af7a46/umami_analytics-1.0.0-py3-none-any.whl", hash = "sha256:6d53321c8d9a07953553db6eee3039d2a13fda28e540d626610317507d3bcd39", size = 20389, upload-time = "2026-06-11T17:46:30.436Z" },
 ]
 
 [[package]]
