@@ -448,12 +448,13 @@ class TestCLICoverageHelpers:
         assert "output_format" not in schemas["get_test_case_details"]["input_schema"]["properties"]
 
     def test_every_route_tool_signature_supports_output_format(self) -> None:
+        from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT
         for tool_name in all_route_tool_names():
             fn = load_tool_function(tool_name)
             signature = inspect.signature(fn)
             output_param = signature.parameters.get("output_format")
             assert output_param is not None, f"{tool_name} missing output_format"
-            assert output_param.default is None
+            assert output_param.default == DEFAULT_OUTPUT_FORMAT
 
     def test_schema_json_serializable(self) -> None:
         schemas = load_tool_schemas(cli_entry.TOOL_SCHEMAS_PATH, Path(cli_entry.__file__))
@@ -461,6 +462,7 @@ class TestCLICoverageHelpers:
         assert "create_test_case" in serialized
 
     def test_every_async_tool_in_src_tools_has_output_format_default_structured(self) -> None:
+        from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT
         tools_dir = Path(__file__).resolve().parents[2] / "src" / "tools"
         skip_modules = {"__init__.py", "annotations.py", "test_layers.py", "output_contract.py"}
 
@@ -473,7 +475,7 @@ class TestCLICoverageHelpers:
                 signature = inspect.signature(fn)
                 output_param = signature.parameters.get("output_format")
                 assert output_param is not None, f"{module_path.name}:{fn.__name__} missing output_format"
-                assert output_param.default is None, f"{module_path.name}:{fn.__name__} default is not structured"
+                assert output_param.default == DEFAULT_OUTPUT_FORMAT, f"{module_path.name}:{fn.__name__} default is not {DEFAULT_OUTPUT_FORMAT!r}"
 
     def test_every_async_tool_docstring_mentions_output_format(self) -> None:
         tools_dir = Path(__file__).resolve().parents[2] / "src" / "tools"
