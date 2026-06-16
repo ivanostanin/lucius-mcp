@@ -6,30 +6,35 @@ They are used to generate the outputSchema for MCP tool registration.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
 from typing import Any
+
+from pydantic import BaseModel, Field
 
 
 # Base response models
 class BaseResponse(BaseModel):
     """Base model for all tool responses."""
+
     pass
 
 
 class ErrorResponse(BaseModel):
     """Standard error response."""
+
     error: str
     status: str = "error"
 
 
 class SuccessResponse(BaseModel):
     """Standard success response."""
+
     status: str = "success"
 
 
 # Test Case related schemas
 class TestCaseCreatedResponse(BaseModel):
     """Response from create_test_case."""
+
     id: int
     name: str
     issues: list[str] = Field(default_factory=list)
@@ -38,6 +43,7 @@ class TestCaseCreatedResponse(BaseModel):
 
 class TestCaseDetailsResponse(BaseModel):
     """Response from get_test_case_details."""
+
     id: int | None
     name: str | None
     status: str
@@ -52,6 +58,7 @@ class TestCaseDetailsResponse(BaseModel):
 
 class TestCaseListResponse(BaseModel):
     """Response from list_test_cases."""
+
     total: int
     page: int
     size: int
@@ -61,6 +68,7 @@ class TestCaseListResponse(BaseModel):
 
 class TestCaseSearchResponse(BaseModel):
     """Response from search_test_cases."""
+
     total: int
     page: int
     size: int
@@ -71,24 +79,28 @@ class TestCaseSearchResponse(BaseModel):
 
 class CustomFieldsResponse(BaseModel):
     """Response from get_custom_fields."""
+
     items: list[dict[str, Any]]
     total: int
 
 
 class CustomFieldValueResponse(BaseModel):
     """Response from get_test_case_custom_fields_values."""
+
     # Dynamic based on custom fields
     pass
 
 
 class TestCaseCustomFieldsResponse(BaseModel):
     """Response from get_test_case_custom_fields."""
+
     items: list[dict[str, str]]
     total: int
 
 
 class TestCaseUpdatedResponse(BaseModel):
     """Response from update_test_case."""
+
     id: int
     name: str
     status: str
@@ -97,6 +109,7 @@ class TestCaseUpdatedResponse(BaseModel):
 
 class TestCaseDeletedResponse(BaseModel):
     """Response from delete_test_case."""
+
     test_case_id: int
     name: str | None
     status: str
@@ -105,12 +118,14 @@ class TestCaseDeletedResponse(BaseModel):
 
 class DeletedCountResponse(BaseModel):
     """Response from delete_archived_* operations."""
+
     deleted_count: int
 
 
 # Custom Field Value schemas
 class CustomFieldValueCreatedResponse(BaseModel):
     """Response from create_custom_field_value."""
+
     id: int
     name: str
     value: str | list[str]
@@ -119,6 +134,7 @@ class CustomFieldValueCreatedResponse(BaseModel):
 
 class CustomFieldValueUpdatedResponse(BaseModel):
     """Response from update_custom_field_value."""
+
     id: int
     name: str
     value: str | list[str]
@@ -127,6 +143,7 @@ class CustomFieldValueUpdatedResponse(BaseModel):
 
 class CustomFieldValueDeletedResponse(BaseModel):
     """Response from delete_custom_field_value."""
+
     id: int
     status: str
 
@@ -134,6 +151,7 @@ class CustomFieldValueDeletedResponse(BaseModel):
 # Integration schemas
 class IntegrationItem(BaseModel):
     """Integration item."""
+
     id: int | None
     name: str
     type: str | None
@@ -141,6 +159,7 @@ class IntegrationItem(BaseModel):
 
 class IntegrationsResponse(BaseModel):
     """Response from list_integrations."""
+
     items: list[IntegrationItem]
     total: int
 
@@ -148,6 +167,7 @@ class IntegrationsResponse(BaseModel):
 # Launch schemas
 class LaunchPayload(BaseModel):
     """Launch payload."""
+
     id: int | None
     name: str | None
     closed: bool | None
@@ -163,6 +183,7 @@ class LaunchPayload(BaseModel):
 
 class LaunchListResponse(BaseModel):
     """Response from list_launches."""
+
     total: int
     page: int
     size: int
@@ -172,6 +193,7 @@ class LaunchListResponse(BaseModel):
 
 class LaunchDetailResponse(BaseModel):
     """Response from get_launch."""
+
     id: int | None
     name: str | None
     closed: bool | None
@@ -188,6 +210,7 @@ class LaunchDetailResponse(BaseModel):
 
 class LaunchDeleteResponse(BaseModel):
     """Response from delete_launch."""
+
     launch_id: int
     name: str | None
     status: str
@@ -198,6 +221,7 @@ class LaunchDeleteResponse(BaseModel):
 # Shared Step schemas
 class SharedStepItem(BaseModel):
     """Shared step item."""
+
     id: int | None
     name: str | None
     steps_count: int | None
@@ -206,6 +230,7 @@ class SharedStepItem(BaseModel):
 
 class SharedStepsResponse(BaseModel):
     """Response from list_shared_steps."""
+
     items: list[SharedStepItem]
     total: int
     page: int
@@ -214,6 +239,7 @@ class SharedStepsResponse(BaseModel):
 
 class SharedStepCreatedResponse(BaseModel):
     """Response from create_shared_step."""
+
     id: int
     name: str
     project_id: int
@@ -222,6 +248,7 @@ class SharedStepCreatedResponse(BaseModel):
 
 class SharedStepUpdatedResponse(BaseModel):
     """Response from update_shared_step."""
+
     id: int
     name: str
     changed: bool
@@ -231,6 +258,7 @@ class SharedStepUpdatedResponse(BaseModel):
 
 class SharedStepDeletedResponse(BaseModel):
     """Response from delete_shared_step."""
+
     id: int
     status: str
     url: str
@@ -239,12 +267,14 @@ class SharedStepDeletedResponse(BaseModel):
 # Test Layer schemas
 class TestLayerItem(BaseModel):
     """Test layer item."""
+
     id: int
     name: str
 
 
 class TestLayersResponse(BaseModel):
     """Response from list_test_layers."""
+
     items: list[TestLayerItem]
     total: int
     page: int
@@ -253,12 +283,14 @@ class TestLayersResponse(BaseModel):
 
 class TestLayerCreatedResponse(BaseModel):
     """Response from create_test_layer."""
+
     id: int
     name: str
 
 
 class TestLayerDeletedResponse(BaseModel):
     """Response from delete_test_layer."""
+
     id: int
     status: str
 
@@ -266,6 +298,7 @@ class TestLayerDeletedResponse(BaseModel):
 # Test Suite schemas
 class TestSuiteCreatedResponse(BaseModel):
     """Response from create_test_suite."""
+
     id: int
     name: str
     project_id: int
@@ -273,6 +306,7 @@ class TestSuiteCreatedResponse(BaseModel):
 
 class TestSuiteListResponse(BaseModel):
     """Response from list_test_suites."""
+
     items: list[dict[str, Any]]
     total: int
     page: int
@@ -281,6 +315,7 @@ class TestSuiteListResponse(BaseModel):
 
 class TestSuiteDeletedResponse(BaseModel):
     """Response from delete_test_suite."""
+
     id: int
     status: str
 
@@ -288,6 +323,7 @@ class TestSuiteDeletedResponse(BaseModel):
 # Test Plan schemas
 class TestPlanCreatedResponse(BaseModel):
     """Response from create_test_plan."""
+
     id: int
     name: str
     project_id: int
@@ -295,6 +331,7 @@ class TestPlanCreatedResponse(BaseModel):
 
 class TestPlanListResponse(BaseModel):
     """Response from list_test_plans."""
+
     items: list[dict[str, Any]]
     total: int
     page: int
@@ -303,6 +340,7 @@ class TestPlanListResponse(BaseModel):
 
 class TestPlanDeletedResponse(BaseModel):
     """Response from delete_test_plan."""
+
     id: int
     status: str
 
@@ -310,6 +348,7 @@ class TestPlanDeletedResponse(BaseModel):
 # Defect schemas
 class DefectPayload(BaseModel):
     """Defect payload."""
+
     id: int
     name: str
     closed: bool
@@ -320,6 +359,7 @@ class DefectPayload(BaseModel):
 
 class DefectCreatedResponse(BaseModel):
     """Response from create_defect."""
+
     id: int
     name: str
     description: str | None
@@ -328,6 +368,7 @@ class DefectCreatedResponse(BaseModel):
 
 class DefectDetailResponse(BaseModel):
     """Response from get_defect."""
+
     id: int
     name: str
     closed: bool
@@ -338,6 +379,7 @@ class DefectDetailResponse(BaseModel):
 
 class DefectUpdatedResponse(BaseModel):
     """Response from update_defect."""
+
     id: int
     name: str
     closed: bool
@@ -348,6 +390,7 @@ class DefectUpdatedResponse(BaseModel):
 
 class DefectDeletedResponse(BaseModel):
     """Response from delete_defect."""
+
     id: int
     status: str
     url: str
@@ -355,11 +398,13 @@ class DefectDeletedResponse(BaseModel):
 
 class DefectListResponse(BaseModel):
     """Response from list_defects."""
+
     items: list[DefectPayload]
 
 
 class DefectLinkResponse(BaseModel):
     """Response from link_defect_to_test_case."""
+
     defect_id: int
     defect_url: str
     test_case_id: int
@@ -371,6 +416,7 @@ class DefectLinkResponse(BaseModel):
 
 class DefectTestCasesResponse(BaseModel):
     """Response from list_defect_test_cases."""
+
     total: int
     page: int
     size: int
@@ -383,6 +429,7 @@ class DefectTestCasesResponse(BaseModel):
 # Defect Matcher schemas
 class DefectMatcherPayload(BaseModel):
     """Defect matcher payload."""
+
     id: int
     name: str
     message_regex: str | None
@@ -391,6 +438,7 @@ class DefectMatcherPayload(BaseModel):
 
 class DefectMatcherCreatedResponse(BaseModel):
     """Response from create_defect_matcher."""
+
     id: int
     name: str
     defect_id: int
@@ -400,6 +448,7 @@ class DefectMatcherCreatedResponse(BaseModel):
 
 class DefectMatcherUpdatedResponse(BaseModel):
     """Response from update_defect_matcher."""
+
     id: int
     name: str
     message_regex: str | None
@@ -408,12 +457,14 @@ class DefectMatcherUpdatedResponse(BaseModel):
 
 class DefectMatcherDeletedResponse(BaseModel):
     """Response from delete_defect_matcher."""
+
     id: int
     status: str
 
 
 class DefectMatchersResponse(BaseModel):
     """Response from list_defect_matchers."""
+
     items: list[DefectMatcherPayload]
     defect_id: int
 

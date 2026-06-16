@@ -66,6 +66,19 @@ package = true
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[dependency-groups]
+dev = [
+    "allure-pytest>=2.16.0",
+    "faker>=40.21.0",
+    "mypy>=2.1.0",
+    "openapi-generator-cli>=7.23.0",
+    "pytest>=9.1.0",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
+    "pytest-mock>=3.15.1",
+    "respx>=0.23.1",
+]
+
 [tool.hatch.build]
 exclude = [
     "/.codex",

@@ -4,6 +4,7 @@ import os
 import typing
 
 from fastmcp import FastMCP
+from fastmcp.tools.function_tool import FunctionTool
 from starlette.applications import Starlette
 from starlette.routing import Mount
 
@@ -13,7 +14,6 @@ from src.tools.annotations import get_tool_annotations, get_tool_tags, validate_
 from src.utils.config import settings
 from src.utils.error import agent_hint_handler
 from src.utils.logger import configure_logging, get_logger
-from fastmcp.tools.function_tool import FunctionTool
 from src.utils.schema import get_tool_input_schema, get_tool_output_schema
 from src.utils.telemetry import set_telemetry_service, wrap_tool_with_telemetry
 from src.version import __version__

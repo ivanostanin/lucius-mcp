@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import inspect
 import typing
 from typing import Any
 
+from fastmcp.tools.function_parsing import ParsedFunction
 from pydantic import BaseModel, TypeAdapter
-from pydantic.json_schema import GenerateJsonSchema
-
-from fastmcp.tools.function_tool import ParsedFunction
 
 from src.tools.output_schemas import get_output_schema_model
 
@@ -54,8 +51,7 @@ class SchemaGenerator:
             return schema
 
         # Remove title keys
-        if "title" in schema:
-            del schema["title"]
+        schema.pop("title", None)
 
         # Ensure 'required' is always present at object level
         if schema.get("type") == "object" and "required" not in schema:
