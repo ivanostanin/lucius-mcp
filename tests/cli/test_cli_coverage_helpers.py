@@ -476,7 +476,9 @@ class TestCLICoverageHelpers:
                 output_param = signature.parameters.get("output_format")
                 assert output_param is not None, f"{module_path.name}:{fn.__name__} missing output_format"
                 expected = f"{DEFAULT_OUTPUT_FORMAT!r}"
-                assert output_param.default == DEFAULT_OUTPUT_FORMAT, f"{module_path.name}:{fn.__name__} default is not {expected}"
+                assert output_param.default == DEFAULT_OUTPUT_FORMAT, (
+                    f"{module_path.name}:{fn.__name__} default is not {expected}"
+                )
 
     def test_every_async_tool_docstring_mentions_output_format(self) -> None:
         tools_dir = Path(__file__).resolve().parents[2] / "src" / "tools"
