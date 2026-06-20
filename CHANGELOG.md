@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.10.5] - 2026-06-20
+
+### Changed
+- Pinned non-Windows `cryptography` builds to `48.0.1` to avoid the OpenSSL scan failure while preserving the Windows ARM64 wheel pin (`46.0.3`) (#239).
+
 ## [v0.10.4] - 2026-06-20
 
 ### Changed
@@ -251,7 +256,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.4...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.5...HEAD
+[v0.10.5]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.4...v0.10.5
 [v0.10.4]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.3...v0.10.4
 [v0.10.3]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.2...v0.10.3
 [v0.10.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.1...v0.10.2
