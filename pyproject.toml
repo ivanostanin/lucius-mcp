@@ -1,6 +1,6 @@
 [project]
 name = "lucius-mcp"
-version = "0.10.3"
+version = "0.10.4"
 description = "Allure TestOps MCP Server"
 readme = "README.md"
 license = "Apache-2.0"
