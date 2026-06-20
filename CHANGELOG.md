@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.10.4] - 2026-06-20
+
+### Changed
+- Updated locked runtime dependencies, including `cryptography` 49.0.0, `pydantic-settings` 2.14.2, and `PyJWT` 2.13.0 (#235, #236, #237).
+
 ## [v0.10.3] - 2026-06-15
 
 ### Changed
@@ -246,7 +251,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.3...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.4...HEAD
+[v0.10.4]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.3...v0.10.4
 [v0.10.3]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.2...v0.10.3
 [v0.10.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.1...v0.10.2
 [v0.10.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.0...v0.10.1
