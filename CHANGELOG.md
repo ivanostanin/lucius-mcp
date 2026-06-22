@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.10.6] - 2026-06-22
+
+### Changed
+- Updated GitHub Actions workflow dependencies, including `actions/checkout` 7.0.0 and `softprops/action-gh-release` 3.0.1, and refreshed locked tooling dependencies including Cyclopts 4.18.0, Faker 40.23.0, Pytest 9.1.1, and Ruff 0.15.18 (#249).
+
 ## [v0.10.5] - 2026-06-20
 
 ### Changed
@@ -256,7 +261,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.5...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.6...HEAD
+[v0.10.6]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.5...v0.10.6
 [v0.10.5]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.4...v0.10.5
 [v0.10.4]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.3...v0.10.4
 [v0.10.3]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.2...v0.10.3
