@@ -428,6 +428,20 @@ So that I can control the launch lifecycle and make corrections when needed.
 **And** when I call `reopen_launch` on a closed launch
 **Then** the launch status is updated to "Open" and I can add additional test results.
 
+### Story 5.5: Upload Results to Existing Launch
+
+As an AI Agent,
+I want to upload result files to an existing launch,
+So that I can append externally produced execution artifacts to the correct TestOps run.
+
+**Acceptance Criteria:**
+
+**Given** an existing Launch ID and one or more result files
+**When** I call `upload_test_results_to_launch`
+**Then** the files are uploaded to that launch
+**And** the launch statistics are updated
+**And** invalid launch IDs or malformed uploads return actionable validation errors.
+
 ## Epic 6: Advanced Organization & Discovery
 
 Enable Agents to manage complex test hierarchies (Trees, Suites) and perform advanced search operations, facilitating management of large-scale test repositories.
@@ -1034,7 +1048,7 @@ so that CLI behavior is verified end-to-end without depending on built binaries 
 
 ## Epic 10: Quality of Life and API Coverage
 
-Goal: Improve day-to-day agent usability and close API coverage gaps without changing the service-first architecture or existing output contracts.
+Goal: Improve day-to-day agent usability and close API coverage gaps, including manual launch execution workflows, without changing the service-first architecture or existing output contracts.
 
 ### Story 10.1: Include TestOps Entity URLs in Tool Responses
 
@@ -1075,6 +1089,43 @@ so that I can navigate users directly to the relevant TestOps objects without ma
 **When** unit, integration, and selected e2e tests execute
 **Then** they verify URL generation for test cases, launches, defects, test plans, and shared steps
 **And** they verify output remains backward compatible for existing ID parsing and CLI formatting.
+
+### Story 10.2: Manage Manual Test Execution Inside Launches
+
+As an AI Agent,
+I want to discover manual test results in a launch, schedule reruns for failed results, and submit manual execution updates,
+so that I can complete manual QA workflows in Allure TestOps without leaving MCP.
+
+**Acceptance Criteria:**
+
+**Given** a Launch ID
+**When** I call `list_launch_test_results`
+**Then** I receive launch test results with enough metadata to identify manual tests and failed results
+**And** the response includes result IDs, test case IDs, manual flag, current status, and assignee/tester fields when available.
+
+**Given** one or more failed test results in a launch
+**When** I call `rerun_test_results_manually`
+**Then** those results are scheduled for manual rerun in TestOps
+**And** the tool supports forcing manual rerun mode and optional assignee targeting.
+
+**Given** a launch containing original manual tests or manual reruns
+**When** I call `start_manual_test_session` and then `submit_manual_test_results`
+**Then** I can set per-test start/stop timestamps, status, comments/messages, and per-step status/outcome details
+**And** TestOps records the updated execution results for that manual session.
+
+**Given** a created or existing manual test result
+**When** I attach evidence to the result or one of its steps
+**Then** the attachment is stored in TestOps and linked to the correct result context
+**And** the tool returns identifiers needed for follow-up actions.
+
+**Given** invalid result IDs, missing session IDs, unsupported statuses, or malformed step payloads
+**When** I call the manual execution tools
+**Then** the server returns clear Agent Hints describing the invalid fields and expected shapes.
+
+**Given** NFR11 from the PRD requires end-to-end verification against a sandbox TestOps instance or project
+**When** this story is implemented
+**Then** the automated test plan includes end-to-end coverage for listing launch results, rerunning failed manual results, starting a manual session, submitting manual results, and attaching result or step evidence
+**And** those tests verify tool execution results against the sandbox instance rather than relying only on mocked unit or integration coverage.
 
 ## Epic 11: Telemetry Signal Simplification
 
