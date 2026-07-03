@@ -31,5 +31,12 @@ from src.client.generated.api.test_case_tree_controller_v2_api import TestCaseTr
 from src.client.generated.api.test_layer_controller_api import TestLayerControllerApi
 from src.client.generated.api.test_layer_schema_controller_api import TestLayerSchemaControllerApi
 from src.client.generated.api.test_plan_controller_api import TestPlanControllerApi
+from src.client.generated.api.test_result_bulk_controller_api import TestResultBulkControllerApi
+from src.client.generated.api.test_result_controller_api import TestResultControllerApi
+from src.client.generated.api.test_result_fixture_controller_api import TestResultFixtureControllerApi
+from src.client.generated.api.test_result_flat_controller_api import TestResultFlatControllerApi
+from src.client.generated.api.test_result_rerun_controller_api import TestResultRerunControllerApi
 from src.client.generated.api.tree_controller_v2_api import TreeControllerV2Api
+from src.client.generated.api.upload_controller_api import UploadControllerApi
+from src.client.generated.api.upload_test_result_controller_api import UploadTestResultControllerApi
 

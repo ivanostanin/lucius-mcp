@@ -7,7 +7,16 @@ from typing import Annotated
 from pydantic import Field
 
 from src.client import AllureClient
-from src.services.launch_service import LaunchDeleteResult, LaunchListResult, LaunchService
+from src.services.launch_service import (
+    AttachmentUploadResult,
+    LaunchDeleteResult,
+    LaunchListResult,
+    LaunchService,
+    LaunchTestResultListResult,
+    ManualRerunResult,
+    ManualTestSessionResult,
+    ManualTestSubmissionResult,
+)
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
 from src.utils.auth_resolution import resolve_auth_settings
 from src.utils.links import launch_url
@@ -154,6 +163,325 @@ async def get_launch(
     )
 
 
+async def list_launch_test_results(
+    launch_id: Annotated[int, Field(description="Launch ID (required).")],
+    manual_only: Annotated[
+        bool,
+        Field(description="When true, return only manual results. Filtering is handled for you."),
+    ] = False,
+    failed_only: Annotated[
+        bool,
+        Field(description="When true, return only failed or broken results. Filtering is handled for you."),
+    ] = False,
+    page: Annotated[int, Field(description="Zero-based page index after optional filtering.")] = 0,
+    size: Annotated[int, Field(description="Number of results per page (max 100).", le=100)] = 20,
+    search: Annotated[str | None, Field(description="Optional result-name search term.")] = None,
+    filter_id: Annotated[int | None, Field(description="Optional saved filter ID from TestOps.")] = None,
+    sort: Annotated[
+        list[str] | None,
+        Field(description="Optional sort directives such as ['name,ASC'] or ['createdDate,DESC']."),
+    ] = None,
+    project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
+) -> ToolOutput:
+    """List test results inside a launch, including manual execution metadata.
+
+    Args:
+        launch_id: Launch ID.
+        manual_only: Restrict results to manual tests.
+        failed_only: Restrict results to failed/broken tests.
+        page: Zero-based page index after optional filtering.
+        size: Number of results per page.
+        search: Optional result-name search term.
+        filter_id: Optional saved filter ID.
+        sort: Optional sort directives.
+        project_id: Optional override for the default Project ID.
+        output_format: Output format: 'json' (default) or 'plain'.
+
+    Returns:
+        Launch result summaries with result IDs, test case IDs, statuses, and assignee/tester fields.
+    """
+    async with _launch_client_context(project_id=project_id) as client:
+        service = LaunchService(client=client)
+        result = await service.list_launch_test_results(
+            launch_id,
+            page=page,
+            size=size,
+            search=search,
+            filter_id=filter_id,
+            sort=sort,
+            manual_only=manual_only,
+            failed_only=failed_only,
+        )
+
+    items = [
+        {
+            "result_id": item.result_id,
+            "test_case_id": item.test_case_id,
+            "name": item.name,
+            "manual": item.manual,
+            "status": item.status,
+            "assignee": item.assignee,
+            "tested_by": item.tested_by,
+        }
+        for item in result.items
+    ]
+    return render_output(
+        plain=_format_launch_test_result_list(result),
+        json_payload={
+            "launch_id": launch_id,
+            "manual_only": manual_only,
+            "failed_only": failed_only,
+            "total": result.total,
+            "page": result.page,
+            "size": result.size,
+            "total_pages": result.total_pages,
+            "items": items,
+        },
+        output_format=output_format,
+    )
+
+
+async def rerun_test_results_manually(
+    launch_id: Annotated[int, Field(description="Launch ID containing the failed results (required).")],
+    result_ids: Annotated[
+        list[int],
+        Field(description="One or more launch result IDs to schedule for manual rerun."),
+    ],
+    assignees: Annotated[
+        list[str] | None,
+        Field(description="Optional usernames to assign during manual rerun scheduling."),
+    ] = None,
+    force_manual: Annotated[
+        bool,
+        Field(description="Force manual rerun mode when the upstream API supports it."),
+    ] = True,
+    project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
+) -> ToolOutput:
+    """Schedule manual reruns for selected launch results.
+
+    Args:
+        launch_id: Launch ID.
+        result_ids: Selected result IDs to rerun.
+        assignees: Optional usernames to assign.
+        force_manual: Force manual rerun mode.
+        project_id: Optional override for the default Project ID.
+        output_format: Output format: 'json' (default) or 'plain'.
+
+    Returns:
+        Confirmation that manual reruns were scheduled.
+    """
+    async with _launch_client_context(project_id=project_id) as client:
+        service = LaunchService(client=client)
+        result = await service.rerun_test_results_manually(
+            launch_id,
+            result_ids=result_ids,
+            assignees=assignees,
+            force_manual=force_manual,
+        )
+
+    return render_output(
+        plain=_format_manual_rerun_result(result),
+        json_payload={
+            "launch_id": result.launch_id,
+            "result_ids": result.result_ids,
+            "scheduled_count": result.scheduled_count,
+            "assignees": result.assignees,
+            "force_manual": result.force_manual,
+        },
+        output_format=output_format,
+    )
+
+
+async def start_manual_test_session(
+    launch_id: Annotated[int, Field(description="Launch ID (required).")],
+    environment: Annotated[
+        list[dict[str, str]] | None,
+        Field(description="Optional environment variables as [{key, value}, ...]."),
+    ] = None,
+    project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
+) -> ToolOutput:
+    """Start a manual execution session for a launch.
+
+    Args:
+        launch_id: Launch ID.
+        environment: Optional environment key/value pairs.
+        project_id: Optional override for the default Project ID.
+        output_format: Output format: 'json' (default) or 'plain'.
+
+    Returns:
+        The manual test session ID required for result submission.
+    """
+    async with _launch_client_context(project_id=project_id) as client:
+        service = LaunchService(client=client)
+        result = await service.start_manual_test_session(launch_id, environment=environment)
+
+    return render_output(
+        plain=_format_manual_test_session_result(result),
+        json_payload={
+            "test_session_id": result.test_session_id,
+            "launch_id": result.launch_id,
+            "job_id": result.job_id,
+            "job_run_id": result.job_run_id,
+            "project_id": result.project_id,
+            "environment": result.environment,
+        },
+        output_format=output_format,
+    )
+
+
+async def submit_manual_test_results(
+    test_session_id: Annotated[int, Field(description="Manual test session ID (required).")],
+    results: Annotated[
+        list[dict[str, object]],
+        Field(
+            description=(
+                "Manual result payloads. Each item must include test_case_id and may include "
+                "status/start/stop/message/trace/description/precondition/expected_result/steps/parameters."
+            )
+        ),
+    ],
+    project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
+) -> ToolOutput:
+    """Submit manual execution results for a manual session.
+
+    Args:
+        test_session_id: Manual test session ID.
+        results: Manual result payloads.
+        project_id: Optional override for the default Project ID.
+        output_format: Output format: 'json' (default) or 'plain'.
+
+    Returns:
+        Created or updated test result IDs for follow-up actions.
+    """
+    async with _launch_client_context(project_id=project_id) as client:
+        service = LaunchService(client=client)
+        result = await service.submit_manual_test_results(test_session_id, results=results)
+
+    return render_output(
+        plain=_format_manual_test_submission_result(result),
+        json_payload={
+            "test_session_id": result.test_session_id,
+            "result_ids": result.result_ids,
+            "submitted_count": result.submitted_count,
+        },
+        output_format=output_format,
+    )
+
+
+async def add_test_result_attachment(
+    test_result_id: Annotated[int, Field(description="Manual test result ID (required).")],
+    attachment: Annotated[
+        dict[str, str],
+        Field(
+            description=("Attachment payload using the repo-standard pattern: {name, content_type, content? | url?}.")
+        ),
+    ],
+    project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
+) -> ToolOutput:
+    """Upload evidence to a manual test result.
+
+    Args:
+        test_result_id: Manual test result ID.
+        attachment: Attachment payload using content or url.
+        project_id: Optional override for the default Project ID.
+        output_format: Output format: 'json' (default) or 'plain'.
+
+    Returns:
+        Confirmation that the attachment was accepted for the result.
+    """
+    async with _launch_client_context(project_id=project_id) as client:
+        service = LaunchService(client=client)
+        result = await service.add_test_result_attachment(test_result_id, attachment=attachment)
+
+    return render_output(
+        plain=_format_attachment_upload_result(result),
+        json_payload={
+            "target_kind": result.target_kind,
+            "target_id": result.target_id,
+            "file_names": result.file_names,
+            "status_code": result.status_code,
+        },
+        output_format=output_format,
+    )
+
+
+async def add_test_step_attachment(
+    test_result_id: Annotated[int, Field(description="Parent test result ID (required).")],
+    attachment: Annotated[
+        dict[str, str],
+        Field(
+            description=("Attachment payload using the repo-standard pattern: {name, content_type, content? | url?}.")
+        ),
+    ],
+    fixture_result_id: Annotated[
+        int | None,
+        Field(description="Optional explicit fixture result ID for the step context."),
+    ] = None,
+    fixture_name: Annotated[
+        str | None,
+        Field(description="Optional fixture/step name used to resolve the step context inside the test result."),
+    ] = None,
+    fixture_type: Annotated[
+        str | None,
+        Field(description="Optional fixture type hint: 'before' or 'after'."),
+    ] = None,
+    project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
+) -> ToolOutput:
+    """Upload evidence to a fixture-backed step context for a manual result.
+
+    Args:
+        test_result_id: Parent test result ID.
+        attachment: Attachment payload using content or url.
+        fixture_result_id: Optional explicit fixture result ID.
+        fixture_name: Optional fixture/step name to resolve the target context.
+        fixture_type: Optional fixture type hint ('before' or 'after').
+        project_id: Optional override for the default Project ID.
+        output_format: Output format: 'json' (default) or 'plain'.
+
+    Returns:
+        Confirmation that the attachment was accepted for the step context.
+    """
+    normalized_fixture_type = fixture_type.lower() if isinstance(fixture_type, str) else None
+    async with _launch_client_context(project_id=project_id) as client:
+        service = LaunchService(client=client)
+        result = await service.add_test_step_attachment(
+            test_result_id=test_result_id,
+            attachment=attachment,
+            fixture_result_id=fixture_result_id,
+            fixture_name=fixture_name,
+            fixture_type=normalized_fixture_type,  # type: ignore[arg-type]
+        )
+
+    return render_output(
+        plain=_format_attachment_upload_result(result),
+        json_payload={
+            "target_kind": result.target_kind,
+            "target_id": result.target_id,
+            "file_names": result.file_names,
+            "status_code": result.status_code,
+        },
+        output_format=output_format,
+    )
+
+
 async def delete_launch(
     launch_id: Annotated[int, Field(description="Launch ID to delete/archive (required).")],
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
@@ -282,6 +610,10 @@ def _launch_payload(launch: object, *, base_url: str, project_id: int) -> dict[s
         "known_defects_count": getattr(launch, "known_defects_count", None)
         or getattr(launch, "knownDefectsCount", None),
         "new_defects_count": getattr(launch, "new_defects_count", None) or getattr(launch, "newDefectsCount", None),
+        "manual_execution_guidance": (
+            "Use list_launch_test_results for result-level manual execution work, "
+            "then start_manual_test_session and submit_manual_test_results for interactive updates."
+        ),
     }
     if isinstance(launch_id, int):
         payload["url"] = launch_url(base_url, project_id, launch_id)
@@ -353,6 +685,10 @@ def _format_launch_detail(launch: object, *, base_url: str, project_id: int) -> 
     _append_timing_lines(lines, launch)
     _append_metadata_lines(lines, launch)
     _append_statistic_lines(lines, launch)
+    lines.append(
+        "- Manual execution: use list_launch_test_results for result discovery, "
+        "then start_manual_test_session and submit_manual_test_results."
+    )
 
     return "\n".join(lines)
 
@@ -417,3 +753,68 @@ def _format_launch_delete(result: LaunchDeleteResult) -> str:
 
     name_part = f": '{result.name}'" if result.name else ""
     return f"✅ Archived Launch {result.launch_id}{name_part}"
+
+
+def _format_launch_test_result_list(result: LaunchTestResultListResult) -> str:
+    if not result.items:
+        return "No matching launch test results found."
+
+    lines = [f"Found {result.total} launch test results (page {result.page + 1} of {result.total_pages}):"]
+    for item in result.items:
+        name = item.name or "(unnamed)"
+        result_id = item.result_id if item.result_id is not None else "unknown"
+        test_case_id = item.test_case_id if item.test_case_id is not None else "unknown"
+        manual = "manual" if item.manual else "automated"
+        status = item.status or "unknown"
+        lines.append(f"- Result #{result_id}: {name} (test case #{test_case_id}; {manual}; status={status})")
+        if item.assignee:
+            lines.append(f"  Assignee: {item.assignee}")
+        if item.tested_by:
+            lines.append(f"  Tested by: {item.tested_by}")
+    return "\n".join(lines)
+
+
+def _format_manual_rerun_result(result: ManualRerunResult) -> str:
+    lines = [
+        f"Scheduled {result.scheduled_count} manual rerun(s) in launch {result.launch_id}.",
+        f"Result IDs: {', '.join(str(result_id) for result_id in result.result_ids)}",
+        f"Force manual: {result.force_manual}",
+    ]
+    if result.assignees:
+        lines.append(f"Assignees: {', '.join(result.assignees)}")
+    return "\n".join(lines)
+
+
+def _format_manual_test_session_result(result: ManualTestSessionResult) -> str:
+    lines = [
+        f"Manual test session started successfully. Test session ID: {result.test_session_id}",
+    ]
+    if result.launch_id is not None:
+        lines.append(f"Launch ID: {result.launch_id}")
+    if result.job_id is not None:
+        lines.append(f"Job ID: {result.job_id}")
+    if result.job_run_id is not None:
+        lines.append(f"Job run ID: {result.job_run_id}")
+    if result.environment:
+        rendered = ", ".join(f"{item.get('key')}={item.get('value')}" for item in result.environment)
+        lines.append(f"Environment: {rendered}")
+    return "\n".join(lines)
+
+
+def _format_manual_test_submission_result(result: ManualTestSubmissionResult) -> str:
+    lines = [
+        f"Submitted {result.submitted_count} manual result payload(s) for test session {result.test_session_id}.",
+    ]
+    if result.result_ids:
+        lines.append(f"Result IDs: {', '.join(str(result_id) for result_id in result.result_ids)}")
+    else:
+        lines.append("Result IDs were not returned by the API.")
+    return "\n".join(lines)
+
+
+def _format_attachment_upload_result(result: AttachmentUploadResult) -> str:
+    file_names = ", ".join(result.file_names)
+    return (
+        f"Attachment upload accepted for {result.target_kind} {result.target_id}. "
+        f"Files: {file_names}. HTTP status: {result.status_code}."
+    )

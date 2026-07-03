@@ -47,7 +47,14 @@ from .generated.api.test_case_tree_bulk_controller_v2_api import TestCaseTreeBul
 from .generated.api.test_case_tree_controller_v2_api import TestCaseTreeControllerV2Api
 from .generated.api.test_layer_controller_api import TestLayerControllerApi
 from .generated.api.test_layer_schema_controller_api import TestLayerSchemaControllerApi
+from .generated.api.test_result_bulk_controller_api import TestResultBulkControllerApi
+from .generated.api.test_result_controller_api import TestResultControllerApi
+from .generated.api.test_result_fixture_controller_api import TestResultFixtureControllerApi
+from .generated.api.test_result_flat_controller_api import TestResultFlatControllerApi
+from .generated.api.test_result_rerun_controller_api import TestResultRerunControllerApi
 from .generated.api.tree_controller_v2_api import TreeControllerV2Api
+from .generated.api.upload_controller_api import UploadControllerApi
+from .generated.api.upload_test_result_controller_api import UploadTestResultControllerApi
 from .generated.api_client import ApiClient
 from .generated.configuration import Configuration
 from .generated.exceptions import ApiException
@@ -61,13 +68,17 @@ from .generated.models.custom_field_value_project_create_dto import CustomFieldV
 from .generated.models.custom_field_value_project_patch_dto import CustomFieldValueProjectPatchDto
 from .generated.models.custom_field_value_with_cf_dto import CustomFieldValueWithCfDto
 from .generated.models.custom_field_with_values_dto import CustomFieldWithValuesDto
+from .generated.models.external_run_response_dto import ExternalRunResponseDto
+from .generated.models.external_run_start_request_dto import ExternalRunStartRequestDto
 from .generated.models.find_all29200_response import FindAll29200Response
+from .generated.models.id_and_name_only_dto import IdAndNameOnlyDto
 from .generated.models.integration_dto import IntegrationDto
 from .generated.models.issue_dto import IssueDto
 from .generated.models.launch_create_dto import LaunchCreateDto
 from .generated.models.launch_dto import LaunchDto
 from .generated.models.launch_existing_upload_dto import LaunchExistingUploadDto
 from .generated.models.launch_upload_response_dto import LaunchUploadResponseDto
+from .generated.models.manual_session_request_dto import ManualSessionRequestDto
 from .generated.models.normalized_scenario_dto import NormalizedScenarioDto
 from .generated.models.normalized_scenario_dto_attachments_value import NormalizedScenarioDtoAttachmentsValue
 from .generated.models.page_custom_field_value_with_tc_count_dto import PageCustomFieldValueWithTcCountDto
@@ -79,6 +90,8 @@ from .generated.models.page_test_case_dto import PageTestCaseDto
 from .generated.models.page_test_case_row_dto import PageTestCaseRowDto
 from .generated.models.page_test_case_tree_node_dto import PageTestCaseTreeNodeDto
 from .generated.models.page_test_case_tree_node_dto_content_inner import PageTestCaseTreeNodeDtoContentInner
+from .generated.models.page_test_fixture_result_attachment_row_dto import PageTestFixtureResultAttachmentRowDto
+from .generated.models.page_test_result_flat_dto import PageTestResultFlatDto
 from .generated.models.page_tree_dto_v2 import PageTreeDtoV2
 from .generated.models.project_test_case_count_dto import ProjectTestCaseCountDto
 from .generated.models.scenario_step_create_dto import ScenarioStepCreateDto
@@ -112,8 +125,18 @@ from .generated.models.test_case_tree_selection_dto_v2 import TestCaseTreeSelect
 from .generated.models.test_fixture_result_attachment_row_dto import (
     TestFixtureResultAttachmentRowDto,
 )
+from .generated.models.test_fixture_result_v2_dto import TestFixtureResultV2Dto
 from .generated.models.test_result_attachment_row_dto import TestResultAttachmentRowDto
+from .generated.models.test_result_bulk_rerun_dto import TestResultBulkRerunDto
+from .generated.models.test_result_dto import TestResultDto
+from .generated.models.test_result_flat_dto import TestResultFlatDto
+from .generated.models.test_result_rerun_dto import TestResultRerunDto
+from .generated.models.test_result_scenario_v2_dto import TestResultScenarioV2Dto
+from .generated.models.test_session_response_dto import TestSessionResponseDto
 from .generated.models.tree_dto_v2 import TreeDtoV2
+from .generated.models.upload_fixtures_results_dto import UploadFixturesResultsDto
+from .generated.models.upload_results_dto import UploadResultsDto
+from .generated.models.upload_results_response_dto import UploadResultsResponseDto
 from .generated.rest import RESTResponse
 from .overridden.test_case_custom_fields_v2 import TestCaseCustomFieldV2ControllerApi
 
@@ -180,11 +203,18 @@ type ApiType = (
     | TestLayerSchemaControllerApi
     | LaunchControllerApi
     | LaunchSearchControllerApi
+    | TestResultControllerApi
+    | TestResultBulkControllerApi
+    | TestResultFixtureControllerApi
+    | TestResultFlatControllerApi
+    | TestResultRerunControllerApi
     | TreeControllerV2Api
     | TestCaseTreeControllerV2Api
     | TestCaseTreeBulkControllerV2Api
     | IntegrationControllerApi
     | ProjectControllerApi
+    | UploadControllerApi
+    | UploadTestResultControllerApi
 )
 
 type NormalizedScenarioDict = dict[str, object]
@@ -209,6 +239,7 @@ __all__ = [
     "PageSharedStepDto",
     "PageTestCaseDto",
     "PageTestCaseRowDto",
+    "PageTestResultFlatDto",
     "ScenarioStepCreateDto",
     "ScenarioStepCreatedResponseDto",
     "ScenarioStepPatchDto",
@@ -229,6 +260,9 @@ __all__ = [
     "TestCaseScenarioDto",
     "TestCaseScenarioV2Dto",
     "TestCaseTreeSelectionDtoV2",
+    "TestFixtureResultV2Dto",
+    "TestResultDto",
+    "TestResultFlatDto",
 ]
 
 
@@ -300,11 +334,18 @@ class AllureClient:
         self._test_layer_schema_api: TestLayerSchemaControllerApi | None = None
         self._launch_api: LaunchControllerApi | None = None
         self._launch_search_api: LaunchSearchControllerApi | None = None
+        self._test_result_api: TestResultControllerApi | None = None
+        self._test_result_bulk_api: TestResultBulkControllerApi | None = None
+        self._test_result_fixture_api: TestResultFixtureControllerApi | None = None
+        self._test_result_flat_api: TestResultFlatControllerApi | None = None
+        self._test_result_rerun_api: TestResultRerunControllerApi | None = None
         self._tree_api: TreeControllerV2Api | None = None
         self._test_case_tree_api: TestCaseTreeControllerV2Api | None = None
         self._test_case_tree_bulk_api: TestCaseTreeBulkControllerV2Api | None = None
         self._integration_api: IntegrationControllerApi | None = None
         self._project_api: ProjectControllerApi | None = None
+        self._upload_api: UploadControllerApi | None = None
+        self._upload_test_result_api: UploadTestResultControllerApi | None = None
         self._is_entered = False
 
     @classmethod
@@ -450,11 +491,18 @@ class AllureClient:
             self._test_layer_schema_api = TestLayerSchemaControllerApi(self._api_client)
             self._launch_api = LaunchControllerApi(self._api_client)
             self._launch_search_api = LaunchSearchControllerApi(self._api_client)
+            self._test_result_api = TestResultControllerApi(self._api_client)
+            self._test_result_bulk_api = TestResultBulkControllerApi(self._api_client)
+            self._test_result_fixture_api = TestResultFixtureControllerApi(self._api_client)
+            self._test_result_flat_api = TestResultFlatControllerApi(self._api_client)
+            self._test_result_rerun_api = TestResultRerunControllerApi(self._api_client)
             self._tree_api = TreeControllerV2Api(self._api_client)
             self._test_case_tree_api = TestCaseTreeControllerV2Api(self._api_client)
             self._test_case_tree_bulk_api = TestCaseTreeBulkControllerV2Api(self._api_client)
             self._integration_api = IntegrationControllerApi(self._api_client)
             self._project_api = ProjectControllerApi(self._api_client)
+            self._upload_api = UploadControllerApi(self._api_client)
+            self._upload_test_result_api = UploadTestResultControllerApi(self._api_client)
 
     @property
     def api_client(self) -> ApiClient:
@@ -645,6 +693,31 @@ class AllureClient:
 
     @overload
     async def _get_api(
+        self, attr_name: Literal["_test_result_api"], *, error_name: str | None = None
+    ) -> TestResultControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_test_result_bulk_api"], *, error_name: str | None = None
+    ) -> TestResultBulkControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_test_result_fixture_api"], *, error_name: str | None = None
+    ) -> TestResultFixtureControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_test_result_flat_api"], *, error_name: str | None = None
+    ) -> TestResultFlatControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_test_result_rerun_api"], *, error_name: str | None = None
+    ) -> TestResultRerunControllerApi: ...
+
+    @overload
+    async def _get_api(
         self, attr_name: Literal["_tree_api"], *, error_name: str | None = None
     ) -> TreeControllerV2Api: ...
 
@@ -662,6 +735,16 @@ class AllureClient:
     async def _get_api(
         self, attr_name: Literal["_project_api"], *, error_name: str | None = None
     ) -> ProjectControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_upload_api"], *, error_name: str | None = None
+    ) -> UploadControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_upload_test_result_api"], *, error_name: str | None = None
+    ) -> UploadTestResultControllerApi: ...
 
     async def _get_api(self, attr_name: str, *, error_name: str | None = None) -> ApiType:
         self._require_entered()
@@ -693,6 +776,69 @@ class AllureClient:
         if isinstance(data, dict):
             return data
         raise ApiException(status=response.status_code, reason=response.reason_phrase, body=response.text)
+
+    @staticmethod
+    def _extract_upload_result_ids(data: dict[str, object]) -> list[int]:
+        result_ids = data.get("resultIds")
+        if isinstance(result_ids, list):
+            return [result_id for result_id in result_ids if isinstance(result_id, int)]
+
+        results = data.get("results")
+        if isinstance(results, list):
+            extracted_ids: list[int] = []
+            for item in results:
+                if isinstance(item, dict):
+                    result_id = item.get("id")
+                    if isinstance(result_id, int):
+                        extracted_ids.append(result_id)
+            return extracted_ids
+
+        return []
+
+    async def _upload_multipart_files(
+        self,
+        *,
+        method: str,
+        resource_path: str,
+        files: dict[str, bytes | str | tuple[str, bytes] | list[bytes | str | tuple[str, bytes]]],
+        expected_status_codes: tuple[int, ...],
+        accept_header: str | None = None,
+    ) -> RESTResponse:
+        self._require_entered()
+        await self._ensure_valid_token()
+
+        if self._api_client is None:
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+
+        headers = {"Content-Type": "multipart/form-data"}
+        if accept_header is not None:
+            headers["Accept"] = accept_header
+
+        request_args = self._api_client.param_serialize(
+            method=method,
+            resource_path=resource_path,
+            header_params=headers,
+            post_params=[],
+            files=files,
+            auth_settings=[],
+        )
+        call_coro = self._api_client.call_api(
+            *request_args,
+            _request_timeout=self._timeout,
+        )
+        response = await self._call_api_raw(cast(Awaitable[httpx.Response], call_coro))
+        rest_response = cast(RESTResponse, response)
+
+        if rest_response.status not in expected_status_codes:
+            self._handle_api_exception(
+                ApiException(
+                    status=rest_response.status,
+                    reason=rest_response.reason,
+                    body=rest_response.response.text,
+                )
+            )
+
+        return rest_response
 
     @staticmethod
     def _patch_attachment_with_discriminator(attachment_dict: dict[str, object]) -> dict[str, object]:
@@ -1174,6 +1320,210 @@ class AllureClient:
 
         await self._call_api(api.reopen(id=launch_id, _request_timeout=self._timeout))
 
+    async def list_launch_test_results(
+        self,
+        launch_id: int,
+        *,
+        page: int = 0,
+        size: int = 100,
+        search: str | None = None,
+        filter_id: int | None = None,
+        sort: list[str] | None = None,
+    ) -> PageTestResultFlatDto:
+        """List launch test results using the flat launch-results endpoint."""
+        api = await self._get_api("_test_result_flat_api", error_name="test result flat APIs")
+
+        if not isinstance(launch_id, int) or launch_id <= 0:
+            raise AllureValidationError("Launch ID must be a positive integer")
+        if not isinstance(page, int) or page < 0:
+            raise AllureValidationError("Page must be a non-negative integer")
+        if not isinstance(size, int) or size <= 0 or size > 100:
+            raise AllureValidationError("Size must be between 1 and 100")
+
+        return await self._call_api(
+            api.get_test_cases1(
+                launch_id=launch_id,
+                search=search,
+                filter_id=filter_id,
+                page=page,
+                size=size,
+                sort=sort,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def get_test_result(self, test_result_id: int) -> TestResultDto:
+        """Fetch one test result by ID."""
+        api = await self._get_api("_test_result_api", error_name="test result APIs")
+
+        if not isinstance(test_result_id, int) or test_result_id <= 0:
+            raise AllureValidationError("Test Result ID must be a positive integer")
+
+        return await self._call_api(api.find_one5(id=test_result_id, _request_timeout=self._timeout))
+
+    async def get_test_result_execution(self, test_result_id: int) -> TestResultScenarioV2Dto:
+        """Fetch execution details for one test result."""
+        api = await self._get_api("_test_result_api", error_name="test result APIs")
+
+        if not isinstance(test_result_id, int) or test_result_id <= 0:
+            raise AllureValidationError("Test Result ID must be a positive integer")
+
+        return await self._call_api(api.find_execution(id=test_result_id, _request_timeout=self._timeout))
+
+    async def get_test_result_fixtures(self, test_result_id: int) -> list[TestFixtureResultV2Dto]:
+        """Fetch fixture results for one test result."""
+        api = await self._get_api("_test_result_fixture_api", error_name="test result fixture APIs")
+
+        if not isinstance(test_result_id, int) or test_result_id <= 0:
+            raise AllureValidationError("Test Result ID must be a positive integer")
+
+        return await self._call_api(api.get_fixtures(test_result_id=test_result_id, _request_timeout=self._timeout))
+
+    async def get_test_result_fixture_attachments(
+        self,
+        test_result_id: int,
+        *,
+        page: int = 0,
+        size: int = 10,
+        sort: list[str] | None = None,
+    ) -> PageTestFixtureResultAttachmentRowDto:
+        """Fetch fixture attachments for one test result."""
+        api = await self._get_api("_test_result_fixture_api", error_name="test result fixture APIs")
+
+        if not isinstance(test_result_id, int) or test_result_id <= 0:
+            raise AllureValidationError("Test Result ID must be a positive integer")
+        if not isinstance(page, int) or page < 0:
+            raise AllureValidationError("Page must be a non-negative integer")
+        if not isinstance(size, int) or size <= 0 or size > 100:
+            raise AllureValidationError("Size must be between 1 and 100")
+
+        return await self._call_api(
+            api.get_fixtures_attachments(
+                test_result_id=test_result_id,
+                page=page,
+                size=size,
+                sort=sort,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def rerun_test_results_bulk(self, data: TestResultBulkRerunDto) -> None:
+        """Schedule manual reruns for selected test results."""
+        api = await self._get_api("_test_result_bulk_api", error_name="test result bulk APIs")
+        await self._call_api(api.rerun(test_result_bulk_rerun_dto=data, _request_timeout=self._timeout))
+
+    async def rerun_test_result(self, test_result_id: int, data: TestResultRerunDto) -> IdAndNameOnlyDto:
+        """Schedule a manual rerun for one test result."""
+        api = await self._get_api("_test_result_rerun_api", error_name="test result rerun APIs")
+
+        if not isinstance(test_result_id, int) or test_result_id <= 0:
+            raise AllureValidationError("Test Result ID must be a positive integer")
+
+        return await self._call_api(
+            api.retry(
+                test_result_id=test_result_id,
+                test_result_rerun_dto=data,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def start_manual_test_session(self, data: ManualSessionRequestDto) -> TestSessionResponseDto:
+        """Start a manual test session for a launch."""
+        api = await self._get_api("_upload_api", error_name="upload APIs")
+        return await self._call_api(
+            api.session_job_run(
+                manual_session_request_dto=data,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def start_external_run(self, data: ExternalRunStartRequestDto) -> ExternalRunResponseDto:
+        """Register an external run used to bootstrap manual sessions."""
+        api = await self._get_api("_upload_api", error_name="upload APIs")
+        return await self._call_api(
+            api.start(
+                external_run_start_request_dto=data,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def submit_manual_test_results(self, data: UploadResultsDto) -> UploadResultsResponseDto:
+        """Submit manual test results for an existing manual session."""
+        api = await self._get_api("_upload_test_result_api", error_name="upload test result APIs")
+        response = await self._call_api_raw(
+            cast(
+                Awaitable[httpx.Response],
+                api.upload_test_results_without_preload_content(
+                    upload_results_dto=data,
+                    _request_timeout=self._timeout,
+                ),
+            )
+        )
+        payload = self._extract_response_data(response)
+        return UploadResultsResponseDto(result_ids=self._extract_upload_result_ids(payload))
+
+    async def upload_test_fixture_results(
+        self,
+        test_result_id: int,
+        data: UploadFixturesResultsDto,
+    ) -> UploadResultsResponseDto:
+        """Create or update fixture results under a test result."""
+        api = await self._get_api("_upload_test_result_api", error_name="upload test result APIs")
+
+        if not isinstance(test_result_id, int) or test_result_id <= 0:
+            raise AllureValidationError("Test Result ID must be a positive integer")
+
+        response = await self._call_api_raw(
+            cast(
+                Awaitable[httpx.Response],
+                api.upload_test_fixture_results_without_preload_content(
+                    id=test_result_id,
+                    upload_fixtures_results_dto=data,
+                    _request_timeout=self._timeout,
+                ),
+            )
+        )
+        payload = self._extract_response_data(response)
+        return UploadResultsResponseDto(result_ids=self._extract_upload_result_ids(payload))
+
+    async def add_test_result_attachment(
+        self,
+        test_result_id: int,
+        files: list[bytes | str | tuple[str, bytes]],
+    ) -> int:
+        """Upload attachments to a test result."""
+        if not isinstance(test_result_id, int) or test_result_id <= 0:
+            raise AllureValidationError("Test Result ID must be a positive integer")
+        if not isinstance(files, list) or not files:
+            raise AllureValidationError("files must be a non-empty list")
+
+        response = await self._upload_multipart_files(
+            method="POST",
+            resource_path=f"/api/upload/test-result/{test_result_id}/attachment",
+            files={"file": files},
+            expected_status_codes=(202,),
+        )
+        return int(response.status)
+
+    async def add_test_fixture_attachment(
+        self,
+        fixture_result_id: int,
+        files: list[bytes | str | tuple[str, bytes]],
+    ) -> int:
+        """Upload attachments to a test fixture result."""
+        if not isinstance(fixture_result_id, int) or fixture_result_id <= 0:
+            raise AllureValidationError("Fixture Result ID must be a positive integer")
+        if not isinstance(files, list) or not files:
+            raise AllureValidationError("files must be a non-empty list")
+
+        response = await self._upload_multipart_files(
+            method="POST",
+            resource_path=f"/api/upload/test-fixture-result/{fixture_result_id}/attachment",
+            files={"file": files},
+            expected_status_codes=(202,),
+        )
+        return int(response.status)
+
     async def upload_results_to_launch(
         self,
         launch_id: int,
@@ -1199,21 +1549,8 @@ class AllureClient:
         if not isinstance(files, list) or not files:
             raise AllureValidationError("files must be a non-empty list")
 
-        self._require_entered()
-        await self._ensure_valid_token()
-
-        if self._api_client is None:
-            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
-
         info_payload = info if info is not None else LaunchExistingUploadDto()
-
-        method = "POST"
-        headers = {
-            "Accept": "*/*",
-            "Content-Type": "multipart/form-data",
-        }
         info_part = json.dumps(info_payload.to_dict()).encode("utf-8")
-        form_params: list[tuple[str, object]] = []
         files_map: dict[str, bytes | str | tuple[str, bytes] | list[bytes | str | tuple[str, bytes]]] = {
             "file": files,
             "info": ("info.json", info_part),
@@ -1227,22 +1564,24 @@ class AllureClient:
         last_error: ApiException | None = None
 
         for resource_path in upload_paths:
-            request_args = self._api_client.param_serialize(
-                method=method,
-                resource_path=resource_path,
-                header_params=headers,
-                post_params=form_params,
-                files=files_map,
-                auth_settings=[],
-            )
+            try:
+                rest_response = await self._upload_multipart_files(
+                    method="POST",
+                    resource_path=resource_path,
+                    files=files_map,
+                    expected_status_codes=(200, 201, 202, 204),
+                    accept_header="*/*",
+                )
+            except AllureAPIError as exc:
+                if exc.status_code is None:
+                    raise
+                last_error = ApiException(
+                    status=exc.status_code,
+                    reason="Upload failed",
+                    body=exc.response_body,
+                )
+                continue
 
-            call_coro = self._api_client.call_api(
-                *request_args,
-                _request_timeout=self._timeout,
-            )
-            response = await self._call_api_raw(cast(Awaitable[httpx.Response], call_coro))
-
-            rest_response = cast(RESTResponse, response)
             status_code = rest_response.status
             if not 200 <= status_code <= 299:
                 last_error = ApiException(

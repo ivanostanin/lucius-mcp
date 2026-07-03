@@ -1,4 +1,120 @@
 {
+  "add_test_result_attachment": {
+    "name": "add_test_result_attachment",
+    "entity": "launch",
+    "action": "add_test_result_attachment",
+    "description": "Upload evidence to a manual test result.\n\nArgs:\n    test_result_id: Manual test result ID.\n    attachment: Attachment payload using content or url.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Confirmation that the attachment was accepted for the result.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "test_result_id": {
+          "type": "integer",
+          "description": "Manual test result ID (required)."
+        },
+        "attachment": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Attachment payload using the repo-standard pattern: {name, content_type, content? | url?}."
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional override for the default Project ID.",
+          "default": null
+        }
+      },
+      "required": [
+        "test_result_id",
+        "attachment"
+      ]
+    },
+    "example_command": "lucius launch add_test_result_attachment --args '{\"test_result_id\": 123, \"attachment\": {}}'"
+  },
+  "add_test_step_attachment": {
+    "name": "add_test_step_attachment",
+    "entity": "launch",
+    "action": "add_test_step_attachment",
+    "description": "Upload evidence to a fixture-backed step context for a manual result.\n\nArgs:\n    test_result_id: Parent test result ID.\n    attachment: Attachment payload using content or url.\n    fixture_result_id: Optional explicit fixture result ID.\n    fixture_name: Optional fixture/step name to resolve the target context.\n    fixture_type: Optional fixture type hint ('before' or 'after').\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Confirmation that the attachment was accepted for the step context.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "test_result_id": {
+          "type": "integer",
+          "description": "Parent test result ID (required)."
+        },
+        "attachment": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Attachment payload using the repo-standard pattern: {name, content_type, content? | url?}."
+        },
+        "fixture_result_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional explicit fixture result ID for the step context.",
+          "default": null
+        },
+        "fixture_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional fixture/step name used to resolve the step context inside the test result.",
+          "default": null
+        },
+        "fixture_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional fixture type hint: 'before' or 'after'.",
+          "default": null
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional override for the default Project ID.",
+          "default": null
+        }
+      },
+      "required": [
+        "test_result_id",
+        "attachment"
+      ]
+    },
+    "example_command": "lucius launch add_test_step_attachment --args '{\"test_result_id\": 123, \"attachment\": {}}'"
+  },
   "assign_test_cases_to_suite": {
     "name": "assign_test_cases_to_suite",
     "entity": "test_suite",
@@ -1653,6 +1769,97 @@
     },
     "example_command": "lucius integration list --args '{}'"
   },
+  "list_launch_test_results": {
+    "name": "list_launch_test_results",
+    "entity": "launch",
+    "action": "list_test_results",
+    "description": "List test results inside a launch, including manual execution metadata.\n\nArgs:\n    launch_id: Launch ID.\n    manual_only: Restrict results to manual tests.\n    failed_only: Restrict results to failed/broken tests.\n    page: Zero-based page index after optional filtering.\n    size: Number of results per page.\n    search: Optional result-name search term.\n    filter_id: Optional saved filter ID.\n    sort: Optional sort directives.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Launch result summaries with result IDs, test case IDs, statuses, and assignee/tester fields.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "launch_id": {
+          "type": "integer",
+          "description": "Launch ID (required)."
+        },
+        "manual_only": {
+          "type": "boolean",
+          "description": "When true, return only manual results. Filtering is handled for you.",
+          "default": false
+        },
+        "failed_only": {
+          "type": "boolean",
+          "description": "When true, return only failed or broken results. Filtering is handled for you.",
+          "default": false
+        },
+        "page": {
+          "type": "integer",
+          "description": "Zero-based page index after optional filtering.",
+          "default": 0
+        },
+        "size": {
+          "type": "integer",
+          "description": "Number of results per page (max 100).",
+          "default": 20
+        },
+        "search": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional result-name search term.",
+          "default": null
+        },
+        "filter_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional saved filter ID from TestOps.",
+          "default": null
+        },
+        "sort": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional sort directives such as ['name,ASC'] or ['createdDate,DESC'].",
+          "default": null
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional override for the default Project ID.",
+          "default": null
+        }
+      },
+      "required": [
+        "launch_id"
+      ]
+    },
+    "example_command": "lucius launch list_test_results --args '{\"launch_id\": 123}'"
+  },
   "list_launches": {
     "name": "list_launches",
     "entity": "launch",
@@ -2082,6 +2289,66 @@
     },
     "example_command": "lucius launch reopen --args '{\"launch_id\": 123}'"
   },
+  "rerun_test_results_manually": {
+    "name": "rerun_test_results_manually",
+    "entity": "launch",
+    "action": "rerun_test_results_manually",
+    "description": "Schedule manual reruns for selected launch results.\n\nArgs:\n    launch_id: Launch ID.\n    result_ids: Selected result IDs to rerun.\n    assignees: Optional usernames to assign.\n    force_manual: Force manual rerun mode.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Confirmation that manual reruns were scheduled.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "launch_id": {
+          "type": "integer",
+          "description": "Launch ID containing the failed results (required)."
+        },
+        "result_ids": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "description": "One or more launch result IDs to schedule for manual rerun."
+        },
+        "assignees": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional usernames to assign during manual rerun scheduling.",
+          "default": null
+        },
+        "force_manual": {
+          "type": "boolean",
+          "description": "Force manual rerun mode when the upstream API supports it.",
+          "default": true
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional override for the default Project ID.",
+          "default": null
+        }
+      },
+      "required": [
+        "launch_id",
+        "result_ids"
+      ]
+    },
+    "example_command": "lucius launch rerun_test_results_manually --args '{\"launch_id\": 123, \"result_ids\": []}'"
+  },
   "search_test_cases": {
     "name": "search_test_cases",
     "entity": "test_case",
@@ -2140,6 +2407,97 @@
       }
     },
     "example_command": "lucius test_case search --args '{}'"
+  },
+  "start_manual_test_session": {
+    "name": "start_manual_test_session",
+    "entity": "launch",
+    "action": "start_manual_test_session",
+    "description": "Start a manual execution session for a launch.\n\nArgs:\n    launch_id: Launch ID.\n    environment: Optional environment key/value pairs.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    The manual test session ID required for result submission.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "launch_id": {
+          "type": "integer",
+          "description": "Launch ID (required)."
+        },
+        "environment": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional environment variables as [{key, value}, ...].",
+          "default": null
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional override for the default Project ID.",
+          "default": null
+        }
+      },
+      "required": [
+        "launch_id"
+      ]
+    },
+    "example_command": "lucius launch start_manual_test_session --args '{\"launch_id\": 123}'"
+  },
+  "submit_manual_test_results": {
+    "name": "submit_manual_test_results",
+    "entity": "launch",
+    "action": "submit_manual_test_results",
+    "description": "Submit manual execution results for a manual session.\n\nArgs:\n    test_session_id: Manual test session ID.\n    results: Manual result payloads.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Created or updated test result IDs for follow-up actions.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "test_session_id": {
+          "type": "integer",
+          "description": "Manual test session ID (required)."
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "description": "Manual result payloads. Each item must include test_case_id and may include status/start/stop/message/trace/description/precondition/expected_result/steps/parameters."
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional override for the default Project ID.",
+          "default": null
+        }
+      },
+      "required": [
+        "test_session_id",
+        "results"
+      ]
+    },
+    "example_command": "lucius launch submit_manual_test_results --args '{\"test_session_id\": 123, \"results\": []}'"
   },
   "unlink_shared_step": {
     "name": "unlink_shared_step",

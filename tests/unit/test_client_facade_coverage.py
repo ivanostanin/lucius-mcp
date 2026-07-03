@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from types import SimpleNamespace
 from typing import Any
+from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
@@ -98,6 +99,12 @@ def test_static_response_and_attachment_helpers() -> None:
     assert AllureClient._patch_attachment_with_discriminator({"entity": "TestCaseAttachmentRowDto"})["entity"] == (
         "test_case"
     )
+
+
+def test_extract_upload_result_ids_supports_multiple_payload_shapes() -> None:
+    assert AllureClient._extract_upload_result_ids({"resultIds": [1, "skip", 2]}) == [1, 2]
+    assert AllureClient._extract_upload_result_ids({"results": [{"id": 3}, {"id": "skip"}, []]}) == [3]
+    assert AllureClient._extract_upload_result_ids({"results": "invalid"}) == []
 
 
 def test_denormalizes_complex_scenario_tree() -> None:
@@ -353,3 +360,99 @@ async def test_launch_upload_validation_paths(facade_client: AllureClient) -> No
     facade_client._api_client = None
     with pytest.raises(AllureAPIError, match="Client not initialized"):
         await facade_client.upload_results_to_launch(1, [b"data"], LaunchExistingUploadDto())
+
+
+@pytest.mark.asyncio
+async def test_upload_multipart_files_adds_accept_header_and_calls_api(facade_client: AllureClient) -> None:
+    api_client = MagicMock()
+    api_client.param_serialize.return_value = ("POST", "https://allure.example.com/api/upload", {}, None, [])
+    rest_response = SimpleNamespace(status=202, reason="Accepted", response=MagicMock())
+    api_client.call_api = AsyncMock(return_value=rest_response)
+    facade_client._api_client = api_client
+
+    result = await facade_client._upload_multipart_files(
+        method="POST",
+        resource_path="/api/upload",
+        files={"file": [b"data"]},
+        expected_status_codes=(202,),
+        accept_header="*/*",
+    )
+
+    assert result is rest_response
+    _, kwargs = api_client.param_serialize.call_args
+    assert kwargs["header_params"]["Content-Type"] == "multipart/form-data"
+    assert kwargs["header_params"]["Accept"] == "*/*"
+    api_client.call_api.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_upload_multipart_files_requires_initialized_api_client(facade_client: AllureClient) -> None:
+    facade_client._api_client = None
+
+    with pytest.raises(AllureAPIError, match="Client not initialized"):
+        await facade_client._upload_multipart_files(
+            method="POST",
+            resource_path="/api/upload",
+            files={"file": [b"data"]},
+            expected_status_codes=(202,),
+        )
+
+
+@pytest.mark.asyncio
+async def test_launch_upload_falls_back_to_legacy_endpoint(
+    facade_client: AllureClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    paths: list[str] = []
+
+    async def fake_upload(**kwargs: object) -> object:
+        resource_path = kwargs["resource_path"]
+        assert isinstance(resource_path, str)
+        paths.append(resource_path)
+        if resource_path.endswith("/upload/file"):
+            raise AllureAPIError("missing", status_code=404, response_body="missing")
+
+        response = MagicMock()
+        response.json.return_value = {"launchId": 1, "filesCount": 1}
+        response.text = '{"launchId": 1, "filesCount": 1}'
+        return SimpleNamespace(status=202, reason="Accepted", response=response)
+
+    monkeypatch.setattr(facade_client, "_upload_multipart_files", fake_upload)
+
+    result = await facade_client.upload_results_to_launch(1, [("results.json", b"{}")], LaunchExistingUploadDto())
+
+    assert result.launch_id == 1
+    assert result.files_count == 1
+    assert paths == ["/api/launch/1/upload/file", "/api/launch/1/upload"]
+
+
+@pytest.mark.asyncio
+async def test_launch_upload_rejects_unexpected_response_payload(
+    facade_client: AllureClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_upload(**_kwargs: object) -> object:
+        response = MagicMock()
+        response.json.return_value = []
+        response.text = "[]"
+        return SimpleNamespace(status=200, reason="OK", response=response)
+
+    monkeypatch.setattr(facade_client, "_upload_multipart_files", fake_upload)
+
+    with pytest.raises(AllureAPIError, match="Unexpected launch upload response"):
+        await facade_client.upload_results_to_launch(1, [b"data"])
+
+
+@pytest.mark.asyncio
+async def test_launch_upload_raises_last_api_error_when_all_paths_fail(
+    facade_client: AllureClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_upload(**_kwargs: object) -> object:
+        response = MagicMock()
+        response.text = "boom"
+        return SimpleNamespace(status=500, reason="Server Error", response=response)
+
+    monkeypatch.setattr(facade_client, "_upload_multipart_files", fake_upload)
+
+    with pytest.raises(AllureAPIError, match="API request failed: boom"):
+        await facade_client.upload_results_to_launch(1, [b"data"])

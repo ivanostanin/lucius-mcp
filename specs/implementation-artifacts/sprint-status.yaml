@@ -143,7 +143,7 @@ development_status:
   # Epic 10: Quality of Life and API Coverage
   epic-10: in-progress
   10-1-include-testops-entity-urls-in-tool-responses: done
-  10-2-manual-test-execution-inside-launches: ready-for-dev
+  10-2-manual-test-execution-inside-launches: review
   epic-10-retrospective: optional
 
   # Epic 11: Telemetry Signal Simplification

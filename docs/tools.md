@@ -69,11 +69,17 @@ route is verified.
 
 ## 🚀 Launch Management
 
-| Tool            | Description                                        | Key Parameters |
-|:----------------|:---------------------------------------------------|:---------------|
-| `create_launch` | Create a new test execution launch.                | `name`, `tags` |
-| `list_launches` | View recent launches and their status.             | `page`, `size` |
-| `get_launch`    | Get detailed stats and defect counts for a launch. | `launch_id`    |
+| Tool                         | Description                                                     | Key Parameters |
+|:-----------------------------|:----------------------------------------------------------------|:---------------|
+| `create_launch`              | Create a new test execution launch.                             | `name`, `tags` |
+| `list_launches`              | View recent launches and their status.                          | `page`, `size` |
+| `get_launch`                 | Get detailed stats, defect counts, and manual-workflow guidance for a launch. | `launch_id`    |
+| `list_launch_test_results`   | List result-level launch data including manual flag, status, assignee, and tester. | `launch_id`, `manual_only`, `failed_only` |
+| `rerun_test_results_manually` | Schedule manual reruns for selected failed launch results.      | `launch_id`, `result_ids`, `assignees` |
+| `start_manual_test_session`  | Create a manual execution session for a launch.                 | `launch_id`, `environment` |
+| `submit_manual_test_results` | Submit manual result and step status updates for a session.     | `test_session_id`, `results` |
+| `add_test_result_attachment` | Upload evidence to a manual test result.                        | `test_result_id`, `attachment` |
+| `add_test_step_attachment`   | Upload evidence to a fixture-backed manual step context.        | `test_result_id`, `attachment`, `fixture_result_id` |
 
 ## 📋 Test Plan Management
 

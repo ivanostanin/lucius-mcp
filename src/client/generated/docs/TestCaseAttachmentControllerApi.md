@@ -38,7 +38,7 @@ async with src.client.generated.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = src.client.generated.TestCaseAttachmentControllerApi(api_client)
     test_case_id = 56 # int | 
-    file = None # List[bytearray] | 
+    file = None # List[bytes] | 
 
     try:
         # Upload new test case attachments
@@ -57,7 +57,7 @@ async with src.client.generated.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **test_case_id** | **int**|  | 
- **file** | **List[bytearray]**|  | 
+ **file** | **List[bytes]**|  | 
 
 ### Return type
 
@@ -377,7 +377,7 @@ async with src.client.generated.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = src.client.generated.TestCaseAttachmentControllerApi(api_client)
     id = 56 # int | 
-    file = None # bytearray | 
+    file = None # bytes | 
 
     try:
         # Update test case attachment content
@@ -396,7 +396,7 @@ async with src.client.generated.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **int**|  | 
- **file** | **bytearray**|  | 
+ **file** | **bytes**|  | 
 
 ### Return type
 

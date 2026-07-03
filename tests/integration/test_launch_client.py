@@ -3,6 +3,7 @@
 import time
 from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
 from pydantic import SecretStr
 
@@ -10,12 +11,29 @@ from src.client import AllureClient
 from src.client.exceptions import AllureNotFoundError, AllureValidationError
 from src.client.generated.exceptions import ApiException
 from src.client.generated.models.aql_validate_response_dto import AqlValidateResponseDto
+from src.client.generated.models.external_run_response_dto import ExternalRunResponseDto
+from src.client.generated.models.external_run_start_request_dto import ExternalRunStartRequestDto
 from src.client.generated.models.find_all29200_response import FindAll29200Response
+from src.client.generated.models.job import Job
+from src.client.generated.models.job_run import JobRun
+from src.client.generated.models.launch import Launch
 from src.client.generated.models.launch_create_dto import LaunchCreateDto
 from src.client.generated.models.launch_dto import LaunchDto
 from src.client.generated.models.launch_upload_response_dto import LaunchUploadResponseDto
+from src.client.generated.models.manual_session_request_dto import ManualSessionRequestDto
 from src.client.generated.models.page_launch_dto import PageLaunchDto
 from src.client.generated.models.page_launch_preview_dto import PageLaunchPreviewDto
+from src.client.generated.models.page_test_result_flat_dto import PageTestResultFlatDto
+from src.client.generated.models.test_fixture_result_v2_dto import TestFixtureResultV2Dto
+from src.client.generated.models.test_result_bulk_rerun_dto import TestResultBulkRerunDto
+from src.client.generated.models.test_result_dto import TestResultDto
+from src.client.generated.models.test_result_rerun_dto import TestResultRerunDto
+from src.client.generated.models.test_result_scenario_v2_dto import TestResultScenarioV2Dto
+from src.client.generated.models.test_result_tree_selection_dto import TestResultTreeSelectionDto
+from src.client.generated.models.test_session_response_dto import TestSessionResponseDto
+from src.client.generated.models.upload_fixtures_results_dto import UploadFixturesResultsDto
+from src.client.generated.models.upload_results_dto import UploadResultsDto
+from src.client.generated.models.upload_test_fixture_result_dto import UploadTestFixtureResultDto
 from src.client.generated.rest import RESTResponse
 
 
@@ -190,6 +208,143 @@ async def test_client_upload_results_to_launch_uses_multipart_endpoint() -> None
         "file": [("results.json", b"{}")],
         "info": ("info.json", b"{}"),
     }
+
+
+@pytest.mark.asyncio
+async def test_client_list_launch_test_results_calls_api() -> None:
+    client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
+    client._is_entered = True
+    client._token_expires_at = time.time() + 3600
+    client._test_result_flat_api = MagicMock()
+    client._test_result_flat_api.get_test_cases1 = AsyncMock(return_value=PageTestResultFlatDto(content=[]))
+
+    result = await client.list_launch_test_results(launch_id=5, page=0, size=20)
+
+    assert result.content == []
+    client._test_result_flat_api.get_test_cases1.assert_called_once_with(
+        launch_id=5,
+        search=None,
+        filter_id=None,
+        page=0,
+        size=20,
+        sort=None,
+        _request_timeout=client._timeout,
+    )
+
+
+@pytest.mark.asyncio
+async def test_client_test_result_wrappers_call_apis() -> None:
+    client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
+    client._is_entered = True
+    client._token_expires_at = time.time() + 3600
+    client._test_result_api = MagicMock()
+    client._test_result_api.find_one5 = AsyncMock(return_value=TestResultDto(id=33, name="Manual Result"))
+    client._test_result_api.find_execution = AsyncMock(return_value=TestResultScenarioV2Dto(steps=[]))
+    client._test_result_fixture_api = MagicMock()
+    client._test_result_fixture_api.get_fixtures = AsyncMock(return_value=[TestFixtureResultV2Dto(id=77, name="After")])
+
+    result = await client.get_test_result(33)
+    execution = await client.get_test_result_execution(33)
+    fixtures = await client.get_test_result_fixtures(33)
+
+    assert result.id == 33
+    assert execution.steps == []
+    assert fixtures[0].id == 77
+
+
+@pytest.mark.asyncio
+async def test_client_manual_execution_wrappers_call_apis() -> None:
+    client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
+    client._is_entered = True
+    client._token_expires_at = time.time() + 3600
+    client._test_result_bulk_api = MagicMock()
+    client._test_result_bulk_api.rerun = AsyncMock(return_value=None)
+    client._test_result_rerun_api = MagicMock()
+    client._test_result_rerun_api.retry = AsyncMock(return_value=None)
+    client._upload_api = MagicMock()
+    client._upload_api.start = AsyncMock(return_value=ExternalRunResponseDto(job_id=7, job_run_id=8, project_id=1))
+    client._upload_api.session_job_run = AsyncMock(return_value=TestSessionResponseDto(id=44))
+    client._upload_test_result_api = MagicMock()
+    client._upload_test_result_api.upload_test_results_without_preload_content = AsyncMock(
+        return_value=httpx.Response(200, json={"results": [{"id": 1}, {"id": 2}]})
+    )
+    client._upload_test_result_api.upload_test_fixture_results_without_preload_content = AsyncMock(
+        return_value=httpx.Response(200, json={"results": [{"id": 9}]})
+    )
+
+    rerun_payload = TestResultBulkRerunDto(
+        selection=TestResultTreeSelectionDto(launch_id=9, leafs_include=[10]),
+        force_manual=True,
+    )
+    external_run_payload = ExternalRunStartRequestDto(
+        project_id=1,
+        launch=Launch(id=9),
+        job=Job(uid="job-1"),
+        job_run=JobRun(uid="run-1"),
+    )
+    session_start_payload = ManualSessionRequestDto(launch_id=9, project_id=1, job_uid="job-1", job_run_uid="run-1")
+    session_results_payload = UploadResultsDto(test_session_id=44)
+    fixture_payload = UploadFixturesResultsDto(fixtures=[UploadTestFixtureResultDto(name="after", status="PASSED")])
+
+    await client.rerun_test_results_bulk(rerun_payload)
+    await client.rerun_test_result(10, TestResultRerunDto(username="alice"))
+    external_run = await client.start_external_run(external_run_payload)
+    session = await client.start_manual_test_session(session_start_payload)
+    upload = await client.submit_manual_test_results(session_results_payload)
+    fixtures = await client.upload_test_fixture_results(44, fixture_payload)
+
+    assert external_run.job_id == 7
+    assert session.id == 44
+    assert upload.result_ids == [1, 2]
+    assert fixtures.result_ids == [9]
+    client._test_result_bulk_api.rerun.assert_called_once()
+    client._test_result_rerun_api.retry.assert_called_once()
+    client._upload_api.start.assert_called_once()
+    client._upload_api.session_job_run.assert_called_once()
+    client._upload_test_result_api.upload_test_results_without_preload_content.assert_called_once()
+    client._upload_test_result_api.upload_test_fixture_results_without_preload_content.assert_called_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("method_name", "resource_path"),
+    [
+        ("add_test_result_attachment", "/api/upload/test-result/9/attachment"),
+        ("add_test_fixture_attachment", "/api/upload/test-fixture-result/9/attachment"),
+    ],
+)
+async def test_client_manual_attachment_uploads_use_expected_paths(
+    method_name: str,
+    resource_path: str,
+) -> None:
+    client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
+    client._is_entered = True
+    client._token_expires_at = time.time() + 3600
+
+    api_client = MagicMock()
+
+    def _param_serialize_side_effect(*args, **kwargs):
+        path = kwargs.get("resource_path")
+        return ("POST", f"https://example.com{path}", {}, None, [])
+
+    api_client.param_serialize.side_effect = _param_serialize_side_effect
+
+    httpx_response = MagicMock()
+    httpx_response.status_code = 202
+    httpx_response.reason_phrase = "Accepted"
+    httpx_response.text = ""
+    httpx_response.json.return_value = {}
+
+    rest_response = RESTResponse(httpx_response)
+    client._api_client = api_client
+    api_client.call_api = AsyncMock(return_value=rest_response)
+
+    status_code = await getattr(client, method_name)(9, [("evidence.txt", b"A")])
+
+    assert status_code == 202
+    _, kwargs = api_client.param_serialize.call_args
+    assert kwargs["resource_path"] == resource_path
+    assert kwargs["files"] == {"file": [("evidence.txt", b"A")]}
 
 
 @pytest.mark.asyncio

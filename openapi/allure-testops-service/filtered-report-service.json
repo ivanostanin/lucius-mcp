@@ -10469,6 +10469,1415 @@
         ]
       }
     },
+    "/api/testresult": {
+      "get": {
+        "operationId": "findAll_4",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "launchId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "description": "Zero-based page index (0..N)",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "description": "The size of the page to be returned",
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "minimum": 1
+            }
+          },
+          {
+            "description": "Sorting criteria in the format: property(,asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "default": [
+                "createdDate,DESC"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageTestResultDto"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Finds all test results by given launch",
+        "tags": [
+          "test-result-controller"
+        ]
+      },
+      "post": {
+        "operationId": "create_5",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestResultCreateV2Dto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestResultDto"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Create a new test result",
+        "tags": [
+          "test-result-controller"
+        ]
+      }
+    },
+    "/api/testresult/bulk/assign": {
+      "post": {
+        "operationId": "assign_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestResultBulkAssignDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "Assign all selected test results",
+        "tags": [
+          "test-result-bulk-controller"
+        ]
+      }
+    },
+    "/api/testresult/bulk/defect/link": {
+      "post": {
+        "operationId": "linkDefects",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestResultBulkEntityIdsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "Link defects for all selected test results",
+        "tags": [
+          "test-result-bulk-controller"
+        ]
+      }
+    },
+    "/api/testresult/bulk/hide": {
+      "post": {
+        "operationId": "hide",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestResultBulkDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "Hide all selected test results",
+        "tags": [
+          "test-result-bulk-controller"
+        ]
+      }
+    },
+    "/api/testresult/bulk/mute": {
+      "post": {
+        "operationId": "mute_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestResultBulkMuteDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "Mute all selected test results",
+        "tags": [
+          "test-result-bulk-controller"
+        ]
+      }
+    },
+    "/api/testresult/bulk/rerun": {
+      "post": {
+        "operationId": "rerun",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestResultBulkRerunDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "Rerun all selected test results",
+        "tags": [
+          "test-result-bulk-controller"
+        ]
+      }
+    },
+    "/api/testresult/bulk/resolve": {
+      "post": {
+        "operationId": "resolve_2",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestResultBulkResolveDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "Resolve all selected test results",
+        "tags": [
+          "test-result-bulk-controller"
+        ]
+      }
+    },
+    "/api/testresult/bulk/tag/add": {
+      "post": {
+        "operationId": "tagsAdd_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestResultBulkTagDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "Add tags for all selected test results",
+        "tags": [
+          "test-result-bulk-controller"
+        ]
+      }
+    },
+    "/api/testresult/bulk/tag/remove": {
+      "post": {
+        "operationId": "tagsRemove_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestResultBulkEntityIdsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "Remove tags for all selected test results",
+        "tags": [
+          "test-result-bulk-controller"
+        ]
+      }
+    },
+    "/api/testresult/bulk/unmute": {
+      "post": {
+        "operationId": "unmute_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestResultBulkDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "Unmute all selected test results",
+        "tags": [
+          "test-result-bulk-controller"
+        ]
+      }
+    },
+    "/api/testresult/defects": {
+      "get": {
+        "operationId": "defects",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "launchId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestResultTree"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Find defects by launch id",
+        "tags": [
+          "test-result-controller"
+        ]
+      }
+    },
+    "/api/testresult/timeline": {
+      "get": {
+        "operationId": "timeline",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "launchId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestResultTree"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Find timeline data",
+        "tags": [
+          "test-result-controller"
+        ]
+      }
+    },
+    "/api/testresult/{id}": {
+      "delete": {
+        "operationId": "deleteById",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "Delete test result by given id",
+        "tags": [
+          "test-result-controller"
+        ]
+      },
+      "get": {
+        "operationId": "findOne_5",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestResultDto"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "test-result-controller"
+        ]
+      },
+      "patch": {
+        "operationId": "patch_5",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestResultPatchDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestResultDto"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Patches a test result by given id",
+        "tags": [
+          "test-result-controller"
+        ]
+      }
+    },
+    "/api/testresult/{id}/execution": {
+      "get": {
+        "operationId": "findExecution",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestResultScenarioV2Dto"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Find all execution for given test result",
+        "tags": [
+          "test-result-controller"
+        ]
+      }
+    },
+    "/api/testresult/{id}/history": {
+      "get": {
+        "operationId": "findHistory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Zero-based page index (0..N)",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "description": "The size of the page to be returned",
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "minimum": 1
+            }
+          },
+          {
+            "description": "Sorting criteria in the format: property(,asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "default": [
+                "createdDate,DESC"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageTestResultHistoryDto"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Find all history for given test result",
+        "tags": [
+          "test-result-controller"
+        ]
+      }
+    },
+    "/api/testresult/{id}/retries": {
+      "get": {
+        "operationId": "findRetries",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "description": "Zero-based page index (0..N)",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "description": "The size of the page to be returned",
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "minimum": 1
+            }
+          },
+          {
+            "description": "Sorting criteria in the format: property(,asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "default": [
+                "start,DESC"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageTestResultHistoryDto"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Find all retries for given test result",
+        "tags": [
+          "test-result-controller"
+        ]
+      }
+    },
+    "/api/testresult/{testResultId}/fixture": {
+      "get": {
+        "operationId": "getFixtures",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "testResultId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TestFixtureResultV2Dto"
+                  }
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Find fixtures for test result",
+        "tags": [
+          "test-result-fixture-controller"
+        ]
+      }
+    },
+    "/api/testresult/{testResultId}/fixture/attachment": {
+      "get": {
+        "operationId": "getFixturesAttachments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "testResultId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "description": "Zero-based page index (0..N)",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "description": "The size of the page to be returned",
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "minimum": 1
+            }
+          },
+          {
+            "description": "Sorting criteria in the format: property(,asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "default": [
+                "name,ASC"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageTestFixtureResultAttachmentRowDto"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Find fixtures attachments for test result",
+        "tags": [
+          "test-result-fixture-controller"
+        ]
+      }
+    },
+    "/api/testresult/{testResultId}/rerun": {
+      "post": {
+        "operationId": "retry",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "testResultId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestResultRerunDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdAndNameOnlyDto"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Schedule manual rerun for test case",
+        "tags": [
+          "test-result-rerun-controller"
+        ]
+      }
+    },
+    "/api/testresult/{testResultId}/retry": {
+      "post": {
+        "operationId": "retry_1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "testResultId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestResultRerunDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdAndNameOnlyDto"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Schedule manual rerun for test case",
+        "tags": [
+          "test-result-rerun-controller"
+        ]
+      }
+    },
+    "/api/upload": {
+      "post": {
+        "operationId": "uploadResults",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "archive": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  },
+                  "file": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          }
+        },
+        "summary": "Upload test results",
+        "tags": [
+          "upload-controller"
+        ]
+      }
+    },
+    "/api/upload/archive": {
+      "post": {
+        "operationId": "uploadResultsArchives",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          }
+        },
+        "summary": "Upload archives with test results",
+        "tags": [
+          "upload-controller"
+        ]
+      }
+    },
+    "/api/upload/file": {
+      "post": {
+        "operationId": "uploadResultsFiles",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          }
+        },
+        "summary": "Upload files with test results",
+        "tags": [
+          "upload-controller"
+        ]
+      }
+    },
+    "/api/upload/jobrun": {
+      "get": {
+        "operationId": "getJobRunByUid",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "in": "query",
+            "name": "jobUid",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "jobRunUid",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "jobRunId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalRunResponseDto"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Get information about job run by id",
+        "tags": [
+          "upload-controller"
+        ]
+      }
+    },
+    "/api/upload/run": {
+      "post": {
+        "operationId": "start",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExternalRunStartRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalRunResponseDto"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Notifies about external job run start",
+        "tags": [
+          "upload-controller"
+        ]
+      }
+    },
+    "/api/upload/session": {
+      "post": {
+        "operationId": "sessionJobRun",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualSessionRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestSessionResponseDto"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Creates test session for manual upload",
+        "tags": [
+          "upload-controller"
+        ]
+      }
+    },
+    "/api/upload/start": {
+      "post": {
+        "operationId": "start_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExternalRunStartRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalRunResponseDto"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Notifies about external job run start",
+        "tags": [
+          "upload-controller"
+        ]
+      }
+    },
+    "/api/upload/stop": {
+      "post": {
+        "operationId": "stop",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExternalRunStopRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalRunResponseDto"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Notifies about external job run stop",
+        "tags": [
+          "upload-controller"
+        ]
+      }
+    },
+    "/api/upload/test-fixture-result/{id}/attachment": {
+      "post": {
+        "operationId": "addFixtureContent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          }
+        },
+        "tags": [
+          "upload-test-result-controller"
+        ]
+      }
+    },
+    "/api/upload/test-result": {
+      "post": {
+        "operationId": "uploadTestResults",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadResultsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResultsResponseDto"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Manual upload test-result data",
+        "tags": [
+          "upload-test-result-controller"
+        ]
+      }
+    },
+    "/api/upload/test-result/{id}/attachment": {
+      "post": {
+        "operationId": "addContent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          }
+        },
+        "tags": [
+          "upload-test-result-controller"
+        ]
+      }
+    },
+    "/api/upload/test-result/{id}/test-fixture-result": {
+      "post": {
+        "operationId": "uploadTestFixtureResults",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadFixturesResultsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResultsResponseDto"
+                }
+              }
+            },
+            "description": "Accepted"
+          }
+        },
+        "tags": [
+          "upload-test-result-controller"
+        ]
+      }
+    },
+    "/api/v2/launch/{launchId}/test-result/flat": {
+      "get": {
+        "operationId": "getTestCases_1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "launchId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "filterId",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "description": "Zero-based page index (0..N)",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "description": "The size of the page to be returned",
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "minimum": 1
+            }
+          },
+          {
+            "description": "Sorting criteria in the format: property(,asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "default": [
+                "name,ASC"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageTestResultFlatDto"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Get test results as a flat structure",
+        "tags": [
+          "test-result-flat-controller"
+        ]
+      }
+    },
     "/api/v2/project/{projectId}/test-case/tree/group": {
       "post": {
         "operationId": "addGroup",
@@ -16464,10 +17873,23 @@
           "launchId": {
             "type": "integer",
             "format": "int64"
+          },
+          "projectId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "jobUid": {
+            "type": "string"
+          },
+          "jobRunUid": {
+            "type": "string"
           }
         },
         "required": [
-          "launchId"
+          "launchId",
+          "projectId",
+          "jobUid",
+          "jobRunUid"
         ]
       },
       "Matcher": {
