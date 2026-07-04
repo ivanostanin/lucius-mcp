@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
+import importlib
+import logging
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Annotated
+from unittest.mock import patch
 
 import httpx
 import pytest
 from pydantic import BaseModel, Field, SecretStr
 
+from src.cli import cli_entry, command_runner
+from src.cli.models import ActionOptions, ActionSpec, CLIContext, CLIError, PreparedCommand
 from src.client import AllureClient, AllureValidationError, FindAll29200Response
 from src.client.exceptions import AllureAPIError
 from src.client.generated.models.custom_field_dto import CustomFieldDto
@@ -19,6 +24,7 @@ from src.client.overridden.test_case_custom_fields_v2 import TestCaseCustomField
 from src.services.attachment_service import AttachmentService
 from src.services.launch_service import LaunchService
 from src.services.telemetry_service import TelemetryService
+from src.utils.logger import CustomJsonFormatter, configure_logging
 from src.utils.schema_hint import _format_dict_type, _format_union_type, _get_type_name, generate_schema_hint
 from src.version import _version_from_pyproject
 
@@ -285,6 +291,155 @@ def test_schema_hint_handles_typing_shapes() -> None:
 
 def test_version_fallback_reads_pyproject_version() -> None:
     assert _version_from_pyproject()
+
+
+def test_version_fallback_raises_when_pyproject_version_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("src.version.tomllib.load", lambda _file: {"project": {}})
+
+    with pytest.raises(RuntimeError, match="Could not resolve project version"):
+        _version_from_pyproject()
+
+
+def test_version_module_prefers_installed_distribution(monkeypatch: pytest.MonkeyPatch) -> None:
+    import src.version as version_module
+
+    monkeypatch.setattr("importlib.metadata.version", lambda _name: "9.9.9")
+
+    reloaded = importlib.reload(version_module)
+
+    assert reloaded.__version__ == "9.9.9"
+
+
+def test_version_module_falls_back_when_distribution_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    import src.version as version_module
+
+    def missing_dist(_name: str) -> str:
+        raise importlib.metadata.PackageNotFoundError
+
+    monkeypatch.setattr("importlib.metadata.version", missing_dist)
+
+    reloaded = importlib.reload(version_module)
+
+    assert reloaded.__version__ == _version_from_pyproject()
+
+
+def test_prepare_command_version_and_pretty_error_paths(capsys: pytest.CaptureFixture[str]) -> None:
+    context = CLIContext(
+        console_out=cli_entry.console_out,
+        console_err=cli_entry.console_err,
+        tool_schemas_path=Path("unused"),
+        version="1.2.3",
+    )
+
+    assert (
+        command_runner.prepare_command(
+            ["--version"],
+            context=context,
+            load_tool_schemas=lambda: {},
+            build_command_registry=lambda _schemas: {},
+            resolve_entity_name=lambda _entity, _registry: "test_case",
+            resolve_action_name=lambda _entity, _action, _actions: "list",
+            parse_action_options=lambda _argv: ActionOptions(),
+            validate_args_against_schema=lambda _args, _command, _schema: None,
+        )
+        is None
+    )
+    assert "lucius 1.2.3" in capsys.readouterr().out
+
+    with pytest.raises(CLIError, match="Unsupported --pretty option"):
+        command_runner.prepare_command(
+            ["--pretty"],
+            context=context,
+            load_tool_schemas=lambda: {},
+            build_command_registry=lambda _schemas: {},
+            resolve_entity_name=lambda _entity, _registry: "test_case",
+            resolve_action_name=lambda _entity, _action, _actions: "list",
+            parse_action_options=lambda _argv: ActionOptions(),
+            validate_args_against_schema=lambda _args, _command, _schema: None,
+        )
+
+
+def test_render_tool_result_contract_errors() -> None:
+    spec = ActionSpec(
+        tool_name="list_test_cases",
+        entity="test_case",
+        action="list",
+        schema={"input_schema": {"properties": {}}},
+    )
+    prepared_json = PreparedCommand(
+        entity="test_case",
+        action="list",
+        spec=spec,
+        options=ActionOptions(output_format="json"),
+        args_dict={},
+        tool_args={},
+    )
+    prepared_plain = PreparedCommand(
+        entity="test_case",
+        action="get",
+        spec=spec,
+        options=ActionOptions(output_format="plain"),
+        args_dict={},
+        tool_args={},
+    )
+    prepared_table = PreparedCommand(
+        entity="test_case",
+        action="list",
+        spec=spec,
+        options=ActionOptions(output_format="table"),
+        args_dict={},
+        tool_args={},
+    )
+
+    with patch("src.cli.command_runner._tool_result_to_json_text", return_value=None):
+        with pytest.raises(CLIError, match="returned non-JSON output for 'json' mode"):
+            command_runner.render_tool_result(prepared_json, object(), console_out=cli_entry.console_out)
+
+    with pytest.raises(CLIError, match="returned non-string output for 'plain' mode"):
+        command_runner.render_tool_result(prepared_plain, {"ok": True}, console_out=cli_entry.console_out)
+
+    with patch("src.cli.command_runner._structured_tool_payload", return_value=None):
+        with pytest.raises(CLIError, match="returned non-JSON output for 'table' mode"):
+            command_runner.render_tool_result(prepared_table, object(), console_out=cli_entry.console_out)
+
+
+def test_configure_logging_json_and_console_paths(monkeypatch: pytest.MonkeyPatch) -> None:
+    root_logger = logging.getLogger()
+    original_handlers = root_logger.handlers[:]
+    original_level = root_logger.level
+
+    class FakeConsole:
+        def __init__(self, *, stderr: bool = False) -> None:
+            self.stderr = stderr
+
+    class FakeRichHandler(logging.Handler):
+        def __init__(self, *, rich_tracebacks: bool, markup: bool, console: object) -> None:
+            super().__init__()
+            self.rich_tracebacks = rich_tracebacks
+            self.markup = markup
+            self.console = console
+
+    try:
+        configure_logging(log_level="WARNING", log_format="json")
+        assert root_logger.level == logging.WARNING
+        assert len(root_logger.handlers) == 1
+        assert isinstance(root_logger.handlers[0].formatter, CustomJsonFormatter)
+
+        monkeypatch.setattr("rich.console.Console", FakeConsole)
+        monkeypatch.setattr("rich.logging.RichHandler", FakeRichHandler)
+
+        configure_logging(log_format="console", force_stderr=True)
+        assert len(root_logger.handlers) == 1
+        handler = root_logger.handlers[0]
+        assert isinstance(handler, FakeRichHandler)
+        assert isinstance(handler.console, FakeConsole)
+        assert handler.console.stderr is True
+    finally:
+        for handler in root_logger.handlers[:]:
+            root_logger.removeHandler(handler)
+        for handler in original_handlers:
+            root_logger.addHandler(handler)
+        root_logger.setLevel(original_level)
 
 
 def test_launch_service_validation_helpers_cover_edge_cases() -> None:
