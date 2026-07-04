@@ -307,15 +307,18 @@ async def test_client_manual_execution_wrappers_call_apis() -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("method_name", "resource_path"),
+    ("method_name", "resource_path", "status_code"),
     [
-        ("add_test_result_attachment", "/api/upload/test-result/9/attachment"),
-        ("add_test_fixture_attachment", "/api/upload/test-fixture-result/9/attachment"),
+        ("add_test_result_attachment", "/api/upload/test-result/9/attachment", 200),
+        ("add_test_result_attachment", "/api/upload/test-result/9/attachment", 202),
+        ("add_test_fixture_attachment", "/api/upload/test-fixture-result/9/attachment", 200),
+        ("add_test_fixture_attachment", "/api/upload/test-fixture-result/9/attachment", 202),
     ],
 )
 async def test_client_manual_attachment_uploads_use_expected_paths(
     method_name: str,
     resource_path: str,
+    status_code: int,
 ) -> None:
     client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
     client._is_entered = True
@@ -330,8 +333,8 @@ async def test_client_manual_attachment_uploads_use_expected_paths(
     api_client.param_serialize.side_effect = _param_serialize_side_effect
 
     httpx_response = MagicMock()
-    httpx_response.status_code = 202
-    httpx_response.reason_phrase = "Accepted"
+    httpx_response.status_code = status_code
+    httpx_response.reason_phrase = "Accepted" if status_code == 202 else "OK"
     httpx_response.text = ""
     httpx_response.json.return_value = {}
 
@@ -339,9 +342,9 @@ async def test_client_manual_attachment_uploads_use_expected_paths(
     client._api_client = api_client
     api_client.call_api = AsyncMock(return_value=rest_response)
 
-    status_code = await getattr(client, method_name)(9, [("evidence.txt", b"A")])
+    result_status_code = await getattr(client, method_name)(9, [("evidence.txt", b"A")])
 
-    assert status_code == 202
+    assert result_status_code == status_code
     _, kwargs = api_client.param_serialize.call_args
     assert kwargs["resource_path"] == resource_path
     assert kwargs["files"] == {"file": [("evidence.txt", b"A")]}

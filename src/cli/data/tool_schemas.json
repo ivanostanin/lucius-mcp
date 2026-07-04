@@ -37,7 +37,7 @@
         "attachment"
       ]
     },
-    "example_command": "lucius launch add_test_result_attachment --args '{\"test_result_id\": 123, \"attachment\": {}}'"
+    "example_command": "lucius launch add_test_result_attachment --args '{\"test_result_id\": 123, \"attachment\": {\"name\": \"evidence.txt\", \"content_type\": \"text/plain\", \"content\": \"QQ==\"}}'"
   },
   "add_test_step_attachment": {
     "name": "add_test_step_attachment",
@@ -113,7 +113,7 @@
         "attachment"
       ]
     },
-    "example_command": "lucius launch add_test_step_attachment --args '{\"test_result_id\": 123, \"attachment\": {}}'"
+    "example_command": "lucius launch add_test_step_attachment --args '{\"test_result_id\": 123, \"fixture_result_id\": 456, \"attachment\": {\"name\": \"evidence.txt\", \"content_type\": \"text/plain\", \"content\": \"QQ==\"}}'"
   },
   "assign_test_cases_to_suite": {
     "name": "assign_test_cases_to_suite",
@@ -2347,7 +2347,7 @@
         "result_ids"
       ]
     },
-    "example_command": "lucius launch rerun_test_results_manually --args '{\"launch_id\": 123, \"result_ids\": []}'"
+    "example_command": "lucius launch rerun_test_results_manually --args '{\"launch_id\": 123, \"result_ids\": [456]}'"
   },
   "search_test_cases": {
     "name": "search_test_cases",
@@ -2462,7 +2462,7 @@
     "name": "submit_manual_test_results",
     "entity": "launch",
     "action": "submit_manual_test_results",
-    "description": "Submit manual execution results for a manual session.\n\nArgs:\n    test_session_id: Manual test session ID.\n    results: Manual result payloads.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Created or updated test result IDs for follow-up actions.",
+    "description": "Submit manual execution results for a manual session.\n\nArgs:\n    test_session_id: Manual test session ID.\n    results: Manual result payloads. Each result must include `test_case_id` plus `name` or `full_name`.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Created or updated test result IDs for follow-up actions.",
     "input_schema": {
       "type": "object",
       "additionalProperties": false,
@@ -2477,7 +2477,7 @@
             "type": "object",
             "additionalProperties": true
           },
-          "description": "Manual result payloads. Each item must include test_case_id and may include status/start/stop/message/trace/description/precondition/expected_result/steps/parameters."
+          "description": "Manual result payloads. Each item must include test_case_id plus name or full_name, and may include status/start/stop/message/trace/description/precondition/expected_result/steps/parameters/uuid/history_id."
         },
         "project_id": {
           "anyOf": [
@@ -2497,7 +2497,7 @@
         "results"
       ]
     },
-    "example_command": "lucius launch submit_manual_test_results --args '{\"test_session_id\": 123, \"results\": []}'"
+    "example_command": "lucius launch submit_manual_test_results --args '{\"test_session_id\": 123, \"results\": [{\"test_case_id\": 456, \"name\": \"Manual verification\", \"status\": \"passed\"}]}'"
   },
   "unlink_shared_step": {
     "name": "unlink_shared_step",

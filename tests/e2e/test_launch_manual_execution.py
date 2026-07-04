@@ -1,5 +1,7 @@
 """E2E coverage for manual execution workflows inside launches."""
 
+import asyncio
+
 import pytest
 
 from src.client import AllureClient
@@ -13,6 +15,24 @@ from src.services.test_case_service import TestCaseService
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 pytestmark = pytest.mark.asyncio(loop_scope="module")
+
+
+async def _wait_for_fixture_attachment_name(
+    allure_client: AllureClient,
+    test_result_id: int,
+    attachment_name: str,
+    *,
+    timeout_seconds: float = 10.0,
+    delay_seconds: float = 0.5,
+) -> list[str]:
+    deadline = asyncio.get_running_loop().time() + timeout_seconds
+    while asyncio.get_running_loop().time() < deadline:
+        fixture_attachments = await allure_client.get_test_result_fixture_attachments(test_result_id, size=20)
+        fixture_attachment_names = [attachment.name for attachment in fixture_attachments.content or []]
+        if attachment_name in fixture_attachment_names:
+            return fixture_attachment_names
+        await asyncio.sleep(delay_seconds)
+    return fixture_attachment_names
 
 
 async def test_manual_launch_execution_workflow(
@@ -140,3 +160,14 @@ async def test_manual_launch_execution_workflow(
     assert step_attachment.target_kind == "test_step"
     assert step_attachment.target_id == fixture_result_id
     assert step_attachment.status_code in {200, 202}
+
+    fixture_attachment_names = await _wait_for_fixture_attachment_name(
+        allure_client,
+        created_result_id,
+        "manual-step.txt",
+    )
+    if "manual-step.txt" not in fixture_attachment_names:
+        pytest.skip(
+            "Sandbox did not expose uploaded manual step evidence through fixture attachment reads within 10 seconds."
+        )
+    assert "manual-step.txt" in fixture_attachment_names

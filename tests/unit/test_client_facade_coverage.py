@@ -386,6 +386,24 @@ async def test_upload_multipart_files_adds_accept_header_and_calls_api(facade_cl
 
 
 @pytest.mark.asyncio
+async def test_upload_multipart_files_accepts_multiple_success_status_codes(facade_client: AllureClient) -> None:
+    api_client = MagicMock()
+    api_client.param_serialize.return_value = ("POST", "https://allure.example.com/api/upload", {}, None, [])
+    rest_response = SimpleNamespace(status=200, reason="OK", response=MagicMock())
+    api_client.call_api = AsyncMock(return_value=rest_response)
+    facade_client._api_client = api_client
+
+    result = await facade_client._upload_multipart_files(
+        method="POST",
+        resource_path="/api/upload",
+        files={"file": [b"data"]},
+        expected_status_codes=(200, 202),
+    )
+
+    assert result is rest_response
+
+
+@pytest.mark.asyncio
 async def test_upload_multipart_files_requires_initialized_api_client(facade_client: AllureClient) -> None:
     facade_client._api_client = None
 

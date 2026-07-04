@@ -344,8 +344,9 @@ async def submit_manual_test_results(
         list[dict[str, object]],
         Field(
             description=(
-                "Manual result payloads. Each item must include test_case_id and may include "
-                "status/start/stop/message/trace/description/precondition/expected_result/steps/parameters."
+                "Manual result payloads. Each item must include test_case_id plus name or full_name, and may include "
+                "status/start/stop/message/trace/description/precondition/expected_result/steps/parameters/"
+                "uuid/history_id."
             )
         ),
     ],
@@ -358,7 +359,7 @@ async def submit_manual_test_results(
 
     Args:
         test_session_id: Manual test session ID.
-        results: Manual result payloads.
+        results: Manual result payloads. Each result must include `test_case_id` plus `name` or `full_name`.
         project_id: Optional override for the default Project ID.
         output_format: Output format: 'json' (default) or 'plain'.
 

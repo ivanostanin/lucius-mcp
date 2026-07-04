@@ -2,10 +2,12 @@
 
 import base64
 import binascii
+import ipaddress
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
+from urllib.parse import urlsplit
 
 import httpx
 from pydantic import ValidationError as PydanticValidationError
@@ -46,6 +48,10 @@ from src.utils.schema_hint import generate_schema_hint
 
 MAX_NAME_LENGTH = 255
 MAX_TAG_LENGTH = 255
+ATTACHMENT_DOWNLOAD_TIMEOUT_SECONDS = 10.0
+ALLOWED_ATTACHMENT_URL_SCHEMES = frozenset({"http", "https"})
+BLOCKED_ATTACHMENT_HOSTNAMES = frozenset({"localhost"})
+BLOCKED_ATTACHMENT_HOST_SUFFIXES = (".localhost", ".local")
 
 type LaunchListItem = LaunchDto | LaunchPreviewDto
 
@@ -451,8 +457,8 @@ class LaunchService:
         if not normalized_result_ids:
             raise AllureValidationError("Result IDs must be a non-empty list of positive integers")
 
+        await self._ensure_result_ids_belong_to_launch(launch_id, normalized_result_ids)
         normalized_assignees = self._normalize_usernames(assignees)
-
         selection = {"launchId": launch_id, "leafsInclude": normalized_result_ids}
 
         try:
@@ -469,7 +475,7 @@ class LaunchService:
             await self._client.rerun_test_results_bulk(bulk_payload)
         except AllureNotFoundError as exc:
             raise AllureNotFoundError(
-                f"Launch ID {launch_id} or one of the selected result IDs was not found",
+                f"Launch ID {launch_id} or one of the selected result IDs no longer exists",
                 status_code=exc.status_code,
                 response_body=exc.response_body,
             ) from exc
@@ -647,6 +653,55 @@ class LaunchService:
             file_names=[file_entry[0]],
             status_code=status_code,
         )
+
+    async def _ensure_result_ids_belong_to_launch(self, launch_id: int, result_ids: Sequence[int]) -> None:
+        available_result_ids = await self._collect_launch_result_ids(launch_id)
+        missing_result_ids = [result_id for result_id in result_ids if result_id not in available_result_ids]
+        if missing_result_ids:
+            missing_result_ids = await self._resolve_missing_launch_result_ids(launch_id, missing_result_ids)
+        if not missing_result_ids:
+            return
+
+        if len(missing_result_ids) == 1:
+            raise AllureNotFoundError(f"Result ID {missing_result_ids[0]} not found in launch ID {launch_id}")
+
+        joined_ids = ", ".join(str(result_id) for result_id in missing_result_ids)
+        raise AllureNotFoundError(f"Result IDs {joined_ids} not found in launch ID {launch_id}")
+
+    async def _resolve_missing_launch_result_ids(self, launch_id: int, result_ids: Sequence[int]) -> list[int]:
+        unresolved_result_ids: list[int] = []
+
+        for result_id in result_ids:
+            try:
+                result = await self._client.get_test_result(result_id)
+            except AllureNotFoundError:
+                unresolved_result_ids.append(result_id)
+                continue
+
+            if result.launch_id != launch_id:
+                unresolved_result_ids.append(result_id)
+
+        return unresolved_result_ids
+
+    async def _collect_launch_result_ids(self, launch_id: int) -> set[int]:
+        available_result_ids: set[int] = set()
+        current_page = 0
+        total_pages = 1
+
+        while current_page < total_pages:
+            response = await self._fetch_launch_results_page(
+                launch_id=launch_id,
+                page=current_page,
+                size=100,
+                search=None,
+                filter_id=None,
+                sort=None,
+            )
+            total_pages = response.total_pages or 1
+            available_result_ids.update(item.id for item in response.content or [] if isinstance(item.id, int))
+            current_page += 1
+
+        return available_result_ids
 
     @staticmethod
     def _determine_close_report_status(pre_close: LaunchDto, closed_launch: LaunchDto) -> str:
@@ -1269,6 +1324,8 @@ class LaunchService:
         content_type = self._normalize_text(attachment.get("content_type"), field_name="attachment.content_type")
         if content_type not in ALLOWED_MIME_TYPES:
             raise AllureValidationError(f"Content-Type '{content_type}' is not allowed or supported.")
+        if name is None:
+            raise AllureValidationError("attachment.name is required")
 
         content = await self._retrieve_attachment_content(attachment)
         if len(content) > MAX_ATTACHMENT_SIZE:
@@ -1276,8 +1333,6 @@ class LaunchService:
                 f"Attachment size {len(content)} bytes exceeds limit of {MAX_ATTACHMENT_SIZE} bytes"
             )
 
-        if name is None:
-            raise AllureValidationError("attachment.name is required")
         return (name, content)
 
     async def _retrieve_attachment_content(self, attachment: dict[str, str]) -> bytes:
@@ -1287,25 +1342,102 @@ class LaunchService:
         if content_b64:
             if url:
                 raise AllureValidationError("Cannot specify both 'content' and 'url' for attachment")
-            try:
-                return base64.b64decode(content_b64)
-            except binascii.Error as exc:
-                raise AllureValidationError("Invalid base64 content") from exc
+            return self._decode_base64_attachment_content(content_b64)
 
         if url:
-            try:
-                async with httpx.AsyncClient() as client:
-                    response = await client.get(url, follow_redirects=True, timeout=10.0)
-                    response.raise_for_status()
-                    return response.content
-            except httpx.RequestError as exc:
-                raise AllureValidationError(f"Failed to download attachment from {url}: {exc!s}") from exc
-            except httpx.HTTPStatusError as exc:
-                raise AllureValidationError(
-                    f"Failed to download attachment from {url}: HTTP {exc.response.status_code}"
-                ) from exc
+            validated_url = self._validate_attachment_url(url)
+            return await self._download_attachment_from_url(validated_url)
 
         raise AllureValidationError("Attachment must have either 'content' or 'url'")
+
+    @staticmethod
+    def _decode_base64_attachment_content(content_b64: str) -> bytes:
+        try:
+            return base64.b64decode(content_b64)
+        except binascii.Error as exc:
+            raise AllureValidationError("Invalid base64 content") from exc
+
+    async def _download_attachment_from_url(self, validated_url: str) -> bytes:
+        try:
+            async with httpx.AsyncClient() as client:
+                async with client.stream(
+                    "GET",
+                    validated_url,
+                    follow_redirects=False,
+                    timeout=ATTACHMENT_DOWNLOAD_TIMEOUT_SECONDS,
+                ) as response:
+                    self._validate_attachment_download_response(response)
+                    return await self._read_downloaded_attachment_content(response)
+        except httpx.RequestError as exc:
+            raise AllureValidationError(f"Failed to download attachment from {validated_url}: {exc!s}") from exc
+        except httpx.HTTPStatusError as exc:
+            raise AllureValidationError(
+                f"Failed to download attachment from {validated_url}: HTTP {exc.response.status_code}"
+            ) from exc
+
+    @staticmethod
+    def _validate_attachment_download_response(response: httpx.Response) -> None:
+        if response.is_redirect:
+            raise AllureValidationError("Attachment URL redirects are not allowed. Provide a direct downloadable URL.")
+
+        response.raise_for_status()
+        content_length = response.headers.get("Content-Length")
+        if content_length is None:
+            return
+
+        try:
+            content_length_value = int(content_length)
+        except ValueError:
+            return
+
+        if content_length_value > MAX_ATTACHMENT_SIZE:
+            raise AllureValidationError(
+                f"Attachment size {content_length_value} bytes exceeds limit of {MAX_ATTACHMENT_SIZE} bytes"
+            )
+
+    @staticmethod
+    async def _read_downloaded_attachment_content(response: httpx.Response) -> bytes:
+        downloaded = bytearray()
+        async for chunk in response.aiter_bytes():
+            downloaded.extend(chunk)
+            if len(downloaded) > MAX_ATTACHMENT_SIZE:
+                raise AllureValidationError(f"Attachment size exceeds limit of {MAX_ATTACHMENT_SIZE} bytes")
+
+        return bytes(downloaded)
+
+    def _validate_attachment_url(self, url: object) -> str:
+        normalized_url = self._normalize_text(url, field_name="attachment.url")
+        if normalized_url is None:
+            raise AllureValidationError("attachment.url is required")
+
+        parsed = urlsplit(normalized_url)
+        if parsed.scheme not in ALLOWED_ATTACHMENT_URL_SCHEMES:
+            raise AllureValidationError("Attachment URL must use http or https")
+        if not parsed.hostname:
+            raise AllureValidationError("Attachment URL must include a hostname")
+
+        hostname = parsed.hostname.lower()
+        if hostname in BLOCKED_ATTACHMENT_HOSTNAMES or any(
+            hostname.endswith(suffix) for suffix in BLOCKED_ATTACHMENT_HOST_SUFFIXES
+        ):
+            raise AllureValidationError("Attachment URL must not target localhost or local network hostnames")
+
+        try:
+            ip_value = ipaddress.ip_address(hostname)
+        except ValueError:
+            return normalized_url
+
+        if (
+            ip_value.is_private
+            or ip_value.is_loopback
+            or ip_value.is_link_local
+            or ip_value.is_multicast
+            or ip_value.is_reserved
+            or ip_value.is_unspecified
+        ):
+            raise AllureValidationError("Attachment URL must not target private, loopback, or reserved IP ranges")
+
+        return normalized_url
 
     @staticmethod
     def _build_tag_dtos(tags: list[str] | None) -> list[LaunchTagDto] | None:

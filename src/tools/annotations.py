@@ -53,6 +53,7 @@ ADDITIVE_NON_IDEMPOTENT_TOOLS: Final[frozenset[str]] = frozenset(
         "add_test_result_attachment",
         "add_test_step_attachment",
         "link_shared_step",
+        "rerun_test_results_manually",
     }
 )
 
@@ -81,7 +82,6 @@ DESTRUCTIVE_IDEMPOTENT_TOOLS: Final[frozenset[str]] = frozenset(
         "delete_unused_custom_fields",
         "manage_test_plan_content",
         "reopen_launch",
-        "rerun_test_results_manually",
         "unlink_shared_step",
         "update_custom_field_value",
         "update_defect",

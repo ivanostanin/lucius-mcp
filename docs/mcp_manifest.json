@@ -2085,8 +2085,8 @@
       "annotations": {
         "title": "Rerun Test Results Manually",
         "readOnlyHint": false,
-        "destructiveHint": true,
-        "idempotentHint": true,
+        "destructiveHint": false,
+        "idempotentHint": false,
         "openWorldHint": null
       },
       "_meta": {
@@ -2193,7 +2193,7 @@
             "type": "integer"
           },
           "results": {
-            "description": "Manual result payloads. Each item must include test_case_id and may include status/start/stop/message/trace/description/precondition/expected_result/steps/parameters.",
+            "description": "Manual result payloads. Each item must include test_case_id plus name or full_name, and may include status/start/stop/message/trace/description/precondition/expected_result/steps/parameters/uuid/history_id.",
             "items": {
               "additionalProperties": true,
               "type": "object"

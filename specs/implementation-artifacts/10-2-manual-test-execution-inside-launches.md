@@ -1,6 +1,6 @@
 # Story 10.2: Manage Manual Test Execution Inside Launches
 
-Status: review
+Status: in-progress
 
 <!-- Note: Validate upstream artifacts and this story spec before implementation when planning changes materially affect scope or test obligations. -->
 
@@ -179,6 +179,24 @@ so that **I can complete manual QA workflows inside Allure TestOps without switc
     - [x] plus any new unit/integration files added for manual execution
   - [x] Run launch/manual focused E2E coverage with `.env.test` to satisfy NFR11 sandbox verification.
   - [x] Run `uv run ruff check ...` and `uv run mypy --strict src/` on touched paths.
+
+### Review Findings
+
+- [ ] [Review][Patch] Implement real manual-step attachment support instead of fixture-only attachment routing [src/services/launch_service.py:616]
+- [x] [Review][Patch] Restrict attachment URL fetching to avoid SSRF and pre-limit remote downloads before buffering whole responses [src/services/launch_service.py:1283]
+- [x] [Review][Patch] Align `submit_manual_test_results` tool contract with the service requirement for `name`/`full_name`, or infer those fields before validation [src/tools/launches.py:341]
+- [x] [Review][Patch] Make manual rerun 404 errors identify whether the missing resource is the launch or the selected result IDs [src/services/launch_service.py:468]
+- [x] [Review][Patch] Accept the attachment upload status codes the workflow already treats as valid, rather than hard-failing on HTTP 200 [src/client/client.py:1500]
+- [x] [Review][Patch] Strengthen the mandatory E2E proof to read TestOps state back after rerun scheduling and evidence uploads [tests/e2e/test_launch_manual_execution.py:93]
+
+#### Implementation Plan for Real Manual-Step Attachment Support
+
+1. Confirm the upstream TestOps read or upload surface for attachments linked to actual manual scenario steps instead of fixture results, including the target identifier that must be supplied after `submit_manual_test_results`.
+2. Extend the client facade with the minimal non-generated wrapper needed for step-level attachment linkage if the current generated controller set does not already expose it.
+3. Replace the fixture-only resolution path in `LaunchService.add_test_step_attachment` with a step-target resolver that can map friendly inputs such as result ID plus step name or ordinal to the upstream step identifier.
+4. Update the MCP tool contract and docs so `add_test_step_attachment` clearly accepts manual-step selectors, while preserving any fixture support only as an explicit fallback if the upstream API requires it.
+5. Add focused unit coverage for step resolution, ambiguous matches, not-found behavior, and attachment upload payload mapping.
+6. Extend integration and E2E coverage so the manual execution workflow attaches evidence to a submitted manual step and verifies the linkage through a TestOps read path.
 
 ## Dev Notes
 

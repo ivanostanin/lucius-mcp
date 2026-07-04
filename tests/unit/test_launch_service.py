@@ -15,6 +15,7 @@ from src.client.generated.models.page_launch_dto import PageLaunchDto
 from src.client.generated.models.page_launch_preview_dto import PageLaunchPreviewDto
 from src.client.generated.models.page_test_result_flat_dto import PageTestResultFlatDto
 from src.client.generated.models.test_fixture_result_v2_dto import TestFixtureResultV2Dto
+from src.client.generated.models.test_result_dto import TestResultDto
 from src.client.generated.models.test_result_flat_dto import TestResultFlatDto
 from src.client.generated.models.test_session_response_dto import TestSessionResponseDto
 from src.client.generated.models.upload_results_response_dto import UploadResultsResponseDto
@@ -38,9 +39,17 @@ def mock_client() -> MagicMock:
     client.start_external_run = AsyncMock()
     client.start_manual_test_session = AsyncMock()
     client.submit_manual_test_results = AsyncMock()
+    client.get_test_result = AsyncMock()
     client.add_test_result_attachment = AsyncMock()
     client.add_test_fixture_attachment = AsyncMock()
     client.get_test_result_fixtures = AsyncMock()
+    client.list_launch_test_results.return_value = PageTestResultFlatDto(
+        content=[],
+        total_elements=0,
+        number=0,
+        size=100,
+        total_pages=1,
+    )
     return client
 
 
@@ -423,6 +432,17 @@ async def test_list_launch_test_results_applies_manual_and_failed_filters(
 
 @pytest.mark.asyncio
 async def test_rerun_test_results_manually_builds_bulk_payload(service: LaunchService, mock_client: MagicMock) -> None:
+    mock_client.list_launch_test_results.return_value = PageTestResultFlatDto(
+        content=[
+            TestResultFlatDto(id=201, test_case_id=11, name="Manual Failed 1", manual=True, status="failed"),
+            TestResultFlatDto(id=202, test_case_id=12, name="Manual Failed 2", manual=True, status="failed"),
+        ],
+        total_elements=2,
+        number=0,
+        size=100,
+        total_pages=1,
+    )
+
     result = await service.rerun_test_results_manually(
         launch_id=15,
         result_ids=[201, 202],
@@ -436,6 +456,91 @@ async def test_rerun_test_results_manually_builds_bulk_payload(service: LaunchSe
     assert payload.assignees == ["alice"]
     assert payload.selection.launch_id == 15
     assert payload.selection.leafs_include == [201, 202]
+
+
+@pytest.mark.asyncio
+async def test_rerun_test_results_manually_identifies_missing_result_ids(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    mock_client.list_launch_test_results.return_value = PageTestResultFlatDto(
+        content=[TestResultFlatDto(id=201, test_case_id=11, name="Manual Failed 1", manual=True, status="failed")],
+        total_elements=1,
+        number=0,
+        size=100,
+        total_pages=1,
+    )
+
+    with pytest.raises(AllureNotFoundError, match="Result ID 202 not found in launch ID 15"):
+        await service.rerun_test_results_manually(launch_id=15, result_ids=[201, 202])
+
+    mock_client.rerun_test_results_bulk.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_rerun_test_results_manually_falls_back_to_direct_lookup_for_new_results(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    mock_client.list_launch_test_results.return_value = PageTestResultFlatDto(
+        content=[],
+        total_elements=0,
+        number=0,
+        size=100,
+        total_pages=1,
+    )
+    mock_client.get_test_result.return_value = TestResultDto(id=201, launch_id=15, name="Manual Failed 1")
+
+    result = await service.rerun_test_results_manually(
+        launch_id=15,
+        result_ids=[201],
+        assignees=["alice"],
+        force_manual=True,
+    )
+
+    assert result.scheduled_count == 1
+    mock_client.get_test_result.assert_awaited_once_with(201)
+    mock_client.rerun_test_results_bulk.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_rerun_test_results_manually_rejects_results_from_other_launches(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    mock_client.list_launch_test_results.return_value = PageTestResultFlatDto(
+        content=[],
+        total_elements=0,
+        number=0,
+        size=100,
+        total_pages=1,
+    )
+    mock_client.get_test_result.return_value = TestResultDto(id=202, launch_id=99, name="Manual Failed 2")
+
+    with pytest.raises(AllureNotFoundError, match="Result ID 202 not found in launch ID 15"):
+        await service.rerun_test_results_manually(launch_id=15, result_ids=[202])
+
+    mock_client.rerun_test_results_bulk.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_rerun_test_results_manually_reports_multiple_missing_ids_after_direct_lookup(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    mock_client.list_launch_test_results.return_value = PageTestResultFlatDto(
+        content=[],
+        total_elements=0,
+        number=0,
+        size=100,
+        total_pages=1,
+    )
+    mock_client.get_test_result.side_effect = [
+        AllureNotFoundError("Not found", status_code=404, response_body="{}"),
+        AllureNotFoundError("Not found", status_code=404, response_body="{}"),
+    ]
+
+    with pytest.raises(AllureNotFoundError, match=r"Result IDs 203, 204 not found in launch ID 15"):
+        await service.rerun_test_results_manually(launch_id=15, result_ids=[203, 204])
+
+    assert mock_client.get_test_result.await_count == 2
+    mock_client.rerun_test_results_bulk.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -504,6 +609,20 @@ async def test_submit_manual_test_results_maps_nested_steps(service: LaunchServi
     assert isinstance(payload.results[0].history_id, str)
     assert payload.results[0].steps is not None
     assert len(payload.results[0].steps) == 1
+
+
+@pytest.mark.asyncio
+async def test_submit_manual_test_results_rejects_payload_without_name_or_full_name(service: LaunchService) -> None:
+    with pytest.raises(AllureValidationError, match=r"results\[0\]\.name is required"):
+        await service.submit_manual_test_results(
+            44,
+            results=[
+                {
+                    "test_case_id": 91,
+                    "status": "passed",
+                }
+            ],
+        )
 
 
 @pytest.mark.asyncio
@@ -797,32 +916,76 @@ async def test_retrieve_attachment_content_validation_paths(
 
 
 class _AsyncClientSuccess:
+    def __init__(self, *_args: object, **_kwargs: object) -> None:
+        pass
+
     async def __aenter__(self) -> "_AsyncClientSuccess":
         return self
 
     async def __aexit__(self, *_args: object) -> None:
         return None
 
-    async def get(self, url: str, *, follow_redirects: bool, timeout: float) -> httpx.Response:
-        assert follow_redirects is True
+    def stream(self, method: str, url: str, *, follow_redirects: bool, timeout: float) -> "_AsyncStreamContext":
+        assert method == "GET"
+        assert follow_redirects is False
         assert timeout == 10.0
-        request = httpx.Request("GET", url)
-        return httpx.Response(200, content=b"evidence", request=request)
+        return _AsyncStreamContext(_StreamingResponse(url=url, chunks=[b"evidence"]))
 
 
 class _AsyncClientHTTPError:
+    def __init__(self, *_args: object, **_kwargs: object) -> None:
+        pass
+
     async def __aenter__(self) -> "_AsyncClientHTTPError":
         return self
 
     async def __aexit__(self, *_args: object) -> None:
         return None
 
-    async def get(self, url: str, *, follow_redirects: bool, timeout: float) -> httpx.Response:
-        assert follow_redirects is True
+    def stream(self, method: str, url: str, *, follow_redirects: bool, timeout: float) -> "_AsyncStreamContext":
+        assert method == "GET"
+        assert follow_redirects is False
         assert timeout == 10.0
-        request = httpx.Request("GET", url)
-        response = httpx.Response(502, request=request)
-        raise httpx.HTTPStatusError("bad gateway", request=request, response=response)
+        return _AsyncStreamContext(_StreamingResponse(url=url, status_code=502))
+
+
+class _AsyncStreamContext:
+    def __init__(self, response: "_StreamingResponse") -> None:
+        self._response = response
+
+    async def __aenter__(self) -> "_StreamingResponse":
+        return self._response
+
+    async def __aexit__(self, *_args: object) -> None:
+        return None
+
+
+class _StreamingResponse:
+    def __init__(
+        self,
+        *,
+        url: str,
+        status_code: int = 200,
+        headers: dict[str, str] | None = None,
+        chunks: list[bytes] | None = None,
+    ) -> None:
+        self.request = httpx.Request("GET", url)
+        self.status_code = status_code
+        self.headers = headers or {}
+        self._chunks = chunks or []
+
+    @property
+    def is_redirect(self) -> bool:
+        return 300 <= self.status_code < 400
+
+    def raise_for_status(self) -> None:
+        if self.status_code >= 400:
+            response = httpx.Response(self.status_code, request=self.request)
+            raise httpx.HTTPStatusError("http error", request=self.request, response=response)
+
+    async def aiter_bytes(self):
+        for chunk in self._chunks:
+            yield chunk
 
 
 @pytest.mark.asyncio
@@ -845,4 +1008,76 @@ async def test_retrieve_attachment_content_maps_http_status_errors(
     monkeypatch.setattr("src.services.launch_service.httpx.AsyncClient", _AsyncClientHTTPError)
 
     with pytest.raises(AllureValidationError, match="HTTP 502"):
+        await service._retrieve_attachment_content({"url": "https://example.com/evidence.txt"})
+
+
+@pytest.mark.asyncio
+async def test_retrieve_attachment_content_rejects_private_ip_targets(service: LaunchService) -> None:
+    with pytest.raises(AllureValidationError, match="private, loopback, or reserved IP ranges"):
+        await service._retrieve_attachment_content({"url": "http://127.0.0.1/evidence.txt"})
+
+
+@pytest.mark.asyncio
+async def test_retrieve_attachment_content_rejects_redirects(
+    service: LaunchService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _AsyncClientRedirect:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
+        async def __aenter__(self) -> "_AsyncClientRedirect":
+            return self
+
+        async def __aexit__(self, *_args: object) -> None:
+            return None
+
+        def stream(self, method: str, url: str, *, follow_redirects: bool, timeout: float) -> _AsyncStreamContext:
+            assert method == "GET"
+            assert follow_redirects is False
+            assert timeout == 10.0
+            return _AsyncStreamContext(
+                _StreamingResponse(
+                    url=url,
+                    status_code=302,
+                    headers={"Location": "https://redirected.example.com/file.txt"},
+                )
+            )
+
+    monkeypatch.setattr("src.services.launch_service.httpx.AsyncClient", _AsyncClientRedirect)
+
+    with pytest.raises(AllureValidationError, match="redirects are not allowed"):
+        await service._retrieve_attachment_content({"url": "https://example.com/evidence.txt"})
+
+
+@pytest.mark.asyncio
+async def test_retrieve_attachment_content_rejects_oversized_remote_payload_by_header(
+    service: LaunchService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _AsyncClientOversized:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
+        async def __aenter__(self) -> "_AsyncClientOversized":
+            return self
+
+        async def __aexit__(self, *_args: object) -> None:
+            return None
+
+        def stream(self, method: str, url: str, *, follow_redirects: bool, timeout: float) -> _AsyncStreamContext:
+            assert method == "GET"
+            assert follow_redirects is False
+            assert timeout == 10.0
+            return _AsyncStreamContext(
+                _StreamingResponse(
+                    url=url,
+                    headers={"Content-Length": str(10 * 1024 * 1024 + 1)},
+                    chunks=[b"ignored"],
+                )
+            )
+
+    monkeypatch.setattr("src.services.launch_service.httpx.AsyncClient", _AsyncClientOversized)
+
+    with pytest.raises(AllureValidationError, match="exceeds limit"):
         await service._retrieve_attachment_content({"url": "https://example.com/evidence.txt"})

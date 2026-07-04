@@ -1501,7 +1501,7 @@ class AllureClient:
             method="POST",
             resource_path=f"/api/upload/test-result/{test_result_id}/attachment",
             files={"file": files},
-            expected_status_codes=(202,),
+            expected_status_codes=(200, 202),
         )
         return int(response.status)
 
@@ -1520,7 +1520,7 @@ class AllureClient:
             method="POST",
             resource_path=f"/api/upload/test-fixture-result/{fixture_result_id}/attachment",
             files={"file": files},
-            expected_status_codes=(202,),
+            expected_status_codes=(200, 202),
         )
         return int(response.status)
 
