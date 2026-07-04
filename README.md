@@ -19,6 +19,8 @@ Lucius makes this easier by giving your AI tools that are simple to use and hard
 
 ## 🛠️ Supported Tools
 
+See the full reference in [Tool Reference](docs/tools.md).
+
 | Tool Category                  | Description                                                     | All Tools                                                                                                                                                                                                                                |
 |:-------------------------------|:----------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **Test Case Mgmt**             | Full lifecycle for test documentation.                          | `create_test_case`, `update_test_case`, `delete_test_case`, `delete_archived_test_cases`, `get_test_case_details`, `get_test_case_custom_fields`                                                                                       |

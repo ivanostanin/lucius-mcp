@@ -47,6 +47,7 @@ from .generated.api.test_case_tree_bulk_controller_v2_api import TestCaseTreeBul
 from .generated.api.test_case_tree_controller_v2_api import TestCaseTreeControllerV2Api
 from .generated.api.test_layer_controller_api import TestLayerControllerApi
 from .generated.api.test_layer_schema_controller_api import TestLayerSchemaControllerApi
+from .generated.api.test_result_attachment_controller_api import TestResultAttachmentControllerApi
 from .generated.api.test_result_bulk_controller_api import TestResultBulkControllerApi
 from .generated.api.test_result_controller_api import TestResultControllerApi
 from .generated.api.test_result_fixture_controller_api import TestResultFixtureControllerApi
@@ -91,6 +92,7 @@ from .generated.models.page_test_case_row_dto import PageTestCaseRowDto
 from .generated.models.page_test_case_tree_node_dto import PageTestCaseTreeNodeDto
 from .generated.models.page_test_case_tree_node_dto_content_inner import PageTestCaseTreeNodeDtoContentInner
 from .generated.models.page_test_fixture_result_attachment_row_dto import PageTestFixtureResultAttachmentRowDto
+from .generated.models.page_test_result_attachment_row_dto import PageTestResultAttachmentRowDto
 from .generated.models.page_test_result_flat_dto import PageTestResultFlatDto
 from .generated.models.page_tree_dto_v2 import PageTreeDtoV2
 from .generated.models.project_test_case_count_dto import ProjectTestCaseCountDto
@@ -126,6 +128,7 @@ from .generated.models.test_fixture_result_attachment_row_dto import (
     TestFixtureResultAttachmentRowDto,
 )
 from .generated.models.test_fixture_result_v2_dto import TestFixtureResultV2Dto
+from .generated.models.test_result_attachment_patch_dto import TestResultAttachmentPatchDto
 from .generated.models.test_result_attachment_row_dto import TestResultAttachmentRowDto
 from .generated.models.test_result_bulk_rerun_dto import TestResultBulkRerunDto
 from .generated.models.test_result_dto import TestResultDto
@@ -203,6 +206,7 @@ type ApiType = (
     | TestLayerSchemaControllerApi
     | LaunchControllerApi
     | LaunchSearchControllerApi
+    | TestResultAttachmentControllerApi
     | TestResultControllerApi
     | TestResultBulkControllerApi
     | TestResultFixtureControllerApi
@@ -334,6 +338,7 @@ class AllureClient:
         self._test_layer_schema_api: TestLayerSchemaControllerApi | None = None
         self._launch_api: LaunchControllerApi | None = None
         self._launch_search_api: LaunchSearchControllerApi | None = None
+        self._test_result_attachment_api: TestResultAttachmentControllerApi | None = None
         self._test_result_api: TestResultControllerApi | None = None
         self._test_result_bulk_api: TestResultBulkControllerApi | None = None
         self._test_result_fixture_api: TestResultFixtureControllerApi | None = None
@@ -491,6 +496,7 @@ class AllureClient:
             self._test_layer_schema_api = TestLayerSchemaControllerApi(self._api_client)
             self._launch_api = LaunchControllerApi(self._api_client)
             self._launch_search_api = LaunchSearchControllerApi(self._api_client)
+            self._test_result_attachment_api = TestResultAttachmentControllerApi(self._api_client)
             self._test_result_api = TestResultControllerApi(self._api_client)
             self._test_result_bulk_api = TestResultBulkControllerApi(self._api_client)
             self._test_result_fixture_api = TestResultFixtureControllerApi(self._api_client)
@@ -690,6 +696,11 @@ class AllureClient:
     async def _get_api(
         self, attr_name: Literal["_launch_search_api"], *, error_name: str | None = None
     ) -> LaunchSearchControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_test_result_attachment_api"], *, error_name: str | None = None
+    ) -> TestResultAttachmentControllerApi: ...
 
     @overload
     async def _get_api(
@@ -1407,6 +1418,74 @@ class AllureClient:
             )
         )
 
+    async def list_test_result_attachments(
+        self,
+        test_result_id: int,
+        *,
+        page: int = 0,
+        size: int = 10,
+        sort: list[str] | None = None,
+    ) -> PageTestResultAttachmentRowDto:
+        """Fetch test-result attachments for one manual result."""
+        api = await self._get_api("_test_result_attachment_api", error_name="test result attachment APIs")
+
+        if not isinstance(test_result_id, int) or test_result_id <= 0:
+            raise AllureValidationError("Test Result ID must be a positive integer")
+        if not isinstance(page, int) or page < 0:
+            raise AllureValidationError("Page must be a non-negative integer")
+        if not isinstance(size, int) or size <= 0 or size > 100:
+            raise AllureValidationError("Size must be between 1 and 100")
+
+        return await self._call_api(
+            api.find_all5(
+                test_result_id=test_result_id,
+                page=page,
+                size=size,
+                sort=sort,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def patch_test_result_attachment(
+        self,
+        attachment_id: int,
+        data: TestResultAttachmentPatchDto,
+    ) -> TestResultAttachmentRowDto:
+        """Patch test-result attachment metadata."""
+        api = await self._get_api("_test_result_attachment_api", error_name="test result attachment APIs")
+
+        if not isinstance(attachment_id, int) or attachment_id <= 0:
+            raise AllureValidationError("Attachment ID must be a positive integer")
+
+        return await self._call_api(
+            api.patch6(
+                id=attachment_id,
+                test_result_attachment_patch_dto=data,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def read_test_result_attachment_content(self, attachment_id: int, *, inline: bool = False) -> bytes:
+        """Read stored content for one test-result attachment."""
+        api = await self._get_api("_test_result_attachment_api", error_name="test result attachment APIs")
+
+        if not isinstance(attachment_id, int) or attachment_id <= 0:
+            raise AllureValidationError("Attachment ID must be a positive integer")
+
+        response = await self._call_api_raw(
+            cast(
+                Awaitable[httpx.Response],
+                api.read_content_without_preload_content(
+                    id=attachment_id,
+                    inline=inline,
+                    _request_timeout=self._timeout,
+                ),
+            )
+        )
+        if not 200 <= response.status_code <= 299:
+            raise ApiException(status=response.status_code, reason=response.reason_phrase, body=response.text)
+        return response.content
+
     async def rerun_test_results_bulk(self, data: TestResultBulkRerunDto) -> None:
         """Schedule manual reruns for selected test results."""
         api = await self._get_api("_test_result_bulk_api", error_name="test result bulk APIs")
@@ -1523,6 +1602,28 @@ class AllureClient:
             expected_status_codes=(200, 202),
         )
         return int(response.status)
+
+    async def update_test_result_attachment_content(
+        self,
+        attachment_id: int,
+        files: list[bytes | str | tuple[str, bytes]],
+    ) -> int:
+        """Replace content for an existing test-result attachment."""
+        api = await self._get_api("_test_result_attachment_api", error_name="test result attachment APIs")
+
+        if not isinstance(attachment_id, int) or attachment_id <= 0:
+            raise AllureValidationError("Attachment ID must be a positive integer")
+        if not isinstance(files, list) or not files:
+            raise AllureValidationError("files must be a non-empty list")
+
+        await self._call_api(
+            api.update_content(
+                id=attachment_id,
+                file=files[0],
+                _request_timeout=self._timeout,
+            )
+        )
+        return 200
 
     async def upload_results_to_launch(
         self,

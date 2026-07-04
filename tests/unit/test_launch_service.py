@@ -15,8 +15,16 @@ from src.client.generated.models.page_launch_dto import PageLaunchDto
 from src.client.generated.models.page_launch_preview_dto import PageLaunchPreviewDto
 from src.client.generated.models.page_test_result_flat_dto import PageTestResultFlatDto
 from src.client.generated.models.test_fixture_result_v2_dto import TestFixtureResultV2Dto
+from src.client.generated.models.test_result_attachment_row_dto import TestResultAttachmentRowDto
+from src.client.generated.models.test_result_attachment_step_dto import TestResultAttachmentStepDto
+from src.client.generated.models.test_result_attachment_step_dto_all_of_attachment import (
+    TestResultAttachmentStepDtoAllOfAttachment,
+)
+from src.client.generated.models.test_result_body_step_dto import TestResultBodyStepDto
 from src.client.generated.models.test_result_dto import TestResultDto
 from src.client.generated.models.test_result_flat_dto import TestResultFlatDto
+from src.client.generated.models.test_result_scenario_v2_dto import TestResultScenarioV2Dto
+from src.client.generated.models.test_result_scenario_v2_dto_steps_inner import TestResultScenarioV2DtoStepsInner
 from src.client.generated.models.test_session_response_dto import TestSessionResponseDto
 from src.client.generated.models.upload_results_response_dto import UploadResultsResponseDto
 from src.services.launch_service import LaunchDeleteResult, LaunchService
@@ -40,8 +48,11 @@ def mock_client() -> MagicMock:
     client.start_manual_test_session = AsyncMock()
     client.submit_manual_test_results = AsyncMock()
     client.get_test_result = AsyncMock()
+    client.get_test_result_execution = AsyncMock(return_value=TestResultScenarioV2Dto(steps=[]))
     client.add_test_result_attachment = AsyncMock()
     client.add_test_fixture_attachment = AsyncMock()
+    client.patch_test_result_attachment = AsyncMock()
+    client.update_test_result_attachment_content = AsyncMock(return_value=200)
     client.get_test_result_fixtures = AsyncMock()
     client.list_launch_test_results.return_value = PageTestResultFlatDto(
         content=[],
@@ -56,6 +67,31 @@ def mock_client() -> MagicMock:
 @pytest.fixture
 def service(mock_client: MagicMock) -> LaunchService:
     return LaunchService(client=mock_client)
+
+
+def _manual_execution_with_steps(*steps: TestResultScenarioV2DtoStepsInner) -> TestResultScenarioV2Dto:
+    return TestResultScenarioV2Dto.model_construct(steps=list(steps))
+
+
+def _body_step(body: str) -> TestResultScenarioV2DtoStepsInner:
+    return TestResultScenarioV2DtoStepsInner.model_construct(
+        actual_instance=TestResultBodyStepDto.model_construct(type="TestResultBodyStepDto", body=body)
+    )
+
+
+def _attachment_step(attachment_id: int, name: str) -> TestResultScenarioV2DtoStepsInner:
+    attachment_row = TestResultAttachmentRowDto.model_construct(
+        entity="TestResultAttachmentRowDto",
+        id=attachment_id,
+        name=name,
+    )
+    return TestResultScenarioV2DtoStepsInner.model_construct(
+        actual_instance=TestResultAttachmentStepDto.model_construct(
+            type="TestResultAttachmentStepDto",
+            attachment_id=attachment_id,
+            attachment=TestResultAttachmentStepDtoAllOfAttachment.model_construct(actual_instance=attachment_row),
+        )
+    )
 
 
 @pytest.mark.asyncio
@@ -771,7 +807,113 @@ async def test_add_test_result_attachment_validation_paths(
 
 
 @pytest.mark.asyncio
-async def test_add_test_step_attachment_resolves_fixture_by_name(
+async def test_add_test_step_attachment_resolves_manual_attachment_step_by_name(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    mock_client.get_test_result_execution.return_value = _manual_execution_with_steps(
+        _body_step("Open app"),
+        _attachment_step(701, "manual-step.txt"),
+    )
+
+    result = await service.add_test_step_attachment(
+        test_result_id=55,
+        step_name="manual-step.txt",
+        attachment={
+            "name": "manual-step.txt",
+            "content_type": "text/plain",
+            "content": "QQ==",
+        },
+    )
+
+    assert result.target_id == 701
+    mock_client.patch_test_result_attachment.assert_awaited_once()
+    mock_client.update_test_result_attachment_content.assert_awaited_once_with(701, [("manual-step.txt", b"A")])
+    mock_client.add_test_fixture_attachment.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_add_test_step_attachment_requires_unambiguous_manual_step_selection(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    mock_client.get_test_result_execution.return_value = _manual_execution_with_steps(
+        _attachment_step(701, "manual-step.txt"),
+        _attachment_step(702, "manual-step-2.txt"),
+    )
+
+    with pytest.raises(AllureValidationError, match="Attachment step selection is ambiguous"):
+        await service.add_test_step_attachment(
+            test_result_id=55,
+            attachment={
+                "name": "evidence.txt",
+                "content_type": "text/plain",
+                "content": "QQ==",
+            },
+        )
+
+
+@pytest.mark.asyncio
+async def test_add_test_step_attachment_maps_missing_manual_test_result(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    mock_client.get_test_result_execution.side_effect = AllureNotFoundError(
+        "missing",
+        status_code=404,
+        response_body="{}",
+    )
+
+    with pytest.raises(AllureNotFoundError, match="Test result ID 55 not found"):
+        await service.add_test_step_attachment(
+            test_result_id=55,
+            attachment={
+                "name": "evidence.txt",
+                "content_type": "text/plain",
+                "content": "QQ==",
+            },
+        )
+
+
+@pytest.mark.asyncio
+async def test_add_test_step_attachment_maps_missing_attachment_slot(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    mock_client.get_test_result_execution.return_value = _manual_execution_with_steps(
+        _attachment_step(701, "manual-step.txt")
+    )
+    mock_client.patch_test_result_attachment.side_effect = AllureNotFoundError(
+        "missing",
+        status_code=404,
+        response_body="{}",
+    )
+
+    with pytest.raises(AllureNotFoundError, match="Step attachment ID 701 not found"):
+        await service.add_test_step_attachment(
+            test_result_id=55,
+            step_index=0,
+            attachment={
+                "name": "manual-step.txt",
+                "content_type": "text/plain",
+                "content": "QQ==",
+            },
+        )
+
+
+@pytest.mark.asyncio
+async def test_add_test_step_attachment_rejects_mixed_manual_and_fixture_selectors(service: LaunchService) -> None:
+    with pytest.raises(AllureValidationError, match="Specify either manual step selectors"):
+        await service.add_test_step_attachment(
+            test_result_id=55,
+            step_index=0,
+            fixture_result_id=501,
+            attachment={
+                "name": "evidence.txt",
+                "content_type": "text/plain",
+                "content": "QQ==",
+            },
+        )
+
+
+@pytest.mark.asyncio
+async def test_add_test_step_attachment_resolves_fixture_fallback_by_name(
     service: LaunchService, mock_client: MagicMock
 ) -> None:
     mock_client.get_test_result_fixtures.return_value = [
@@ -792,72 +934,6 @@ async def test_add_test_step_attachment_resolves_fixture_by_name(
 
     assert result.target_id == 501
     mock_client.add_test_fixture_attachment.assert_awaited_once_with(501, [("evidence.txt", b"A")])
-
-
-@pytest.mark.asyncio
-async def test_add_test_step_attachment_requires_unambiguous_fixture_selection(
-    service: LaunchService, mock_client: MagicMock
-) -> None:
-    mock_client.get_test_result_fixtures.return_value = [
-        TestFixtureResultV2Dto(id=501, name="After screenshot", type="after"),
-        TestFixtureResultV2Dto(id=502, name="After screenshot", type="after"),
-    ]
-
-    with pytest.raises(AllureValidationError, match="Fixture selection is ambiguous"):
-        await service.add_test_step_attachment(
-            test_result_id=55,
-            fixture_name="After screenshot",
-            fixture_type="after",
-            attachment={
-                "name": "evidence.txt",
-                "content_type": "text/plain",
-                "content": "QQ==",
-            },
-        )
-
-
-@pytest.mark.asyncio
-async def test_add_test_step_attachment_maps_missing_test_result(
-    service: LaunchService, mock_client: MagicMock
-) -> None:
-    mock_client.get_test_result_fixtures.side_effect = AllureNotFoundError(
-        "missing",
-        status_code=404,
-        response_body="{}",
-    )
-
-    with pytest.raises(AllureNotFoundError, match="Test result ID 55 not found"):
-        await service.add_test_step_attachment(
-            test_result_id=55,
-            fixture_name="After screenshot",
-            attachment={
-                "name": "evidence.txt",
-                "content_type": "text/plain",
-                "content": "QQ==",
-            },
-        )
-
-
-@pytest.mark.asyncio
-async def test_add_test_step_attachment_maps_missing_fixture_result(
-    service: LaunchService, mock_client: MagicMock
-) -> None:
-    mock_client.add_test_fixture_attachment.side_effect = AllureNotFoundError(
-        "missing",
-        status_code=404,
-        response_body="{}",
-    )
-
-    with pytest.raises(AllureNotFoundError, match="Fixture result ID 501 not found"):
-        await service.add_test_step_attachment(
-            test_result_id=55,
-            fixture_result_id=501,
-            attachment={
-                "name": "evidence.txt",
-                "content_type": "text/plain",
-                "content": "QQ==",
-            },
-        )
 
 
 @pytest.mark.asyncio

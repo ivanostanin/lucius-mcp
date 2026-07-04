@@ -23,8 +23,11 @@ from src.client.generated.models.launch_upload_response_dto import LaunchUploadR
 from src.client.generated.models.manual_session_request_dto import ManualSessionRequestDto
 from src.client.generated.models.page_launch_dto import PageLaunchDto
 from src.client.generated.models.page_launch_preview_dto import PageLaunchPreviewDto
+from src.client.generated.models.page_test_result_attachment_row_dto import PageTestResultAttachmentRowDto
 from src.client.generated.models.page_test_result_flat_dto import PageTestResultFlatDto
 from src.client.generated.models.test_fixture_result_v2_dto import TestFixtureResultV2Dto
+from src.client.generated.models.test_result_attachment_patch_dto import TestResultAttachmentPatchDto
+from src.client.generated.models.test_result_attachment_row_dto import TestResultAttachmentRowDto
 from src.client.generated.models.test_result_bulk_rerun_dto import TestResultBulkRerunDto
 from src.client.generated.models.test_result_dto import TestResultDto
 from src.client.generated.models.test_result_rerun_dto import TestResultRerunDto
@@ -306,6 +309,66 @@ async def test_client_manual_execution_wrappers_call_apis() -> None:
 
 
 @pytest.mark.asyncio
+async def test_client_test_result_attachment_wrappers_use_expected_paths() -> None:
+    client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
+    client._is_entered = True
+    client._token_expires_at = time.time() + 3600
+
+    attachment_api = MagicMock()
+    attachment_api.find_all5 = AsyncMock(
+        return_value=PageTestResultAttachmentRowDto.model_validate(
+            {
+                "content": [
+                    {
+                        "entity": "TestResultAttachmentRowDto",
+                        "id": 77,
+                        "name": "manual-step.txt",
+                        "contentType": "text/plain",
+                    }
+                ]
+            }
+        )
+    )
+    attachment_api.patch6 = AsyncMock(
+        return_value=TestResultAttachmentRowDto.model_validate(
+            {
+                "entity": "TestResultAttachmentRowDto",
+                "id": 77,
+                "name": "manual-step.txt",
+                "contentType": "text/plain",
+            }
+        )
+    )
+    attachment_api.read_content_without_preload_content = AsyncMock(return_value=httpx.Response(200, content=b"A"))
+    client._test_result_attachment_api = attachment_api
+
+    attachments = await client.list_test_result_attachments(9, sort=["name,ASC"])
+    patched = await client.patch_test_result_attachment(
+        77,
+        TestResultAttachmentPatchDto(name="manual-step.txt", content_type="text/plain"),
+    )
+    content = await client.read_test_result_attachment_content(77)
+
+    assert attachments.content is not None
+    assert attachments.content[0].id == 77
+    assert patched.id == 77
+    assert content == b"A"
+    attachment_api.find_all5.assert_awaited_once_with(
+        test_result_id=9,
+        page=0,
+        size=10,
+        sort=["name,ASC"],
+        _request_timeout=client._timeout,
+    )
+    attachment_api.patch6.assert_awaited_once()
+    attachment_api.read_content_without_preload_content.assert_awaited_once_with(
+        id=77,
+        inline=False,
+        _request_timeout=client._timeout,
+    )
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("method_name", "resource_path", "status_code"),
     [
@@ -328,7 +391,8 @@ async def test_client_manual_attachment_uploads_use_expected_paths(
 
     def _param_serialize_side_effect(*args, **kwargs):
         path = kwargs.get("resource_path")
-        return ("POST", f"https://example.com{path}", {}, None, [])
+        method = kwargs.get("method")
+        return (method, f"https://example.com{path}", {}, None, [])
 
     api_client.param_serialize.side_effect = _param_serialize_side_effect
 
@@ -348,6 +412,33 @@ async def test_client_manual_attachment_uploads_use_expected_paths(
     _, kwargs = api_client.param_serialize.call_args
     assert kwargs["resource_path"] == resource_path
     assert kwargs["files"] == {"file": [("evidence.txt", b"A")]}
+
+
+@pytest.mark.asyncio
+async def test_client_update_test_result_attachment_content_calls_generated_api() -> None:
+    client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
+    client._is_entered = True
+    client._token_expires_at = time.time() + 3600
+    client._test_result_attachment_api = MagicMock()
+    client._test_result_attachment_api.update_content = AsyncMock(
+        return_value=TestResultAttachmentRowDto.model_validate(
+            {
+                "entity": "TestResultAttachmentRowDto",
+                "id": 9,
+                "name": "manual-step.txt",
+                "contentType": "text/plain",
+            }
+        )
+    )
+
+    result = await client.update_test_result_attachment_content(9, [("manual-step.txt", b"A")])
+
+    assert result == 200
+    client._test_result_attachment_api.update_content.assert_awaited_once_with(
+        id=9,
+        file=("manual-step.txt", b"A"),
+        _request_timeout=client._timeout,
+    )
 
 
 @pytest.mark.asyncio

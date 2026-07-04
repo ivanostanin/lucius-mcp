@@ -51,6 +51,7 @@ KEEP_TAGS = {
     "test-result-bulk-controller",
     "test-result-rerun-controller",
     "test-result-flat-controller",
+    "test-result-attachment-controller",
     "upload-controller",
     "upload-test-result-controller",
     "test-result-fixture-controller",

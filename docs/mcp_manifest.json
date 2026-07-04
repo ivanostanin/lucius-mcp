@@ -2329,7 +2329,7 @@
     {
       "name": "add_test_step_attachment",
       "title": "Add Test Step Attachment",
-      "description": "Upload evidence to a fixture-backed step context for a manual result.",
+      "description": "Upload evidence to a manual attachment step inside a test result.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -2344,6 +2344,42 @@
             "description": "Attachment payload using the repo-standard pattern: {name, content_type, content? | url?}.",
             "type": "object"
           },
+          "attachment_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional explicit manual step attachment ID resolved from the test result execution."
+          },
+          "step_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional attachment-step name to resolve within the manual test result."
+          },
+          "step_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional zero-based manual step index to resolve within the test result execution."
+          },
           "fixture_result_id": {
             "anyOf": [
               {
@@ -2354,7 +2390,7 @@
               }
             ],
             "default": null,
-            "description": "Optional explicit fixture result ID for the step context."
+            "description": "Optional explicit fixture result ID for legacy fixture-step fallback."
           },
           "fixture_name": {
             "anyOf": [
@@ -2366,7 +2402,7 @@
               }
             ],
             "default": null,
-            "description": "Optional fixture/step name used to resolve the step context inside the test result."
+            "description": "Optional fixture name used only for the legacy fixture-step fallback."
           },
           "fixture_type": {
             "anyOf": [
@@ -2378,7 +2414,7 @@
               }
             ],
             "default": null,
-            "description": "Optional fixture type hint: 'before' or 'after'."
+            "description": "Optional fixture type hint for the legacy fixture-step fallback: 'before' or 'after'."
           },
           "project_id": {
             "anyOf": [

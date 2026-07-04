@@ -429,36 +429,51 @@ async def add_test_step_attachment(
             description=("Attachment payload using the repo-standard pattern: {name, content_type, content? | url?}.")
         ),
     ],
+    attachment_id: Annotated[
+        int | None,
+        Field(description="Optional explicit manual step attachment ID resolved from the test result execution."),
+    ] = None,
+    step_name: Annotated[
+        str | None,
+        Field(description="Optional attachment-step name to resolve within the manual test result."),
+    ] = None,
+    step_index: Annotated[
+        int | None,
+        Field(description="Optional zero-based manual step index to resolve within the test result execution."),
+    ] = None,
     fixture_result_id: Annotated[
         int | None,
-        Field(description="Optional explicit fixture result ID for the step context."),
+        Field(description="Optional explicit fixture result ID for legacy fixture-step fallback."),
     ] = None,
     fixture_name: Annotated[
         str | None,
-        Field(description="Optional fixture/step name used to resolve the step context inside the test result."),
+        Field(description="Optional fixture name used only for the legacy fixture-step fallback."),
     ] = None,
     fixture_type: Annotated[
         str | None,
-        Field(description="Optional fixture type hint: 'before' or 'after'."),
+        Field(description="Optional fixture type hint for the legacy fixture-step fallback: 'before' or 'after'."),
     ] = None,
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
     output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
 ) -> ToolOutput:
-    """Upload evidence to a fixture-backed step context for a manual result.
+    """Upload evidence to a manual attachment step inside a test result.
 
     Args:
         test_result_id: Parent test result ID.
         attachment: Attachment payload using content or url.
-        fixture_result_id: Optional explicit fixture result ID.
-        fixture_name: Optional fixture/step name to resolve the target context.
-        fixture_type: Optional fixture type hint ('before' or 'after').
+        attachment_id: Optional explicit manual step attachment ID.
+        step_name: Optional attachment-step name to resolve within the result execution.
+        step_index: Optional zero-based step index to resolve within the result execution.
+        fixture_result_id: Optional explicit fixture result ID for legacy fallback.
+        fixture_name: Optional fixture name for legacy fallback.
+        fixture_type: Optional fixture type hint ('before' or 'after') for legacy fallback.
         project_id: Optional override for the default Project ID.
         output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
-        Confirmation that the attachment was accepted for the step context.
+        Confirmation that the attachment was accepted for the manual step context.
     """
     normalized_fixture_type = fixture_type.lower() if isinstance(fixture_type, str) else None
     async with _launch_client_context(project_id=project_id) as client:
@@ -466,6 +481,9 @@ async def add_test_step_attachment(
         result = await service.add_test_step_attachment(
             test_result_id=test_result_id,
             attachment=attachment,
+            attachment_id=attachment_id,
+            step_name=step_name,
+            step_index=step_index,
             fixture_result_id=fixture_result_id,
             fixture_name=fixture_name,
             fixture_type=normalized_fixture_type,  # type: ignore[arg-type]

@@ -30,8 +30,12 @@ from src.client.generated.models.page_launch_preview_dto import PageLaunchPrevie
 from src.client.generated.models.page_test_result_flat_dto import PageTestResultFlatDto
 from src.client.generated.models.session_variable import SessionVariable
 from src.client.generated.models.test_fixture_result_v2_dto import TestFixtureResultV2Dto
+from src.client.generated.models.test_result_attachment_patch_dto import TestResultAttachmentPatchDto
+from src.client.generated.models.test_result_attachment_step_dto import TestResultAttachmentStepDto
 from src.client.generated.models.test_result_bulk_rerun_dto import TestResultBulkRerunDto
 from src.client.generated.models.test_result_flat_dto import TestResultFlatDto
+from src.client.generated.models.test_result_scenario_v2_dto import TestResultScenarioV2Dto
+from src.client.generated.models.test_result_scenario_v2_dto_steps_inner import TestResultScenarioV2DtoStepsInner
 from src.client.generated.models.test_status import TestStatus
 from src.client.generated.models.upload_attachment_dto import UploadAttachmentDto
 from src.client.generated.models.upload_parameter_dto import UploadParameterDto
@@ -141,6 +145,15 @@ class AttachmentUploadResult:
     target_id: int
     file_names: list[str]
     status_code: int
+
+
+@dataclass
+class _ResolvedManualStepAttachmentTarget:
+    """Resolved manual-step attachment slot for one test result."""
+
+    attachment_id: int
+    step_index: int
+    name: str | None = None
 
 
 class LaunchService:
@@ -624,32 +637,76 @@ class LaunchService:
         *,
         test_result_id: int,
         attachment: dict[str, str],
+        attachment_id: int | None = None,
+        step_name: str | None = None,
+        step_index: int | None = None,
         fixture_result_id: int | None = None,
         fixture_name: str | None = None,
         fixture_type: Literal["before", "after"] | None = None,
     ) -> AttachmentUploadResult:
-        """Upload one attachment to a fixture-backed step context."""
+        """Upload one attachment to a manual attachment step or explicit fixture fallback."""
         self._validate_positive_id(test_result_id, "Test Result ID")
-        target_fixture_id = fixture_result_id or await self._resolve_fixture_result_id(
-            test_result_id=test_result_id,
-            fixture_name=fixture_name,
-            fixture_type=fixture_type,
-        )
-        self._validate_positive_id(target_fixture_id, "Fixture Result ID")
+        has_manual_selector = attachment_id is not None or step_name is not None or step_index is not None
+        has_fixture_selector = fixture_result_id is not None or fixture_name is not None or fixture_type is not None
+        if has_manual_selector and has_fixture_selector:
+            raise AllureValidationError(
+                "Specify either manual step selectors (attachment_id, step_name, step_index) "
+                "or fixture selectors (fixture_result_id, fixture_name, fixture_type), not both."
+            )
+
+        attachment_name, content_type = self._normalize_attachment_metadata(attachment)
         file_entry = await self._prepare_attachment_file(attachment)
 
+        if has_fixture_selector:
+            target_fixture_id = fixture_result_id or await self._resolve_fixture_result_id(
+                test_result_id=test_result_id,
+                fixture_name=fixture_name,
+                fixture_type=fixture_type,
+            )
+            self._validate_positive_id(target_fixture_id, "Fixture Result ID")
+
+            try:
+                status_code = await self._client.add_test_fixture_attachment(target_fixture_id, [file_entry])
+            except AllureNotFoundError as exc:
+                raise AllureNotFoundError(
+                    f"Fixture result ID {target_fixture_id} not found",
+                    status_code=exc.status_code,
+                    response_body=exc.response_body,
+                ) from exc
+
+            return AttachmentUploadResult(
+                target_kind="test_step",
+                target_id=target_fixture_id,
+                file_names=[file_entry[0]],
+                status_code=status_code,
+            )
+
+        target_attachment = await self._resolve_manual_step_attachment_target(
+            test_result_id=test_result_id,
+            attachment_id=attachment_id,
+            step_name=step_name,
+            step_index=step_index,
+        )
+
         try:
-            status_code = await self._client.add_test_fixture_attachment(target_fixture_id, [file_entry])
+            await self._client.patch_test_result_attachment(
+                target_attachment.attachment_id,
+                TestResultAttachmentPatchDto(name=attachment_name, content_type=content_type),
+            )
+            status_code = await self._client.update_test_result_attachment_content(
+                target_attachment.attachment_id,
+                [file_entry],
+            )
         except AllureNotFoundError as exc:
             raise AllureNotFoundError(
-                f"Fixture result ID {target_fixture_id} not found",
+                f"Step attachment ID {target_attachment.attachment_id} not found",
                 status_code=exc.status_code,
                 response_body=exc.response_body,
             ) from exc
 
         return AttachmentUploadResult(
             target_kind="test_step",
-            target_id=target_fixture_id,
+            target_id=target_attachment.attachment_id,
             file_names=[file_entry[0]],
             status_code=status_code,
         )
@@ -1306,6 +1363,147 @@ class LaunchService:
             )
         return matching_ids[0]
 
+    async def _resolve_manual_step_attachment_target(
+        self,
+        *,
+        test_result_id: int,
+        attachment_id: int | None,
+        step_name: str | None,
+        step_index: int | None,
+    ) -> _ResolvedManualStepAttachmentTarget:
+        execution = await self._get_test_result_execution_or_raise(test_result_id)
+        steps = execution.steps or []
+        attachment_steps = self._collect_manual_step_attachment_targets(steps)
+
+        if attachment_id is not None:
+            return self._resolve_manual_step_attachment_by_id(
+                test_result_id=test_result_id,
+                attachment_steps=attachment_steps,
+                attachment_id=attachment_id,
+            )
+
+        if step_index is not None:
+            return self._resolve_manual_step_attachment_by_index(
+                test_result_id=test_result_id,
+                steps=steps,
+                step_index=step_index,
+            )
+
+        if step_name is not None:
+            return self._resolve_manual_step_attachment_by_name(
+                test_result_id=test_result_id,
+                attachment_steps=attachment_steps,
+                step_name=step_name,
+            )
+
+        return self._resolve_manual_step_attachment_without_selector(
+            test_result_id=test_result_id,
+            attachment_steps=attachment_steps,
+        )
+
+    def _resolve_manual_step_attachment_by_id(
+        self,
+        *,
+        test_result_id: int,
+        attachment_steps: list[_ResolvedManualStepAttachmentTarget],
+        attachment_id: int,
+    ) -> _ResolvedManualStepAttachmentTarget:
+        self._validate_positive_id(attachment_id, "Attachment ID")
+        for target in attachment_steps:
+            if target.attachment_id == attachment_id:
+                return target
+        raise AllureNotFoundError(f"Attachment step ID {attachment_id} not found in test result ID {test_result_id}")
+
+    def _resolve_manual_step_attachment_by_index(
+        self,
+        *,
+        test_result_id: int,
+        steps: list[TestResultScenarioV2DtoStepsInner],
+        step_index: int,
+    ) -> _ResolvedManualStepAttachmentTarget:
+        if not isinstance(step_index, int) or step_index < 0:
+            raise AllureValidationError("step_index must be a non-negative integer")
+        if step_index >= len(steps):
+            raise AllureValidationError(f"step_index {step_index} is out of range for test result ID {test_result_id}")
+
+        selected_target = self._manual_step_attachment_target_from_step(steps[step_index], step_index=step_index)
+        if selected_target is None:
+            raise AllureValidationError(
+                f"Step at index {step_index} is not an attachment step in test result ID {test_result_id}"
+            )
+        return selected_target
+
+    def _resolve_manual_step_attachment_by_name(
+        self,
+        *,
+        test_result_id: int,
+        attachment_steps: list[_ResolvedManualStepAttachmentTarget],
+        step_name: str,
+    ) -> _ResolvedManualStepAttachmentTarget:
+        normalized_step_name = self._normalize_text(step_name, field_name="step_name")
+        matches = [target for target in attachment_steps if target.name == normalized_step_name]
+        if not matches:
+            raise AllureNotFoundError(
+                f"No attachment step named {normalized_step_name!r} found in test result ID {test_result_id}"
+            )
+        if len(matches) > 1:
+            raise AllureValidationError("Attachment step selection is ambiguous. Provide attachment_id or step_index.")
+        return matches[0]
+
+    @staticmethod
+    def _resolve_manual_step_attachment_without_selector(
+        *,
+        test_result_id: int,
+        attachment_steps: list[_ResolvedManualStepAttachmentTarget],
+    ) -> _ResolvedManualStepAttachmentTarget:
+        if not attachment_steps:
+            raise AllureNotFoundError(
+                f"Test result ID {test_result_id} has no attachment steps. "
+                "Submit a manual result with an attachment step or use explicit fixture selectors."
+            )
+        if len(attachment_steps) > 1:
+            raise AllureValidationError(
+                "Attachment step selection is ambiguous. Provide attachment_id, step_name, or step_index."
+            )
+        return attachment_steps[0]
+
+    @staticmethod
+    def _collect_manual_step_attachment_targets(
+        steps: list[TestResultScenarioV2DtoStepsInner],
+    ) -> list[_ResolvedManualStepAttachmentTarget]:
+        targets: list[_ResolvedManualStepAttachmentTarget] = []
+        for index, step in enumerate(steps):
+            target = LaunchService._manual_step_attachment_target_from_step(step, step_index=index)
+            if target is not None:
+                targets.append(target)
+        return targets
+
+    @staticmethod
+    def _manual_step_attachment_target_from_step(
+        step: TestResultScenarioV2DtoStepsInner,
+        *,
+        step_index: int,
+    ) -> _ResolvedManualStepAttachmentTarget | None:
+        actual_step = step.actual_instance
+        if not isinstance(actual_step, TestResultAttachmentStepDto):
+            return None
+
+        attachment_id = actual_step.attachment_id
+        if not isinstance(attachment_id, int) or attachment_id <= 0:
+            return None
+
+        attachment_name = None
+        attachment = actual_step.attachment.actual_instance if actual_step.attachment is not None else None
+        if attachment is not None:
+            name = getattr(attachment, "name", None)
+            attachment_name = name if isinstance(name, str) and name.strip() else None
+
+        return _ResolvedManualStepAttachmentTarget(
+            attachment_id=attachment_id,
+            step_index=step_index,
+            name=attachment_name,
+        )
+
     async def _get_test_result_fixtures_or_raise(self, test_result_id: int) -> list[TestFixtureResultV2Dto]:
         try:
             return await self._client.get_test_result_fixtures(test_result_id)
@@ -1316,16 +1514,18 @@ class LaunchService:
                 response_body=exc.response_body,
             ) from exc
 
-    async def _prepare_attachment_file(self, attachment: dict[str, str]) -> tuple[str, bytes]:
-        if not isinstance(attachment, dict):
-            raise AllureValidationError("attachment must be a dictionary")
+    async def _get_test_result_execution_or_raise(self, test_result_id: int) -> TestResultScenarioV2Dto:
+        try:
+            return await self._client.get_test_result_execution(test_result_id)
+        except AllureNotFoundError as exc:
+            raise AllureNotFoundError(
+                f"Test result ID {test_result_id} not found",
+                status_code=exc.status_code,
+                response_body=exc.response_body,
+            ) from exc
 
-        name = self._normalize_text(attachment.get("name"), field_name="attachment.name")
-        content_type = self._normalize_text(attachment.get("content_type"), field_name="attachment.content_type")
-        if content_type not in ALLOWED_MIME_TYPES:
-            raise AllureValidationError(f"Content-Type '{content_type}' is not allowed or supported.")
-        if name is None:
-            raise AllureValidationError("attachment.name is required")
+    async def _prepare_attachment_file(self, attachment: dict[str, str]) -> tuple[str, bytes]:
+        name, _content_type = self._normalize_attachment_metadata(attachment)
 
         content = await self._retrieve_attachment_content(attachment)
         if len(content) > MAX_ATTACHMENT_SIZE:
@@ -1334,6 +1534,25 @@ class LaunchService:
             )
 
         return (name, content)
+
+    @staticmethod
+    def _normalize_attachment_metadata(attachment: dict[str, str]) -> tuple[str, str]:
+        if not isinstance(attachment, dict):
+            raise AllureValidationError("attachment must be a dictionary")
+
+        name = LaunchService._normalize_text(attachment.get("name"), field_name="attachment.name")
+        content_type = LaunchService._normalize_text(
+            attachment.get("content_type"),
+            field_name="attachment.content_type",
+        )
+        if name is None:
+            raise AllureValidationError("attachment.name is required")
+        if content_type is None:
+            raise AllureValidationError("attachment.content_type is required")
+        if content_type not in ALLOWED_MIME_TYPES:
+            raise AllureValidationError(f"Content-Type '{content_type}' is not allowed or supported.")
+
+        return name, content_type
 
     async def _retrieve_attachment_content(self, attachment: dict[str, str]) -> bytes:
         content_b64 = attachment.get("content")

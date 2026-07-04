@@ -35,9 +35,9 @@ EXAMPLE_ARG_OVERRIDES: dict[str, dict[str, typing.Any]] = {
     },
     "add_test_step_attachment": {
         "test_result_id": 123,
-        "fixture_result_id": 456,
+        "step_name": "manual-step.txt",
         "attachment": {
-            "name": "evidence.txt",
+            "name": "manual-step.txt",
             "content_type": "text/plain",
             "content": "QQ==",
         },

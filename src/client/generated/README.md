@@ -305,6 +305,12 @@ Class | Method | HTTP request | Description
 *TestPlanControllerApi* | [**set_job_parameters**](src/client/generated/docs/TestPlanControllerApi.md#set_job_parameters) | **POST** /api/testplan/{id}/jobparameter | Configure test plan job parameters
 *TestPlanControllerApi* | [**suggest3**](src/client/generated/docs/TestPlanControllerApi.md#suggest3) | **GET** /api/testplan/suggest | Suggest for test plans
 *TestPlanControllerApi* | [**sync**](src/client/generated/docs/TestPlanControllerApi.md#sync) | **POST** /api/testplan/{id}/sync | Sync test plan
+*TestResultAttachmentControllerApi* | [**create6**](src/client/generated/docs/TestResultAttachmentControllerApi.md#create6) | **POST** /api/testresult/attachment | 
+*TestResultAttachmentControllerApi* | [**delete6**](src/client/generated/docs/TestResultAttachmentControllerApi.md#delete6) | **DELETE** /api/testresult/attachment/{id} | 
+*TestResultAttachmentControllerApi* | [**find_all5**](src/client/generated/docs/TestResultAttachmentControllerApi.md#find_all5) | **GET** /api/testresult/attachment | 
+*TestResultAttachmentControllerApi* | [**patch6**](src/client/generated/docs/TestResultAttachmentControllerApi.md#patch6) | **PATCH** /api/testresult/attachment/{id} | 
+*TestResultAttachmentControllerApi* | [**read_content**](src/client/generated/docs/TestResultAttachmentControllerApi.md#read_content) | **GET** /api/testresult/attachment/{id}/content | 
+*TestResultAttachmentControllerApi* | [**update_content**](src/client/generated/docs/TestResultAttachmentControllerApi.md#update_content) | **PUT** /api/testresult/attachment/{id}/content | 
 *TestResultBulkControllerApi* | [**assign1**](src/client/generated/docs/TestResultBulkControllerApi.md#assign1) | **POST** /api/testresult/bulk/assign | Assign all selected test results
 *TestResultBulkControllerApi* | [**hide**](src/client/generated/docs/TestResultBulkControllerApi.md#hide) | **POST** /api/testresult/bulk/hide | Hide all selected test results
 *TestResultBulkControllerApi* | [**link_defects**](src/client/generated/docs/TestResultBulkControllerApi.md#link_defects) | **POST** /api/testresult/bulk/defect/link | Link defects for all selected test results

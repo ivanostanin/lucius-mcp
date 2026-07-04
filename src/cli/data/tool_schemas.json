@@ -43,7 +43,7 @@
     "name": "add_test_step_attachment",
     "entity": "launch",
     "action": "add_test_step_attachment",
-    "description": "Upload evidence to a fixture-backed step context for a manual result.\n\nArgs:\n    test_result_id: Parent test result ID.\n    attachment: Attachment payload using content or url.\n    fixture_result_id: Optional explicit fixture result ID.\n    fixture_name: Optional fixture/step name to resolve the target context.\n    fixture_type: Optional fixture type hint ('before' or 'after').\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Confirmation that the attachment was accepted for the step context.",
+    "description": "Upload evidence to a manual attachment step inside a test result.\n\nArgs:\n    test_result_id: Parent test result ID.\n    attachment: Attachment payload using content or url.\n    attachment_id: Optional explicit manual step attachment ID.\n    step_name: Optional attachment-step name to resolve within the result execution.\n    step_index: Optional zero-based step index to resolve within the result execution.\n    fixture_result_id: Optional explicit fixture result ID for legacy fallback.\n    fixture_name: Optional fixture name for legacy fallback.\n    fixture_type: Optional fixture type hint ('before' or 'after') for legacy fallback.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Confirmation that the attachment was accepted for the manual step context.",
     "input_schema": {
       "type": "object",
       "additionalProperties": false,
@@ -59,6 +59,42 @@
           },
           "description": "Attachment payload using the repo-standard pattern: {name, content_type, content? | url?}."
         },
+        "attachment_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional explicit manual step attachment ID resolved from the test result execution.",
+          "default": null
+        },
+        "step_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional attachment-step name to resolve within the manual test result.",
+          "default": null
+        },
+        "step_index": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional zero-based manual step index to resolve within the test result execution.",
+          "default": null
+        },
         "fixture_result_id": {
           "anyOf": [
             {
@@ -68,7 +104,7 @@
               "type": "null"
             }
           ],
-          "description": "Optional explicit fixture result ID for the step context.",
+          "description": "Optional explicit fixture result ID for legacy fixture-step fallback.",
           "default": null
         },
         "fixture_name": {
@@ -80,7 +116,7 @@
               "type": "null"
             }
           ],
-          "description": "Optional fixture/step name used to resolve the step context inside the test result.",
+          "description": "Optional fixture name used only for the legacy fixture-step fallback.",
           "default": null
         },
         "fixture_type": {
@@ -92,7 +128,7 @@
               "type": "null"
             }
           ],
-          "description": "Optional fixture type hint: 'before' or 'after'.",
+          "description": "Optional fixture type hint for the legacy fixture-step fallback: 'before' or 'after'.",
           "default": null
         },
         "project_id": {
@@ -113,7 +149,7 @@
         "attachment"
       ]
     },
-    "example_command": "lucius launch add_test_step_attachment --args '{\"test_result_id\": 123, \"fixture_result_id\": 456, \"attachment\": {\"name\": \"evidence.txt\", \"content_type\": \"text/plain\", \"content\": \"QQ==\"}}'"
+    "example_command": "lucius launch add_test_step_attachment --args '{\"test_result_id\": 123, \"step_name\": \"manual-step.txt\", \"attachment\": {\"name\": \"manual-step.txt\", \"content_type\": \"text/plain\", \"content\": \"QQ==\"}}'"
   },
   "assign_test_cases_to_suite": {
     "name": "assign_test_cases_to_suite",

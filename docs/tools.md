@@ -79,7 +79,7 @@ route is verified.
 | `start_manual_test_session`  | Create a manual execution session for a launch.                 | `launch_id`, `environment` |
 | `submit_manual_test_results` | Submit manual result and step status updates for a session.     | `test_session_id`, `results` |
 | `add_test_result_attachment` | Upload evidence to a manual test result.                        | `test_result_id`, `attachment` |
-| `add_test_step_attachment`   | Upload evidence to a fixture-backed manual step context.        | `test_result_id`, `attachment`, `fixture_result_id` |
+| `add_test_step_attachment`   | Upload evidence to a manual attachment step; fixture selectors remain as fallback. | `test_result_id`, `attachment`, `step_name` |
 
 ## 📋 Test Plan Management
 

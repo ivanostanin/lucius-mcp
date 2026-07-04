@@ -1,38 +1,16 @@
 """E2E coverage for manual execution workflows inside launches."""
 
-import asyncio
-
 import pytest
 
 from src.client import AllureClient
 from src.client.generated.api.test_plan_controller_api import TestPlanControllerApi
 from src.client.generated.models.test_plan_run_request_dto import TestPlanRunRequestDto
-from src.client.generated.models.upload_fixtures_results_dto import UploadFixturesResultsDto
-from src.client.generated.models.upload_test_fixture_result_dto import UploadTestFixtureResultDto
 from src.services.launch_service import LaunchService
 from src.services.plan_service import PlanService
 from src.services.test_case_service import TestCaseService
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 pytestmark = pytest.mark.asyncio(loop_scope="module")
-
-
-async def _wait_for_fixture_attachment_name(
-    allure_client: AllureClient,
-    test_result_id: int,
-    attachment_name: str,
-    *,
-    timeout_seconds: float = 10.0,
-    delay_seconds: float = 0.5,
-) -> list[str]:
-    deadline = asyncio.get_running_loop().time() + timeout_seconds
-    while asyncio.get_running_loop().time() < deadline:
-        fixture_attachments = await allure_client.get_test_result_fixture_attachments(test_result_id, size=20)
-        fixture_attachment_names = [attachment.name for attachment in fixture_attachments.content or []]
-        if attachment_name in fixture_attachment_names:
-            return fixture_attachment_names
-        await asyncio.sleep(delay_seconds)
-    return fixture_attachment_names
 
 
 async def test_manual_launch_execution_workflow(
@@ -96,7 +74,15 @@ async def test_manual_launch_execution_workflow(
                         "body": "Open app",
                         "status": "failed",
                         "message": "Intentional E2E failure",
-                    }
+                    },
+                    {
+                        "type": "attachment",
+                        "attachment": {
+                            "name": "manual-step.txt",
+                            "content_type": "text/plain",
+                        },
+                        "status": "failed",
+                    },
                 ],
             }
         ],
@@ -129,28 +115,9 @@ async def test_manual_launch_execution_workflow(
     assert result_attachment.target_id == created_result_id
     assert result_attachment.status_code in {200, 202}
 
-    fixture_upload = await allure_client.upload_test_fixture_results(
-        created_result_id,
-        UploadFixturesResultsDto(
-            fixtures=[
-                UploadTestFixtureResultDto(
-                    name="after-hook",
-                    status="PASSED",
-                    type="AFTER",
-                )
-            ]
-        ),
-    )
-    assert fixture_upload.result_ids
-    fixture_result_id = fixture_upload.result_ids[0]
-
-    fixture_results = await allure_client.get_test_result_fixtures(created_result_id)
-    fixture_ids = [fixture.id for fixture in fixture_results if fixture.id is not None]
-    assert fixture_result_id in fixture_ids
-
     step_attachment = await launch_service.add_test_step_attachment(
         test_result_id=created_result_id,
-        fixture_result_id=fixture_result_id,
+        step_name="manual-step.txt",
         attachment={
             "name": "manual-step.txt",
             "content_type": "text/plain",
@@ -158,16 +125,20 @@ async def test_manual_launch_execution_workflow(
         },
     )
     assert step_attachment.target_kind == "test_step"
-    assert step_attachment.target_id == fixture_result_id
-    assert step_attachment.status_code in {200, 202}
+    assert step_attachment.status_code == 200
 
-    fixture_attachment_names = await _wait_for_fixture_attachment_name(
-        allure_client,
-        created_result_id,
-        "manual-step.txt",
-    )
-    if "manual-step.txt" not in fixture_attachment_names:
-        pytest.skip(
-            "Sandbox did not expose uploaded manual step evidence through fixture attachment reads within 10 seconds."
-        )
-    assert "manual-step.txt" in fixture_attachment_names
+    execution = await allure_client.get_test_result_execution(created_result_id)
+    attachment_steps = [
+        step.actual_instance
+        for step in execution.steps or []
+        if getattr(step.actual_instance, "attachment_id", None) == step_attachment.target_id
+    ]
+    assert len(attachment_steps) == 1
+    attachment_step = attachment_steps[0]
+    attachment = attachment_step.attachment.actual_instance if attachment_step.attachment is not None else None
+    assert attachment is not None
+    assert attachment.id == step_attachment.target_id
+    assert attachment.name == "manual-step.txt"
+
+    attachment_bytes = await allure_client.read_test_result_attachment_content(step_attachment.target_id)
+    assert attachment_bytes == b"Sandbox manual step evidence"

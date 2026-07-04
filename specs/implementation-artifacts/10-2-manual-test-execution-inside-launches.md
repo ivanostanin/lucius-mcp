@@ -182,7 +182,7 @@ so that **I can complete manual QA workflows inside Allure TestOps without switc
 
 ### Review Findings
 
-- [ ] [Review][Patch] Implement real manual-step attachment support instead of fixture-only attachment routing [src/services/launch_service.py:616]
+- [x] [Review][Patch] Implement real manual-step attachment support instead of fixture-only attachment routing [src/services/launch_service.py:616]
 - [x] [Review][Patch] Restrict attachment URL fetching to avoid SSRF and pre-limit remote downloads before buffering whole responses [src/services/launch_service.py:1283]
 - [x] [Review][Patch] Align `submit_manual_test_results` tool contract with the service requirement for `name`/`full_name`, or infer those fields before validation [src/tools/launches.py:341]
 - [x] [Review][Patch] Make manual rerun 404 errors identify whether the missing resource is the launch or the selected result IDs [src/services/launch_service.py:468]
