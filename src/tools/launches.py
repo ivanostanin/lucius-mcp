@@ -344,9 +344,10 @@ async def submit_manual_test_results(
         list[dict[str, object]],
         Field(
             description=(
-                "Manual result payloads. Each item must include test_case_id plus name or full_name, and may include "
-                "status/start/stop/message/trace/description/precondition/expected_result/steps/parameters/"
-                "uuid/history_id."
+                "Manual result payloads. Each item should include result_id from list_launch_test_results so the "
+                "service can create a true manual launch result in the correct launch/test-case context. As a lower-"
+                "level fallback, you may provide launch_id + test_case_id + name/full_name explicitly. Optional "
+                "fields include status/start/stop/message/trace/description/precondition/expected_result/steps."
             )
         ),
     ],
@@ -359,7 +360,7 @@ async def submit_manual_test_results(
 
     Args:
         test_session_id: Manual test session ID.
-        results: Manual result payloads. Each result must include `test_case_id` plus `name` or `full_name`.
+        results: Manual result payloads. Prefer `result_id` from `list_launch_test_results` for launch-managed flows.
         project_id: Optional override for the default Project ID.
         output_format: Output format: 'json' (default) or 'plain'.
 

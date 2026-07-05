@@ -8,12 +8,15 @@ import pytest
 from src.client import AllureClient, LaunchUploadResponseDto
 from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError, LaunchNotFoundError
 from src.client.generated.models.aql_validate_response_dto import AqlValidateResponseDto
+from src.client.generated.models.body_step_dto import BodyStepDto
 from src.client.generated.models.find_all29200_response import FindAll29200Response
 from src.client.generated.models.launch_dto import LaunchDto
 from src.client.generated.models.launch_preview_dto import LaunchPreviewDto
 from src.client.generated.models.page_launch_dto import PageLaunchDto
 from src.client.generated.models.page_launch_preview_dto import PageLaunchPreviewDto
 from src.client.generated.models.page_test_result_flat_dto import PageTestResultFlatDto
+from src.client.generated.models.shared_step_scenario_dto_steps_inner import SharedStepScenarioDtoStepsInner
+from src.client.generated.models.test_case_scenario_v2_dto import TestCaseScenarioV2Dto
 from src.client.generated.models.test_fixture_result_v2_dto import TestFixtureResultV2Dto
 from src.client.generated.models.test_result_attachment_row_dto import TestResultAttachmentRowDto
 from src.client.generated.models.test_result_attachment_step_dto import TestResultAttachmentStepDto
@@ -26,7 +29,6 @@ from src.client.generated.models.test_result_flat_dto import TestResultFlatDto
 from src.client.generated.models.test_result_scenario_v2_dto import TestResultScenarioV2Dto
 from src.client.generated.models.test_result_scenario_v2_dto_steps_inner import TestResultScenarioV2DtoStepsInner
 from src.client.generated.models.test_session_response_dto import TestSessionResponseDto
-from src.client.generated.models.upload_results_response_dto import UploadResultsResponseDto
 from src.services.launch_service import LaunchDeleteResult, LaunchService
 
 
@@ -47,10 +49,15 @@ def mock_client() -> MagicMock:
     client.start_external_run = AsyncMock()
     client.start_manual_test_session = AsyncMock()
     client.submit_manual_test_results = AsyncMock()
+    client.create_test_result = AsyncMock()
     client.get_test_result = AsyncMock()
     client.get_test_result_execution = AsyncMock(return_value=TestResultScenarioV2Dto(steps=[]))
+    client.get_test_result_execution_raw = AsyncMock(return_value={"steps": []})
+    client.get_test_case_scenario = AsyncMock()
     client.add_test_result_attachment = AsyncMock()
+    client.create_test_result_attachments = AsyncMock()
     client.add_test_fixture_attachment = AsyncMock()
+    client.patch_test_result = AsyncMock()
     client.patch_test_result_attachment = AsyncMock()
     client.update_test_result_attachment_content = AsyncMock(return_value=200)
     client.get_test_result_fixtures = AsyncMock()
@@ -92,6 +99,10 @@ def _attachment_step(attachment_id: int, name: str) -> TestResultScenarioV2DtoSt
             attachment=TestResultAttachmentStepDtoAllOfAttachment.model_construct(actual_instance=attachment_row),
         )
     )
+
+
+def _scenario_body_step(body: str) -> SharedStepScenarioDtoStepsInner:
+    return SharedStepScenarioDtoStepsInner(actual_instance=BodyStepDto.model_construct(type="BodyStepDto", body=body))
 
 
 @pytest.mark.asyncio
@@ -612,14 +623,25 @@ async def test_start_manual_test_session_maps_environment(service: LaunchService
 
 @pytest.mark.asyncio
 async def test_submit_manual_test_results_maps_nested_steps(service: LaunchService, mock_client: MagicMock) -> None:
-    mock_client.submit_manual_test_results.return_value = UploadResultsResponseDto(result_ids=[301])
+    mock_client.get_test_result.return_value = TestResultDto(
+        id=91,
+        launch_id=12,
+        test_case_id=91,
+        name="Manual login test",
+        full_name="Manual login test",
+    )
+    mock_client.create_test_result.return_value = TestResultDto(
+        id=301, name="Manual login test", full_name="Manual login test"
+    )
+    mock_client.patch_test_result.return_value = TestResultDto(
+        id=301, name="Manual login test", full_name="Manual login test"
+    )
 
     result = await service.submit_manual_test_results(
         44,
         results=[
             {
-                "test_case_id": 91,
-                "name": "Manual login test",
+                "result_id": 91,
                 "status": "passed",
                 "start": 1000,
                 "stop": 2000,
@@ -636,25 +658,28 @@ async def test_submit_manual_test_results_maps_nested_steps(service: LaunchServi
     )
 
     assert result.result_ids == [301]
-    payload = mock_client.submit_manual_test_results.await_args.args[0]
-    assert payload.test_session_id == 44
-    assert payload.results[0].test_case_id == "91"
-    assert payload.results[0].name == "Manual login test"
-    assert payload.results[0].full_name == "Manual login test"
-    assert isinstance(payload.results[0].uuid, str)
-    assert isinstance(payload.results[0].history_id, str)
-    assert payload.results[0].steps is not None
-    assert len(payload.results[0].steps) == 1
+    create_payload = mock_client.create_test_result.await_args.args[0]
+    assert create_payload.launch_id == 12
+    assert create_payload.test_case_id == 91
+    assert create_payload.manual is True
+    assert create_payload.external is False
+    assert create_payload.status == "passed"
+    patch_payload = mock_client.patch_test_result.await_args.args[1]
+    assert patch_payload.name == "Manual login test"
+    assert patch_payload.scenario is not None
+    assert patch_payload.scenario.steps is not None
+    assert patch_payload.scenario.steps[0].name == "Open the launch"
 
 
 @pytest.mark.asyncio
-async def test_submit_manual_test_results_rejects_payload_without_name_or_full_name(service: LaunchService) -> None:
-    with pytest.raises(AllureValidationError, match=r"results\[0\]\.name is required"):
+async def test_submit_manual_test_results_rejects_payload_without_result_or_launch_context(
+    service: LaunchService,
+) -> None:
+    with pytest.raises(AllureValidationError, match=r"results\[0\]\.result_id is required"):
         await service.submit_manual_test_results(
             44,
             results=[
                 {
-                    "test_case_id": 91,
                     "status": "passed",
                 }
             ],
@@ -665,14 +690,29 @@ async def test_submit_manual_test_results_rejects_payload_without_name_or_full_n
 async def test_submit_manual_test_results_maps_expected_attachment_steps_and_parameters(
     service: LaunchService, mock_client: MagicMock
 ) -> None:
-    mock_client.submit_manual_test_results.return_value = UploadResultsResponseDto(result_ids=[401])
+    mock_client.get_test_result.return_value = TestResultDto(
+        id=92,
+        launch_id=13,
+        test_case_id=92,
+        name="Manual upload with evidence",
+        full_name="Manual upload with evidence",
+    )
+    mock_client.create_test_result.return_value = TestResultDto(
+        id=401,
+        name="Manual upload with evidence",
+        full_name="Manual upload with evidence",
+    )
+    mock_client.patch_test_result.return_value = TestResultDto(
+        id=401,
+        name="Manual upload with evidence",
+        full_name="Manual upload with evidence",
+    )
 
     result = await service.submit_manual_test_results(
         45,
         results=[
             {
-                "test_case_id": 92,
-                "name": "Manual upload with evidence",
+                "result_id": 92,
                 "status": "failed",
                 "start": 1000,
                 "stop": 2000,
@@ -702,25 +742,24 @@ async def test_submit_manual_test_results_maps_expected_attachment_steps_and_par
         ],
     )
 
-    payload = mock_client.submit_manual_test_results.await_args.args[0]
-    steps = payload.results[0].steps
+    patch_payload = mock_client.patch_test_result.await_args.args[1]
+    steps = patch_payload.scenario.steps if patch_payload.scenario is not None else None
     assert steps is not None
     assert len(steps) == 2
-    assert steps[0].actual_instance.type == "UploadTestResultExpectedBodyStepDto"
-    assert steps[1].actual_instance.type == "UploadTestResultAttachmentStepDto"
-    assert steps[1].actual_instance.attachment.name == "evidence.txt"
-    assert payload.results[0].parameters is not None
-    assert payload.results[0].parameters[0].name == "browser"
+    assert steps[0].expected_result == "Verify error banner"
+    assert steps[1].name == "evidence.txt"
     assert result.result_ids == [401]
 
 
 @pytest.mark.asyncio
 async def test_submit_manual_test_results_rejects_attachment_step_without_metadata(service: LaunchService) -> None:
+    service._client.create_test_result.return_value = TestResultDto(id=999, name="Manual login test")
     with pytest.raises(AllureValidationError, match="attachment is required"):
         await service.submit_manual_test_results(
             44,
             results=[
                 {
+                    "launch_id": 12,
                     "test_case_id": 91,
                     "name": "Manual login test",
                     "status": "failed",
@@ -737,7 +776,9 @@ async def test_submit_manual_test_results_rejects_attachment_step_without_metada
 
 @pytest.mark.asyncio
 async def test_add_test_result_attachment_prepares_base64_file(service: LaunchService, mock_client: MagicMock) -> None:
-    mock_client.add_test_result_attachment.return_value = 202
+    mock_client.create_test_result_attachments.return_value = [
+        TestResultAttachmentRowDto.model_construct(entity="test_result", id=1001, name="evidence.txt")
+    ]
 
     result = await service.add_test_result_attachment(
         test_result_id=77,
@@ -749,15 +790,15 @@ async def test_add_test_result_attachment_prepares_base64_file(service: LaunchSe
     )
 
     assert result.file_names == ["evidence.txt"]
-    assert result.status_code == 202
-    mock_client.add_test_result_attachment.assert_awaited_once_with(77, [("evidence.txt", b"A")])
+    assert result.status_code == 200
+    mock_client.create_test_result_attachments.assert_awaited_once_with(77, [("evidence.txt", b"A")])
 
 
 @pytest.mark.asyncio
 async def test_add_test_result_attachment_maps_missing_test_result(
     service: LaunchService, mock_client: MagicMock
 ) -> None:
-    mock_client.add_test_result_attachment.side_effect = AllureNotFoundError(
+    mock_client.create_test_result_attachments.side_effect = AllureNotFoundError(
         "missing",
         status_code=404,
         response_body="{}",
@@ -810,10 +851,23 @@ async def test_add_test_result_attachment_validation_paths(
 async def test_add_test_step_attachment_resolves_manual_attachment_step_by_name(
     service: LaunchService, mock_client: MagicMock
 ) -> None:
-    mock_client.get_test_result_execution.return_value = _manual_execution_with_steps(
-        _body_step("Open app"),
-        _attachment_step(701, "manual-step.txt"),
+    mock_client.get_test_result.return_value = TestResultDto(
+        id=55,
+        name="Manual Result",
+        full_name="Manual Result",
+        test_case_id=501,
     )
+    mock_client.get_test_result_execution_raw.return_value = {
+        "steps": [
+            {
+                "name": "manual-step.txt",
+                "status": "failed",
+            }
+        ]
+    }
+    mock_client.create_test_result_attachments.return_value = [
+        TestResultAttachmentRowDto.model_construct(entity="test_result", id=701, name="manual-step.txt")
+    ]
 
     result = await service.add_test_step_attachment(
         test_result_id=55,
@@ -826,8 +880,8 @@ async def test_add_test_step_attachment_resolves_manual_attachment_step_by_name(
     )
 
     assert result.target_id == 701
-    mock_client.patch_test_result_attachment.assert_awaited_once()
-    mock_client.update_test_result_attachment_content.assert_awaited_once_with(701, [("manual-step.txt", b"A")])
+    mock_client.create_test_result_attachments.assert_awaited_once_with(55, [("manual-step.txt", b"A")])
+    mock_client.patch_test_result.assert_awaited_once()
     mock_client.add_test_fixture_attachment.assert_not_awaited()
 
 
@@ -835,10 +889,17 @@ async def test_add_test_step_attachment_resolves_manual_attachment_step_by_name(
 async def test_add_test_step_attachment_requires_unambiguous_manual_step_selection(
     service: LaunchService, mock_client: MagicMock
 ) -> None:
-    mock_client.get_test_result_execution.return_value = _manual_execution_with_steps(
-        _attachment_step(701, "manual-step.txt"),
-        _attachment_step(702, "manual-step-2.txt"),
+    mock_client.get_test_result.return_value = TestResultDto(
+        id=55,
+        name="Manual Result",
+        full_name="Manual Result",
     )
+    mock_client.get_test_result_execution_raw.return_value = {
+        "steps": [
+            {"name": "manual-step.txt"},
+            {"name": "manual-step-2.txt"},
+        ]
+    }
 
     with pytest.raises(AllureValidationError, match="Attachment step selection is ambiguous"):
         await service.add_test_step_attachment(
@@ -852,10 +913,39 @@ async def test_add_test_step_attachment_requires_unambiguous_manual_step_selecti
 
 
 @pytest.mark.asyncio
+async def test_add_test_step_attachment_uses_test_case_scenario_when_runtime_names_are_missing(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    mock_client.get_test_result.return_value = TestResultDto(
+        id=55,
+        name="Manual Result",
+        full_name="Manual Result",
+        test_case_id=901,
+    )
+    mock_client.get_test_result_execution_raw.return_value = {"steps": [{"status": "failed"}]}
+    mock_client.get_test_case_scenario.return_value = TestCaseScenarioV2Dto(steps=[_scenario_body_step("Open app")])
+    mock_client.create_test_result_attachments.return_value = [
+        TestResultAttachmentRowDto.model_construct(entity="test_result", id=702, name="evidence.txt")
+    ]
+
+    result = await service.add_test_step_attachment(
+        test_result_id=55,
+        step_name="Open app",
+        attachment={
+            "name": "evidence.txt",
+            "content_type": "text/plain",
+            "content": "QQ==",
+        },
+    )
+
+    assert result.target_id == 702
+
+
+@pytest.mark.asyncio
 async def test_add_test_step_attachment_maps_missing_manual_test_result(
     service: LaunchService, mock_client: MagicMock
 ) -> None:
-    mock_client.get_test_result_execution.side_effect = AllureNotFoundError(
+    mock_client.get_test_result.side_effect = AllureNotFoundError(
         "missing",
         status_code=404,
         response_body="{}",
@@ -876,19 +966,13 @@ async def test_add_test_step_attachment_maps_missing_manual_test_result(
 async def test_add_test_step_attachment_maps_missing_attachment_slot(
     service: LaunchService, mock_client: MagicMock
 ) -> None:
-    mock_client.get_test_result_execution.return_value = _manual_execution_with_steps(
-        _attachment_step(701, "manual-step.txt")
-    )
-    mock_client.patch_test_result_attachment.side_effect = AllureNotFoundError(
-        "missing",
-        status_code=404,
-        response_body="{}",
-    )
+    mock_client.get_test_result.return_value = TestResultDto(id=55, name="Manual Result", full_name="Manual Result")
+    mock_client.get_test_result_execution_raw.return_value = {"steps": [{"name": "manual-step.txt"}]}
 
-    with pytest.raises(AllureNotFoundError, match="Step attachment ID 701 not found"):
+    with pytest.raises(AllureValidationError, match="step_index 1 is out of range"):
         await service.add_test_step_attachment(
             test_result_id=55,
-            step_index=0,
+            step_index=1,
             attachment={
                 "name": "manual-step.txt",
                 "content_type": "text/plain",

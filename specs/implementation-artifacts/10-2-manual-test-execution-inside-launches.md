@@ -1,6 +1,6 @@
 # Story 10.2: Manage Manual Test Execution Inside Launches
 
-Status: in-progress
+Status: done
 
 <!-- Note: Validate upstream artifacts and this story spec before implementation when planning changes materially affect scope or test obligations. -->
 
@@ -284,9 +284,14 @@ gpt-5-codex
 - Patched around live upload response drift: `/api/upload/test-result` and fixture uploads return `results[].id` rather than `resultIds`, so the client now parses raw response bodies for created IDs.
 - Live sandbox submissions also require a stable `name` plus generated `uuid`/`historyId`; the service now supplies those fields and returns created result IDs for attachment follow-up.
 - Sandbox readback caveat: fixture attachment uploads succeed and return a fixture target ID, but the current fixture-attachment listing endpoint remains empty immediately afterward, so E2E coverage verifies successful upload and fixture existence rather than attachment-row readback.
+- Replaced the broken `/api/upload/test-result` manual submission path with direct `testresult` create/patch calls, so sandbox manual runs now create real `manual=true` launch results and support step-linked result attachments.
 - Validation passed:
   - `uv run pytest tests/unit/test_launch_service.py tests/unit/test_launch_tools.py tests/integration/test_launch_client.py -q`
   - `uv run --env-file .env.test pytest tests/e2e/test_launch_manual_execution.py -q`
+  - `uv run pytest tests/unit/test_launch_service.py tests/integration/test_launch_client.py tests/unit/test_launch_tools.py -q`
+  - `uv run --env-file .env.test pytest tests/e2e/test_launch_manual_execution.py::test_manual_launch_execution_workflow -q`
+  - `uv run ruff check src/client/client.py src/services/launch_service.py src/tools/launches.py tests/unit/test_launch_service.py tests/integration/test_launch_client.py tests/e2e/test_launch_manual_execution.py tests/unit/test_launch_tools.py`
+  - `uv run mypy --strict src/client/client.py src/services/launch_service.py src/tools/launches.py`
   - `uv run ruff check src/client/client.py src/services/launch_service.py src/tools/launches.py src/tools/__init__.py src/tools/annotations.py src/cli/route_matrix.py tests/unit/test_launch_service.py tests/integration/test_launch_client.py tests/unit/test_launch_tools.py scripts/filter_openapi.py tests/e2e/test_launch_manual_execution.py`
   - `uv run mypy src/client/client.py src/services/launch_service.py src/tools/launches.py`
   - `uv --quiet run --python 3.13 --extra dev python scripts/build_tool_schema.py`
@@ -322,3 +327,4 @@ gpt-5-codex
 ### Change Log
 
 - 2026-07-03: Implemented manual launch execution workflow, regenerated client/schema/completions, and verified the sandbox E2E path.
+- 2026-07-05: Repaired manual launch execution to use direct test-result APIs for status updates and result/step attachments; reran focused unit, integration, and sandbox E2E validation successfully.

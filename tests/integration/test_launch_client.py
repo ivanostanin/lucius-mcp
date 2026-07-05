@@ -23,13 +23,14 @@ from src.client.generated.models.launch_upload_response_dto import LaunchUploadR
 from src.client.generated.models.manual_session_request_dto import ManualSessionRequestDto
 from src.client.generated.models.page_launch_dto import PageLaunchDto
 from src.client.generated.models.page_launch_preview_dto import PageLaunchPreviewDto
-from src.client.generated.models.page_test_result_attachment_row_dto import PageTestResultAttachmentRowDto
 from src.client.generated.models.page_test_result_flat_dto import PageTestResultFlatDto
 from src.client.generated.models.test_fixture_result_v2_dto import TestFixtureResultV2Dto
 from src.client.generated.models.test_result_attachment_patch_dto import TestResultAttachmentPatchDto
 from src.client.generated.models.test_result_attachment_row_dto import TestResultAttachmentRowDto
 from src.client.generated.models.test_result_bulk_rerun_dto import TestResultBulkRerunDto
+from src.client.generated.models.test_result_create_v2_dto import TestResultCreateV2Dto
 from src.client.generated.models.test_result_dto import TestResultDto
+from src.client.generated.models.test_result_patch_dto import TestResultPatchDto
 from src.client.generated.models.test_result_rerun_dto import TestResultRerunDto
 from src.client.generated.models.test_result_scenario_v2_dto import TestResultScenarioV2Dto
 from src.client.generated.models.test_result_tree_selection_dto import TestResultTreeSelectionDto
@@ -242,16 +243,29 @@ async def test_client_test_result_wrappers_call_apis() -> None:
     client._token_expires_at = time.time() + 3600
     client._test_result_api = MagicMock()
     client._test_result_api.find_one5 = AsyncMock(return_value=TestResultDto(id=33, name="Manual Result"))
+    client._test_result_api.create5 = AsyncMock(return_value=TestResultDto(id=34, name="Created Result"))
+    client._test_result_api.patch5 = AsyncMock(return_value=TestResultDto(id=34, name="Patched Result"))
     client._test_result_api.find_execution = AsyncMock(return_value=TestResultScenarioV2Dto(steps=[]))
+    client._test_result_api.find_execution_without_preload_content = AsyncMock(
+        return_value=httpx.Response(200, json={"steps": [{"status": "failed", "message": "broken"}]})
+    )
     client._test_result_fixture_api = MagicMock()
     client._test_result_fixture_api.get_fixtures = AsyncMock(return_value=[TestFixtureResultV2Dto(id=77, name="After")])
 
     result = await client.get_test_result(33)
+    created = await client.create_test_result(
+        TestResultCreateV2Dto(launch_id=9, name="Created Result", status="failed")
+    )
+    patched = await client.patch_test_result(34, TestResultPatchDto(name="Patched Result"))
     execution = await client.get_test_result_execution(33)
+    execution_raw = await client.get_test_result_execution_raw(33)
     fixtures = await client.get_test_result_fixtures(33)
 
     assert result.id == 33
+    assert created.id == 34
+    assert patched.id == 34
     assert execution.steps == []
+    assert execution_raw["steps"] == [{"status": "failed", "message": "broken"}]
     assert fixtures[0].id == 77
 
 
@@ -315,18 +329,19 @@ async def test_client_test_result_attachment_wrappers_use_expected_paths() -> No
     client._token_expires_at = time.time() + 3600
 
     attachment_api = MagicMock()
-    attachment_api.find_all5 = AsyncMock(
-        return_value=PageTestResultAttachmentRowDto.model_validate(
-            {
+    attachment_api.find_all5_without_preload_content = AsyncMock(
+        return_value=httpx.Response(
+            200,
+            json={
                 "content": [
                     {
-                        "entity": "TestResultAttachmentRowDto",
+                        "entity": None,
                         "id": 77,
                         "name": "manual-step.txt",
                         "contentType": "text/plain",
                     }
                 ]
-            }
+            },
         )
     )
     attachment_api.patch6 = AsyncMock(
@@ -353,7 +368,7 @@ async def test_client_test_result_attachment_wrappers_use_expected_paths() -> No
     assert attachments.content[0].id == 77
     assert patched.id == 77
     assert content == b"A"
-    attachment_api.find_all5.assert_awaited_once_with(
+    attachment_api.find_all5_without_preload_content.assert_awaited_once_with(
         test_result_id=9,
         page=0,
         size=10,
@@ -364,6 +379,35 @@ async def test_client_test_result_attachment_wrappers_use_expected_paths() -> No
     attachment_api.read_content_without_preload_content.assert_awaited_once_with(
         id=77,
         inline=False,
+        _request_timeout=client._timeout,
+    )
+
+
+@pytest.mark.asyncio
+async def test_client_create_test_result_attachments_calls_generated_api() -> None:
+    client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
+    client._is_entered = True
+    client._token_expires_at = time.time() + 3600
+    client._test_result_attachment_api = MagicMock()
+    client._test_result_attachment_api.create6 = AsyncMock(
+        return_value=[
+            TestResultAttachmentRowDto.model_validate(
+                {
+                    "entity": "test_result",
+                    "id": 9,
+                    "name": "manual-step.txt",
+                    "contentType": "text/plain",
+                }
+            )
+        ]
+    )
+
+    result = await client.create_test_result_attachments(9, [("manual-step.txt", b"A")])
+
+    assert result[0].id == 9
+    client._test_result_attachment_api.create6.assert_awaited_once_with(
+        test_result_id=9,
+        file=[("manual-step.txt", b"A")],
         _request_timeout=client._timeout,
     )
 

@@ -131,8 +131,10 @@ from .generated.models.test_fixture_result_v2_dto import TestFixtureResultV2Dto
 from .generated.models.test_result_attachment_patch_dto import TestResultAttachmentPatchDto
 from .generated.models.test_result_attachment_row_dto import TestResultAttachmentRowDto
 from .generated.models.test_result_bulk_rerun_dto import TestResultBulkRerunDto
+from .generated.models.test_result_create_v2_dto import TestResultCreateV2Dto
 from .generated.models.test_result_dto import TestResultDto
 from .generated.models.test_result_flat_dto import TestResultFlatDto
+from .generated.models.test_result_patch_dto import TestResultPatchDto
 from .generated.models.test_result_rerun_dto import TestResultRerunDto
 from .generated.models.test_result_scenario_v2_dto import TestResultScenarioV2Dto
 from .generated.models.test_session_response_dto import TestSessionResponseDto
@@ -1372,6 +1374,26 @@ class AllureClient:
 
         return await self._call_api(api.find_one5(id=test_result_id, _request_timeout=self._timeout))
 
+    async def create_test_result(self, data: TestResultCreateV2Dto) -> TestResultDto:
+        """Create one test result directly via the first-class test-result API."""
+        api = await self._get_api("_test_result_api", error_name="test result APIs")
+        return await self._call_api(api.create5(test_result_create_v2_dto=data, _request_timeout=self._timeout))
+
+    async def patch_test_result(self, test_result_id: int, data: TestResultPatchDto) -> TestResultDto:
+        """Patch one test result directly via the first-class test-result API."""
+        api = await self._get_api("_test_result_api", error_name="test result APIs")
+
+        if not isinstance(test_result_id, int) or test_result_id <= 0:
+            raise AllureValidationError("Test Result ID must be a positive integer")
+
+        return await self._call_api(
+            api.patch5(
+                id=test_result_id,
+                test_result_patch_dto=data,
+                _request_timeout=self._timeout,
+            )
+        )
+
     async def get_test_result_execution(self, test_result_id: int) -> TestResultScenarioV2Dto:
         """Fetch execution details for one test result."""
         api = await self._get_api("_test_result_api", error_name="test result APIs")
@@ -1380,6 +1402,24 @@ class AllureClient:
             raise AllureValidationError("Test Result ID must be a positive integer")
 
         return await self._call_api(api.find_execution(id=test_result_id, _request_timeout=self._timeout))
+
+    async def get_test_result_execution_raw(self, test_result_id: int) -> dict[str, object]:
+        """Fetch raw execution details for one test result without strict schema deserialization."""
+        api = await self._get_api("_test_result_api", error_name="test result APIs")
+
+        if not isinstance(test_result_id, int) or test_result_id <= 0:
+            raise AllureValidationError("Test Result ID must be a positive integer")
+
+        response = await self._call_api_raw(
+            cast(
+                Awaitable[httpx.Response],
+                api.find_execution_without_preload_content(
+                    id=test_result_id,
+                    _request_timeout=self._timeout,
+                ),
+            )
+        )
+        return self._extract_response_data(response)
 
     async def get_test_result_fixtures(self, test_result_id: int) -> list[TestFixtureResultV2Dto]:
         """Fetch fixture results for one test result."""
@@ -1436,15 +1476,19 @@ class AllureClient:
         if not isinstance(size, int) or size <= 0 or size > 100:
             raise AllureValidationError("Size must be between 1 and 100")
 
-        return await self._call_api(
-            api.find_all5(
-                test_result_id=test_result_id,
-                page=page,
-                size=size,
-                sort=sort,
-                _request_timeout=self._timeout,
+        response = await self._call_api_raw(
+            cast(
+                Awaitable[httpx.Response],
+                api.find_all5_without_preload_content(
+                    test_result_id=test_result_id,
+                    page=page,
+                    size=size,
+                    sort=sort,
+                    _request_timeout=self._timeout,
+                ),
             )
         )
+        return self._parse_test_result_attachment_page(self._extract_response_data(response))
 
     async def patch_test_result_attachment(
         self,
@@ -1565,6 +1609,31 @@ class AllureClient:
         payload = self._extract_response_data(response)
         return UploadResultsResponseDto(result_ids=self._extract_upload_result_ids(payload))
 
+    async def create_test_result_attachments(
+        self,
+        test_result_id: int,
+        files: list[bytes | str | tuple[str, bytes]],
+    ) -> list[TestResultAttachmentRowDto]:
+        """Upload attachments directly to a concrete test result."""
+        api = await self._get_api("_test_result_attachment_api", error_name="test result attachment APIs")
+
+        if not isinstance(test_result_id, int) or test_result_id <= 0:
+            raise AllureValidationError("Test Result ID must be a positive integer")
+        if not isinstance(files, list) or not files:
+            raise AllureValidationError("files must be a non-empty list")
+
+        attachments = await self._call_api(
+            api.create6(
+                test_result_id=test_result_id,
+                file=files,
+                _request_timeout=self._timeout,
+            )
+        )
+        return [
+            self._build_test_result_attachment_row(attachment.to_dict() if hasattr(attachment, "to_dict") else {})
+            for attachment in attachments
+        ]
+
     async def add_test_result_attachment(
         self,
         test_result_id: int,
@@ -1583,6 +1652,41 @@ class AllureClient:
             expected_status_codes=(200, 202),
         )
         return int(response.status)
+
+    @staticmethod
+    def _build_test_result_attachment_row(data: dict[str, object]) -> TestResultAttachmentRowDto:
+        normalized = dict(data)
+        if not isinstance(normalized.get("entity"), str) or not str(normalized["entity"]).strip():
+            normalized["entity"] = "test_result"
+        return TestResultAttachmentRowDto.model_validate(normalized)
+
+    @classmethod
+    def _parse_test_result_attachment_page(cls, data: dict[str, object]) -> PageTestResultAttachmentRowDto:
+        content: list[TestResultAttachmentRowDto] = []
+        raw_content = data.get("content")
+        if isinstance(raw_content, list):
+            content = [cls._build_test_result_attachment_row(item) for item in raw_content if isinstance(item, dict)]
+
+        empty = data.get("empty")
+        first = data.get("first")
+        last = data.get("last")
+        number = data.get("number")
+        number_of_elements = data.get("numberOfElements")
+        size = data.get("size")
+        total_elements = data.get("totalElements")
+        total_pages = data.get("totalPages")
+
+        return PageTestResultAttachmentRowDto.model_construct(
+            content=content,
+            empty=empty if isinstance(empty, bool) else None,
+            first=first if isinstance(first, bool) else None,
+            last=last if isinstance(last, bool) else None,
+            number=number if isinstance(number, int) else None,
+            number_of_elements=number_of_elements if isinstance(number_of_elements, int) else len(content),
+            size=size if isinstance(size, int) else None,
+            total_elements=total_elements if isinstance(total_elements, int) else len(content),
+            total_pages=total_pages if isinstance(total_pages, int) else None,
+        )
 
     async def add_test_fixture_attachment(
         self,

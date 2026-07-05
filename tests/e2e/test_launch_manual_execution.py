@@ -54,6 +54,11 @@ async def test_manual_launch_execution_workflow(
     assert launch_results.total >= 1
     initial_result = next(item for item in launch_results.items if item.test_case_id == test_case.id)
     assert initial_result.name == test_case.name
+    assert initial_result.result_id is not None
+
+    placeholder_result = await allure_client.get_test_result(initial_result.result_id)
+    assert placeholder_result.manual is True
+    assert placeholder_result.test_case_id == test_case.id
 
     session = await launch_service.start_manual_test_session(launch.id)
     assert session.test_session_id > 0
@@ -62,8 +67,7 @@ async def test_manual_launch_execution_workflow(
         session.test_session_id,
         results=[
             {
-                "test_case_id": test_case.id,
-                "name": test_case.name,
+                "result_id": initial_result.result_id,
                 "status": "failed",
                 "start": 1000,
                 "stop": 2000,
@@ -93,8 +97,17 @@ async def test_manual_launch_execution_workflow(
     created_result = await allure_client.get_test_result(created_result_id)
     assert created_result.id == created_result_id
     assert created_result.launch_id == launch.id
+    assert created_result.manual is True
+    assert created_result.external is False
+    assert created_result.hidden is not True
+    assert created_result.test_case_id == test_case.id
     assert created_result.status is not None
     assert created_result.status.value.lower() == "failed"
+
+    placeholder_after_submission = await allure_client.get_test_result(initial_result.result_id)
+    assert placeholder_after_submission.id == placeholder_result.id
+    assert placeholder_after_submission.manual is True
+    assert placeholder_after_submission.status is None
 
     rerun = await launch_service.rerun_test_results_manually(
         launch.id,
@@ -111,9 +124,13 @@ async def test_manual_launch_execution_workflow(
             "content": "U2FuZGJveCBtYW51YWwgcmVzdWx0IGV2aWRlbmNl",
         },
     )
+
     assert result_attachment.target_kind == "test_result"
     assert result_attachment.target_id == created_result_id
-    assert result_attachment.status_code in {200, 202}
+    assert result_attachment.status_code == 200
+    result_attachments = await allure_client.list_test_result_attachments(created_result_id, size=50)
+    attachment_rows = result_attachments.content or []
+    assert any(attachment.name == "manual-result.txt" for attachment in attachment_rows)
 
     step_attachment = await launch_service.add_test_step_attachment(
         test_result_id=created_result_id,
@@ -127,18 +144,22 @@ async def test_manual_launch_execution_workflow(
     assert step_attachment.target_kind == "test_step"
     assert step_attachment.status_code == 200
 
-    execution = await allure_client.get_test_result_execution(created_result_id)
-    attachment_steps = [
-        step.actual_instance
-        for step in execution.steps or []
-        if getattr(step.actual_instance, "attachment_id", None) == step_attachment.target_id
+    execution = await allure_client.get_test_result_execution_raw(created_result_id)
+    execution_steps = execution.get("steps")
+    assert isinstance(execution_steps, list)
+    matching_steps = [
+        step for step in execution_steps if isinstance(step, dict) and step.get("name") == "manual-step.txt"
     ]
-    assert len(attachment_steps) == 1
-    attachment_step = attachment_steps[0]
-    attachment = attachment_step.attachment.actual_instance if attachment_step.attachment is not None else None
-    assert attachment is not None
-    assert attachment.id == step_attachment.target_id
-    assert attachment.name == "manual-step.txt"
+    assert len(matching_steps) == 1
+    attachments = matching_steps[0].get("attachments")
+    assert isinstance(attachments, list)
+    matching_attachments = [
+        attachment
+        for attachment in attachments
+        if isinstance(attachment, dict) and attachment.get("id") == step_attachment.target_id
+    ]
+    assert len(matching_attachments) == 1
+    assert matching_attachments[0].get("name") == "manual-step.txt"
 
     attachment_bytes = await allure_client.read_test_result_attachment_content(step_attachment.target_id)
     assert attachment_bytes == b"Sandbox manual step evidence"
