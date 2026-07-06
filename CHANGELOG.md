@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.11.0] - 2026-07-06
+
+### Added
+- Added launch manual execution tools for listing results, scheduling manual reruns, starting manual sessions, submitting manual results, and uploading evidence to manual results and steps (#263).
+
+### Changed
+- Updated locked runtime and tooling dependencies, including `joserfc` 1.6.8 and `ruff` 0.15.20 (#252, #254, #264, #265).
+
 ## [v0.10.6] - 2026-06-22
 
 ### Changed
@@ -261,7 +269,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.6...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.11.0...HEAD
+[v0.11.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.6...v0.11.0
 [v0.10.6]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.5...v0.10.6
 [v0.10.5]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.4...v0.10.5
 [v0.10.4]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.3...v0.10.4

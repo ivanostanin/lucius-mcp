@@ -7,12 +7,12 @@
     "url": "https://github.com/ivanostanin/lucius-mcp",
     "source": "github"
   },
-  "version": "0.10.6",
+  "version": "0.11.0",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "lucius-mcp",
-      "version": "0.10.6",
+      "version": "0.11.0",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -43,7 +43,7 @@
     },
     {
       "registryType": "oci",
-      "identifier": "ghcr.io/ivanostanin/lucius-mcp:0.10.6",
+      "identifier": "ghcr.io/ivanostanin/lucius-mcp:0.11.0",
       "transport": {
         "type": "stdio"
       },
@@ -73,16 +73,16 @@
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/ivanostanin/lucius-mcp/releases/download/v0.10.6/lucius-mcp-0.10.6-uv.mcpb",
-      "fileSha256": "f95a00ba12706ea0523aeb8a32642a343f6a7154c5957d19e2b3f7d41425f0fd",
+      "identifier": "https://github.com/ivanostanin/lucius-mcp/releases/download/v0.11.0/lucius-mcp-0.11.0-uv.mcpb",
+      "fileSha256": "c9d22c6bd6c94a32fefbf089858d426e89c17c3d0f1366f8694f0406cc482d0b",
       "transport": {
         "type": "stdio"
       }
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/ivanostanin/lucius-mcp/releases/download/v0.10.6/lucius-mcp-0.10.6-python.mcpb",
-      "fileSha256": "0fed720abc764ab1b9d8949ef4fcd2e751fe465340eccfc107fbf1e834b74c5d",
+      "identifier": "https://github.com/ivanostanin/lucius-mcp/releases/download/v0.11.0/lucius-mcp-0.11.0-python.mcpb",
+      "fileSha256": "c7a243f94f8c094da408bc0fe03b64de1b06c97cb8cb2e2d06adafd352d118f7",
       "transport": {
         "type": "stdio"
       }
