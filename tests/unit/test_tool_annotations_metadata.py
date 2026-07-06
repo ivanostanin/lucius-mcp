@@ -27,7 +27,7 @@ def test_annotation_policy_matches_registered_tools() -> None:
     policy_tool_names = set(TOOL_HINT_POLICY.keys())
     tag_policy_tool_names = set(TOOL_TAGS.keys())
 
-    assert len(registered_tool_names) == 56
+    assert len(registered_tool_names) == len(policy_tool_names) == len(tag_policy_tool_names)
     assert registered_tool_names == policy_tool_names
     assert registered_tool_names == tag_policy_tool_names
 
@@ -64,3 +64,11 @@ def test_new_cleanup_and_suite_delete_tools_are_destructive_idempotent() -> None
         assert hints["readOnlyHint"] is False
         assert hints["destructiveHint"] is True
         assert hints["idempotentHint"] is True
+
+
+def test_manual_rerun_is_classified_as_non_idempotent_additive_work() -> None:
+    hints = TOOL_HINT_POLICY["rerun_test_results_manually"]
+
+    assert hints["readOnlyHint"] is False
+    assert hints["destructiveHint"] is False
+    assert hints["idempotentHint"] is False

@@ -179,6 +179,30 @@
       "description": "Get complete details of a specific launch."
     },
     {
+      "name": "list_launch_test_results",
+      "description": "List launch test results with manual execution metadata."
+    },
+    {
+      "name": "rerun_test_results_manually",
+      "description": "Schedule manual reruns for selected launch results."
+    },
+    {
+      "name": "start_manual_test_session",
+      "description": "Start a manual test session for a launch."
+    },
+    {
+      "name": "submit_manual_test_results",
+      "description": "Submit manual execution results for a manual session."
+    },
+    {
+      "name": "add_test_result_attachment",
+      "description": "Upload evidence to a manual test result."
+    },
+    {
+      "name": "add_test_step_attachment",
+      "description": "Upload evidence to a fixture-backed manual step context."
+    },
+    {
       "name": "delete_launch",
       "description": "Delete/archive a launch by ID."
     },

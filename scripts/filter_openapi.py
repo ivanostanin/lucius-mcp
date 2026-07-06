@@ -46,7 +46,36 @@ KEEP_TAGS = {
     # Defect Management
     "defect-controller",
     "defect-matcher-controller",
+    # Manual test execution inside launches
+    "test-result-controller",
+    "test-result-bulk-controller",
+    "test-result-run-controller",
+    "test-result-rerun-controller",
+    "test-result-flat-controller",
+    "test-result-attachment-controller",
+    "upload-controller",
+    "upload-test-result-controller",
+    "test-result-fixture-controller",
 }
+
+
+def _patch_manual_session_schema(spec: dict) -> None:
+    manual_session_schema = spec.get("components", {}).get("schemas", {}).get("ManualSessionRequestDto")
+    if not isinstance(manual_session_schema, dict):
+        return
+
+    properties = manual_session_schema.setdefault("properties", {})
+    if "projectId" not in properties:
+        properties["projectId"] = {"type": "integer", "format": "int64"}
+    if "jobUid" not in properties:
+        properties["jobUid"] = {"type": "string"}
+    if "jobRunUid" not in properties:
+        properties["jobRunUid"] = {"type": "string"}
+
+    required = manual_session_schema.setdefault("required", [])
+    for field_name in ("projectId", "jobUid", "jobRunUid"):
+        if field_name not in required:
+            required.append(field_name)
 
 
 def filter_spec() -> None:
@@ -75,6 +104,8 @@ def filter_spec() -> None:
             filtered_paths[path] = new_methods
 
     spec["paths"] = filtered_paths
+
+    _patch_manual_session_schema(spec)
 
     # We are NOT filtering components/schemas aggressively because it's hard to trace
     # all dependencies (refs) without a full graph traversal.

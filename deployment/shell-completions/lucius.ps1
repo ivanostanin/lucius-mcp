@@ -56,7 +56,7 @@ Register-ArgumentCompleter -Native -CommandName lucius -ScriptBlock {
         "defect" = @("create", "delete", "get", "link-test-case", "link_test_case", "list", "list-test-cases", "list_test_cases", "update")
         "defect_matcher" = @("create", "delete", "list", "update")
         "integration" = @("list")
-        "launch" = @("close", "create", "delete", "get", "list", "reopen")
+        "launch" = @("add-test-result-attachment", "add-test-step-attachment", "add_test_result_attachment", "add_test_step_attachment", "close", "create", "delete", "get", "list", "list-test-results", "list_test_results", "reopen", "rerun-test-results-manually", "rerun_test_results_manually", "start-manual-test-session", "start_manual_test_session", "submit-manual-test-results", "submit_manual_test_results")
         "shared_step" = @("create", "delete", "delete-archived", "delete_archived", "link-test-case", "link_test_case", "list", "unlink-test-case", "unlink_test_case", "update")
         "test_case" = @("create", "delete", "delete-archived", "delete_archived", "get", "get-custom-fields", "get_custom_fields", "list", "search", "update")
         "test_layer" = @("create", "delete", "list", "update")

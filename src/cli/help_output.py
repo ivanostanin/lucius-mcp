@@ -24,13 +24,51 @@ def _format_action_list(actions: typing.Iterable[str]) -> str:
     return ", ".join(sorted_actions)
 
 
+EXAMPLE_ARG_OVERRIDES: dict[str, dict[str, typing.Any]] = {
+    "add_test_result_attachment": {
+        "test_result_id": 123,
+        "attachment": {
+            "name": "evidence.txt",
+            "content_type": "text/plain",
+            "content": "QQ==",
+        },
+    },
+    "add_test_step_attachment": {
+        "test_result_id": 123,
+        "step_name": "manual-step.txt",
+        "attachment": {
+            "name": "manual-step.txt",
+            "content_type": "text/plain",
+            "content": "QQ==",
+        },
+    },
+    "rerun_test_results_manually": {
+        "launch_id": 123,
+        "result_ids": [456],
+    },
+    "submit_manual_test_results": {
+        "test_session_id": 123,
+        "results": [
+            {
+                "test_case_id": 456,
+                "name": "Manual verification",
+                "status": "passed",
+            }
+        ],
+    },
+}
+
+
 def _build_example_args(schema: dict[str, typing.Any]) -> dict[str, typing.Any]:
     input_schema = schema.get("input_schema", {})
     properties = input_schema.get("properties", {})
     required = input_schema.get("required", [])
-    example_args: dict[str, typing.Any] = {}
+    tool_name = schema.get("name")
+    example_args = EXAMPLE_ARG_OVERRIDES.get(tool_name, {}).copy() if isinstance(tool_name, str) else {}
 
     for param_name in required:
+        if param_name in example_args:
+            continue
         param_info = properties.get(param_name, {})
         param_type = param_info.get("type")
         if param_type is None and isinstance(param_info.get("anyOf"), list):

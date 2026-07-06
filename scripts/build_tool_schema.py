@@ -18,6 +18,8 @@ import types
 import typing
 from pathlib import Path
 
+from src.cli.help_output import EXAMPLE_ARG_OVERRIDES
+
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
@@ -163,8 +165,10 @@ def extract_tool_schemas() -> dict[str, dict[str, typing.Any]]:
         function = resolve_tool_function(tool_name)
         doc = inspect.getdoc(function) or ""
         input_schema = _build_input_schema(function)
-        example_args: dict[str, typing.Any] = {}
+        example_args = EXAMPLE_ARG_OVERRIDES.get(tool_name, {}).copy()
         for required_name in input_schema.get("required", []):
+            if required_name in example_args:
+                continue
             required_schema = input_schema["properties"].get(required_name, {})
             param_type = required_schema.get("type")
             if param_type == "integer":

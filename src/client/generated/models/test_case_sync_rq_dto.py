@@ -23,6 +23,7 @@ from typing_extensions import Annotated
 from src.client.generated.models.test_case_sync_from_to import TestCaseSyncFromTo
 from typing import Optional, Set
 from typing_extensions import Self
+from pydantic_core import to_jsonable_python
 
 class TestCaseSyncRqDto(BaseModel):
     """
@@ -44,7 +45,8 @@ class TestCaseSyncRqDto(BaseModel):
     __properties: ClassVar[List[str]] = ["ignoreAttachments", "ignoreCfv", "ignoreIssueLinks", "ignoreLinks", "ignoreMembers", "ignoreParameters", "ignoreScenario", "ignoreTags", "ignoreTestKeys", "mapping", "nameSuffix", "statusId", "workflowId"]
 
     model_config = ConfigDict(
-        populate_by_name=True,
+        validate_by_name=True,
+        validate_by_alias=True,
         validate_assignment=True,
         protected_namespaces=(),
     )
@@ -56,8 +58,7 @@ class TestCaseSyncRqDto(BaseModel):
 
     def to_json(self) -> str:
         """Returns the JSON representation of the model using alias"""
-        # TODO: pydantic v2: use .model_dump_json(by_alias=True, exclude_unset=True) instead
-        return json.dumps(self.to_dict())
+        return json.dumps(to_jsonable_python(self.to_dict()))
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:

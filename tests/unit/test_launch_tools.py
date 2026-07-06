@@ -9,7 +9,18 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from pydantic import SecretStr
 
-from src.tools.launches import close_launch, create_launch, delete_launch, get_launch, list_launches, reopen_launch
+from src.tools.launches import (
+    add_test_result_attachment,
+    close_launch,
+    create_launch,
+    delete_launch,
+    get_launch,
+    list_launch_test_results,
+    list_launches,
+    reopen_launch,
+    start_manual_test_session,
+    submit_manual_test_results,
+)
 
 
 def _resolved_auth(*, endpoint: str = "https://example.com", token: str = "token", project_id: int = 1) -> object:
@@ -151,6 +162,133 @@ async def test_get_launch_output_format() -> None:
                 assert "Known defects: 2" in output
                 assert "New defects: 1" in output
                 assert "Summary: passed=7, failed=1" in output
+
+
+@pytest.mark.asyncio
+async def test_list_launch_test_results_output_format() -> None:
+    with patch("src.tools.launches.resolve_auth_settings", return_value=_resolved_auth()):
+        with patch("src.tools.launches.AllureClient") as mock_client_cls:
+            mock_client = _mock_url_context()
+            mock_client_cls.return_value.__aenter__.return_value = mock_client
+
+            with patch("src.tools.launches.LaunchService") as mock_service_cls:
+                mock_service = mock_service_cls.return_value
+                mock_service.list_launch_test_results = AsyncMock(
+                    return_value=type(
+                        "LaunchTestResultListResult",
+                        (),
+                        {
+                            "items": [
+                                type(
+                                    "LaunchTestResultListItem",
+                                    (),
+                                    {
+                                        "result_id": 101,
+                                        "test_case_id": 11,
+                                        "name": "Manual Failed",
+                                        "manual": True,
+                                        "status": "failed",
+                                        "assignee": "alice",
+                                        "tested_by": "qa",
+                                    },
+                                )
+                            ],
+                            "total": 1,
+                            "page": 0,
+                            "size": 20,
+                            "total_pages": 1,
+                        },
+                    )
+                )
+
+                output = await list_launch_test_results(
+                    launch_id=10,
+                    manual_only=True,
+                    failed_only=True,
+                    output_format="plain",
+                )
+
+                assert "Found 1 launch test results" in output
+                assert "Result #101" in output
+                assert "alice" in output
+
+
+@pytest.mark.asyncio
+async def test_start_manual_test_session_output_format() -> None:
+    with patch("src.tools.launches.resolve_auth_settings", return_value=_resolved_auth()):
+        with patch("src.tools.launches.AllureClient") as mock_client_cls:
+            mock_client = _mock_url_context()
+            mock_client_cls.return_value.__aenter__.return_value = mock_client
+
+            with patch("src.tools.launches.LaunchService") as mock_service_cls:
+                mock_service = mock_service_cls.return_value
+                mock_service.start_manual_test_session = AsyncMock(
+                    return_value=type(
+                        "ManualTestSessionResult",
+                        (),
+                        {
+                            "test_session_id": 44,
+                            "launch_id": 10,
+                            "job_id": 7,
+                            "job_run_id": 8,
+                            "project_id": 1,
+                            "environment": [{"key": "browser", "value": "chrome"}],
+                        },
+                    )
+                )
+
+                output = await start_manual_test_session(
+                    launch_id=10,
+                    environment=[{"key": "browser", "value": "chrome"}],
+                    output_format="plain",
+                )
+
+                assert "Test session ID: 44" in output
+                assert "browser=chrome" in output
+
+
+@pytest.mark.asyncio
+async def test_submit_manual_test_results_and_attachment_outputs() -> None:
+    with patch("src.tools.launches.resolve_auth_settings", return_value=_resolved_auth()):
+        with patch("src.tools.launches.AllureClient") as mock_client_cls:
+            mock_client = _mock_url_context()
+            mock_client_cls.return_value.__aenter__.return_value = mock_client
+
+            with patch("src.tools.launches.LaunchService") as mock_service_cls:
+                mock_service = mock_service_cls.return_value
+                mock_service.submit_manual_test_results = AsyncMock(
+                    return_value=type(
+                        "ManualTestSubmissionResult",
+                        (),
+                        {"test_session_id": 44, "result_ids": [101], "submitted_count": 1},
+                    )
+                )
+                mock_service.add_test_result_attachment = AsyncMock(
+                    return_value=type(
+                        "AttachmentUploadResult",
+                        (),
+                        {
+                            "target_kind": "test_result",
+                            "target_id": 101,
+                            "file_names": ["evidence.txt"],
+                            "status_code": 202,
+                        },
+                    )
+                )
+
+                submit_output = await submit_manual_test_results(
+                    test_session_id=44,
+                    results=[{"result_id": 9, "status": "passed"}],
+                    output_format="plain",
+                )
+                attachment_output = await add_test_result_attachment(
+                    test_result_id=101,
+                    attachment={"name": "evidence.txt", "content_type": "text/plain", "content": "QQ=="},
+                    output_format="plain",
+                )
+
+                assert "Result IDs: 101" in submit_output
+                assert "HTTP status: 202" in attachment_output
 
 
 @pytest.mark.asyncio

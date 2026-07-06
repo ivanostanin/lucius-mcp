@@ -7,6 +7,9 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **environment** | [**List[SessionVariable]**](SessionVariable.md) |  | [optional] 
 **launch_id** | **int** |  | 
+**project_id** | **int** |  | 
+**job_uid** | **str** |  | 
+**job_run_uid** | **str** |  | 
 
 ## Example
 

@@ -24,6 +24,7 @@ from src.client.generated.models.widget_create_dto_options import WidgetCreateDt
 from src.client.generated.models.widget_type_dto import WidgetTypeDto
 from typing import Optional, Set
 from typing_extensions import Self
+from pydantic_core import to_jsonable_python
 
 class WidgetDto(BaseModel):
     """
@@ -42,7 +43,8 @@ class WidgetDto(BaseModel):
     __properties: ClassVar[List[str]] = ["createdBy", "createdDate", "dashboardId", "gridPos", "id", "lastModifiedBy", "lastModifiedDate", "name", "options", "type"]
 
     model_config = ConfigDict(
-        populate_by_name=True,
+        validate_by_name=True,
+        validate_by_alias=True,
         validate_assignment=True,
         protected_namespaces=(),
     )
@@ -54,8 +56,7 @@ class WidgetDto(BaseModel):
 
     def to_json(self) -> str:
         """Returns the JSON representation of the model using alias"""
-        # TODO: pydantic v2: use .model_dump_json(by_alias=True, exclude_unset=True) instead
-        return json.dumps(self.to_dict())
+        return json.dumps(to_jsonable_python(self.to_dict()))
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:

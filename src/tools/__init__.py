@@ -20,7 +20,20 @@ from src.tools.delete_custom_field_value import delete_custom_field_value
 from src.tools.delete_test_case import delete_test_case
 from src.tools.get_custom_fields import get_custom_fields
 from src.tools.get_test_case_custom_fields import get_test_case_custom_fields
-from src.tools.launches import close_launch, create_launch, delete_launch, get_launch, list_launches, reopen_launch
+from src.tools.launches import (
+    add_test_result_attachment,
+    add_test_step_attachment,
+    close_launch,
+    create_launch,
+    delete_launch,
+    get_launch,
+    list_launch_test_results,
+    list_launches,
+    reopen_launch,
+    rerun_test_results_manually,
+    start_manual_test_session,
+    submit_manual_test_results,
+)
 from src.tools.link_shared_step import link_shared_step
 from src.tools.list_custom_field_values import list_custom_field_values
 from src.tools.list_integrations import list_integrations
@@ -53,6 +66,8 @@ from src.tools.update_custom_field_value import update_custom_field_value
 from src.tools.update_test_case import update_test_case
 
 __all__ = [
+    "add_test_result_attachment",
+    "add_test_step_attachment",
     "assign_test_cases_to_suite",
     "close_launch",
     "create_custom_field_value",
@@ -90,6 +105,7 @@ __all__ = [
     "list_defect_test_cases",
     "list_defects",
     "list_integrations",
+    "list_launch_test_results",
     "list_launches",
     "list_shared_steps",
     "list_test_cases",
@@ -99,7 +115,10 @@ __all__ = [
     "list_test_suites",
     "manage_test_plan_content",
     "reopen_launch",
+    "rerun_test_results_manually",
     "search_test_cases",
+    "start_manual_test_session",
+    "submit_manual_test_results",
     "unlink_shared_step",
     "update_custom_field_value",
     "update_defect",
@@ -131,6 +150,12 @@ all_tools: list[ToolFn] = [
     create_launch,
     get_launch,
     list_launches,
+    list_launch_test_results,
+    rerun_test_results_manually,
+    start_manual_test_session,
+    submit_manual_test_results,
+    add_test_result_attachment,
+    add_test_step_attachment,
     delete_launch,
     close_launch,
     reopen_launch,

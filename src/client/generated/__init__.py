@@ -48,7 +48,16 @@ __all__ = [
     "TestLayerControllerApi",
     "TestLayerSchemaControllerApi",
     "TestPlanControllerApi",
+    "TestResultAttachmentControllerApi",
+    "TestResultBulkControllerApi",
+    "TestResultControllerApi",
+    "TestResultFixtureControllerApi",
+    "TestResultFlatControllerApi",
+    "TestResultRerunControllerApi",
+    "TestResultRunControllerApi",
     "TreeControllerV2Api",
+    "UploadControllerApi",
+    "UploadTestResultControllerApi",
     "ApiResponse",
     "ApiClient",
     "Configuration",
@@ -774,7 +783,16 @@ from src.client.generated.api.test_case_tree_controller_v2_api import TestCaseTr
 from src.client.generated.api.test_layer_controller_api import TestLayerControllerApi as TestLayerControllerApi
 from src.client.generated.api.test_layer_schema_controller_api import TestLayerSchemaControllerApi as TestLayerSchemaControllerApi
 from src.client.generated.api.test_plan_controller_api import TestPlanControllerApi as TestPlanControllerApi
+from src.client.generated.api.test_result_attachment_controller_api import TestResultAttachmentControllerApi as TestResultAttachmentControllerApi
+from src.client.generated.api.test_result_bulk_controller_api import TestResultBulkControllerApi as TestResultBulkControllerApi
+from src.client.generated.api.test_result_controller_api import TestResultControllerApi as TestResultControllerApi
+from src.client.generated.api.test_result_fixture_controller_api import TestResultFixtureControllerApi as TestResultFixtureControllerApi
+from src.client.generated.api.test_result_flat_controller_api import TestResultFlatControllerApi as TestResultFlatControllerApi
+from src.client.generated.api.test_result_rerun_controller_api import TestResultRerunControllerApi as TestResultRerunControllerApi
+from src.client.generated.api.test_result_run_controller_api import TestResultRunControllerApi as TestResultRunControllerApi
 from src.client.generated.api.tree_controller_v2_api import TreeControllerV2Api as TreeControllerV2Api
+from src.client.generated.api.upload_controller_api import UploadControllerApi as UploadControllerApi
+from src.client.generated.api.upload_test_result_controller_api import UploadTestResultControllerApi as UploadTestResultControllerApi
 
 # import ApiClient
 from src.client.generated.api_response import ApiResponse as ApiResponse

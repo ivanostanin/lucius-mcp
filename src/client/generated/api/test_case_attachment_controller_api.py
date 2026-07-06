@@ -1,5 +1,3 @@
-# coding: utf-8
-
 """
     allure-testops-service
 
@@ -10,6 +8,7 @@
 
     Do not edit the class manually.
 """  # noqa: E501
+
 
 import warnings
 from pydantic import validate_call, Field, StrictFloat, StrictStr, StrictInt
@@ -65,7 +64,7 @@ class TestCaseAttachmentControllerApi:
         :param test_case_id: (required)
         :type test_case_id: int
         :param file: (required)
-        :type file: List[bytearray]
+        :type file: List[bytes]
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -135,7 +134,7 @@ class TestCaseAttachmentControllerApi:
         :param test_case_id: (required)
         :type test_case_id: int
         :param file: (required)
-        :type file: List[bytearray]
+        :type file: List[bytes]
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -205,7 +204,7 @@ class TestCaseAttachmentControllerApi:
         :param test_case_id: (required)
         :type test_case_id: int
         :param file: (required)
-        :type file: List[bytearray]
+        :type file: List[bytes]
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1473,7 +1472,7 @@ class TestCaseAttachmentControllerApi:
         :param id: (required)
         :type id: int
         :param file: (required)
-        :type file: bytearray
+        :type file: bytes
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1543,7 +1542,7 @@ class TestCaseAttachmentControllerApi:
         :param id: (required)
         :type id: int
         :param file: (required)
-        :type file: bytearray
+        :type file: bytes
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1613,7 +1612,7 @@ class TestCaseAttachmentControllerApi:
         :param id: (required)
         :type id: int
         :param file: (required)
-        :type file: bytearray
+        :type file: bytes
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of

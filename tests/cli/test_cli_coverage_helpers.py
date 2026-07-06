@@ -219,6 +219,23 @@ class TestCLICoverageHelpers:
         assert args["obj"] == {}
         assert args["opt"] == "value"
 
+        override_args = _build_example_args(
+            {
+                "name": "submit_manual_test_results",
+                "input_schema": {
+                    "required": ["test_session_id", "results"],
+                    "properties": {
+                        "test_session_id": {"type": "integer"},
+                        "results": {"type": "array"},
+                    },
+                },
+            }
+        )
+        assert override_args == {
+            "test_session_id": 123,
+            "results": [{"test_case_id": 456, "name": "Manual verification", "status": "passed"}],
+        }
+
     def test_print_action_help_no_params(self, capsys: pytest.CaptureFixture[str]) -> None:
         spec = ActionSpec(
             tool_name="list_defects",

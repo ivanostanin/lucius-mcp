@@ -215,9 +215,9 @@ From `src/tools/__init__.py:24-79`:
   8. **Cleanup Created Test Case**: `delete_test_case(test_case_id=TC_HIER_ID, confirm=true)`
      - Expectation: Output contains archived/already-archived confirmation.
 
-#### 8. Launches
+#### 8. Launches and Manual Execution
 - **Scenario source**: tool coverage
-- **Goal**: Validate launch creation, listing, and detail retrieval.
+- **Goal**: Validate launch creation, listing, detail retrieval, and manual execution workflows.
 - **Steps**:
   1. **Create**: `create_launch(name="[Agent] Launch", tags=["agent-test"], external=false)`
      - Expectation: Output contains `Created Launch ID`.
@@ -227,6 +227,26 @@ From `src/tools/__init__.py:24-79`:
   3. **Get Details**: `get_launch(launch_id=LAUNCH_ID)`
      - Expectation: Output contains strict keys: `id`, `name`, `status`, `created_date`.
      - Verification: `id` matches `LAUNCH_ID`.
+  4. **List Result Rows**: `list_launch_test_results(launch_id=LAUNCH_ID, manual_only=true)`
+     - Expectation: Output contains result rows with `result_id`, `test_case_id`, `manual`, and `status`.
+  5. **Start Session**: `start_manual_test_session(launch_id=LAUNCH_ID, environment=[{"key":"browser","value":"chrome"}])`
+     - Expectation: Output contains `test_session_id`.
+     - Action: Capture `test_session_id` as `SESSION_ID`.
+  6. **Submit Manual Results**: `submit_manual_test_results(test_session_id=SESSION_ID, results=[...])`
+     - Expectation: Output contains resolved or created `result_ids`.
+     - Action: Capture first result ID as `RESULT_ID`.
+  7. **Schedule Manual Rerun**: `rerun_test_results_manually(launch_id=LAUNCH_ID, result_ids=[RESULT_ID], force_manual=true)`
+     - Expectation: Output confirms one rerun was scheduled.
+     - Action: Refresh launch results and capture the new active rerun `result_id` as `ACTIVE_RESULT_ID` before the next submission or attachment upload.
+  8. **Upload Result Evidence**: `add_test_result_attachment(test_result_id=ACTIVE_RESULT_ID, attachment={...})`
+     - Expectation: Output confirms the upload was accepted.
+  9. **Finish Active Manual Rerun**: `submit_manual_test_results(test_session_id=SESSION_ID, results=[{"result_id":ACTIVE_RESULT_ID, "status":"passed"}])`
+     - Expectation: Output contains resolved `result_ids` for the currently active rerun result.
+     - Verification: The submitted result ID matches `ACTIVE_RESULT_ID` (or resolves to the same active rerun row for that test case).
+  10. **Verify No In-Progress Rows Remain**: `list_launch_test_results(launch_id=LAUNCH_ID, manual_only=true)`
+      - Expectation: Output shows the rerun result in a terminal state (`passed` or `failed`) and contains no rows with `status: null` or other in-progress markers.
+  11. **Close Launch**: `close_launch(launch_id=LAUNCH_ID)`
+      - Expectation: Output confirms the launch is closed (for example `closed=true` or equivalent terminal state).
 
 #### 9. Custom Field Values Lifecycle
 - **Scenario source**: `specs/implementation-artifacts/3-11-crud-custom-field-values.md`

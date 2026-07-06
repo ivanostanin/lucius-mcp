@@ -38,7 +38,7 @@ async with src.client.generated.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = src.client.generated.SharedStepAttachmentControllerApi(api_client)
     shared_step_id = 56 # int | 
-    file = None # List[bytearray] | 
+    file = None # List[bytes] | 
 
     try:
         # Upload new shared step attachments
@@ -57,7 +57,7 @@ async with src.client.generated.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **shared_step_id** | **int**|  | 
- **file** | **List[bytearray]**|  | 
+ **file** | **List[bytes]**|  | 
 
 ### Return type
 
@@ -377,7 +377,7 @@ async with src.client.generated.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = src.client.generated.SharedStepAttachmentControllerApi(api_client)
     id = 56 # int | 
-    file = None # bytearray | 
+    file = None # bytes | 
 
     try:
         # Update shared step attachment content
@@ -396,7 +396,7 @@ async with src.client.generated.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **int**|  | 
- **file** | **bytearray**|  | 
+ **file** | **bytes**|  | 
 
 ### Return type
 

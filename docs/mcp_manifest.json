@@ -1,12 +1,12 @@
 {
   "environment": {
-    "fastmcp": "3.2.4",
+    "fastmcp": "3.4.2",
     "mcp": "1.26.0"
   },
   "serverInfo": {
     "name": "lucius-mcp",
     "title": null,
-    "version": "0.9.1",
+    "version": "0.10.6",
     "websiteUrl": null,
     "icons": null
   },
@@ -1878,6 +1878,593 @@
         "fastmcp": {
           "tags": [
             "launch"
+          ]
+        }
+      },
+      "execution": null
+    },
+    {
+      "name": "list_launch_test_results",
+      "title": "List Launch Test Results",
+      "description": "List test results inside a launch, including manual execution metadata.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "launch_id": {
+            "description": "Launch ID (required).",
+            "type": "integer"
+          },
+          "manual_only": {
+            "default": false,
+            "description": "When true, return only manual results. Filtering is handled for you.",
+            "type": "boolean"
+          },
+          "failed_only": {
+            "default": false,
+            "description": "When true, return only failed or broken results. Filtering is handled for you.",
+            "type": "boolean"
+          },
+          "page": {
+            "default": 0,
+            "description": "Zero-based page index after optional filtering.",
+            "type": "integer"
+          },
+          "size": {
+            "default": 20,
+            "description": "Number of results per page (max 100).",
+            "maximum": 100,
+            "type": "integer"
+          },
+          "search": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional result-name search term."
+          },
+          "filter_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional saved filter ID from TestOps."
+          },
+          "sort": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional sort directives such as ['name,ASC'] or ['createdDate,DESC']."
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional override for the default Project ID."
+          },
+          "output_format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "plain",
+                  "json"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Output format: 'json' (default) or 'plain'."
+          }
+        },
+        "required": [
+          "launch_id"
+        ],
+        "type": "object"
+      },
+      "outputSchema": null,
+      "icons": null,
+      "annotations": {
+        "title": "List Launch Test Results",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": null
+      },
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "launch",
+            "test-result"
+          ]
+        }
+      },
+      "execution": null
+    },
+    {
+      "name": "rerun_test_results_manually",
+      "title": "Rerun Test Results Manually",
+      "description": "Schedule manual reruns for selected launch results.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "launch_id": {
+            "description": "Launch ID containing the failed results (required).",
+            "type": "integer"
+          },
+          "result_ids": {
+            "description": "One or more launch result IDs to schedule for manual rerun.",
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "assignees": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional usernames to assign during manual rerun scheduling."
+          },
+          "force_manual": {
+            "default": true,
+            "description": "Force manual rerun mode when the upstream API supports it.",
+            "type": "boolean"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional override for the default Project ID."
+          },
+          "output_format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "plain",
+                  "json"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Output format: 'json' (default) or 'plain'."
+          }
+        },
+        "required": [
+          "launch_id",
+          "result_ids"
+        ],
+        "type": "object"
+      },
+      "outputSchema": null,
+      "icons": null,
+      "annotations": {
+        "title": "Rerun Test Results Manually",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": null
+      },
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "launch",
+            "test-result"
+          ]
+        }
+      },
+      "execution": null
+    },
+    {
+      "name": "start_manual_test_session",
+      "title": "Start Manual Test Session",
+      "description": "Start a manual execution session for a launch.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "launch_id": {
+            "description": "Launch ID (required).",
+            "type": "integer"
+          },
+          "environment": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional environment variables as [{key, value}, ...]."
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional override for the default Project ID."
+          },
+          "output_format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "plain",
+                  "json"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Output format: 'json' (default) or 'plain'."
+          }
+        },
+        "required": [
+          "launch_id"
+        ],
+        "type": "object"
+      },
+      "outputSchema": null,
+      "icons": null,
+      "annotations": {
+        "title": "Start Manual Test Session",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": null
+      },
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "launch",
+            "test-result"
+          ]
+        }
+      },
+      "execution": null
+    },
+    {
+      "name": "submit_manual_test_results",
+      "title": "Submit Manual Test Results",
+      "description": "Submit manual execution results for a manual session.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "test_session_id": {
+            "description": "Manual test session ID (required).",
+            "type": "integer"
+          },
+          "results": {
+            "description": "Manual result payloads. When an item includes result_id from list_launch_test_results, the service resolves that existing launch result in place through TestOps' test-result run controller. After rerun_test_results_manually, re-list launch results and submit against the newly visible active result for that test case. The returned result_ids are the resolved result IDs to use for follow-up attachments and reads. As a lower-level fallback, you may still provide launch_id + test_case_id + name/full_name explicitly to create a standalone manual result. Optional fields include status/start/stop/duration/message/trace/description/precondition/expected_result/steps.",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional override for the default Project ID."
+          },
+          "output_format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "plain",
+                  "json"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Output format: 'json' (default) or 'plain'."
+          }
+        },
+        "required": [
+          "test_session_id",
+          "results"
+        ],
+        "type": "object"
+      },
+      "outputSchema": null,
+      "icons": null,
+      "annotations": {
+        "title": "Submit Manual Test Results",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": null
+      },
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "launch",
+            "test-result"
+          ]
+        }
+      },
+      "execution": null
+    },
+    {
+      "name": "add_test_result_attachment",
+      "title": "Add Test Result Attachment",
+      "description": "Upload evidence to a manual test result.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "test_result_id": {
+            "description": "Manual test result ID (required).",
+            "type": "integer"
+          },
+          "attachment": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Attachment payload using the repo-standard pattern: {name, content_type, content? | url?}.",
+            "type": "object"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional override for the default Project ID."
+          },
+          "output_format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "plain",
+                  "json"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Output format: 'json' (default) or 'plain'."
+          }
+        },
+        "required": [
+          "test_result_id",
+          "attachment"
+        ],
+        "type": "object"
+      },
+      "outputSchema": null,
+      "icons": null,
+      "annotations": {
+        "title": "Add Test Result Attachment",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": null
+      },
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "launch",
+            "test-result"
+          ]
+        }
+      },
+      "execution": null
+    },
+    {
+      "name": "add_test_step_attachment",
+      "title": "Add Test Step Attachment",
+      "description": "Upload evidence to a manual attachment step inside a test result.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "test_result_id": {
+            "description": "Parent test result ID (required).",
+            "type": "integer"
+          },
+          "attachment": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Attachment payload using the repo-standard pattern: {name, content_type, content? | url?}.",
+            "type": "object"
+          },
+          "attachment_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional explicit manual step attachment ID resolved from the test result execution."
+          },
+          "step_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional attachment-step name to resolve within the manual test result."
+          },
+          "step_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional zero-based manual step index to resolve within the test result execution."
+          },
+          "fixture_result_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional explicit fixture result ID for legacy fixture-step fallback."
+          },
+          "fixture_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional fixture name used only for the legacy fixture-step fallback."
+          },
+          "fixture_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional fixture type hint for the legacy fixture-step fallback: 'before' or 'after'."
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional override for the default Project ID."
+          },
+          "output_format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "plain",
+                  "json"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Output format: 'json' (default) or 'plain'."
+          }
+        },
+        "required": [
+          "test_result_id",
+          "attachment"
+        ],
+        "type": "object"
+      },
+      "outputSchema": null,
+      "icons": null,
+      "annotations": {
+        "title": "Add Test Step Attachment",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": null
+      },
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "launch",
+            "test-result"
           ]
         }
       },
