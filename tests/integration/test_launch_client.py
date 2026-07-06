@@ -24,6 +24,7 @@ from src.client.generated.models.manual_session_request_dto import ManualSession
 from src.client.generated.models.page_launch_dto import PageLaunchDto
 from src.client.generated.models.page_launch_preview_dto import PageLaunchPreviewDto
 from src.client.generated.models.page_test_result_flat_dto import PageTestResultFlatDto
+from src.client.generated.models.resolve_request_v2_dto import ResolveRequestV2Dto
 from src.client.generated.models.test_fixture_result_v2_dto import TestFixtureResultV2Dto
 from src.client.generated.models.test_result_attachment_patch_dto import TestResultAttachmentPatchDto
 from src.client.generated.models.test_result_attachment_row_dto import TestResultAttachmentRowDto
@@ -32,6 +33,7 @@ from src.client.generated.models.test_result_create_v2_dto import TestResultCrea
 from src.client.generated.models.test_result_dto import TestResultDto
 from src.client.generated.models.test_result_patch_dto import TestResultPatchDto
 from src.client.generated.models.test_result_rerun_dto import TestResultRerunDto
+from src.client.generated.models.test_result_row_dto import TestResultRowDto
 from src.client.generated.models.test_result_scenario_v2_dto import TestResultScenarioV2Dto
 from src.client.generated.models.test_result_tree_selection_dto import TestResultTreeSelectionDto
 from src.client.generated.models.test_session_response_dto import TestSessionResponseDto
@@ -241,6 +243,11 @@ async def test_client_test_result_wrappers_call_apis() -> None:
     client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
     client._is_entered = True
     client._token_expires_at = time.time() + 3600
+    client._api_client = MagicMock()
+    client._api_client.default_headers = {}
+    client._api_client.cookie = None
+    client._api_client.param_serialize.return_value = ("GET", "/api/testresult/33/execution", [], {}, None, [], None)
+    client._api_client.call_api = AsyncMock(return_value=httpx.Response(200, json={"steps": [{"status": "passed"}]}))
     client._test_result_api = MagicMock()
     client._test_result_api.find_one5 = AsyncMock(return_value=TestResultDto(id=33, name="Manual Result"))
     client._test_result_api.create5 = AsyncMock(return_value=TestResultDto(id=34, name="Created Result"))
@@ -259,6 +266,7 @@ async def test_client_test_result_wrappers_call_apis() -> None:
     patched = await client.patch_test_result(34, TestResultPatchDto(name="Patched Result"))
     execution = await client.get_test_result_execution(33)
     execution_raw = await client.get_test_result_execution_raw(33)
+    execution_raw_v2 = await client.get_test_result_execution_raw(33, v2=True)
     fixtures = await client.get_test_result_fixtures(33)
 
     assert result.id == 33
@@ -266,7 +274,37 @@ async def test_client_test_result_wrappers_call_apis() -> None:
     assert patched.id == 34
     assert execution.steps == []
     assert execution_raw["steps"] == [{"status": "failed", "message": "broken"}]
+    assert execution_raw_v2["steps"] == [{"status": "passed"}]
     assert fixtures[0].id == 77
+
+
+@pytest.mark.asyncio
+async def test_client_resolve_test_result_calls_run_controller() -> None:
+    client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
+    client._is_entered = True
+    client._token_expires_at = time.time() + 3600
+    client._test_result_run_api = MagicMock()
+    client._api_client = MagicMock()
+    client._api_client.param_serialize.return_value = (
+        "POST",
+        "https://example.com/api/testresult/33/resolve?v2=true",
+        {"Content-Type": "application/json"},
+        {"status": "failed"},
+        [],
+    )
+    client._api_client.call_api = AsyncMock(
+        return_value=httpx.Response(202, json={"id": 33, "testCaseId": 11, "name": "Manual Result", "status": "failed"})
+    )
+
+    result = await client.resolve_test_result(
+        33,
+        ResolveRequestV2Dto(status="failed"),
+    )
+
+    assert isinstance(result, TestResultRowDto)
+    assert result.id == 33
+    client._api_client.param_serialize.assert_called_once()
+    client._api_client.call_api.assert_awaited_once()
 
 
 @pytest.mark.asyncio

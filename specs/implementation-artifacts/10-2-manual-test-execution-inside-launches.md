@@ -35,7 +35,8 @@ so that **I can complete manual QA workflows inside Allure TestOps without switc
    * **When** I call `submit_manual_test_results(test_session_id=..., results=[...])`.
    * **Then** I can set per-test `status`, `start`, `stop`, `message`, and other execution fields.
    * **And** I can set per-step status, timing, comments/messages, and expected outcome/body data.
-   * **And** the tool returns created/updated Test Result IDs for follow-up actions such as evidence upload.
+   * **And** when `result_id` targets a launch-managed manual placeholder, the tool resolves that existing Test Result in place and returns its ID for follow-up actions such as evidence upload.
+   * **And** explicit `launch_id` plus `test_case_id` payloads may still create a new manual result when no existing launch placeholder is being resolved.
 
 5. **Attach evidence to manual test results and steps**
    * **Given** a created or existing manual test result.
@@ -80,6 +81,7 @@ so that **I can complete manual QA workflows inside Allure TestOps without switc
     - [x] `test-result-controller`
     - [x] `test-result-bulk-controller`
     - [x] `test-result-rerun-controller`
+    - [x] `test-result-run-controller`
     - [x] `test-result-flat-controller`
     - [x] `upload-controller`
     - [x] `upload-test-result-controller`
@@ -90,6 +92,7 @@ so that **I can complete manual QA workflows inside Allure TestOps without switc
     - [x] `TestResultControllerApi`
     - [x] `TestResultBulkControllerApi`
     - [x] `TestResultRerunControllerApi`
+    - [x] `TestResultRunControllerApi`
     - [x] `TestResultFlatControllerApi`
     - [x] `UploadControllerApi`
     - [x] `UploadTestResultControllerApi`
@@ -111,6 +114,7 @@ so that **I can complete manual QA workflows inside Allure TestOps without switc
   - [x] Map friendly inputs to generated DTOs such as:
     - [x] `TestResultBulkRerunDto`
     - [x] `ManualSessionRequestDto`
+    - [x] `ResolveRequestV2Dto`
     - [x] `UploadResultsDto`
     - [x] `UploadTestResultDto`
     - [x] upload step DTO unions for body/expected/attachment steps
@@ -216,6 +220,9 @@ The generated package already contains supporting DTOs such as `ManualSessionReq
 - **Result inspection**
   - `GET /api/testresult/{id}`
   - `GET /api/testresult/{id}/execution`
+  - `GET /api/testresult/{id}/execution?v2=true`
+- **Resolve active manual result in place**
+  - `POST /api/testresult/{id}/resolve?v2=true`
 - **Manual rerun**
   - `POST /api/testresult/bulk/rerun`
   - `POST /api/testresult/{testResultId}/rerun`
@@ -253,8 +260,18 @@ The generated package already contains supporting DTOs such as `ManualSessionReq
 
 - The manual execution flow spans multiple controller families (`launch`, `test-result`, `upload`), so E2E verification against the sandbox instance is important before declaring attachment semantics complete.
 - Step attachment upload may require an extra read step to resolve the runtime step/fixture identifier accepted by the upstream endpoint. If the API does not expose stable IDs for scenario steps directly, document and encapsulate that lookup in the service rather than leaking it to the tool user.
+- Resolved manual-result executions may require `GET /api/testresult/{id}/execution?v2=true`; the non-`v2` execution read can return an empty payload even after a successful resolve.
 - Keep `upload_test_results_to_launch` backward compatible; do not silently repurpose the existing archive/file upload tool for JSON manual-session uploads.
 - PRD NFR11 applies directly to this story, so mocked coverage alone is insufficient for completion.
+
+### Observed Sandbox Semantics
+
+- The TestOps UI completes an existing launch-created manual result with `POST /api/testresult/{id}/resolve?v2=true` under `test-result-run-controller`.
+- `submit_manual_test_results(...)` should therefore resolve the active launch placeholder in place when the payload supplies `result_id`.
+- After `rerun_test_results_manually(...)`, TestOps creates a new visible active placeholder for the rerun phase; callers must refresh launch results and switch to that new `result_id` before submitting the rerun execution or attachments.
+- `GET /api/testresult/{id}/execution?v2=true` returns the resolved step tree for these results, while the non-`v2` execution read may remain empty.
+- When step evidence is attached after resolution, the `v2` execution payload can materialize it as a nested attachment child step under the selected manual step rather than as a top-level `attachments` array.
+- The explicit `launch_id` plus `test_case_id` submission path remains a separate fallback for creating a new manual result outside the active launch-placeholder workflow.
 
 ### References
 
@@ -284,7 +301,10 @@ gpt-5-codex
 - Patched around live upload response drift: `/api/upload/test-result` and fixture uploads return `results[].id` rather than `resultIds`, so the client now parses raw response bodies for created IDs.
 - Live sandbox submissions also require a stable `name` plus generated `uuid`/`historyId`; the service now supplies those fields and returns created result IDs for attachment follow-up.
 - Sandbox readback caveat: fixture attachment uploads succeed and return a fixture target ID, but the current fixture-attachment listing endpoint remains empty immediately afterward, so E2E coverage verifies successful upload and fixture existence rather than attachment-row readback.
-- Replaced the broken `/api/upload/test-result` manual submission path with direct `testresult` create/patch calls, so sandbox manual runs now create real `manual=true` launch results and support step-linked result attachments.
+- HAR evidence from the TestOps UI showed that launch-managed manual completion uses `POST /api/testresult/{id}/resolve?v2=true` from `test-result-run-controller`, not the upload/create flow.
+- The client and launch service now resolve existing launch-created manual results in place, so result status updates and attachments stay attached to the active launch result across initial execution and reruns.
+- Step verification for resolved manual results uses `GET /api/testresult/{id}/execution?v2=true` because the non-`v2` execution read can be empty for these runs.
+- Live sandbox verification also showed step attachments read back as nested attachment child steps in the `v2` execution tree, so E2E assertions follow that server shape instead of assuming `step.attachments`.
 - Validation passed:
   - `uv run pytest tests/unit/test_launch_service.py tests/unit/test_launch_tools.py tests/integration/test_launch_client.py -q`
   - `uv run --env-file .env.test pytest tests/e2e/test_launch_manual_execution.py -q`

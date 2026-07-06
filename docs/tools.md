@@ -77,7 +77,7 @@ route is verified.
 | `list_launch_test_results`   | List result-level launch data including manual flag, status, assignee, and tester. | `launch_id`, `manual_only`, `failed_only` |
 | `rerun_test_results_manually` | Schedule manual reruns for selected failed launch results.      | `launch_id`, `result_ids`, `assignees` |
 | `start_manual_test_session`  | Create a manual execution session for a launch.                 | `launch_id`, `environment` |
-| `submit_manual_test_results` | Submit manual result and step status updates for a session.     | `test_session_id`, `results` |
+| `submit_manual_test_results` | Resolve an existing launch manual result in place or submit explicit manual result updates for a session. | `test_session_id`, `results` |
 | `add_test_result_attachment` | Upload evidence to a manual test result.                        | `test_result_id`, `attachment` |
 | `add_test_step_attachment`   | Upload evidence to a manual attachment step; fixture selectors remain as fallback. | `test_result_id`, `attachment`, `step_name` |
 

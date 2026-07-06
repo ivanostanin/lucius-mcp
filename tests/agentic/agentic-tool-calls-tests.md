@@ -233,10 +233,11 @@ From `src/tools/__init__.py:24-79`:
      - Expectation: Output contains `test_session_id`.
      - Action: Capture `test_session_id` as `SESSION_ID`.
   6. **Submit Manual Results**: `submit_manual_test_results(test_session_id=SESSION_ID, results=[...])`
-     - Expectation: Output contains created or updated `result_ids`.
+     - Expectation: Output contains resolved or created `result_ids`.
      - Action: Capture first result ID as `RESULT_ID`.
   7. **Schedule Manual Rerun**: `rerun_test_results_manually(launch_id=LAUNCH_ID, result_ids=[RESULT_ID], force_manual=true)`
      - Expectation: Output confirms one rerun was scheduled.
+     - Action: Refresh launch results and capture the new active rerun `result_id` before the next submission or attachment upload.
   8. **Upload Result Evidence**: `add_test_result_attachment(test_result_id=RESULT_ID, attachment={...})`
      - Expectation: Output confirms the upload was accepted.
 

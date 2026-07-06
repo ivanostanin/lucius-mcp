@@ -53,6 +53,7 @@ from .generated.api.test_result_controller_api import TestResultControllerApi
 from .generated.api.test_result_fixture_controller_api import TestResultFixtureControllerApi
 from .generated.api.test_result_flat_controller_api import TestResultFlatControllerApi
 from .generated.api.test_result_rerun_controller_api import TestResultRerunControllerApi
+from .generated.api.test_result_run_controller_api import TestResultRunControllerApi
 from .generated.api.tree_controller_v2_api import TreeControllerV2Api
 from .generated.api.upload_controller_api import UploadControllerApi
 from .generated.api.upload_test_result_controller_api import UploadTestResultControllerApi
@@ -96,6 +97,7 @@ from .generated.models.page_test_result_attachment_row_dto import PageTestResult
 from .generated.models.page_test_result_flat_dto import PageTestResultFlatDto
 from .generated.models.page_tree_dto_v2 import PageTreeDtoV2
 from .generated.models.project_test_case_count_dto import ProjectTestCaseCountDto
+from .generated.models.resolve_request_v2_dto import ResolveRequestV2Dto
 from .generated.models.scenario_step_create_dto import ScenarioStepCreateDto
 from .generated.models.scenario_step_created_response_dto import ScenarioStepCreatedResponseDto
 from .generated.models.scenario_step_patch_dto import ScenarioStepPatchDto
@@ -136,6 +138,7 @@ from .generated.models.test_result_dto import TestResultDto
 from .generated.models.test_result_flat_dto import TestResultFlatDto
 from .generated.models.test_result_patch_dto import TestResultPatchDto
 from .generated.models.test_result_rerun_dto import TestResultRerunDto
+from .generated.models.test_result_row_dto import TestResultRowDto
 from .generated.models.test_result_scenario_v2_dto import TestResultScenarioV2Dto
 from .generated.models.test_session_response_dto import TestSessionResponseDto
 from .generated.models.tree_dto_v2 import TreeDtoV2
@@ -214,6 +217,7 @@ type ApiType = (
     | TestResultFixtureControllerApi
     | TestResultFlatControllerApi
     | TestResultRerunControllerApi
+    | TestResultRunControllerApi
     | TreeControllerV2Api
     | TestCaseTreeControllerV2Api
     | TestCaseTreeBulkControllerV2Api
@@ -346,6 +350,7 @@ class AllureClient:
         self._test_result_fixture_api: TestResultFixtureControllerApi | None = None
         self._test_result_flat_api: TestResultFlatControllerApi | None = None
         self._test_result_rerun_api: TestResultRerunControllerApi | None = None
+        self._test_result_run_api: TestResultRunControllerApi | None = None
         self._tree_api: TreeControllerV2Api | None = None
         self._test_case_tree_api: TestCaseTreeControllerV2Api | None = None
         self._test_case_tree_bulk_api: TestCaseTreeBulkControllerV2Api | None = None
@@ -504,6 +509,7 @@ class AllureClient:
             self._test_result_fixture_api = TestResultFixtureControllerApi(self._api_client)
             self._test_result_flat_api = TestResultFlatControllerApi(self._api_client)
             self._test_result_rerun_api = TestResultRerunControllerApi(self._api_client)
+            self._test_result_run_api = TestResultRunControllerApi(self._api_client)
             self._tree_api = TreeControllerV2Api(self._api_client)
             self._test_case_tree_api = TestCaseTreeControllerV2Api(self._api_client)
             self._test_case_tree_bulk_api = TestCaseTreeBulkControllerV2Api(self._api_client)
@@ -731,6 +737,11 @@ class AllureClient:
 
     @overload
     async def _get_api(
+        self, attr_name: Literal["_test_result_run_api"], *, error_name: str | None = None
+    ) -> TestResultRunControllerApi: ...
+
+    @overload
+    async def _get_api(
         self, attr_name: Literal["_tree_api"], *, error_name: str | None = None
     ) -> TreeControllerV2Api: ...
 
@@ -774,7 +785,7 @@ class AllureClient:
             self._handle_api_exception(e)
             raise
 
-    async def _call_api_raw(self, coro: Awaitable[httpx.Response]) -> httpx.Response:
+    async def _call_api_raw(self, coro: Awaitable[httpx.Response | RESTResponse]) -> httpx.Response | RESTResponse:
         try:
             return await coro
         except ApiException as e:
@@ -782,13 +793,26 @@ class AllureClient:
             raise
 
     @staticmethod
-    def _extract_response_data(response: httpx.Response) -> dict[str, object]:
-        if not 200 <= response.status_code <= 299:
-            raise ApiException(status=response.status_code, reason=response.reason_phrase, body=response.text)
-        data = response.json()
+    def _extract_response_data(response: httpx.Response | RESTResponse) -> dict[str, object]:
+        http_response = AllureClient._unwrap_http_response(response)
+        if not 200 <= http_response.status_code <= 299:
+            raise ApiException(
+                status=http_response.status_code,
+                reason=http_response.reason_phrase,
+                body=http_response.text,
+            )
+        data = http_response.json()
         if isinstance(data, dict):
             return data
-        raise ApiException(status=response.status_code, reason=response.reason_phrase, body=response.text)
+        raise ApiException(
+            status=http_response.status_code,
+            reason=http_response.reason_phrase,
+            body=http_response.text,
+        )
+
+    @staticmethod
+    def _unwrap_http_response(response: httpx.Response | RESTResponse) -> httpx.Response:
+        return response.response if isinstance(response, RESTResponse) else response
 
     @staticmethod
     def _extract_upload_result_ids(data: dict[str, object]) -> list[int]:
@@ -852,6 +876,28 @@ class AllureClient:
             )
 
         return rest_response
+
+    async def _get_test_result_execution_raw_v2(self, test_result_id: int) -> dict[str, object]:
+        self._require_entered()
+        await self._ensure_valid_token()
+
+        if self._api_client is None:
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+
+        request_args = self._api_client.param_serialize(
+            method="GET",
+            resource_path="/api/testresult/{id}/execution",
+            path_params={"id": test_result_id},
+            query_params=[("v2", True)],
+            header_params={},
+            auth_settings=[],
+        )
+        call_coro = self._api_client.call_api(
+            *request_args,
+            _request_timeout=self._timeout,
+        )
+        response = await self._call_api_raw(cast(Awaitable[httpx.Response], call_coro))
+        return self._extract_response_data(response)
 
     @staticmethod
     def _patch_attachment_with_discriminator(attachment_dict: dict[str, object]) -> dict[str, object]:
@@ -1403,13 +1449,15 @@ class AllureClient:
 
         return await self._call_api(api.find_execution(id=test_result_id, _request_timeout=self._timeout))
 
-    async def get_test_result_execution_raw(self, test_result_id: int) -> dict[str, object]:
+    async def get_test_result_execution_raw(self, test_result_id: int, *, v2: bool = False) -> dict[str, object]:
         """Fetch raw execution details for one test result without strict schema deserialization."""
-        api = await self._get_api("_test_result_api", error_name="test result APIs")
-
         if not isinstance(test_result_id, int) or test_result_id <= 0:
             raise AllureValidationError("Test Result ID must be a positive integer")
 
+        if v2:
+            return await self._get_test_result_execution_raw_v2(test_result_id)
+
+        api = await self._get_api("_test_result_api", error_name="test result APIs")
         response = await self._call_api_raw(
             cast(
                 Awaitable[httpx.Response],
@@ -1420,6 +1468,41 @@ class AllureClient:
             )
         )
         return self._extract_response_data(response)
+
+    async def resolve_test_result(
+        self,
+        test_result_id: int,
+        data: ResolveRequestV2Dto | dict[str, object],
+    ) -> TestResultRowDto:
+        """Resolve an existing test result in place."""
+        await self._get_api("_test_result_run_api", error_name="test result run APIs")
+
+        if not isinstance(test_result_id, int) or test_result_id <= 0:
+            raise AllureValidationError("Test Result ID must be a positive integer")
+
+        if self._api_client is None:
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+
+        request_body = data.to_dict() if isinstance(data, ResolveRequestV2Dto) else data
+        request_args = self._api_client.param_serialize(
+            method="POST",
+            resource_path="/api/testresult/{id}/resolve",
+            path_params={"id": test_result_id},
+            query_params=[("v2", True)],
+            header_params={"Content-Type": "application/json"},
+            body=request_body,
+            auth_settings=[],
+        )
+        call_coro = self._api_client.call_api(
+            *request_args,
+            _request_timeout=self._timeout,
+        )
+
+        response = await self._call_api_raw(cast(Awaitable[httpx.Response], call_coro))
+        parsed = TestResultRowDto.from_dict(self._extract_response_data(response))
+        if parsed is None:  # pragma: no cover - defensive
+            raise AllureAPIError("Resolve test result response was empty")
+        return parsed
 
     async def get_test_result_fixtures(self, test_result_id: int) -> list[TestFixtureResultV2Dto]:
         """Fetch fixture results for one test result."""
@@ -1526,9 +1609,14 @@ class AllureClient:
                 ),
             )
         )
-        if not 200 <= response.status_code <= 299:
-            raise ApiException(status=response.status_code, reason=response.reason_phrase, body=response.text)
-        return response.content
+        http_response = self._unwrap_http_response(response)
+        if not 200 <= http_response.status_code <= 299:
+            raise ApiException(
+                status=http_response.status_code,
+                reason=http_response.reason_phrase,
+                body=http_response.text,
+            )
+        return http_response.content
 
     async def rerun_test_results_bulk(self, data: TestResultBulkRerunDto) -> None:
         """Schedule manual reruns for selected test results."""

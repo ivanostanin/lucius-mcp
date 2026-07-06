@@ -37,6 +37,7 @@ from src.client.generated.api.test_result_controller_api import TestResultContro
 from src.client.generated.api.test_result_fixture_controller_api import TestResultFixtureControllerApi
 from src.client.generated.api.test_result_flat_controller_api import TestResultFlatControllerApi
 from src.client.generated.api.test_result_rerun_controller_api import TestResultRerunControllerApi
+from src.client.generated.api.test_result_run_controller_api import TestResultRunControllerApi
 from src.client.generated.api.tree_controller_v2_api import TreeControllerV2Api
 from src.client.generated.api.upload_controller_api import UploadControllerApi
 from src.client.generated.api.upload_test_result_controller_api import UploadTestResultControllerApi

@@ -335,6 +335,8 @@ Class | Method | HTTP request | Description
 *TestResultFlatControllerApi* | [**get_test_cases1**](src/client/generated/docs/TestResultFlatControllerApi.md#get_test_cases1) | **GET** /api/v2/launch/{launchId}/test-result/flat | Get test results as a flat structure
 *TestResultRerunControllerApi* | [**retry**](src/client/generated/docs/TestResultRerunControllerApi.md#retry) | **POST** /api/testresult/{testResultId}/rerun | Schedule manual rerun for test case
 *TestResultRerunControllerApi* | [**retry1**](src/client/generated/docs/TestResultRerunControllerApi.md#retry1) | **POST** /api/testresult/{testResultId}/retry | Schedule manual rerun for test case
+*TestResultRunControllerApi* | [**assign**](src/client/generated/docs/TestResultRunControllerApi.md#assign) | **POST** /api/testresult/{id}/assign | Assign test result
+*TestResultRunControllerApi* | [**resolve1**](src/client/generated/docs/TestResultRunControllerApi.md#resolve1) | **POST** /api/testresult/{id}/resolve | Resolve test result
 *TreeControllerV2Api* | [**find_all48**](src/client/generated/docs/TreeControllerV2Api.md#find_all48) | **GET** /api/v2/tree | 
 *TreeControllerV2Api* | [**find_one38**](src/client/generated/docs/TreeControllerV2Api.md#find_one38) | **GET** /api/v2/tree/{id} | 
 *UploadControllerApi* | [**get_job_run_by_uid**](src/client/generated/docs/UploadControllerApi.md#get_job_run_by_uid) | **GET** /api/upload/jobrun | Get information about job run by id

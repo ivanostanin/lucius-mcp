@@ -49,6 +49,7 @@ KEEP_TAGS = {
     # Manual test execution inside launches
     "test-result-controller",
     "test-result-bulk-controller",
+    "test-result-run-controller",
     "test-result-rerun-controller",
     "test-result-flat-controller",
     "test-result-attachment-controller",

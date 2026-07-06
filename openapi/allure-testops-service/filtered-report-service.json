@@ -11212,6 +11212,48 @@
         ]
       }
     },
+    "/api/testresult/{id}/assign": {
+      "post": {
+        "operationId": "assign",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestResultRowDto"
+                }
+              }
+            },
+            "description": "Accepted"
+          }
+        },
+        "summary": "Assign test result",
+        "tags": [
+          "test-result-run-controller"
+        ]
+      }
+    },
     "/api/testresult/{id}/execution": {
       "get": {
         "operationId": "findExecution",
@@ -11318,6 +11360,48 @@
         "summary": "Find all history for given test result",
         "tags": [
           "test-result-controller"
+        ]
+      }
+    },
+    "/api/testresult/{id}/resolve": {
+      "post": {
+        "operationId": "resolve_1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveRequestV2Dto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestResultRowDto"
+                }
+              }
+            },
+            "description": "Accepted"
+          }
+        },
+        "summary": "Resolve test result",
+        "tags": [
+          "test-result-run-controller"
         ]
       }
     },

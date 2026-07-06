@@ -26,6 +26,8 @@ from src.client.generated.models.test_result_attachment_step_dto_all_of_attachme
 from src.client.generated.models.test_result_body_step_dto import TestResultBodyStepDto
 from src.client.generated.models.test_result_dto import TestResultDto
 from src.client.generated.models.test_result_flat_dto import TestResultFlatDto
+from src.client.generated.models.test_result_row_dto import TestResultRowDto
+from src.client.generated.models.test_result_scenario_step_dto import TestResultScenarioStepDto
 from src.client.generated.models.test_result_scenario_v2_dto import TestResultScenarioV2Dto
 from src.client.generated.models.test_result_scenario_v2_dto_steps_inner import TestResultScenarioV2DtoStepsInner
 from src.client.generated.models.test_session_response_dto import TestSessionResponseDto
@@ -50,6 +52,7 @@ def mock_client() -> MagicMock:
     client.start_manual_test_session = AsyncMock()
     client.submit_manual_test_results = AsyncMock()
     client.create_test_result = AsyncMock()
+    client.resolve_test_result = AsyncMock()
     client.get_test_result = AsyncMock()
     client.get_test_result_execution = AsyncMock(return_value=TestResultScenarioV2Dto(steps=[]))
     client.get_test_result_execution_raw = AsyncMock(return_value={"steps": []})
@@ -478,6 +481,66 @@ async def test_list_launch_test_results_applies_manual_and_failed_filters(
 
 
 @pytest.mark.asyncio
+async def test_resolve_launch_test_result_for_test_case_returns_unique_active_match(
+    service: LaunchService,
+    mock_client: MagicMock,
+) -> None:
+    mock_client.list_launch_test_results.return_value = PageTestResultFlatDto(
+        content=[
+            TestResultFlatDto(id=101, test_case_id=11, name="Manual Failed", manual=True, status="failed"),
+            TestResultFlatDto(id=102, test_case_id=11, name="Manual Active", manual=True, status=None),
+            TestResultFlatDto(id=103, test_case_id=12, name="Other", manual=True, status=None),
+        ],
+        total_elements=3,
+        number=0,
+        size=100,
+        total_pages=1,
+    )
+
+    result = await service.resolve_launch_test_result_for_test_case(launch_id=9, test_case_id=11, status=None)
+
+    assert result.result_id == 102
+    assert result.status is None
+
+
+@pytest.mark.asyncio
+async def test_resolve_launch_test_result_for_test_case_rejects_ambiguous_matches(
+    service: LaunchService,
+    mock_client: MagicMock,
+) -> None:
+    mock_client.list_launch_test_results.return_value = PageTestResultFlatDto(
+        content=[
+            TestResultFlatDto(id=101, test_case_id=11, name="Manual Active 1", manual=True, status=None),
+            TestResultFlatDto(id=102, test_case_id=11, name="Manual Active 2", manual=True, status=None),
+        ],
+        total_elements=2,
+        number=0,
+        size=100,
+        total_pages=1,
+    )
+
+    with pytest.raises(AllureValidationError, match="Expected exactly one visible manual launch result"):
+        await service.resolve_launch_test_result_for_test_case(launch_id=9, test_case_id=11, status=None)
+
+
+@pytest.mark.asyncio
+async def test_resolve_launch_test_result_for_test_case_reports_missing_match(
+    service: LaunchService,
+    mock_client: MagicMock,
+) -> None:
+    mock_client.list_launch_test_results.return_value = PageTestResultFlatDto(
+        content=[TestResultFlatDto(id=101, test_case_id=11, name="Manual Failed", manual=True, status="failed")],
+        total_elements=1,
+        number=0,
+        size=100,
+        total_pages=1,
+    )
+
+    with pytest.raises(AllureNotFoundError, match="No visible manual launch result found"):
+        await service.resolve_launch_test_result_for_test_case(launch_id=9, test_case_id=11, status=None)
+
+
+@pytest.mark.asyncio
 async def test_rerun_test_results_manually_builds_bulk_payload(service: LaunchService, mock_client: MagicMock) -> None:
     mock_client.list_launch_test_results.return_value = PageTestResultFlatDto(
         content=[
@@ -629,12 +692,13 @@ async def test_submit_manual_test_results_maps_nested_steps(service: LaunchServi
         test_case_id=91,
         name="Manual login test",
         full_name="Manual login test",
+        manual=True,
     )
-    mock_client.create_test_result.return_value = TestResultDto(
-        id=301, name="Manual login test", full_name="Manual login test"
-    )
-    mock_client.patch_test_result.return_value = TestResultDto(
-        id=301, name="Manual login test", full_name="Manual login test"
+    mock_client.resolve_test_result.return_value = TestResultRowDto(
+        id=91,
+        name="Manual login test",
+        test_case_id=91,
+        status="passed",
     )
 
     result = await service.submit_manual_test_results(
@@ -657,18 +721,21 @@ async def test_submit_manual_test_results_maps_nested_steps(service: LaunchServi
         ],
     )
 
-    assert result.result_ids == [301]
-    create_payload = mock_client.create_test_result.await_args.args[0]
-    assert create_payload.launch_id == 12
-    assert create_payload.test_case_id == 91
-    assert create_payload.manual is True
-    assert create_payload.external is False
-    assert create_payload.status == "passed"
-    patch_payload = mock_client.patch_test_result.await_args.args[1]
-    assert patch_payload.name == "Manual login test"
-    assert patch_payload.scenario is not None
-    assert patch_payload.scenario.steps is not None
-    assert patch_payload.scenario.steps[0].name == "Open the launch"
+    assert result.result_ids == [91]
+    resolve_payload = mock_client.resolve_test_result.await_args.args[1]
+    assert resolve_payload["status"] == "passed"
+    assert resolve_payload["start"] == 1000
+    assert resolve_payload["stop"] == 2000
+    assert resolve_payload["duration"] == 1000
+    assert resolve_payload["message"] == "Completed"
+    execution = resolve_payload["execution"]
+    assert isinstance(execution, dict)
+    steps = execution["steps"]
+    assert isinstance(steps, list)
+    assert steps[0]["type"] == "body"
+    assert steps[0]["body"] == "Open the launch"
+    mock_client.create_test_result.assert_not_awaited()
+    mock_client.patch_test_result.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -687,6 +754,149 @@ async def test_submit_manual_test_results_rejects_payload_without_result_or_laun
 
 
 @pytest.mark.asyncio
+async def test_submit_manual_test_results_uses_create_fallback_without_result_id(
+    service: LaunchService,
+    mock_client: MagicMock,
+) -> None:
+    mock_client.create_test_result.return_value = TestResultDto(
+        id=401,
+        name="Fallback manual result",
+        full_name="Fallback manual result",
+    )
+
+    result = await service.submit_manual_test_results(
+        45,
+        results=[
+            {
+                "launch_id": 13,
+                "test_case_id": 92,
+                "name": "Fallback manual result",
+                "status": "passed",
+            }
+        ],
+    )
+
+    assert result.result_ids == [401]
+    create_payload = mock_client.create_test_result.await_args.args[0]
+    assert create_payload.launch_id == 13
+    assert create_payload.test_case_id == 92
+    assert create_payload.status == "passed"
+    mock_client.resolve_test_result.assert_not_awaited()
+
+
+def test_build_upload_test_result_maps_full_payload(service: LaunchService) -> None:
+    upload_payload = service._build_upload_test_result(
+        {
+            "test_case_id": 92,
+            "name": "Fallback manual result",
+            "status": "failed",
+            "start": 1000,
+            "stop": 2300,
+            "message": "Observed a failure",
+            "trace": "stacktrace",
+            "description": "Longer operator notes",
+            "precondition": "Session started",
+            "expected_result": "User reaches the dashboard",
+            "parameters": [
+                {
+                    "name": "browser",
+                    "value": "chrome",
+                }
+            ],
+            "steps": [
+                {
+                    "type": "body",
+                    "body": "Open login page",
+                    "message": "Page loaded",
+                    "trace": "body-step-trace",
+                    "status": "passed",
+                    "start": 1000,
+                    "stop": 1200,
+                },
+                {
+                    "type": "expected",
+                    "body": "Dashboard is visible",
+                    "message": "Expected outcome",
+                    "status": "failed",
+                    "start": 1200,
+                    "stop": 1800,
+                },
+                {
+                    "type": "attachment",
+                    "status": "failed",
+                    "start": 1800,
+                    "stop": 2300,
+                    "attachment": {
+                        "name": "screenshot.txt",
+                        "content_type": "text/plain",
+                    },
+                },
+            ],
+        },
+        index=0,
+    )
+
+    assert upload_payload.test_case_id == "92"
+    assert upload_payload.name == "Fallback manual result"
+    assert upload_payload.full_name == "Fallback manual result"
+    assert upload_payload.uuid
+    assert upload_payload.history_id
+    assert upload_payload.status is not None
+    assert upload_payload.status.value.lower() == "failed"
+    assert upload_payload.start == 1000
+    assert upload_payload.stop == 2300
+    assert upload_payload.message == "Observed a failure"
+    assert upload_payload.trace == "stacktrace"
+    assert upload_payload.description == "Longer operator notes"
+    assert upload_payload.precondition == "Session started"
+    assert upload_payload.expected_result == "User reaches the dashboard"
+    assert upload_payload.parameters is not None
+    assert len(upload_payload.parameters) == 1
+    assert upload_payload.parameters[0].name == "browser"
+    assert upload_payload.parameters[0].value == "chrome"
+    assert upload_payload.steps is not None
+    assert len(upload_payload.steps) == 3
+
+    body_step = upload_payload.steps[0].actual_instance
+    assert body_step is not None
+    assert body_step.type == "UploadTestResultBodyStepDto"
+    assert body_step.body == "Open login page"
+    assert body_step.message == "Page loaded"
+    assert body_step.trace == "body-step-trace"
+
+    expected_step = upload_payload.steps[1].actual_instance
+    assert expected_step is not None
+    assert expected_step.type == "UploadTestResultExpectedBodyStepDto"
+    assert expected_step.body == "Dashboard is visible"
+    assert expected_step.message == "Expected outcome"
+
+    attachment_step = upload_payload.steps[2].actual_instance
+    assert attachment_step is not None
+    assert attachment_step.type == "UploadTestResultAttachmentStepDto"
+    assert attachment_step.attachment.name == "screenshot.txt"
+    assert attachment_step.attachment.content_type == "text/plain"
+
+
+def test_build_upload_test_result_requires_name_or_full_name(service: LaunchService) -> None:
+    with pytest.raises(AllureValidationError, match=r"results\[0\]\.name is required for manual upload"):
+        service._build_upload_test_result({"test_case_id": 92}, index=0)
+
+
+def test_build_upload_step_validation_paths(service: LaunchService) -> None:
+    with pytest.raises(AllureValidationError, match=r"results\[0\]\.steps\[0\] must be a dictionary"):
+        service._build_upload_step("bad-step", result_index=0, step_index=0)  # type: ignore[arg-type]
+
+    with pytest.raises(AllureValidationError, match=r"results\[0\]\.steps\[1\]\.type is required"):
+        service._build_upload_step({}, result_index=0, step_index=1)
+
+    with pytest.raises(AllureValidationError, match="attachment is required for attachment steps"):
+        service._build_upload_step({"type": "attachment"}, result_index=0, step_index=2)
+
+    with pytest.raises(AllureValidationError, match="must be one of: body, expected, attachment"):
+        service._build_upload_step({"type": "mystery"}, result_index=0, step_index=3)
+
+
+@pytest.mark.asyncio
 async def test_submit_manual_test_results_maps_expected_attachment_steps_and_parameters(
     service: LaunchService, mock_client: MagicMock
 ) -> None:
@@ -696,16 +906,13 @@ async def test_submit_manual_test_results_maps_expected_attachment_steps_and_par
         test_case_id=92,
         name="Manual upload with evidence",
         full_name="Manual upload with evidence",
+        manual=True,
     )
-    mock_client.create_test_result.return_value = TestResultDto(
-        id=401,
+    mock_client.resolve_test_result.return_value = TestResultRowDto(
+        id=92,
         name="Manual upload with evidence",
-        full_name="Manual upload with evidence",
-    )
-    mock_client.patch_test_result.return_value = TestResultDto(
-        id=401,
-        name="Manual upload with evidence",
-        full_name="Manual upload with evidence",
+        test_case_id=92,
+        status="failed",
     )
 
     result = await service.submit_manual_test_results(
@@ -742,13 +949,18 @@ async def test_submit_manual_test_results_maps_expected_attachment_steps_and_par
         ],
     )
 
-    patch_payload = mock_client.patch_test_result.await_args.args[1]
-    steps = patch_payload.scenario.steps if patch_payload.scenario is not None else None
-    assert steps is not None
+    resolve_payload = mock_client.resolve_test_result.await_args.args[1]
+    execution = resolve_payload["execution"]
+    assert isinstance(execution, dict)
+    steps = execution["steps"]
+    assert isinstance(steps, list)
     assert len(steps) == 2
-    assert steps[0].expected_result == "Verify error banner"
-    assert steps[1].name == "evidence.txt"
-    assert result.result_ids == [401]
+    assert steps[0]["type"] == "expected_body"
+    assert steps[0]["body"] == "Verify error banner"
+    assert steps[1]["type"] == "attachment"
+    assert steps[1]["attachment"]["entity"] == "test_result"
+    assert steps[1]["attachment"]["name"] == "evidence.txt"
+    assert result.result_ids == [92]
 
 
 @pytest.mark.asyncio
@@ -1032,6 +1244,412 @@ async def test_add_test_step_attachment_rejects_invalid_fixture_type(service: La
                 "content_type": "text/plain",
                 "content": "QQ==",
             },
+        )
+
+
+@pytest.mark.asyncio
+async def test_build_manual_step_attachment_patch_scenario_merges_runtime_steps_with_test_case_template(
+    service: LaunchService,
+    mock_client: MagicMock,
+) -> None:
+    test_result = TestResultDto(
+        id=55,
+        name="Manual Result",
+        full_name="Manual Result",
+        test_case_id=901,
+    )
+    mock_client.get_test_result_execution_raw.return_value = {
+        "steps": [
+            {
+                "status": "failed",
+                "attachments": [{"id": 701, "name": "existing-evidence.txt"}],
+                "steps": [{"body": "Nested runtime step", "status": "passed"}],
+            }
+        ]
+    }
+    mock_client.get_test_case_scenario.return_value = TestCaseScenarioV2Dto(steps=[_scenario_body_step("Open app")])
+
+    scenario = await service._build_manual_step_attachment_patch_scenario(
+        test_result=test_result,
+        attachment_row=TestResultAttachmentRowDto.model_construct(
+            entity="test_result",
+            id=702,
+            name="new-evidence.txt",
+        ),
+        attachment_id=701,
+        step_name=None,
+        step_index=None,
+    )
+
+    assert scenario.steps is not None
+    assert len(scenario.steps) == 1
+    top_step = scenario.steps[0]
+    assert top_step.name == "Open app"
+    assert top_step.status == "failed"
+    assert top_step.attachments is not None
+    assert [attachment.actual_instance.id for attachment in top_step.attachments] == [701, 702]
+    assert top_step.steps is not None
+    assert top_step.steps[0].name == "Nested runtime step"
+
+
+@pytest.mark.asyncio
+async def test_build_patchable_manual_result_steps_returns_template_when_runtime_steps_are_empty(
+    service: LaunchService,
+    mock_client: MagicMock,
+) -> None:
+    mock_client.get_test_result_execution_raw.return_value = {"steps": []}
+    mock_client.get_test_case_scenario.return_value = TestCaseScenarioV2Dto(
+        steps=[_scenario_body_step("Only template")]
+    )
+
+    steps = await service._build_patchable_manual_result_steps(TestResultDto(id=55, test_case_id=901))
+
+    assert len(steps) == 1
+    assert steps[0].name == "Only template"
+
+
+def test_select_manual_patch_step_supports_attachment_id_name_index_and_default(service: LaunchService) -> None:
+    first_attachment = TestResultAttachmentRowDto.model_construct(entity="test_result", id=701, name="First evidence")
+    second_attachment = TestResultAttachmentRowDto.model_construct(entity="test_result", id=702, name="Second evidence")
+    first_step = TestResultScenarioStepDto.model_construct(
+        name="Capture first evidence",
+        attachments=[TestResultAttachmentStepDtoAllOfAttachment.model_construct(actual_instance=first_attachment)],
+    )
+    second_step = TestResultScenarioStepDto.model_construct(
+        name="Capture second evidence",
+        attachments=[TestResultAttachmentStepDtoAllOfAttachment.model_construct(actual_instance=second_attachment)],
+    )
+
+    assert (
+        service._select_manual_patch_step(
+            [first_step, second_step],
+            test_result_id=55,
+            attachment_id=701,
+            step_name=None,
+            step_index=None,
+        )
+        is first_step
+    )
+    assert (
+        service._select_manual_patch_step(
+            [first_step, second_step],
+            test_result_id=55,
+            attachment_id=None,
+            step_name="Capture second evidence",
+            step_index=None,
+        )
+        is second_step
+    )
+    assert (
+        service._select_manual_patch_step(
+            [first_step, second_step],
+            test_result_id=55,
+            attachment_id=None,
+            step_name=None,
+            step_index=0,
+        )
+        is first_step
+    )
+    assert (
+        service._select_manual_patch_step(
+            [first_step],
+            test_result_id=55,
+            attachment_id=None,
+            step_name=None,
+            step_index=None,
+        )
+        is first_step
+    )
+
+
+def test_select_manual_patch_step_validation_errors(service: LaunchService) -> None:
+    first_attachment = TestResultAttachmentRowDto.model_construct(entity="test_result", id=701, name="Shared evidence")
+    duplicate_attachment = TestResultAttachmentRowDto.model_construct(
+        entity="test_result", id=701, name="Shared evidence"
+    )
+    shared_name_step = TestResultScenarioStepDto.model_construct(
+        name="Shared name",
+        attachments=[TestResultAttachmentStepDtoAllOfAttachment.model_construct(actual_instance=first_attachment)],
+    )
+    duplicate_id_step = TestResultScenarioStepDto.model_construct(
+        name="Other step",
+        attachments=[TestResultAttachmentStepDtoAllOfAttachment.model_construct(actual_instance=duplicate_attachment)],
+    )
+    duplicate_name_step = TestResultScenarioStepDto.model_construct(
+        name="Shared name",
+        attachments=[TestResultAttachmentStepDtoAllOfAttachment.model_construct(actual_instance=duplicate_attachment)],
+    )
+
+    with pytest.raises(AllureNotFoundError, match="Attachment step ID 999 not found"):
+        service._select_manual_patch_step(
+            [shared_name_step],
+            test_result_id=55,
+            attachment_id=999,
+            step_name=None,
+            step_index=None,
+        )
+
+    with pytest.raises(
+        AllureValidationError, match=r"Attachment step selection is ambiguous\. Provide step_name or step_index\."
+    ):
+        service._select_manual_patch_step(
+            [shared_name_step, duplicate_id_step],
+            test_result_id=55,
+            attachment_id=701,
+            step_name=None,
+            step_index=None,
+        )
+
+    with pytest.raises(AllureValidationError, match="step_index must be a non-negative integer"):
+        service._select_manual_patch_step(
+            [shared_name_step],
+            test_result_id=55,
+            attachment_id=None,
+            step_name=None,
+            step_index=-1,
+        )
+
+    with pytest.raises(AllureNotFoundError, match="No step named 'Missing' found"):
+        service._select_manual_patch_step(
+            [shared_name_step],
+            test_result_id=55,
+            attachment_id=None,
+            step_name="Missing",
+            step_index=None,
+        )
+
+    with pytest.raises(AllureValidationError, match=r"Provide attachment_id or step_index\."):
+        service._select_manual_patch_step(
+            [shared_name_step, duplicate_name_step],
+            test_result_id=55,
+            attachment_id=None,
+            step_name="Shared name",
+            step_index=None,
+        )
+
+    with pytest.raises(AllureNotFoundError, match="has no manual scenario steps"):
+        service._select_manual_patch_step(
+            [],
+            test_result_id=55,
+            attachment_id=None,
+            step_name=None,
+            step_index=None,
+        )
+
+
+@pytest.mark.asyncio
+async def test_resolve_manual_step_attachment_target_supports_all_selectors(
+    service: LaunchService,
+    mock_client: MagicMock,
+) -> None:
+    mock_client.get_test_result_execution.return_value = _manual_execution_with_steps(
+        _attachment_step(701, "First evidence"),
+        _attachment_step(702, "Second evidence"),
+    )
+
+    by_id = await service._resolve_manual_step_attachment_target(
+        test_result_id=55,
+        attachment_id=702,
+        step_name=None,
+        step_index=None,
+    )
+    by_index = await service._resolve_manual_step_attachment_target(
+        test_result_id=55,
+        attachment_id=None,
+        step_name=None,
+        step_index=0,
+    )
+    by_name = await service._resolve_manual_step_attachment_target(
+        test_result_id=55,
+        attachment_id=None,
+        step_name="Second evidence",
+        step_index=None,
+    )
+
+    assert by_id.attachment_id == 702
+    assert by_id.step_index == 1
+    assert by_id.name == "Second evidence"
+    assert by_index.attachment_id == 701
+    assert by_index.step_index == 0
+    assert by_name.attachment_id == 702
+
+
+@pytest.mark.asyncio
+async def test_resolve_manual_step_attachment_target_without_selector_requires_single_attachment_step(
+    service: LaunchService,
+    mock_client: MagicMock,
+) -> None:
+    mock_client.get_test_result_execution.return_value = _manual_execution_with_steps(
+        _attachment_step(701, "Only evidence")
+    )
+
+    target = await service._resolve_manual_step_attachment_target(
+        test_result_id=55,
+        attachment_id=None,
+        step_name=None,
+        step_index=None,
+    )
+
+    assert target.attachment_id == 701
+    assert target.step_index == 0
+    assert target.name == "Only evidence"
+
+
+@pytest.mark.asyncio
+async def test_resolve_manual_step_attachment_target_validation_errors(
+    service: LaunchService,
+    mock_client: MagicMock,
+) -> None:
+    mock_client.get_test_result_execution.return_value = _manual_execution_with_steps(
+        _body_step("Not an attachment step"),
+        _attachment_step(701, "Shared evidence"),
+        _attachment_step(702, "Shared evidence"),
+    )
+
+    with pytest.raises(AllureNotFoundError, match="Attachment step ID 999 not found"):
+        await service._resolve_manual_step_attachment_target(
+            test_result_id=55,
+            attachment_id=999,
+            step_name=None,
+            step_index=None,
+        )
+
+    with pytest.raises(AllureValidationError, match="step_index must be a non-negative integer"):
+        await service._resolve_manual_step_attachment_target(
+            test_result_id=55,
+            attachment_id=None,
+            step_name=None,
+            step_index=-1,
+        )
+
+    with pytest.raises(AllureValidationError, match="step_index 10 is out of range"):
+        await service._resolve_manual_step_attachment_target(
+            test_result_id=55,
+            attachment_id=None,
+            step_name=None,
+            step_index=10,
+        )
+
+    with pytest.raises(AllureValidationError, match="Step at index 0 is not an attachment step"):
+        await service._resolve_manual_step_attachment_target(
+            test_result_id=55,
+            attachment_id=None,
+            step_name=None,
+            step_index=0,
+        )
+
+    with pytest.raises(AllureNotFoundError, match="No attachment step named 'Missing' found"):
+        await service._resolve_manual_step_attachment_target(
+            test_result_id=55,
+            attachment_id=None,
+            step_name="Missing",
+            step_index=None,
+        )
+
+    with pytest.raises(AllureValidationError, match=r"Provide attachment_id or step_index\."):
+        await service._resolve_manual_step_attachment_target(
+            test_result_id=55,
+            attachment_id=None,
+            step_name="Shared evidence",
+            step_index=None,
+        )
+
+    with pytest.raises(AllureValidationError, match=r"Provide attachment_id, step_name, or step_index\."):
+        await service._resolve_manual_step_attachment_target(
+            test_result_id=55,
+            attachment_id=None,
+            step_name=None,
+            step_index=None,
+        )
+
+
+@pytest.mark.asyncio
+async def test_resolve_manual_step_attachment_target_without_attachment_steps_raises_not_found(
+    service: LaunchService,
+    mock_client: MagicMock,
+) -> None:
+    mock_client.get_test_result_execution.return_value = _manual_execution_with_steps(_body_step("Only body step"))
+
+    with pytest.raises(AllureNotFoundError, match="has no attachment steps"):
+        await service._resolve_manual_step_attachment_target(
+            test_result_id=55,
+            attachment_id=None,
+            step_name=None,
+            step_index=None,
+        )
+
+
+def test_manual_step_attachment_target_from_step_ignores_non_attachment_or_missing_ids() -> None:
+    assert LaunchService._manual_step_attachment_target_from_step(_body_step("Only body step"), step_index=0) is None
+
+    unresolved_attachment = TestResultScenarioV2DtoStepsInner.model_construct(
+        actual_instance=TestResultAttachmentStepDto.model_construct(
+            type="TestResultAttachmentStepDto",
+            attachment_id=0,
+        )
+    )
+    assert LaunchService._manual_step_attachment_target_from_step(unresolved_attachment, step_index=1) is None
+
+
+@pytest.mark.asyncio
+async def test_test_result_lookup_wrappers_map_not_found_errors(
+    service: LaunchService,
+    mock_client: MagicMock,
+) -> None:
+    not_found = AllureNotFoundError("missing", status_code=404, response_body="{}")
+    mock_client.get_test_result.side_effect = not_found
+    mock_client.get_test_result_execution.side_effect = not_found
+    mock_client.get_test_result_execution_raw.side_effect = not_found
+    mock_client.get_test_case_scenario.side_effect = not_found
+
+    with pytest.raises(AllureNotFoundError, match="Test result ID 55 not found"):
+        await service._get_test_result_or_raise(55)
+
+    with pytest.raises(AllureNotFoundError, match="Test result ID 55 not found"):
+        await service._get_test_result_execution_or_raise(55)
+
+    with pytest.raises(AllureNotFoundError, match="Test result ID 55 not found"):
+        await service._get_test_result_execution_raw_or_raise(55, v2=True)
+
+    with pytest.raises(AllureNotFoundError, match="Test case ID 901 not found"):
+        await service._get_test_case_scenario_or_raise(901)
+
+
+def test_attachment_helper_validation_edges(service: LaunchService) -> None:
+    with pytest.raises(AllureValidationError, match="attachment must be a dictionary"):
+        service._normalize_attachment_metadata("bad")  # type: ignore[arg-type]
+
+    with pytest.raises(AllureValidationError, match=r"attachment\.content_type is required"):
+        service._normalize_attachment_metadata({"name": "evidence.txt"})
+
+    with pytest.raises(AllureValidationError, match=r"attachment\.url is required"):
+        service._validate_attachment_url(None)
+
+    with pytest.raises(AllureValidationError, match="Attachment URL must use http or https"):
+        service._validate_attachment_url("ftp://example.com/evidence.txt")
+
+    with pytest.raises(AllureValidationError, match="Attachment URL must include a hostname"):
+        service._validate_attachment_url("https:///evidence.txt")
+
+    with pytest.raises(AllureValidationError, match="must not target localhost or local network hostnames"):
+        service._validate_attachment_url("https://localhost/evidence.txt")
+
+    assert service._validate_attachment_url("https://8.8.8.8/evidence.txt") == "https://8.8.8.8/evidence.txt"
+    service._validate_attachment_download_response(
+        _StreamingResponse(url="https://example.com/evidence.txt", headers={"Content-Length": "oops"})
+    )
+
+
+@pytest.mark.asyncio
+async def test_downloaded_attachment_content_rejects_stream_overflow(
+    service: LaunchService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("src.services.launch_service.MAX_ATTACHMENT_SIZE", 4)
+
+    with pytest.raises(AllureValidationError, match="Attachment size exceeds limit"):
+        await service._read_downloaded_attachment_content(
+            _StreamingResponse(url="https://example.com/evidence.txt", chunks=[b"abc", b"de"])
         )
 
 

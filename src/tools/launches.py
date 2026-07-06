@@ -274,7 +274,8 @@ async def rerun_test_results_manually(
         output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
-        Confirmation that manual reruns were scheduled.
+        Confirmation that manual reruns were scheduled. Refresh launch results after rerun,
+        because TestOps creates a new active placeholder result for the next execution phase.
     """
     async with _launch_client_context(project_id=project_id) as client:
         service = LaunchService(client=client)
@@ -318,7 +319,7 @@ async def start_manual_test_session(
         output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
-        The manual test session ID required for result submission.
+        The manual test session ID retained for launch-manual workflow compatibility.
     """
     async with _launch_client_context(project_id=project_id) as client:
         service = LaunchService(client=client)
@@ -344,10 +345,13 @@ async def submit_manual_test_results(
         list[dict[str, object]],
         Field(
             description=(
-                "Manual result payloads. Each item should include result_id from list_launch_test_results so the "
-                "service can create a true manual launch result in the correct launch/test-case context. As a lower-"
-                "level fallback, you may provide launch_id + test_case_id + name/full_name explicitly. Optional "
-                "fields include status/start/stop/message/trace/description/precondition/expected_result/steps."
+                "Manual result payloads. When an item includes result_id from list_launch_test_results, the service "
+                "resolves that existing launch result in place through TestOps' test-result run controller. After "
+                "rerun_test_results_manually, re-list launch results and submit against the newly visible active "
+                "result for that test case. The returned result_ids are the resolved result IDs to use for follow-up "
+                "attachments and reads. As a lower-level fallback, you may still provide launch_id + test_case_id + "
+                "name/full_name explicitly to create a standalone manual result. Optional fields include "
+                "status/start/stop/duration/message/trace/description/precondition/expected_result/steps."
             )
         ),
     ],
@@ -361,11 +365,12 @@ async def submit_manual_test_results(
     Args:
         test_session_id: Manual test session ID.
         results: Manual result payloads. Prefer `result_id` from `list_launch_test_results` for launch-managed flows.
+            The service resolves those existing results in place and returns their IDs for follow-up actions.
         project_id: Optional override for the default Project ID.
         output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
-        Created or updated test result IDs for follow-up actions.
+        Resolved or created test result IDs for follow-up actions such as attachment upload.
     """
     async with _launch_client_context(project_id=project_id) as client:
         service = LaunchService(client=client)
@@ -398,7 +403,8 @@ async def add_test_result_attachment(
     """Upload evidence to a manual test result.
 
     Args:
-        test_result_id: Manual test result ID.
+        test_result_id: Manual test result ID. In rerun workflows, use the resolved result ID
+            returned by the latest submit_manual_test_results call.
         attachment: Attachment payload using content or url.
         project_id: Optional override for the default Project ID.
         output_format: Output format: 'json' (default) or 'plain'.
@@ -462,7 +468,8 @@ async def add_test_step_attachment(
     """Upload evidence to a manual attachment step inside a test result.
 
     Args:
-        test_result_id: Parent test result ID.
+        test_result_id: Parent test result ID. In rerun workflows, use the completed result ID
+            returned by the latest submit_manual_test_results call.
         attachment: Attachment payload using content or url.
         attachment_id: Optional explicit manual step attachment ID.
         step_name: Optional attachment-step name to resolve within the result execution.
@@ -632,7 +639,9 @@ def _launch_payload(launch: object, *, base_url: str, project_id: int) -> dict[s
         "new_defects_count": getattr(launch, "new_defects_count", None) or getattr(launch, "newDefectsCount", None),
         "manual_execution_guidance": (
             "Use list_launch_test_results for result-level manual execution work, "
-            "then start_manual_test_session and submit_manual_test_results for interactive updates."
+            "then submit_manual_test_results with result_id to resolve the existing launch result in place. "
+            "After rerun_test_results_manually, refresh result discovery and use the resolved result IDs for "
+            "attachments."
         ),
     }
     if isinstance(launch_id, int):
@@ -707,7 +716,9 @@ def _format_launch_detail(launch: object, *, base_url: str, project_id: int) -> 
     _append_statistic_lines(lines, launch)
     lines.append(
         "- Manual execution: use list_launch_test_results for result discovery, "
-        "then start_manual_test_session and submit_manual_test_results."
+        "then submit_manual_test_results with result_id to resolve the existing launch result in place. "
+        "After rerun_test_results_manually, refresh result discovery and attach evidence to the "
+        "resolved result IDs returned by the latest submission."
     )
 
     return "\n".join(lines)

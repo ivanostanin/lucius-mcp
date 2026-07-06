@@ -278,7 +278,7 @@ async def test_submit_manual_test_results_and_attachment_outputs() -> None:
 
                 submit_output = await submit_manual_test_results(
                     test_session_id=44,
-                    results=[{"test_case_id": 9, "status": "passed"}],
+                    results=[{"result_id": 9, "status": "passed"}],
                     output_format="plain",
                 )
                 attachment_output = await add_test_result_attachment(

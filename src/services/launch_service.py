@@ -6,7 +6,7 @@ import ipaddress
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, cast
 from urllib.parse import urlsplit
 
 import httpx
@@ -42,6 +42,7 @@ from src.client.generated.models.test_result_create_v2_dto import TestResultCrea
 from src.client.generated.models.test_result_dto import TestResultDto
 from src.client.generated.models.test_result_flat_dto import TestResultFlatDto
 from src.client.generated.models.test_result_patch_dto import TestResultPatchDto
+from src.client.generated.models.test_result_row_dto import TestResultRowDto
 from src.client.generated.models.test_result_scenario_dto import TestResultScenarioDto
 from src.client.generated.models.test_result_scenario_step_dto import TestResultScenarioStepDto
 from src.client.generated.models.test_result_scenario_v2_dto import TestResultScenarioV2Dto
@@ -139,7 +140,7 @@ class ManualTestSessionResult:
 
 @dataclass
 class ManualTestSubmissionResult:
-    """Submitted manual result summary."""
+    """Submitted manual result summary for newly created launch-managed results."""
 
     test_session_id: int
     result_ids: list[int]
@@ -460,6 +461,56 @@ class LaunchService:
 
         return self._to_launch_test_result_page(response, page=page, size=size)
 
+    async def resolve_launch_test_result_for_test_case(
+        self,
+        launch_id: int,
+        *,
+        test_case_id: int,
+        status: str | None | Literal["any"] = "any",
+    ) -> LaunchTestResultListItem:
+        """Resolve one visible manual launch result for a specific test case."""
+        self._validate_project_id(self._project_id)
+        self._validate_launch_id(launch_id)
+        self._validate_positive_id(test_case_id, "Test Case ID")
+        expected_status = self._normalize_launch_result_status_filter(status)
+        matches: list[LaunchTestResultListItem] = []
+        current_page = 0
+        total_pages = 1
+
+        while current_page < total_pages:
+            response = await self._fetch_launch_results_page(
+                launch_id=launch_id,
+                page=current_page,
+                size=100,
+                search=None,
+                filter_id=None,
+                sort=None,
+            )
+            total_pages = response.total_pages or 1
+            for item in response.content or []:
+                if item.manual is not True or item.test_case_id != test_case_id:
+                    continue
+                item_status = item.status.value if isinstance(item.status, TestStatus) else None
+                if expected_status != "any" and item_status != expected_status:
+                    continue
+                matches.append(self._to_launch_test_result_item(item))
+            current_page += 1
+
+        if not matches:
+            status_label = expected_status if expected_status != "any" else "any"
+            raise AllureNotFoundError(
+                f"No visible manual launch result found for launch ID {launch_id}, "
+                f"test case ID {test_case_id}, status {status_label!r}"
+            )
+        if len(matches) > 1:
+            matching_ids = ", ".join(str(match.result_id) for match in matches if isinstance(match.result_id, int))
+            raise AllureValidationError(
+                f"Expected exactly one visible manual launch result for launch ID {launch_id}, "
+                f"test case ID {test_case_id}, status {expected_status!r}, "
+                f"but found {len(matches)}: {matching_ids}"
+            )
+        return matches[0]
+
     async def rerun_test_results_manually(
         self,
         launch_id: int,
@@ -583,17 +634,33 @@ class LaunchService:
         *,
         results: list[dict[str, Any]],
     ) -> ManualTestSubmissionResult:
-        """Submit manual test results and nested step updates."""
+        """Submit manual execution payloads to existing or explicit launch contexts.
+
+        When ``results[*].result_id`` is provided, the existing launch result is resolved
+        in place via the test-result run controller. When explicit ``launch_id`` and
+        ``test_case_id`` are provided without ``result_id``, the legacy create-new-result
+        flow is used as a fallback.
+        """
         self._validate_positive_id(test_session_id, "Test Session ID")
         if not isinstance(results, list) or not results:
             raise AllureValidationError("results must be a non-empty list")
 
-        created_results = [await self._create_manual_launch_result(result, index=i) for i, result in enumerate(results)]
-        result_ids = [result.id for result in created_results if isinstance(result.id, int)]
+        submitted_result_ids: list[int] = []
+        for index, result in enumerate(results):
+            if isinstance(result, dict) and result.get("result_id") is not None:
+                resolved = await self._resolve_manual_launch_result(result, index=index)
+                if isinstance(resolved.id, int):
+                    submitted_result_ids.append(resolved.id)
+                continue
+
+            created = await self._create_manual_launch_result(result, index=index)
+            if isinstance(created.id, int):
+                submitted_result_ids.append(created.id)
+
         return ManualTestSubmissionResult(
             test_session_id=test_session_id,
-            result_ids=result_ids,
-            submitted_count=len(created_results),
+            result_ids=submitted_result_ids,
+            submitted_count=len(results),
         )
 
     async def add_test_result_attachment(
@@ -892,7 +959,7 @@ class LaunchService:
                 raise AllureValidationError(f"Issue at index {i} cannot be empty")
 
     @staticmethod
-    def _validate_positive_id(value: int, label: str) -> None:
+    def _validate_positive_id(value: object, label: str) -> None:
         if not isinstance(value, int):
             raise AllureValidationError(f"{label} must be an integer, got {type(value).__name__}")
         if value <= 0:
@@ -977,6 +1044,24 @@ class LaunchService:
             raise AllureValidationError(f"{field_prefix} stop must be greater than or equal to start")
 
     @staticmethod
+    def _resolve_duration(
+        *,
+        start: int | None,
+        stop: int | None,
+        value: object,
+        field_name: str,
+    ) -> int | None:
+        if value is None:
+            if start is not None and stop is not None:
+                return stop - start
+            return None
+        if not isinstance(value, int):
+            raise AllureValidationError(f"{field_name} must be an integer duration")
+        if value < 0:
+            raise AllureValidationError(f"{field_name} must be a non-negative integer duration")
+        return value
+
+    @staticmethod
     def _normalize_text(value: object, *, field_name: str, allow_empty: bool = False) -> str | None:
         if value is None:
             return None
@@ -1034,6 +1119,26 @@ class LaunchService:
             assignee=item.assignee,
             tested_by=item.tested_by,
         )
+
+    @staticmethod
+    def _normalize_launch_result_status_filter(status: str | None | Literal["any"]) -> str | None | Literal["any"]:
+        if status == "any":
+            return "any"
+        if status is None:
+            return None
+        if not isinstance(status, str):
+            raise AllureValidationError("status filter must be a string, null, or 'any'")
+
+        normalized = status.strip().lower()
+        if not normalized:
+            raise AllureValidationError("status filter cannot be empty")
+        try:
+            return TestStatus(normalized).value
+        except ValueError as exc:
+            allowed = ", ".join(status_value.value for status_value in TestStatus)
+            raise AllureValidationError(
+                f"Invalid status filter: {status!r}. Allowed values: {allowed}, null, any"
+            ) from exc
 
     async def _list_and_filter_all_launch_test_results(
         self,
@@ -1187,6 +1292,31 @@ class LaunchService:
             )
 
         return created
+
+    async def _resolve_manual_launch_result(self, result: dict[str, Any], *, index: int) -> TestResultRowDto:
+        if not isinstance(result, dict):
+            raise AllureValidationError(f"results[{index}] must be a dictionary")
+
+        raw_result_id = result.get("result_id")
+        self._validate_positive_id(raw_result_id, f"results[{index}].result_id")
+        result_id = cast(int, raw_result_id)
+        source_result = await self._get_test_result_or_raise(result_id)
+        if source_result.manual is not True:
+            raise AllureValidationError(
+                f"results[{index}].result_id must reference a manual launch result to resolve in place"
+            )
+
+        try:
+            return await self._client.resolve_test_result(
+                result_id,
+                self._build_manual_result_resolve_payload(result, index=index),
+            )
+        except AllureNotFoundError as exc:
+            raise AllureNotFoundError(
+                f"Result context for results[{index}] no longer exists",
+                status_code=exc.status_code,
+                response_body=exc.response_body,
+            ) from exc
 
     async def _resolve_manual_result_context(
         self,
@@ -1386,6 +1516,303 @@ class LaunchService:
         raise AllureValidationError(
             f"results[{result_index}].steps[{step_index}].type must be one of: body, expected, attachment"
         )
+
+    def _build_manual_result_resolve_payload(
+        self,
+        result: dict[str, Any],
+        *,
+        index: int,
+    ) -> dict[str, object]:
+        status = (
+            self._normalize_test_status(result.get("status"), field_name=f"results[{index}].status")
+            or TestStatus.UNKNOWN
+        )
+        start = self._normalize_timestamp(result.get("start"), field_name=f"results[{index}].start")
+        stop = self._normalize_timestamp(result.get("stop"), field_name=f"results[{index}].stop")
+        self._validate_time_window(start=start, stop=stop, field_prefix=f"results[{index}]")
+        duration = self._resolve_duration(
+            start=start,
+            stop=stop,
+            value=result.get("duration"),
+            field_name=f"results[{index}].duration",
+        )
+
+        payload: dict[str, object] = {
+            "status": status.value,
+        }
+        if start is not None:
+            payload["start"] = start
+        if stop is not None:
+            payload["stop"] = stop
+        if duration is not None:
+            payload["duration"] = duration
+
+        message = self._normalize_text(
+            result.get("message"),
+            field_name=f"results[{index}].message",
+            allow_empty=True,
+        )
+        if message is not None:
+            payload["message"] = message
+
+        trace = self._normalize_text(
+            result.get("trace"),
+            field_name=f"results[{index}].trace",
+            allow_empty=True,
+        )
+        if trace is not None:
+            payload["trace"] = trace
+
+        execution = self._build_manual_result_execution_payload(
+            result,
+            index=index,
+            status=status,
+            start=start,
+            stop=stop,
+            duration=duration,
+        )
+        if execution is not None:
+            payload["execution"] = execution
+
+        return payload
+
+    def _build_manual_result_execution_payload(
+        self,
+        result: dict[str, Any],
+        *,
+        index: int,
+        status: TestStatus,
+        start: int | None,
+        stop: int | None,
+        duration: int | None,
+    ) -> dict[str, object] | None:
+        raw_steps = result.get("steps")
+        if raw_steps is None:
+            return None
+        if not isinstance(raw_steps, list):
+            raise AllureValidationError(f"results[{index}].steps must be a list")
+
+        execution: dict[str, object] = {
+            "status": status.value,
+            "steps": [
+                self._build_manual_result_resolve_step(step, result_index=index, step_index=step_index)
+                for step_index, step in enumerate(raw_steps)
+            ],
+        }
+        if start is not None:
+            execution["start"] = start
+        if stop is not None:
+            execution["stop"] = stop
+        if duration is not None:
+            execution["duration"] = duration
+        return execution
+
+    def _build_manual_result_resolve_step(
+        self,
+        step: dict[str, Any],
+        *,
+        result_index: int,
+        step_index: int,
+    ) -> dict[str, object]:
+        if not isinstance(step, dict):
+            raise AllureValidationError(f"results[{result_index}].steps[{step_index}] must be a dictionary")
+
+        normalized_type = self._normalize_manual_resolve_step_type(
+            result_index=result_index,
+            step_index=step_index,
+            step=step,
+        )
+        payload = self._build_manual_result_resolve_step_payload(step, result_index=result_index, step_index=step_index)
+        name = self._normalize_text(
+            step.get("name"),
+            field_name=f"results[{result_index}].steps[{step_index}].name",
+            allow_empty=True,
+        )
+
+        if normalized_type == "body":
+            return self._apply_manual_result_resolve_body_step(
+                payload,
+                step=step,
+                result_index=result_index,
+                step_index=step_index,
+                name=name,
+            )
+        if normalized_type == "expected":
+            return self._apply_manual_result_resolve_expected_step(
+                payload,
+                step=step,
+                result_index=result_index,
+                step_index=step_index,
+                name=name,
+            )
+        if normalized_type == "attachment":
+            return self._apply_manual_result_resolve_attachment_step(
+                payload,
+                step=step,
+                result_index=result_index,
+                step_index=step_index,
+                name=name,
+            )
+
+        raise AllureValidationError(
+            f"results[{result_index}].steps[{step_index}].type must be one of: body, expected, attachment"
+        )
+
+    def _normalize_manual_resolve_step_type(
+        self,
+        *,
+        result_index: int,
+        step_index: int,
+        step: dict[str, Any],
+    ) -> str:
+        raw_type = step.get("type")
+        if not isinstance(raw_type, str):
+            raise AllureValidationError(f"results[{result_index}].steps[{step_index}].type is required")
+        return raw_type.strip().lower()
+
+    def _build_manual_result_resolve_step_payload(
+        self,
+        step: dict[str, Any],
+        *,
+        result_index: int,
+        step_index: int,
+    ) -> dict[str, object]:
+        field_prefix = f"results[{result_index}].steps[{step_index}]"
+        start = self._normalize_timestamp(step.get("start"), field_name=f"{field_prefix}.start")
+        stop = self._normalize_timestamp(step.get("stop"), field_name=f"{field_prefix}.stop")
+        self._validate_time_window(start=start, stop=stop, field_prefix=field_prefix)
+        duration = self._resolve_duration(
+            start=start,
+            stop=stop,
+            value=step.get("duration"),
+            field_name=f"{field_prefix}.duration",
+        )
+        status = self._normalize_test_status(step.get("status"), field_name=f"{field_prefix}.status")
+
+        payload: dict[str, object] = {}
+        if start is not None:
+            payload["start"] = start
+        if stop is not None:
+            payload["stop"] = stop
+        if duration is not None:
+            payload["duration"] = duration
+        if status is not None:
+            payload["status"] = status.value
+
+        message = self._normalize_text(step.get("message"), field_name=f"{field_prefix}.message", allow_empty=True)
+        if message is not None:
+            payload["message"] = message
+
+        trace = self._normalize_text(step.get("trace"), field_name=f"{field_prefix}.trace", allow_empty=True)
+        if trace is not None:
+            payload["trace"] = trace
+
+        payload.update(
+            self._build_manual_result_resolve_nested_steps(
+                step,
+                result_index=result_index,
+                step_index=step_index,
+            )
+        )
+        return payload
+
+    def _build_manual_result_resolve_nested_steps(
+        self,
+        step: dict[str, Any],
+        *,
+        result_index: int,
+        step_index: int,
+    ) -> dict[str, object]:
+        nested_steps = step.get("steps")
+        if nested_steps is None:
+            return {}
+        if not isinstance(nested_steps, list):
+            raise AllureValidationError(f"results[{result_index}].steps[{step_index}].steps must be a list")
+        return {
+            "steps": [
+                self._build_manual_result_resolve_step(
+                    child,
+                    result_index=result_index,
+                    step_index=child_index,
+                )
+                for child_index, child in enumerate(nested_steps)
+            ]
+        }
+
+    def _apply_manual_result_resolve_body_step(
+        self,
+        payload: dict[str, object],
+        *,
+        step: dict[str, Any],
+        result_index: int,
+        step_index: int,
+        name: str | None,
+    ) -> dict[str, object]:
+        body_text = self._normalize_text(
+            step.get("body"),
+            field_name=f"results[{result_index}].steps[{step_index}].body",
+            allow_empty=True,
+        )
+        payload["type"] = "body"
+        if body_text is not None:
+            payload["body"] = body_text
+        if name is not None:
+            payload["name"] = name
+        return payload
+
+    def _apply_manual_result_resolve_expected_step(
+        self,
+        payload: dict[str, object],
+        *,
+        step: dict[str, Any],
+        result_index: int,
+        step_index: int,
+        name: str | None,
+    ) -> dict[str, object]:
+        body_text = self._normalize_text(
+            step.get("body"),
+            field_name=f"results[{result_index}].steps[{step_index}].body",
+            allow_empty=True,
+        )
+        payload["type"] = "expected_body"
+        if body_text is not None:
+            payload["body"] = body_text
+        if name is not None:
+            payload["name"] = name
+        return payload
+
+    def _apply_manual_result_resolve_attachment_step(
+        self,
+        payload: dict[str, object],
+        *,
+        step: dict[str, Any],
+        result_index: int,
+        step_index: int,
+        name: str | None,
+    ) -> dict[str, object]:
+        attachment_meta = step.get("attachment")
+        if not isinstance(attachment_meta, dict):
+            raise AllureValidationError(
+                f"results[{result_index}].steps[{step_index}].attachment is required for attachment steps"
+            )
+        attachment_name = self._normalize_text(
+            attachment_meta.get("name"),
+            field_name=f"results[{result_index}].steps[{step_index}].attachment.name",
+        )
+        content_type = self._normalize_text(
+            attachment_meta.get("content_type"),
+            field_name=f"results[{result_index}].steps[{step_index}].attachment.content_type",
+            allow_empty=True,
+        )
+        payload["type"] = "attachment"
+        payload["attachment"] = {
+            "entity": "test_result",
+            "name": attachment_name,
+            **({"contentType": content_type} if content_type is not None else {}),
+        }
+        if name is not None:
+            payload["name"] = name
+        return payload
 
     def _build_upload_test_result(self, result: dict[str, Any], *, index: int) -> UploadTestResultDto:
         if not isinstance(result, dict):
@@ -1676,7 +2103,7 @@ class LaunchService:
         return TestResultScenarioDto(steps=steps)
 
     async def _build_patchable_manual_result_steps(self, test_result: TestResultDto) -> list[TestResultScenarioStepDto]:
-        raw_execution = await self._get_test_result_execution_raw_or_raise(test_result.id or 0)
+        raw_execution = await self._get_test_result_execution_raw_or_raise(test_result.id or 0, v2=True)
         raw_steps = raw_execution.get("steps")
         execution_steps = (
             [self._patch_step_from_raw_execution_step(step) for step in raw_steps if isinstance(step, dict)]
@@ -1782,7 +2209,15 @@ class LaunchService:
             else None
         )
         return TestResultScenarioStepDto(
-            name=step.get("name") if isinstance(step.get("name"), str) else None,
+            name=(
+                step.get("name")
+                if isinstance(step.get("name"), str)
+                else step.get("body")
+                if isinstance(step.get("body"), str)
+                else step.get("attachment", {}).get("name")
+                if isinstance(step.get("attachment"), dict) and isinstance(step.get("attachment", {}).get("name"), str)
+                else None
+            ),
             expected_result=step.get("expectedResult") if isinstance(step.get("expectedResult"), str) else None,
             message=step.get("message") if isinstance(step.get("message"), str) else None,
             trace=step.get("trace") if isinstance(step.get("trace"), str) else None,
@@ -2037,9 +2472,14 @@ class LaunchService:
                 response_body=exc.response_body,
             ) from exc
 
-    async def _get_test_result_execution_raw_or_raise(self, test_result_id: int) -> dict[str, object]:
+    async def _get_test_result_execution_raw_or_raise(
+        self,
+        test_result_id: int,
+        *,
+        v2: bool = False,
+    ) -> dict[str, object]:
         try:
-            return await self._client.get_test_result_execution_raw(test_result_id)
+            return await self._client.get_test_result_execution_raw(test_result_id, v2=v2)
         except AllureNotFoundError as exc:
             raise AllureNotFoundError(
                 f"Test result ID {test_result_id} not found",

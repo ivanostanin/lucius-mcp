@@ -2193,7 +2193,7 @@
             "type": "integer"
           },
           "results": {
-            "description": "Manual result payloads. Each item should include result_id from list_launch_test_results so the service can create a true manual launch result in the correct launch/test-case context. As a lower-level fallback, you may provide launch_id + test_case_id + name/full_name explicitly. Optional fields include status/start/stop/message/trace/description/precondition/expected_result/steps.",
+            "description": "Manual result payloads. When an item includes result_id from list_launch_test_results, the service resolves that existing launch result in place through TestOps' test-result run controller. After rerun_test_results_manually, re-list launch results and submit against the newly visible active result for that test case. The returned result_ids are the resolved result IDs to use for follow-up attachments and reads. As a lower-level fallback, you may still provide launch_id + test_case_id + name/full_name explicitly to create a standalone manual result. Optional fields include status/start/stop/duration/message/trace/description/precondition/expected_result/steps.",
             "items": {
               "additionalProperties": true,
               "type": "object"
