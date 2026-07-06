@@ -1,8 +1,12 @@
+<!-- mcp-name: io.github.ivanostanin/lucius-mcp -->
+![PyPI Version](https://img.shields.io/pypi/v/lucius-mcp)
+![PyPI Python Version](https://img.shields.io/pypi/pyversions/lucius-mcp)
+![PyPI Downloads](https://img.shields.io/pypi/dm/lucius-mcp)
+![GitHub License](https://img.shields.io/github/license/ivanostanin/lucius-mcp)
+
 # Allure TestOps MCP Server
 
 Lucius is a specialized Model Context Protocol (MCP) server for Allure TestOps, built with `FastMCP` and `Starlette`.
-
-<!-- mcp-name: io.github.ivanostanin/lucius-mcp -->
 
 ## 🎯 Motivation
 
