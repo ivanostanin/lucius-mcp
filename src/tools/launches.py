@@ -87,7 +87,7 @@ async def upload_test_results(
             description=(
                 "Result objects to append to the launch. Every item requires test_case_id (int) and status "
                 "(passed, failed, broken, skipped, or unknown). Optional fields: start, stop, duration, message, "
-                "name, full_name, uuid, and history_id."
+                "name, and full_name. A maximum of 1000 results is accepted per call."
             )
         ),
     ],
@@ -105,18 +105,28 @@ async def upload_test_results(
         output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
-        A concise upload confirmation with the number of results submitted.
+        A concise upload summary, including any rejected result indexes.
     """
     async with _launch_client_context(project_id=project_id) as client:
         service = LaunchService(client=client)
         result = await service.add_results(launch_id, results)
 
+    plain = f"Successfully uploaded {result.uploaded_count} results to launch {result.launch_id}"
+    if result.failures:
+        rejected_indexes = ", ".join(str(failure.index) for failure in result.failures)
+        plain = (
+            f"Partially uploaded {result.uploaded_count} of {result.requested_count} results to launch "
+            f"{result.launch_id}; rejected result indexes: {rejected_indexes}"
+        )
+
     return render_output(
-        plain=f"Successfully uploaded {result.uploaded_count} results to launch {result.launch_id}",
+        plain=plain,
         json_payload={
             "launch_id": result.launch_id,
+            "requested_count": result.requested_count,
             "uploaded_count": result.uploaded_count,
             "result_ids": result.result_ids,
+            "failures": [{"index": failure.index, "message": failure.message} for failure in result.failures],
         },
         output_format=output_format,
     )

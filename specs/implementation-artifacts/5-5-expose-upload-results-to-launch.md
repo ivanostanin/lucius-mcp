@@ -1,6 +1,6 @@
 # Story 5.5: Expose upload_results_to_launch as a tool
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -85,6 +85,11 @@ so that **I can report execution outcomes from external sources, manual runs, or
 
 - [x] **9. Validation**
   - [x] Run full test suite: `./scripts/full-test-suite.sh`
+
+### Review Findings
+
+- [x] [Review][Patch] Preserve existing test-case linkage [src/services/launch_service.py:442] — retained direct creation, removed unsupported `uuid` and `history_id` inputs from the public upload contract, and added explicit validation for those fields.
+- [x] [Review][Patch] Add bounded partial-batch reporting [src/services/launch_service.py:442] — limited batches to 1,000 items and in-flight requests to 20; the tool now returns accepted result IDs and failed item indexes/messages.
 
 ## Dev Notes
 

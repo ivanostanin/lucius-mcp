@@ -475,8 +475,10 @@ async def test_add_results_batches_normalized_results_for_a_launch(
     )
 
     assert result.launch_id == 22
+    assert result.requested_count == 2
     assert result.uploaded_count == 2
     assert result.result_ids == [501, 502]
+    assert result.failures == []
     first_payload = mock_client.create_test_result.await_args_list[0].args[0]
     second_payload = mock_client.create_test_result.await_args_list[1].args[0]
     assert first_payload.launch_id == 22
@@ -486,6 +488,39 @@ async def test_add_results_batches_normalized_results_for_a_launch(
     assert first_payload.duration == 250
     assert first_payload.message == "Completed"
     assert second_payload.duration == 300
+
+
+@pytest.mark.asyncio
+async def test_add_results_reports_partial_failures(service: LaunchService, mock_client: MagicMock) -> None:
+    mock_client.create_test_result.side_effect = [
+        TestResultDto(id=501),
+        AllureAPIError("TestOps rejected the result"),
+    ]
+
+    result = await service.add_results(
+        launch_id=22,
+        results=[
+            {"test_case_id": 91, "status": "passed"},
+            {"test_case_id": 92, "status": "failed"},
+        ],
+    )
+
+    assert result.requested_count == 2
+    assert result.uploaded_count == 1
+    assert result.result_ids == [501]
+    assert [(failure.index, failure.message) for failure in result.failures] == [(1, "TestOps rejected the result")]
+
+
+@pytest.mark.asyncio
+async def test_add_results_rejects_batches_larger_than_limit(service: LaunchService, mock_client: MagicMock) -> None:
+    with pytest.raises(AllureValidationError, match="at most 1000 items"):
+        await service.add_results(
+            launch_id=22,
+            results=[{"test_case_id": 91, "status": "passed"}] * 1001,
+        )
+
+    mock_client.get_launch.assert_not_awaited()
+    mock_client.create_test_result.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -906,8 +941,8 @@ def test_build_upload_test_result_maps_full_payload(service: LaunchService) -> N
     assert upload_payload.test_case_id == "92"
     assert upload_payload.name == "Fallback manual result"
     assert upload_payload.full_name == "Fallback manual result"
-    assert upload_payload.uuid
-    assert upload_payload.history_id
+    assert upload_payload.uuid is None
+    assert upload_payload.history_id is None
     assert upload_payload.status is not None
     assert upload_payload.status.value.lower() == "failed"
     assert upload_payload.start == 1000
@@ -947,6 +982,11 @@ def test_build_upload_test_result_maps_full_payload(service: LaunchService) -> N
 def test_build_upload_test_result_requires_status(service: LaunchService) -> None:
     with pytest.raises(AllureValidationError, match=r"results\[0\]\.status is required"):
         service._build_upload_test_result({"test_case_id": 92}, index=0)
+
+
+def test_build_upload_test_result_rejects_unsupported_upload_identities(service: LaunchService) -> None:
+    with pytest.raises(AllureValidationError, match=r"results\[0\]\.uuid is not supported"):
+        service._build_upload_test_result({"test_case_id": 92, "status": "passed", "uuid": "external-id"}, index=0)
 
 
 def test_build_upload_step_validation_paths(service: LaunchService) -> None:
