@@ -1,7 +1,9 @@
 """Service for managing Launches in Allure TestOps."""
 
+import asyncio
 import base64
 import binascii
+import hashlib
 import ipaddress
 import uuid
 from collections.abc import Sequence
@@ -145,6 +147,15 @@ class ManualTestSubmissionResult:
     test_session_id: int
     result_ids: list[int]
     submitted_count: int
+
+
+@dataclass
+class LaunchResultUploadResult:
+    """Summary of a bulk result upload to one launch."""
+
+    launch_id: int
+    uploaded_count: int
+    result_ids: list[int]
 
 
 @dataclass
@@ -409,6 +420,42 @@ class LaunchService:
 
         upload_info = LaunchExistingUploadDto()
         return await self._client.upload_results_to_launch(launch_id=launch_id, files=files, info=upload_info)
+
+    async def add_results(self, launch_id: int, results: list[dict[str, Any]]) -> LaunchResultUploadResult:
+        """Upload externally produced results to a launch concurrently.
+
+        MCP callers need only a launch ID and friendly result dictionaries; the service
+        maps each one to the native TestOps result DTO and submits the batch concurrently.
+        """
+        self._validate_project_id(self._project_id)
+        self._validate_launch_id(launch_id)
+        if not isinstance(results, list) or not results:
+            raise AllureValidationError("results must be a non-empty list")
+
+        # Validate and normalize every item before creating remote results.
+        upload_results = [self._build_upload_test_result(result, index=index) for index, result in enumerate(results)]
+        await self.get_launch(launch_id)
+        created_results = await asyncio.gather(
+            *(
+                self._create_manual_launch_result(
+                    {
+                        **result,
+                        "launch_id": launch_id,
+                        "name": upload_result.name,
+                        "full_name": upload_result.full_name,
+                        "status": upload_result.status.value.lower() if upload_result.status is not None else None,
+                    },
+                    index=index,
+                )
+                for index, (result, upload_result) in enumerate(zip(results, upload_results, strict=True))
+            )
+        )
+
+        return LaunchResultUploadResult(
+            launch_id=launch_id,
+            uploaded_count=len(upload_results),
+            result_ids=[result.id for result in created_results if isinstance(result.id, int)],
+        )
 
     async def list_launch_test_results(
         self,
@@ -1008,7 +1055,7 @@ class LaunchService:
         try:
             return UploadTestStatus(normalized)
         except ValueError as exc:
-            allowed = ", ".join(status.value for status in UploadTestStatus)
+            allowed = ", ".join(status.value.lower() for status in UploadTestStatus)
             raise AllureValidationError(f"Invalid {field_name}: {value!r}. Allowed values: {allowed}") from exc
 
     @staticmethod
@@ -1242,6 +1289,12 @@ class LaunchService:
                     external=False,
                     start=start,
                     stop=stop,
+                    duration=self._resolve_duration(
+                        start=start,
+                        stop=stop,
+                        value=result.get("duration"),
+                        field_name=f"results[{index}].duration",
+                    ),
                     message=self._normalize_text(
                         result.get("message"),
                         field_name=f"results[{index}].message",
@@ -1825,11 +1878,15 @@ class LaunchService:
         result_name, result_full_name, result_uuid, history_id = self._resolve_upload_result_identity(
             result,
             index=index,
+            test_case_id=test_case_id,
         )
 
         start = self._normalize_timestamp(result.get("start"), field_name=f"results[{index}].start")
         stop = self._normalize_timestamp(result.get("stop"), field_name=f"results[{index}].stop")
         self._validate_time_window(start=start, stop=stop, field_prefix=f"results[{index}]")
+        status = self._normalize_status(result.get("status"), field_name=f"results[{index}].status")
+        if status is None:
+            raise AllureValidationError(f"results[{index}].status is required")
 
         steps = result.get("steps")
         step_dtos = None
@@ -1868,9 +1925,15 @@ class LaunchService:
                 full_name=result_full_name,
                 uuid=result_uuid,
                 history_id=history_id,
-                status=self._normalize_status(result.get("status"), field_name=f"results[{index}].status"),
+                status=status,
                 start=start,
                 stop=stop,
+                duration=self._resolve_duration(
+                    start=start,
+                    stop=stop,
+                    value=result.get("duration"),
+                    field_name=f"results[{index}].duration",
+                ),
                 message=self._normalize_text(
                     result.get("message"),
                     field_name=f"results[{index}].message",
@@ -1911,6 +1974,7 @@ class LaunchService:
         result: dict[str, Any],
         *,
         index: int,
+        test_case_id: int,
     ) -> tuple[str, str, str, str]:
         result_name = self._normalize_text(
             result.get("name"),
@@ -1922,24 +1986,22 @@ class LaunchService:
             field_name=f"results[{index}].full_name",
             allow_empty=True,
         )
-        if not result_name and not result_full_name:
-            raise AllureValidationError(f"results[{index}].name is required for manual upload")
-
-        resolved_name = result_name or result_full_name
+        resolved_name = result_name or result_full_name or f"Test case {test_case_id}"
         resolved_full_name = result_full_name or resolved_name
-        if resolved_name is None or resolved_full_name is None:  # pragma: no cover - guarded above
-            raise AllureAPIError("Manual upload identity resolution failed")
 
         result_uuid = self._normalize_text(
             result.get("uuid"),
             field_name=f"results[{index}].uuid",
             allow_empty=True,
         ) or str(uuid.uuid4())
-        history_id = self._normalize_text(
-            result.get("history_id"),
-            field_name=f"results[{index}].history_id",
-            allow_empty=True,
-        ) or str(uuid.uuid4())
+        history_id = (
+            self._normalize_text(
+                result.get("history_id"),
+                field_name=f"results[{index}].history_id",
+                allow_empty=True,
+            )
+            or hashlib.sha256(str(test_case_id).encode()).hexdigest()
+        )
 
         return resolved_name, resolved_full_name, result_uuid, history_id
 

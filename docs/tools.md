@@ -74,6 +74,7 @@ route is verified.
 | `create_launch`              | Create a new test execution launch.                             | `name`, `tags` |
 | `list_launches`              | View recent launches and their status.                          | `page`, `size` |
 | `get_launch`                 | Get detailed stats, defect counts, and manual-workflow guidance for a launch. | `launch_id`    |
+| `upload_test_results`        | Append externally produced test results to a launch concurrently. | `launch_id`, `results` |
 | `list_launch_test_results`   | List result-level launch data including manual flag, status, assignee, and tester. | `launch_id`, `manual_only`, `failed_only` |
 | `rerun_test_results_manually` | Schedule manual reruns for selected failed launch results.      | `launch_id`, `result_ids`, `assignees` |
 | `start_manual_test_session`  | Create a manual execution session for a launch.                 | `launch_id`, `environment` |

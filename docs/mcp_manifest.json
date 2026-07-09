@@ -1,6 +1,6 @@
 {
   "environment": {
-    "fastmcp": "3.4.2",
+    "fastmcp": "3.4.3",
     "mcp": "1.26.0"
   },
   "serverInfo": {
@@ -2239,6 +2239,79 @@
       "icons": null,
       "annotations": {
         "title": "Submit Manual Test Results",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": null
+      },
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "launch",
+            "test-result"
+          ]
+        }
+      },
+      "execution": null
+    },
+    {
+      "name": "upload_test_results",
+      "title": "Upload Test Results",
+      "description": "Upload external test results to an existing launch.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "launch_id": {
+            "description": "Launch ID to receive the results (required).",
+            "type": "integer"
+          },
+          "results": {
+            "description": "Result objects to append to the launch. Every item requires test_case_id (int) and status (passed, failed, broken, skipped, or unknown). Optional fields: start, stop, duration, message, name, full_name, uuid, and history_id.",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional override for the default Project ID."
+          },
+          "output_format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "plain",
+                  "json"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Output format: 'json' (default) or 'plain'."
+          }
+        },
+        "required": [
+          "launch_id",
+          "results"
+        ],
+        "type": "object"
+      },
+      "outputSchema": null,
+      "icons": null,
+      "annotations": {
+        "title": "Upload Test Results",
         "readOnlyHint": false,
         "destructiveHint": false,
         "idempotentHint": false,

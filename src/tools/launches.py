@@ -79,6 +79,49 @@ async def create_launch(
     )
 
 
+async def upload_test_results(
+    launch_id: Annotated[int, Field(description="Launch ID to receive the results (required).")],
+    results: Annotated[
+        list[dict[str, object]],
+        Field(
+            description=(
+                "Result objects to append to the launch. Every item requires test_case_id (int) and status "
+                "(passed, failed, broken, skipped, or unknown). Optional fields: start, stop, duration, message, "
+                "name, full_name, uuid, and history_id."
+            )
+        ),
+    ],
+    project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
+) -> ToolOutput:
+    """Upload external test results to an existing launch.
+
+    Args:
+        launch_id: Launch ID that receives all submitted results.
+        results: Objects with required `test_case_id` and `status`; timestamps, duration, and a message are optional.
+        project_id: Optional override for the default Project ID.
+        output_format: Output format: 'json' (default) or 'plain'.
+
+    Returns:
+        A concise upload confirmation with the number of results submitted.
+    """
+    async with _launch_client_context(project_id=project_id) as client:
+        service = LaunchService(client=client)
+        result = await service.add_results(launch_id, results)
+
+    return render_output(
+        plain=f"Successfully uploaded {result.uploaded_count} results to launch {result.launch_id}",
+        json_payload={
+            "launch_id": result.launch_id,
+            "uploaded_count": result.uploaded_count,
+            "result_ids": result.result_ids,
+        },
+        output_format=output_format,
+    )
+
+
 async def list_launches(
     page: Annotated[int, Field(description="Zero-based page index.")] = 0,
     size: Annotated[int, Field(description="Number of results per page (max 100).", le=100)] = 20,

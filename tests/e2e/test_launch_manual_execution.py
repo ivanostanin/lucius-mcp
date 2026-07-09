@@ -64,6 +64,52 @@ async def test_manual_launch_submission_creates_new_result(
     assert created_result_id in matching_result_ids
 
 
+async def test_upload_results_to_launch_creates_results_in_one_bulk_submission(
+    allure_client: AllureClient,
+    cleanup_tracker: CleanupTracker,
+    test_run_id: str,
+) -> None:
+    """Verify the launch-scoped upload tool creates multiple external results."""
+    launch_service = LaunchService(allure_client)
+    launch, test_case = await _create_launch_with_test_case(
+        allure_client,
+        cleanup_tracker,
+        test_run_id,
+        suffix="bulk-upload",
+        steps=[{"action": "Open app", "expected": "App opens"}],
+    )
+
+    upload = await launch_service.add_results(
+        launch.id,
+        results=[
+            {
+                "test_case_id": test_case.id,
+                "status": "passed",
+                "message": "Uploaded by launch-scoped API",
+            },
+            {
+                "test_case_id": test_case.id,
+                "status": "failed",
+                "duration": 100,
+                "message": "Second externally reported result",
+            },
+        ],
+    )
+
+    assert upload.launch_id == launch.id
+    assert upload.uploaded_count == 2
+    assert len(upload.result_ids) == 2
+    for result_id in upload.result_ids:
+        created_result = await allure_client.get_test_result(result_id)
+        assert created_result.launch_id == launch.id
+        assert created_result.test_case_id == test_case.id
+
+    refreshed_launch = await launch_service.get_launch(launch.id)
+    assert refreshed_launch.id == launch.id
+    closed_launch = await launch_service.close_launch(launch.id)
+    assert closed_launch.closed is True
+
+
 async def test_manual_rerun_of_automated_result_resolves_existing_test_run(
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,

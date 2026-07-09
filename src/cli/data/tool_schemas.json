@@ -3,7 +3,7 @@
     "name": "add_test_result_attachment",
     "entity": "launch",
     "action": "add_test_result_attachment",
-    "description": "Upload evidence to a manual test result.\n\nArgs:\n    test_result_id: Manual test result ID.\n    attachment: Attachment payload using content or url.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Confirmation that the attachment was accepted for the result.",
+    "description": "Upload evidence to a manual test result.\n\nArgs:\n    test_result_id: Manual test result ID. In rerun workflows, use the resolved result ID\n        returned by the latest submit_manual_test_results call.\n    attachment: Attachment payload using content or url.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Confirmation that the attachment was accepted for the result.",
     "input_schema": {
       "type": "object",
       "additionalProperties": false,
@@ -43,7 +43,7 @@
     "name": "add_test_step_attachment",
     "entity": "launch",
     "action": "add_test_step_attachment",
-    "description": "Upload evidence to a manual attachment step inside a test result.\n\nArgs:\n    test_result_id: Parent test result ID.\n    attachment: Attachment payload using content or url.\n    attachment_id: Optional explicit manual step attachment ID.\n    step_name: Optional attachment-step name to resolve within the result execution.\n    step_index: Optional zero-based step index to resolve within the result execution.\n    fixture_result_id: Optional explicit fixture result ID for legacy fallback.\n    fixture_name: Optional fixture name for legacy fallback.\n    fixture_type: Optional fixture type hint ('before' or 'after') for legacy fallback.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Confirmation that the attachment was accepted for the manual step context.",
+    "description": "Upload evidence to a manual attachment step inside a test result.\n\nArgs:\n    test_result_id: Parent test result ID. In rerun workflows, use the completed result ID\n        returned by the latest submit_manual_test_results call.\n    attachment: Attachment payload using content or url.\n    attachment_id: Optional explicit manual step attachment ID.\n    step_name: Optional attachment-step name to resolve within the result execution.\n    step_index: Optional zero-based step index to resolve within the result execution.\n    fixture_result_id: Optional explicit fixture result ID for legacy fallback.\n    fixture_name: Optional fixture name for legacy fallback.\n    fixture_type: Optional fixture type hint ('before' or 'after') for legacy fallback.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Confirmation that the attachment was accepted for the manual step context.",
     "input_schema": {
       "type": "object",
       "additionalProperties": false,
@@ -2329,7 +2329,7 @@
     "name": "rerun_test_results_manually",
     "entity": "launch",
     "action": "rerun_test_results_manually",
-    "description": "Schedule manual reruns for selected launch results.\n\nArgs:\n    launch_id: Launch ID.\n    result_ids: Selected result IDs to rerun.\n    assignees: Optional usernames to assign.\n    force_manual: Force manual rerun mode.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Confirmation that manual reruns were scheduled.",
+    "description": "Schedule manual reruns for selected launch results.\n\nArgs:\n    launch_id: Launch ID.\n    result_ids: Selected result IDs to rerun.\n    assignees: Optional usernames to assign.\n    force_manual: Force manual rerun mode.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Confirmation that manual reruns were scheduled. Refresh launch results after rerun,\n    because TestOps creates a new active placeholder result for the next execution phase.",
     "input_schema": {
       "type": "object",
       "additionalProperties": false,
@@ -2448,7 +2448,7 @@
     "name": "start_manual_test_session",
     "entity": "launch",
     "action": "start_manual_test_session",
-    "description": "Start a manual execution session for a launch.\n\nArgs:\n    launch_id: Launch ID.\n    environment: Optional environment key/value pairs.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    The manual test session ID required for result submission.",
+    "description": "Start a manual execution session for a launch.\n\nArgs:\n    launch_id: Launch ID.\n    environment: Optional environment key/value pairs.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    The manual test session ID retained for launch-manual workflow compatibility.",
     "input_schema": {
       "type": "object",
       "additionalProperties": false,
@@ -2498,7 +2498,7 @@
     "name": "submit_manual_test_results",
     "entity": "launch",
     "action": "submit_manual_test_results",
-    "description": "Submit manual execution results for a manual session.\n\nArgs:\n    test_session_id: Manual test session ID.\n    results: Manual result payloads. Each result must include `test_case_id` plus `name` or `full_name`.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Created or updated test result IDs for follow-up actions.",
+    "description": "Submit manual execution results for a manual session.\n\nArgs:\n    test_session_id: Manual test session ID.\n    results: Manual result payloads. Prefer `result_id` from `list_launch_test_results` for launch-managed flows.\n        The service resolves those existing results in place and returns their IDs for follow-up actions.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Resolved or created test result IDs for follow-up actions such as attachment upload.",
     "input_schema": {
       "type": "object",
       "additionalProperties": false,
@@ -2513,7 +2513,7 @@
             "type": "object",
             "additionalProperties": true
           },
-          "description": "Manual result payloads. Each item must include test_case_id plus name or full_name, and may include status/start/stop/message/trace/description/precondition/expected_result/steps/parameters/uuid/history_id."
+          "description": "Manual result payloads. When an item includes result_id from list_launch_test_results, the service resolves that existing launch result in place through TestOps' test-result run controller. After rerun_test_results_manually, re-list launch results and submit against the newly visible active result for that test case. The returned result_ids are the resolved result IDs to use for follow-up attachments and reads. As a lower-level fallback, you may still provide launch_id + test_case_id + name/full_name explicitly to create a standalone manual result. Optional fields include status/start/stop/duration/message/trace/description/precondition/expected_result/steps."
         },
         "project_id": {
           "anyOf": [

@@ -33,6 +33,7 @@ from src.tools.launches import (
     rerun_test_results_manually,
     start_manual_test_session,
     submit_manual_test_results,
+    upload_test_results,
 )
 from src.tools.link_shared_step import link_shared_step
 from src.tools.list_custom_field_values import list_custom_field_values
@@ -128,6 +129,7 @@ __all__ = [
     "update_test_layer",
     "update_test_layer_schema",
     "update_test_plan",
+    "upload_test_results",
 ]
 
 ToolFn = Callable[..., Awaitable[ToolOutput]]
@@ -154,6 +156,7 @@ all_tools: list[ToolFn] = [
     rerun_test_results_manually,
     start_manual_test_session,
     submit_manual_test_results,
+    upload_test_results,
     add_test_result_attachment,
     add_test_step_attachment,
     delete_launch,

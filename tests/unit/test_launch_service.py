@@ -451,6 +451,73 @@ async def test_upload_results_to_launch_requires_files(service: LaunchService) -
 
 
 @pytest.mark.asyncio
+async def test_add_results_batches_normalized_results_for_a_launch(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    mock_client.create_test_result.side_effect = [TestResultDto(id=501), TestResultDto(id=502)]
+
+    result = await service.add_results(
+        launch_id=22,
+        results=[
+            {
+                "test_case_id": 91,
+                "status": "passed",
+                "start": 1000,
+                "stop": 1250,
+                "message": "Completed",
+            },
+            {
+                "test_case_id": 92,
+                "status": "failed",
+                "duration": 300,
+            },
+        ],
+    )
+
+    assert result.launch_id == 22
+    assert result.uploaded_count == 2
+    assert result.result_ids == [501, 502]
+    first_payload = mock_client.create_test_result.await_args_list[0].args[0]
+    second_payload = mock_client.create_test_result.await_args_list[1].args[0]
+    assert first_payload.launch_id == 22
+    assert first_payload.test_case_id == 91
+    assert first_payload.name == "Test case 91"
+    assert first_payload.status.value == "passed"
+    assert first_payload.duration == 250
+    assert first_payload.message == "Completed"
+    assert second_payload.duration == 300
+
+
+@pytest.mark.asyncio
+async def test_add_results_rejects_invalid_status_before_creating_a_session(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    with pytest.raises(AllureValidationError, match="Allowed values: failed, broken, passed, skipped, unknown"):
+        await service.add_results(
+            launch_id=22,
+            results=[{"test_case_id": 91, "status": "Kinda Passed"}],
+        )
+
+    mock_client.get_launch.assert_not_awaited()
+    mock_client.create_test_result.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_add_results_maps_missing_launch_to_launch_not_found(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    mock_client.get_launch.side_effect = AllureNotFoundError("missing", status_code=404, response_body="{}")
+
+    with pytest.raises(LaunchNotFoundError, match="Launch ID 22 not found"):
+        await service.add_results(
+            launch_id=22,
+            results=[{"test_case_id": 91, "status": "passed"}],
+        )
+
+    mock_client.create_test_result.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_list_launch_test_results_applies_manual_and_failed_filters(
     service: LaunchService, mock_client: MagicMock
 ) -> None:
@@ -877,8 +944,8 @@ def test_build_upload_test_result_maps_full_payload(service: LaunchService) -> N
     assert attachment_step.attachment.content_type == "text/plain"
 
 
-def test_build_upload_test_result_requires_name_or_full_name(service: LaunchService) -> None:
-    with pytest.raises(AllureValidationError, match=r"results\[0\]\.name is required for manual upload"):
+def test_build_upload_test_result_requires_status(service: LaunchService) -> None:
+    with pytest.raises(AllureValidationError, match=r"results\[0\]\.status is required"):
         service._build_upload_test_result({"test_case_id": 92}, index=0)
 
 
