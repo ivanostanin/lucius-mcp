@@ -43,6 +43,9 @@ share/python-wheels/
 MANIFEST
 .venv/
 
+# uv
+.uv-cache
+
 # Pytest
 .pytest_cache/
 .ruff_cache/

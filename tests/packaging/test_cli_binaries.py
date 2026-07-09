@@ -689,75 +689,79 @@ class TestBinaryStartupCacheBehavior:
         else:
             binary = built_cli_binary
 
-        env = os.environ.copy()
-        cache_root = Path(tempfile.mkdtemp(prefix="lucius-cli-cache-"))
-        # Nuitka onefile uses CACHE_DIR, which honors XDG cache roots on Unix.
-        env["XDG_CACHE_HOME"] = str(cache_root)
-        env["HOME"] = env.get("HOME", str(cache_root))
-        if platform.system() == "Windows":
-            env["LOCALAPPDATA"] = str(cache_root)
+        with tempfile.TemporaryDirectory(prefix="lucius-cli-cache-") as cache_dir:
+            env = os.environ.copy()
+            cache_root = Path(cache_dir)
+            # Nuitka onefile uses CACHE_DIR, which honors XDG cache roots on Unix.
+            env["XDG_CACHE_HOME"] = str(cache_root)
+            env["HOME"] = env.get("HOME", str(cache_root))
+            if platform.system() == "Windows":
+                env["LOCALAPPDATA"] = str(cache_root)
 
-        def run_once() -> float:
-            start = time.perf_counter()
+            def run_once() -> float:
+                start = time.perf_counter()
+                result = subprocess.run(
+                    [str(binary), "--version"],
+                    capture_output=True,
+                    text=True,
+                    timeout=20,
+                    env=env,
+                )
+                elapsed = time.perf_counter() - start
+                assert result.returncode == 0, f"Binary failed: {result.stderr}"
+                return elapsed
+
+            first = run_once()
+            second = run_once()
+
+            expected_cache_dir = _runtime_expected_onefile_cache_dir(cache_root)
+            observations: list[str] = []
+
+            if second >= first:
+                observations.append(
+                    "Warm start was not faster "
+                    f"(first={first:.3f}s, second={second:.3f}s); "
+                    "performance can vary by CI load."
+                )
+
+            if not expected_cache_dir.exists():
+                observations.append(f"Resolved onefile cache directory was not found: {expected_cache_dir}")
+            elif not any(expected_cache_dir.rglob("*")):
+                observations.append(
+                    f"No cache files were observed under resolved onefile cache path: {expected_cache_dir}"
+                )
+
+            if observations:
+                pytest.xfail("Informational startup-cache observations:\n" + "\n".join(observations))
+
+    def test_cache_template_tokens_are_resolved_at_runtime(self, built_cli_binary: Path) -> None:
+        """Onefile cache directories should not contain unresolved {TOKEN} placeholders."""
+        with tempfile.TemporaryDirectory(prefix="lucius-cli-cache-template-") as cache_dir:
+            env = os.environ.copy()
+            cache_root = Path(cache_dir)
+            env["XDG_CACHE_HOME"] = str(cache_root)
+            env["HOME"] = env.get("HOME", str(cache_root))
+            if platform.system() == "Windows":
+                env["LOCALAPPDATA"] = str(cache_root)
+
             result = subprocess.run(
-                [str(binary), "--version"],
+                [str(built_cli_binary), "--version"],
                 capture_output=True,
                 text=True,
                 timeout=20,
                 env=env,
             )
-            elapsed = time.perf_counter() - start
             assert result.returncode == 0, f"Binary failed: {result.stderr}"
-            return elapsed
 
-        first = run_once()
-        second = run_once()
+            expected_cache_dir = _runtime_expected_onefile_cache_dir(cache_root)
+            created_paths = list(expected_cache_dir.rglob("*")) if expected_cache_dir.exists() else []
+            assert created_paths, "Expected onefile cache extraction artifacts to be created"
 
-        expected_cache_dir = _runtime_expected_onefile_cache_dir(cache_root)
-        observations: list[str] = []
-
-        if second >= first:
-            observations.append(
-                "Warm start was not faster "
-                f"(first={first:.3f}s, second={second:.3f}s); "
-                "performance can vary by CI load."
+            unresolved = [
+                path
+                for path in created_paths
+                if "{" in str(path.relative_to(expected_cache_dir)) or "}" in str(path.relative_to(expected_cache_dir))
+            ]
+            assert not unresolved, "Found unresolved onefile cache template placeholders:\n" + "\n".join(
+                str(path) for path in unresolved[:20]
             )
-
-        if not expected_cache_dir.exists():
-            observations.append(f"Resolved onefile cache directory was not found: {expected_cache_dir}")
-        elif not any(expected_cache_dir.rglob("*")):
-            observations.append(f"No cache files were observed under resolved onefile cache path: {expected_cache_dir}")
-
-        if observations:
-            pytest.xfail("Informational startup-cache observations:\n" + "\n".join(observations))
-
-    def test_cache_template_tokens_are_resolved_at_runtime(self, built_cli_binary: Path) -> None:
-        """Onefile cache directories should not contain unresolved {TOKEN} placeholders."""
-        env = os.environ.copy()
-        cache_root = Path(tempfile.mkdtemp(prefix="lucius-cli-cache-template-"))
-        env["XDG_CACHE_HOME"] = str(cache_root)
-        env["HOME"] = env.get("HOME", str(cache_root))
-        if platform.system() == "Windows":
-            env["LOCALAPPDATA"] = str(cache_root)
-
-        result = subprocess.run(
-            [str(built_cli_binary), "--version"],
-            capture_output=True,
-            text=True,
-            timeout=20,
-            env=env,
-        )
-        assert result.returncode == 0, f"Binary failed: {result.stderr}"
-
-        expected_cache_dir = _runtime_expected_onefile_cache_dir(cache_root)
-        created_paths = list(expected_cache_dir.rglob("*")) if expected_cache_dir.exists() else []
-        assert created_paths, "Expected onefile cache extraction artifacts to be created"
-
-        unresolved = [
-            path
-            for path in created_paths
-            if "{" in str(path.relative_to(expected_cache_dir)) or "}" in str(path.relative_to(expected_cache_dir))
-        ]
-        assert not unresolved, "Found unresolved onefile cache template placeholders:\n" + "\n".join(
-            str(path) for path in unresolved[:20]
-        )
