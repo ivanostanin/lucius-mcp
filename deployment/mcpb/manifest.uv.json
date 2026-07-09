@@ -194,6 +194,10 @@
       "description": "Submit manual execution results for a manual session."
     },
     {
+      "name": "upload_test_results",
+      "description": "Upload externally produced test results to an existing launch."
+    },
+    {
       "name": "add_test_result_attachment",
       "description": "Upload evidence to a manual test result."
     },

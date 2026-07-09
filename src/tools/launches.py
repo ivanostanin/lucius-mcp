@@ -79,6 +79,59 @@ async def create_launch(
     )
 
 
+async def upload_test_results(
+    launch_id: Annotated[int, Field(description="Launch ID to receive the results (required).")],
+    results: Annotated[
+        list[dict[str, object]],
+        Field(
+            description=(
+                "Result objects to append to the launch. Every item requires test_case_id (int) and status "
+                "(passed, failed, broken, skipped, or unknown). Optional fields: start, stop, duration, message, "
+                "name, and full_name. A maximum of 1000 results is accepted per call."
+            )
+        ),
+    ],
+    project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
+) -> ToolOutput:
+    """Upload external test results to an existing launch.
+
+    Args:
+        launch_id: Launch ID that receives all submitted results.
+        results: Objects with required `test_case_id` and `status`; timestamps, duration, and a message are optional.
+        project_id: Optional override for the default Project ID.
+        output_format: Output format: 'json' (default) or 'plain'.
+
+    Returns:
+        A concise upload summary, including any rejected result indexes.
+    """
+    async with _launch_client_context(project_id=project_id) as client:
+        service = LaunchService(client=client)
+        result = await service.add_results(launch_id, results)
+
+    plain = f"Successfully uploaded {result.uploaded_count} results to launch {result.launch_id}"
+    if result.failures:
+        rejected_indexes = ", ".join(str(failure.index) for failure in result.failures)
+        plain = (
+            f"Partially uploaded {result.uploaded_count} of {result.requested_count} results to launch "
+            f"{result.launch_id}; rejected result indexes: {rejected_indexes}"
+        )
+
+    return render_output(
+        plain=plain,
+        json_payload={
+            "launch_id": result.launch_id,
+            "requested_count": result.requested_count,
+            "uploaded_count": result.uploaded_count,
+            "result_ids": result.result_ids,
+            "failures": [{"index": failure.index, "message": failure.message} for failure in result.failures],
+        },
+        output_format=output_format,
+    )
+
+
 async def list_launches(
     page: Annotated[int, Field(description="Zero-based page index.")] = 0,
     size: Annotated[int, Field(description="Number of results per page (max 100).", le=100)] = 20,

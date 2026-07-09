@@ -1,5 +1,6 @@
 """Service for managing Launches in Allure TestOps."""
 
+import asyncio
 import base64
 import binascii
 import ipaddress
@@ -62,6 +63,8 @@ from src.utils.schema_hint import generate_schema_hint
 
 MAX_NAME_LENGTH = 255
 MAX_TAG_LENGTH = 255
+MAX_LAUNCH_RESULT_UPLOAD_BATCH_SIZE = 1000
+MAX_LAUNCH_RESULT_UPLOAD_CONCURRENCY = 20
 ATTACHMENT_DOWNLOAD_TIMEOUT_SECONDS = 10.0
 ALLOWED_ATTACHMENT_URL_SCHEMES = frozenset({"http", "https"})
 BLOCKED_ATTACHMENT_HOSTNAMES = frozenset({"localhost"})
@@ -145,6 +148,25 @@ class ManualTestSubmissionResult:
     test_session_id: int
     result_ids: list[int]
     submitted_count: int
+
+
+@dataclass
+class LaunchResultUploadResult:
+    """Summary of a bulk result upload to one launch."""
+
+    launch_id: int
+    requested_count: int
+    uploaded_count: int
+    result_ids: list[int]
+    failures: list["LaunchResultUploadFailure"]
+
+
+@dataclass
+class LaunchResultUploadFailure:
+    """One result that TestOps did not accept during a batch upload."""
+
+    index: int
+    message: str
 
 
 @dataclass
@@ -409,6 +431,74 @@ class LaunchService:
 
         upload_info = LaunchExistingUploadDto()
         return await self._client.upload_results_to_launch(launch_id=launch_id, files=files, info=upload_info)
+
+    async def add_results(self, launch_id: int, results: list[dict[str, Any]]) -> LaunchResultUploadResult:
+        """Upload externally produced results to a launch concurrently.
+
+        MCP callers need only a launch ID and friendly result dictionaries; the service
+        maps each one to the native TestOps result DTO and submits the batch concurrently.
+        """
+        self._validate_project_id(self._project_id)
+        self._validate_launch_id(launch_id)
+        if not isinstance(results, list) or not results:
+            raise AllureValidationError("results must be a non-empty list")
+        if len(results) > MAX_LAUNCH_RESULT_UPLOAD_BATCH_SIZE:
+            raise AllureValidationError(f"results must contain at most {MAX_LAUNCH_RESULT_UPLOAD_BATCH_SIZE} items")
+
+        # Validate and normalize every item before creating remote results.
+        upload_results = [self._build_upload_test_result(result, index=index) for index, result in enumerate(results)]
+        await self.get_launch(launch_id)
+        semaphore = asyncio.Semaphore(MAX_LAUNCH_RESULT_UPLOAD_CONCURRENCY)
+
+        async def create_one(index: int, result: dict[str, Any], upload_result: UploadTestResultDto) -> TestResultDto:
+            async with semaphore:
+                return await self._create_manual_launch_result(
+                    {
+                        **result,
+                        "launch_id": launch_id,
+                        "name": upload_result.name,
+                        "full_name": upload_result.full_name,
+                        "status": upload_result.status.value.lower() if upload_result.status is not None else None,
+                    },
+                    index=index,
+                )
+
+        outcomes = await asyncio.gather(
+            *(
+                create_one(index, result, upload_result)
+                for index, (result, upload_result) in enumerate(zip(results, upload_results, strict=True))
+            ),
+            return_exceptions=True,
+        )
+        result_ids: list[int] = []
+        failures: list[LaunchResultUploadFailure] = []
+        for index, outcome in enumerate(outcomes):
+            if isinstance(outcome, asyncio.CancelledError):
+                raise outcome
+            if isinstance(outcome, BaseException):
+                failures.append(
+                    LaunchResultUploadFailure(
+                        index=index,
+                        message=str(outcome) or type(outcome).__name__,
+                    )
+                )
+            elif isinstance(outcome.id, int):
+                result_ids.append(outcome.id)
+            else:
+                failures.append(
+                    LaunchResultUploadFailure(
+                        index=index,
+                        message="TestOps created a result without an ID",
+                    )
+                )
+
+        return LaunchResultUploadResult(
+            launch_id=launch_id,
+            requested_count=len(upload_results),
+            uploaded_count=len(result_ids),
+            result_ids=result_ids,
+            failures=failures,
+        )
 
     async def list_launch_test_results(
         self,
@@ -1008,7 +1098,7 @@ class LaunchService:
         try:
             return UploadTestStatus(normalized)
         except ValueError as exc:
-            allowed = ", ".join(status.value for status in UploadTestStatus)
+            allowed = ", ".join(status.value.lower() for status in UploadTestStatus)
             raise AllureValidationError(f"Invalid {field_name}: {value!r}. Allowed values: {allowed}") from exc
 
     @staticmethod
@@ -1242,6 +1332,12 @@ class LaunchService:
                     external=False,
                     start=start,
                     stop=stop,
+                    duration=self._resolve_duration(
+                        start=start,
+                        stop=stop,
+                        value=result.get("duration"),
+                        field_name=f"results[{index}].duration",
+                    ),
                     message=self._normalize_text(
                         result.get("message"),
                         field_name=f"results[{index}].message",
@@ -1817,19 +1913,22 @@ class LaunchService:
     def _build_upload_test_result(self, result: dict[str, Any], *, index: int) -> UploadTestResultDto:
         if not isinstance(result, dict):
             raise AllureValidationError(f"results[{index}] must be a dictionary")
+        self._reject_unsupported_launch_upload_identity_fields(result, index=index)
 
         test_case_id = result.get("test_case_id")
         if test_case_id is None:
             raise AllureValidationError(f"results[{index}].test_case_id is required")
         self._validate_positive_id(test_case_id, f"results[{index}].test_case_id")
-        result_name, result_full_name, result_uuid, history_id = self._resolve_upload_result_identity(
-            result,
-            index=index,
+        result_name, result_full_name = self._resolve_upload_result_identity(
+            result, index=index, test_case_id=test_case_id
         )
 
         start = self._normalize_timestamp(result.get("start"), field_name=f"results[{index}].start")
         stop = self._normalize_timestamp(result.get("stop"), field_name=f"results[{index}].stop")
         self._validate_time_window(start=start, stop=stop, field_prefix=f"results[{index}]")
+        status = self._normalize_status(result.get("status"), field_name=f"results[{index}].status")
+        if status is None:
+            raise AllureValidationError(f"results[{index}].status is required")
 
         steps = result.get("steps")
         step_dtos = None
@@ -1866,11 +1965,15 @@ class LaunchService:
                 test_case_id=str(test_case_id),
                 name=result_name,
                 full_name=result_full_name,
-                uuid=result_uuid,
-                history_id=history_id,
-                status=self._normalize_status(result.get("status"), field_name=f"results[{index}].status"),
+                status=status,
                 start=start,
                 stop=stop,
+                duration=self._resolve_duration(
+                    start=start,
+                    stop=stop,
+                    value=result.get("duration"),
+                    field_name=f"results[{index}].duration",
+                ),
                 message=self._normalize_text(
                     result.get("message"),
                     field_name=f"results[{index}].message",
@@ -1911,7 +2014,8 @@ class LaunchService:
         result: dict[str, Any],
         *,
         index: int,
-    ) -> tuple[str, str, str, str]:
+        test_case_id: int,
+    ) -> tuple[str, str]:
         result_name = self._normalize_text(
             result.get("name"),
             field_name=f"results[{index}].name",
@@ -1922,26 +2026,16 @@ class LaunchService:
             field_name=f"results[{index}].full_name",
             allow_empty=True,
         )
-        if not result_name and not result_full_name:
-            raise AllureValidationError(f"results[{index}].name is required for manual upload")
-
-        resolved_name = result_name or result_full_name
+        resolved_name = result_name or result_full_name or f"Test case {test_case_id}"
         resolved_full_name = result_full_name or resolved_name
-        if resolved_name is None or resolved_full_name is None:  # pragma: no cover - guarded above
-            raise AllureAPIError("Manual upload identity resolution failed")
 
-        result_uuid = self._normalize_text(
-            result.get("uuid"),
-            field_name=f"results[{index}].uuid",
-            allow_empty=True,
-        ) or str(uuid.uuid4())
-        history_id = self._normalize_text(
-            result.get("history_id"),
-            field_name=f"results[{index}].history_id",
-            allow_empty=True,
-        ) or str(uuid.uuid4())
+        return resolved_name, resolved_full_name
 
-        return resolved_name, resolved_full_name, result_uuid, history_id
+    @staticmethod
+    def _reject_unsupported_launch_upload_identity_fields(result: dict[str, Any], *, index: int) -> None:
+        for field_name in ("uuid", "history_id"):
+            if field_name in result:
+                raise AllureValidationError(f"results[{index}].{field_name} is not supported for launch uploads")
 
     def _build_upload_step(
         self,

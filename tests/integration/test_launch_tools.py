@@ -9,7 +9,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from pydantic import SecretStr
 
-from src.tools.launches import close_launch, create_launch, delete_launch, get_launch, list_launches, reopen_launch
+from src.tools.launches import (
+    close_launch,
+    create_launch,
+    delete_launch,
+    get_launch,
+    list_launches,
+    reopen_launch,
+    upload_test_results,
+)
 
 
 def _resolved_auth(*, endpoint: str = "https://example.com", token: str = "token", project_id: int = 1) -> object:
@@ -132,6 +140,80 @@ async def test_get_launch_tool_output() -> None:
                 assert "URL: https://example.com/launch/12" in output
                 assert "Started: 100" in output
                 assert "Ended: 200" in output
+
+
+@pytest.mark.asyncio
+async def test_upload_test_results_tool_parses_result_objects_and_renders_summary() -> None:
+    with patch("src.tools.launches.resolve_auth_settings", return_value=_resolved_auth()):
+        with patch("src.tools.launches.AllureClient") as mock_client_cls:
+            mock_client = _mock_url_context()
+            mock_client_cls.return_value.__aenter__.return_value = mock_client
+
+            with patch("src.tools.launches.LaunchService") as mock_service_cls:
+                mock_service = mock_service_cls.return_value
+                mock_service.add_results = AsyncMock(
+                    return_value=type(
+                        "LaunchResultUploadResult",
+                        (),
+                        {
+                            "launch_id": 55,
+                            "requested_count": 2,
+                            "uploaded_count": 2,
+                            "result_ids": [101, 102],
+                            "failures": [],
+                        },
+                    )
+                )
+
+                output = await upload_test_results(
+                    launch_id=55,
+                    results=[
+                        {"test_case_id": 7, "status": "passed"},
+                        {"test_case_id": 8, "status": "failed", "message": "Assertion failed"},
+                    ],
+                    output_format="plain",
+                )
+
+                assert output == "Successfully uploaded 2 results to launch 55"
+                mock_service.add_results.assert_awaited_once_with(
+                    55,
+                    [
+                        {"test_case_id": 7, "status": "passed"},
+                        {"test_case_id": 8, "status": "failed", "message": "Assertion failed"},
+                    ],
+                )
+
+
+@pytest.mark.asyncio
+async def test_upload_test_results_tool_renders_partial_failure_indexes() -> None:
+    with patch("src.tools.launches.resolve_auth_settings", return_value=_resolved_auth()):
+        with patch("src.tools.launches.AllureClient") as mock_client_cls:
+            mock_client = _mock_url_context()
+            mock_client_cls.return_value.__aenter__.return_value = mock_client
+
+            with patch("src.tools.launches.LaunchService") as mock_service_cls:
+                mock_service = mock_service_cls.return_value
+                mock_service.add_results = AsyncMock(
+                    return_value=type(
+                        "LaunchResultUploadResult",
+                        (),
+                        {
+                            "launch_id": 55,
+                            "requested_count": 2,
+                            "uploaded_count": 1,
+                            "result_ids": [101],
+                            "failures": [type("Failure", (), {"index": 1, "message": "TestOps rejected the result"})],
+                        },
+                    )
+                )
+
+                output = await upload_test_results(
+                    launch_id=55,
+                    results=[{"test_case_id": 7, "status": "passed"}],
+                    output_format="plain",
+                )
+
+                assert output == "Partially uploaded 1 of 2 results to launch 55; rejected result indexes: 1"
 
 
 @pytest.mark.asyncio
