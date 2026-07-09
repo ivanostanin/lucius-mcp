@@ -24,9 +24,10 @@ def build_artifacts():
             artifact.unlink()
 
     uv_path = shutil.which("uv") or "uv"
-    env = os.environ.copy()
-    env.setdefault("UV_CACHE_DIR", tempfile.mkdtemp(prefix="lucius-uv-cache-"))
-    result = subprocess.run([uv_path, "build"], capture_output=True, text=True, env=env)
+    with tempfile.TemporaryDirectory(prefix="lucius-uv-cache-") as cache_dir:
+        env = os.environ.copy()
+        env.setdefault("UV_CACHE_DIR", cache_dir)
+        result = subprocess.run([uv_path, "build"], capture_output=True, text=True, env=env)
     if result.returncode != 0 and _is_network_build_failure(result.stdout + result.stderr):
         pytest.skip("uv build requires network access in this environment")
     assert result.returncode == 0, f"uv build failed: {result.stderr}"

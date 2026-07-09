@@ -6,7 +6,8 @@ import os
 import subprocess
 import sys
 import tempfile
-from collections.abc import Mapping
+from collections.abc import Generator, Mapping
+from contextlib import contextmanager
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -36,54 +37,65 @@ def assert_clean_cli_result(
     assert "WARNING:" not in combined
 
 
-def _subprocess_env(env: Mapping[str, str] | None = None) -> dict[str, str]:
+@contextmanager
+def _subprocess_env(env: Mapping[str, str] | None = None) -> Generator[dict[str, str]]:
+    """Provide an environment with an isolated UV cache for one subprocess."""
     resolved = dict(os.environ if env is None else env)
-    resolved.setdefault("UV_CACHE_DIR", tempfile.mkdtemp(prefix="lucius-uv-cache-"))
-    return resolved
+    if "UV_CACHE_DIR" in resolved:
+        yield resolved
+        return
+
+    with tempfile.TemporaryDirectory(prefix="lucius-uv-cache-") as cache_dir:
+        resolved["UV_CACHE_DIR"] = cache_dir
+        yield resolved
 
 
 def run_cli(args: list[str], *, env: Mapping[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     """Run the CLI entrypoint in a subprocess."""
-    return subprocess.run(
-        [sys.executable, "-m", "src.cli.cli_entry", *args],
-        capture_output=True,
-        text=True,
-        cwd=PROJECT_ROOT,
-        env=_subprocess_env(env),
-    )
+    with _subprocess_env(env) as resolved_env:
+        return subprocess.run(
+            [sys.executable, "-m", "src.cli.cli_entry", *args],
+            capture_output=True,
+            text=True,
+            cwd=PROJECT_ROOT,
+            env=resolved_env,
+        )
 
 
 def run_python_snippet(script: str, *, env: Mapping[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     """Run a Python snippet from the project root."""
-    return subprocess.run(
-        [sys.executable, "-c", script],
-        capture_output=True,
-        text=True,
-        cwd=PROJECT_ROOT,
-        env=_subprocess_env(env),
-    )
+    with _subprocess_env(env) as resolved_env:
+        return subprocess.run(
+            [sys.executable, "-c", script],
+            capture_output=True,
+            text=True,
+            cwd=PROJECT_ROOT,
+            env=resolved_env,
+        )
 
 
 def run_uv_python_snippet(script: str, *, env: Mapping[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     """Run a Python snippet through `uv run` from the project root."""
-    return subprocess.run(
-        [*UV_PYTHON_COMMAND, "-c", script],
-        capture_output=True,
-        text=True,
-        cwd=PROJECT_ROOT,
-        env=_subprocess_env(env),
-    )
+    with _subprocess_env(env) as resolved_env:
+        return subprocess.run(
+            [*UV_PYTHON_COMMAND, "-c", script],
+            capture_output=True,
+            text=True,
+            cwd=PROJECT_ROOT,
+            env=resolved_env,
+        )
 
 
 def run_uv_cli(args: list[str], *, env: Mapping[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     """Run the installed local `lucius` console script through `uv run`."""
-    return subprocess.run(
-        [*UV_LUCIUS_COMMAND, *args],
-        capture_output=True,
-        text=True,
-        cwd=PROJECT_ROOT,
-        env=_subprocess_env(env),
-    )
+    with _subprocess_env(env) as resolved_env:
+        return subprocess.run(
+            [*UV_LUCIUS_COMMAND, *args],
+            capture_output=True,
+            text=True,
+            cwd=PROJECT_ROOT,
+            env=resolved_env,
+        )
 
 
 def run_cli_with_mocked_result(
@@ -167,19 +179,19 @@ def run_uv_cli_with_mocked_result(
             ),
             encoding="utf-8",
         )
-        resolved_env = _subprocess_env(env)
-        pythonpath_parts = [str(patch_path), str(PROJECT_ROOT)]
-        existing_pythonpath = resolved_env.get("PYTHONPATH")
-        if existing_pythonpath:
-            pythonpath_parts.append(existing_pythonpath)
-        resolved_env["PYTHONPATH"] = os.pathsep.join(pythonpath_parts)
-        return subprocess.run(
-            [*UV_LUCIUS_COMMAND, *args],
-            capture_output=True,
-            text=True,
-            cwd=PROJECT_ROOT,
-            env=resolved_env,
-        )
+        with _subprocess_env(env) as resolved_env:
+            pythonpath_parts = [str(patch_path), str(PROJECT_ROOT)]
+            existing_pythonpath = resolved_env.get("PYTHONPATH")
+            if existing_pythonpath:
+                pythonpath_parts.append(existing_pythonpath)
+            resolved_env["PYTHONPATH"] = os.pathsep.join(pythonpath_parts)
+            return subprocess.run(
+                [*UV_LUCIUS_COMMAND, *args],
+                capture_output=True,
+                text=True,
+                cwd=PROJECT_ROOT,
+                env=resolved_env,
+            )
 
 
 def run_uv_cli_with_mocked_message_output(
@@ -215,16 +227,16 @@ def run_uv_cli_with_mocked_message_output(
             ),
             encoding="utf-8",
         )
-        resolved_env = _subprocess_env(env)
-        pythonpath_parts = [str(patch_path), str(PROJECT_ROOT)]
-        existing_pythonpath = resolved_env.get("PYTHONPATH")
-        if existing_pythonpath:
-            pythonpath_parts.append(existing_pythonpath)
-        resolved_env["PYTHONPATH"] = os.pathsep.join(pythonpath_parts)
-        return subprocess.run(
-            [*UV_LUCIUS_COMMAND, *args],
-            capture_output=True,
-            text=True,
-            cwd=PROJECT_ROOT,
-            env=resolved_env,
-        )
+        with _subprocess_env(env) as resolved_env:
+            pythonpath_parts = [str(patch_path), str(PROJECT_ROOT)]
+            existing_pythonpath = resolved_env.get("PYTHONPATH")
+            if existing_pythonpath:
+                pythonpath_parts.append(existing_pythonpath)
+            resolved_env["PYTHONPATH"] = os.pathsep.join(pythonpath_parts)
+            return subprocess.run(
+                [*UV_LUCIUS_COMMAND, *args],
+                capture_output=True,
+                text=True,
+                cwd=PROJECT_ROOT,
+                env=resolved_env,
+            )

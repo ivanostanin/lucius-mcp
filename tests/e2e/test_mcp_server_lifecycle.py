@@ -58,16 +58,17 @@ def mcpb_python_bundle_path() -> Path:
     script_path = repo_root / "deployment/scripts/build-mcpb.sh"
 
     bash_path = shutil.which("bash") or "/bin/bash"
-    env = os.environ.copy()
-    env.setdefault("UV_CACHE_DIR", tempfile.mkdtemp(prefix="lucius-uv-cache-"))
-    result = subprocess.run(
-        [bash_path, str(script_path)],
-        capture_output=True,
-        text=True,
-        cwd=str(repo_root),
-        check=False,
-        env=env,
-    )
+    with tempfile.TemporaryDirectory(prefix="lucius-uv-cache-") as cache_dir:
+        env = os.environ.copy()
+        env.setdefault("UV_CACHE_DIR", cache_dir)
+        result = subprocess.run(
+            [bash_path, str(script_path)],
+            capture_output=True,
+            text=True,
+            cwd=str(repo_root),
+            check=False,
+            env=env,
+        )
     if result.returncode != 0 and _is_network_build_failure(result.stdout + result.stderr):
         pytest.skip("build-mcpb.sh requires network access in this environment")
     assert result.returncode == 0, f"build-mcpb.sh failed: {result.stdout}\n{result.stderr}"
