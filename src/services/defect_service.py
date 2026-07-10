@@ -299,6 +299,24 @@ class DefectService:
             already_linked=already_linked,
         )
 
+    async def unlink_issue_from_test_case(self, test_case_id: int, issue_id: int | str) -> bool:
+        """Unlink an issue from a test case.
+
+        Args:
+            test_case_id: ID of the target test case.
+            issue_id: Issue key or Allure internal issue-link ID.
+
+        Returns:
+            True if the issue was already absent; otherwise False.
+
+        Raises:
+            AllureValidationError: If the supplied IDs are invalid.
+            TestCaseNotFoundError: If the test case does not exist.
+        """
+        self._validate_positive_id(test_case_id, "Test case ID")
+        removed = await TestCaseService(self._client).unlink_issue_from_test_case(test_case_id, issue_id)
+        return not removed
+
     async def list_defect_test_cases(
         self,
         defect_id: int,

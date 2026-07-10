@@ -4832,6 +4832,70 @@
       "execution": null
     },
     {
+      "name": "unlink_issue_from_test_case",
+      "title": "Unlink Issue From Test Case",
+      "description": "Unlink an issue from a test case.\n\nThis operation is idempotent: if the issue is already unlinked, it still\nreturns a successful confirmation. Supply the issue key (for example,\n``PROJ-123``) or the internal issue-link ID returned by Allure TestOps.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "test_case_id": {
+            "description": "ID of the test case to unlink from",
+            "type": "integer"
+          },
+          "issue_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "description": "Issue key or internal issue-link ID to unlink"
+          },
+          "output_format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "plain",
+                  "json"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Output format: 'json' (default) or 'plain'."
+          }
+        },
+        "required": [
+          "test_case_id",
+          "issue_id"
+        ],
+        "type": "object"
+      },
+      "outputSchema": null,
+      "icons": null,
+      "annotations": {
+        "title": "Unlink Issue From Test Case",
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": null
+      },
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "defect",
+            "test-case"
+          ]
+        }
+      },
+      "execution": null
+    },
+    {
       "name": "update_defect",
       "title": "Update Defect",
       "description": "Update an existing defect's name, description, or status.\n\nAt least one field must be provided. Fields set to null/None are\nleft unchanged.",

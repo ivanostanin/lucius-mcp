@@ -11,6 +11,7 @@ from src.tools.defects import (
     create_defect,
     link_defect_to_test_case,
     list_defect_test_cases,
+    unlink_issue_from_test_case,
 )
 from tests.e2e.helpers.cleanup import CleanupTracker
 
@@ -100,3 +101,20 @@ async def test_defect_testcase_linking_lifecycle(
     )
     assert "Defect" in reuse_output
     assert "Test Case" in reuse_output
+
+    unlink_output = await unlink_issue_from_test_case(
+        test_case_id=test_case_id,
+        issue_id=issue_key,
+        output_format="plain",
+    )
+    assert unlink_output == f"Successfully unlinked issue {issue_key} from test case {test_case_id}"
+
+    unlinked_case = await allure_client.get_test_case(test_case_id)
+    assert all(issue.name != issue_key for issue in (unlinked_case.issues or []))
+
+    repeated_unlink_output = await unlink_issue_from_test_case(
+        test_case_id=test_case_id,
+        issue_id=issue_key,
+        output_format="plain",
+    )
+    assert repeated_unlink_output == f"Successfully unlinked issue {issue_key} from test case {test_case_id}"
