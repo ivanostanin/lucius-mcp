@@ -382,6 +382,46 @@ async def list_defect_test_cases(
         )
 
 
+async def unlink_issue_from_test_case(
+    test_case_id: Annotated[int, "ID of the test case to unlink from"],
+    issue_id: Annotated[int | str, "Issue key or internal issue-link ID to unlink"],
+    output_format: Annotated[
+        OutputFormat | None, "Output format: 'json' (default) or 'plain'."
+    ] = DEFAULT_OUTPUT_FORMAT,
+) -> ToolOutput:
+    """Unlink an issue from a test case.
+
+    This operation is idempotent: if the issue is already unlinked, it still
+    returns a successful confirmation. Supply the issue key (for example,
+    ``PROJ-123``) or the internal issue-link ID returned by Allure TestOps.
+
+    Args:
+        test_case_id: Numeric ID of the test case.
+        issue_id: Issue key or Allure internal issue-link ID.
+        output_format: Output format: 'json' (default) or 'plain'.
+
+    Returns:
+        A confirmation that the issue is no longer linked to the test case.
+    """
+    async with AllureClient.from_env() as client:
+        service = DefectService(client)
+        already_unlinked = await service.unlink_issue_from_test_case(
+            test_case_id=test_case_id,
+            issue_id=issue_id,
+        )
+        message = f"Successfully unlinked issue {issue_id} from test case {test_case_id}"
+        return render_output(
+            plain=message,
+            json_payload={
+                "test_case_id": test_case_id,
+                "issue_id": issue_id,
+                "status": "unlinked",
+                "already_unlinked": already_unlinked,
+            },
+            output_format=output_format,
+        )
+
+
 # ── Defect Matcher tools ──────────────────────────────────────────
 
 

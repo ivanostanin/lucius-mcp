@@ -4,6 +4,7 @@ import pytest
 
 from src.client import AllureClient
 from src.client.exceptions import AllureValidationError
+from src.client.generated.exceptions import ApiException
 from src.client.generated.models import TestCaseDto
 from src.services.test_case_service import TestCaseService, TestCaseUpdate
 
@@ -141,6 +142,79 @@ class TestIssueLinking:
         assert request_dto.ids == [999]
         assert request_dto.selection.leafs_include == [test_case_id]
         assert request_dto.selection.project_id == 166
+
+    @pytest.mark.asyncio
+    @patch("src.client.generated.api.test_case_bulk_controller_api.TestCaseBulkControllerApi")
+    async def test_unlink_issue_from_test_case_matches_issue_key(self, mock_bulk_api, service: TestCaseService) -> None:
+        """Unlinking resolves an issue key to its internal link ID."""
+        linked_issue = Mock()
+        linked_issue.id = 999
+        linked_issue.name = "PROJ-123"
+        service.get_test_case = AsyncMock(return_value=Mock(issues=[linked_issue], project_id=166))
+        mock_bulk_api.return_value.issue_remove1 = AsyncMock()
+
+        removed = await service.unlink_issue_from_test_case(100, "proj-123")
+
+        assert removed is True
+        request_dto = mock_bulk_api.return_value.issue_remove1.call_args.args[0]
+        assert request_dto.ids == [999]
+        assert request_dto.selection.leafs_include == [100]
+        assert request_dto.selection.project_id == 166
+
+    @pytest.mark.asyncio
+    @patch("src.client.generated.api.test_case_bulk_controller_api.TestCaseBulkControllerApi")
+    async def test_unlink_issue_from_test_case_matches_internal_link_id(
+        self, mock_bulk_api, service: TestCaseService
+    ) -> None:
+        """An internal issue link ID is accepted as an alternative to its key."""
+        linked_issue = Mock()
+        linked_issue.id = 999
+        linked_issue.name = "PROJ-123"
+        service.get_test_case = AsyncMock(return_value=Mock(issues=[linked_issue], project_id=166))
+        mock_bulk_api.return_value.issue_remove1 = AsyncMock()
+
+        removed = await service.unlink_issue_from_test_case(100, 999)
+
+        assert removed is True
+        assert mock_bulk_api.return_value.issue_remove1.await_count == 1
+
+    @pytest.mark.asyncio
+    @patch("src.client.generated.api.test_case_bulk_controller_api.TestCaseBulkControllerApi")
+    async def test_unlink_issue_from_test_case_is_idempotent_when_link_is_missing(
+        self, mock_bulk_api, service: TestCaseService
+    ) -> None:
+        """A missing issue link is treated as an already-completed unlink."""
+        service.get_test_case = AsyncMock(return_value=Mock(issues=[], project_id=166))
+
+        removed = await service.unlink_issue_from_test_case(100, "PROJ-123")
+
+        assert removed is False
+        mock_bulk_api.return_value.issue_remove1.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch("src.client.generated.api.test_case_bulk_controller_api.TestCaseBulkControllerApi")
+    async def test_unlink_issue_from_test_case_treats_racing_404_as_idempotent(
+        self, mock_bulk_api, service: TestCaseService
+    ) -> None:
+        """A link removed after retrieval still produces a successful no-op."""
+        linked_issue = Mock()
+        linked_issue.id = 999
+        linked_issue.name = "PROJ-123"
+        service.get_test_case = AsyncMock(return_value=Mock(issues=[linked_issue], project_id=166))
+        mock_bulk_api.return_value.issue_remove1 = AsyncMock(side_effect=ApiException(status=404, reason="Not Found"))
+
+        removed = await service.unlink_issue_from_test_case(100, "PROJ-123")
+
+        assert removed is False
+
+    @pytest.mark.asyncio
+    async def test_unlink_issue_from_test_case_validates_identifiers(self, service: TestCaseService) -> None:
+        """The service rejects invalid required identifiers before calling Allure."""
+        with pytest.raises(AllureValidationError, match="Test case ID"):
+            await service.unlink_issue_from_test_case(0, "PROJ-123")
+
+        with pytest.raises(AllureValidationError, match="Issue ID"):
+            await service.unlink_issue_from_test_case(100, " ")
 
     @pytest.mark.asyncio
     @patch("src.client.generated.api.test_case_bulk_controller_api.TestCaseBulkControllerApi")

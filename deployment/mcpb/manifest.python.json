@@ -267,6 +267,10 @@
       "description": "Link a defect to a test case through a shared issue mapping."
     },
     {
+      "name": "unlink_issue_from_test_case",
+      "description": "Unlink an issue from a test case."
+    },
+    {
       "name": "list_defect_test_cases",
       "description": "List test cases linked to a defect."
     },

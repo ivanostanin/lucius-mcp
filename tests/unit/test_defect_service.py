@@ -199,6 +199,19 @@ async def test_link_defect_to_test_case_explicit_mapping(service: DefectService)
 
 
 @pytest.mark.asyncio
+async def test_unlink_issue_from_test_case_delegates_to_test_case_service(service: DefectService) -> None:
+    """The defect service delegates issue unlinking to the test-case service."""
+    with patch("src.services.defect_service.TestCaseService") as mock_tc_cls:
+        mock_tc = mock_tc_cls.return_value
+        mock_tc.unlink_issue_from_test_case = AsyncMock(return_value=False)
+
+        already_unlinked = await service.unlink_issue_from_test_case(test_case_id=20, issue_id="PROJ-123")
+
+        assert already_unlinked is True
+        mock_tc.unlink_issue_from_test_case.assert_awaited_once_with(20, "PROJ-123")
+
+
+@pytest.mark.asyncio
 async def test_link_defect_to_test_case_explicit_mapping_by_integration_name(service: DefectService) -> None:
     with (
         patch("src.services.defect_service.DefectControllerApi") as mock_ctl,

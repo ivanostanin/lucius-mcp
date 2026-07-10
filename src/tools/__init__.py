@@ -13,6 +13,7 @@ from src.tools.defects import (
     list_defect_matchers,
     list_defect_test_cases,
     list_defects,
+    unlink_issue_from_test_case,
     update_defect,
     update_defect_matcher,
 )
@@ -120,6 +121,7 @@ __all__ = [
     "search_test_cases",
     "start_manual_test_session",
     "submit_manual_test_results",
+    "unlink_issue_from_test_case",
     "unlink_shared_step",
     "update_custom_field_value",
     "update_defect",
@@ -196,6 +198,7 @@ all_tools: list[ToolFn] = [
     get_defect,
     link_defect_to_test_case,
     list_defect_test_cases,
+    unlink_issue_from_test_case,
     update_defect,
     delete_defect,
     list_defects,

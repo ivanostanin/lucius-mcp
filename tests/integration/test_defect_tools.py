@@ -20,6 +20,7 @@ from src.tools.defects import (
     list_defect_matchers,
     list_defect_test_cases,
     list_defects,
+    unlink_issue_from_test_case,
     update_defect,
     update_defect_matcher,
 )
@@ -295,6 +296,29 @@ async def test_link_defect_to_test_case_tool_idempotent() -> None:
             assert "No changes made" in output
             assert "Defect URL: https://example.com/project/1/defects/10" in output
             assert "Test Case URL: https://example.com/project/1/test-cases/20" in output
+
+
+@pytest.mark.asyncio
+async def test_unlink_issue_from_test_case_tool_returns_confirmation() -> None:
+    with patch("src.tools.defects.AllureClient.from_env") as mock_ctx:
+        mock_client = _mock_url_context()
+        mock_ctx.return_value.__aenter__.return_value = mock_client
+
+        with patch("src.tools.defects.DefectService") as mock_svc_cls:
+            mock_svc = mock_svc_cls.return_value
+            mock_svc.unlink_issue_from_test_case = AsyncMock(return_value=False)
+
+            output = await unlink_issue_from_test_case(
+                test_case_id=20,
+                issue_id="PROJ-123",
+                output_format="plain",
+            )
+
+            assert output == "Successfully unlinked issue PROJ-123 from test case 20"
+            mock_svc.unlink_issue_from_test_case.assert_awaited_once_with(
+                test_case_id=20,
+                issue_id="PROJ-123",
+            )
 
 
 @pytest.mark.asyncio

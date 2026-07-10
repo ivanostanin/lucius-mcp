@@ -71,7 +71,7 @@ From `src/tools/__init__.py:24-79`:
 - `create_test_suite`, `list_test_suites`, `assign_test_cases_to_suite`, `delete_test_suite`
 - `list_integrations`
 - `create_test_plan`, `update_test_plan`, `manage_test_plan_content`, `list_test_plans`, `delete_test_plan`
-- `create_defect`, `get_defect`, `update_defect`, `delete_defect`, `list_defects`, `link_defect_to_test_case`, `list_defect_test_cases`
+- `create_defect`, `get_defect`, `update_defect`, `delete_defect`, `list_defects`, `link_defect_to_test_case`, `unlink_issue_from_test_case`, `list_defect_test_cases`
 - `create_defect_matcher`, `update_defect_matcher`, `delete_defect_matcher`, `list_defect_matchers`
 
 ## Execution plan
@@ -386,10 +386,22 @@ From `src/tools/__init__.py:24-79`:
      - Expectation: Output indicates no-op/already linked (idempotent behavior).
   7. **Reuse Existing Defect Issue**: `link_defect_to_test_case(defect_id=LINK_DEFECT_ID, test_case_id=LINK_TC_ID)` (omit `issue_key`)
      - Expectation: Output succeeds by reusing defect issue mapping.
-  8. **Cleanup**: `delete_test_case(test_case_id=LINK_TC_ID, confirm=true)` and `delete_defect(defect_id=LINK_DEFECT_ID, confirm=true)`
+
+#### 13. Unlink Issues
+- **Scenario source**: `specs/implementation-artifacts/7-5-unlink-defects-from-test-cases.md`
+- **Goal**: Verify issue unlinking from a test case, including idempotency.
+- **Prerequisite**: Complete Scenario 12 through its issue-linking steps and retain `LINK_TC_ID`.
+- **Steps**:
+  1. **Unlink Issue**: `unlink_issue_from_test_case(test_case_id=LINK_TC_ID, issue_id="PROJ-7004")`
+     - Expectation: Output equals `"Successfully unlinked issue PROJ-7004 from test case LINK_TC_ID"`.
+  2. **Verify Unlink**: `get_test_case_details(test_case_id=LINK_TC_ID)`
+     - Expectation: The issue key `PROJ-7004` is absent from the issue links.
+  3. **Repeat Unlink**: `unlink_issue_from_test_case(test_case_id=LINK_TC_ID, issue_id="PROJ-7004")`
+      - Expectation: The same successful confirmation, proving idempotency.
+  4. **Cleanup**: `delete_test_case(test_case_id=LINK_TC_ID, confirm=true)` and `delete_defect(defect_id=LINK_DEFECT_ID, confirm=true)`
      - Expectation: Cleanup operations succeed.
 
-#### 13. Cleanup Archived Entities
+#### 14. Cleanup Archived Entities
 - **Scenario source**: `specs/implementation-artifacts/6-4-delete-archived-test-cases.md`
 - **Goal**: Verify destructive cleanup tools and safeguards.
 - **Steps**:
@@ -442,8 +454,8 @@ From `src/tools/__init__.py:24-79`:
 - **Custom Field Values**: 9 covers `create_custom_field_value`, `list_custom_field_values`, `update_custom_field_value`, `delete_custom_field_value`.
 - **Issue Linking & Integrations**: 10 covers `list_integrations` and `issues` parameter in `create_test_case` and `update_test_case` (add, remove, clear, explicit integration selection).
 - **Test Plans**: 11 covers `create_test_plan`, `update_test_plan`, `manage_test_plan_content`, `list_test_plans`, `delete_test_plan`.
-- **Defects**: 12 covers `create_defect`, `get_defect`, `update_defect`, `delete_defect`, `list_defects`, `create_defect_matcher`, `update_defect_matcher`, `delete_defect_matcher`, `list_defect_matchers`.
-- **Cleanup**: 13 covers `delete_archived_test_cases`, `delete_archived_shared_steps`, `delete_unused_custom_fields`.
+- **Defects**: 12 covers `create_defect`, `get_defect`, `update_defect`, `delete_defect`, `list_defects`, `create_defect_matcher`, `update_defect_matcher`, `delete_defect_matcher`, `list_defect_matchers`; 12 (Defect-TestCase Linking) covers `link_defect_to_test_case` and `list_defect_test_cases`; 13 (Unlink Issues) covers `unlink_issue_from_test_case`.
+- **Cleanup**: 14 covers `delete_archived_test_cases`, `delete_archived_shared_steps`, `delete_unused_custom_fields`.
 
 ## Notes / constraints
 - Some E2E checks use service-level assertions (scenario DTOs). Manual validation relies on tool outputs + `get_test_case_details` as the closest proxy.
