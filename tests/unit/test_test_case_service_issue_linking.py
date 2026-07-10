@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from src.client import AllureClient
-from src.client.exceptions import AllureValidationError
+from src.client.exceptions import AllureAPIError, AllureValidationError, TestCaseNotFoundError
 from src.client.generated.exceptions import ApiException
 from src.client.generated.models import TestCaseDto
 from src.services.test_case_service import TestCaseService, TestCaseUpdate
@@ -180,6 +180,27 @@ class TestIssueLinking:
 
     @pytest.mark.asyncio
     @patch("src.client.generated.api.test_case_bulk_controller_api.TestCaseBulkControllerApi")
+    async def test_unlink_issue_from_test_case_rejects_ambiguous_issue_key(
+        self, mock_bulk_api, service: TestCaseService
+    ) -> None:
+        """A duplicate issue key requires the caller to supply a link ID."""
+        first_issue = Mock()
+        first_issue.id = 999
+        first_issue.name = "PROJ-123"
+        first_issue.integration_id = 1
+        second_issue = Mock()
+        second_issue.id = 1000
+        second_issue.name = "PROJ-123"
+        second_issue.integration_id = 2
+        service.get_test_case = AsyncMock(return_value=Mock(issues=[first_issue, second_issue], project_id=166))
+
+        with pytest.raises(AllureValidationError, match="matches multiple links"):
+            await service.unlink_issue_from_test_case(100, "PROJ-123")
+
+        mock_bulk_api.return_value.issue_remove1.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch("src.client.generated.api.test_case_bulk_controller_api.TestCaseBulkControllerApi")
     async def test_unlink_issue_from_test_case_is_idempotent_when_link_is_missing(
         self, mock_bulk_api, service: TestCaseService
     ) -> None:
@@ -200,7 +221,12 @@ class TestIssueLinking:
         linked_issue = Mock()
         linked_issue.id = 999
         linked_issue.name = "PROJ-123"
-        service.get_test_case = AsyncMock(return_value=Mock(issues=[linked_issue], project_id=166))
+        service.get_test_case = AsyncMock(
+            side_effect=[
+                Mock(issues=[linked_issue], project_id=166),
+                Mock(issues=[], project_id=166),
+            ]
+        )
         mock_bulk_api.return_value.issue_remove1 = AsyncMock(side_effect=ApiException(status=404, reason="Not Found"))
 
         removed = await service.unlink_issue_from_test_case(100, "PROJ-123")
@@ -208,10 +234,61 @@ class TestIssueLinking:
         assert removed is False
 
     @pytest.mark.asyncio
+    @patch("src.client.generated.api.test_case_bulk_controller_api.TestCaseBulkControllerApi")
+    async def test_unlink_issue_from_test_case_raises_when_link_remains_after_404(
+        self, mock_bulk_api, service: TestCaseService
+    ) -> None:
+        """A 404 is not idempotent when the refreshed case still has the link."""
+        linked_issue = Mock()
+        linked_issue.id = 999
+        linked_issue.name = "PROJ-123"
+        service.get_test_case = AsyncMock(
+            side_effect=[
+                Mock(issues=[linked_issue], project_id=166),
+                Mock(issues=[linked_issue], project_id=166),
+            ]
+        )
+        mock_bulk_api.return_value.issue_remove1 = AsyncMock(side_effect=ApiException(status=404, reason="Not Found"))
+
+        with pytest.raises(AllureAPIError, match="is still linked"):
+            await service.unlink_issue_from_test_case(100, "PROJ-123")
+
+    @pytest.mark.asyncio
+    @patch("src.client.generated.api.test_case_bulk_controller_api.TestCaseBulkControllerApi")
+    async def test_unlink_issue_from_test_case_propagates_racing_test_case_deletion(
+        self, mock_bulk_api, service: TestCaseService
+    ) -> None:
+        """A 404 caused by test-case deletion is not mistaken for an absent link."""
+        linked_issue = Mock()
+        linked_issue.id = 999
+        linked_issue.name = "PROJ-123"
+        service.get_test_case = AsyncMock(
+            side_effect=[
+                Mock(issues=[linked_issue], project_id=166),
+                TestCaseNotFoundError(test_case_id=100),
+            ]
+        )
+        mock_bulk_api.return_value.issue_remove1 = AsyncMock(side_effect=ApiException(status=404, reason="Not Found"))
+
+        with pytest.raises(TestCaseNotFoundError):
+            await service.unlink_issue_from_test_case(100, "PROJ-123")
+
+    @pytest.mark.asyncio
+    async def test_unlink_issue_from_test_case_rejects_unavailable_issue_links(self, service: TestCaseService) -> None:
+        """A missing overview must not be reported as a successful idempotent unlink."""
+        service.get_test_case = AsyncMock(return_value=Mock(issues=None, project_id=166))
+
+        with pytest.raises(AllureAPIError, match="Unable to retrieve issue links"):
+            await service.unlink_issue_from_test_case(100, "PROJ-123")
+
+    @pytest.mark.asyncio
     async def test_unlink_issue_from_test_case_validates_identifiers(self, service: TestCaseService) -> None:
         """The service rejects invalid required identifiers before calling Allure."""
         with pytest.raises(AllureValidationError, match="Test case ID"):
             await service.unlink_issue_from_test_case(0, "PROJ-123")
+
+        with pytest.raises(AllureValidationError, match="Test case ID"):
+            await service.unlink_issue_from_test_case(True, "PROJ-123")
 
         with pytest.raises(AllureValidationError, match="Issue ID"):
             await service.unlink_issue_from_test_case(100, " ")

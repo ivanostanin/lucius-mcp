@@ -2482,8 +2482,10 @@ class AllureClient:
                 )
                 if overview.custom_fields:
                     case.custom_fields = overview.custom_fields
-                if overview.issues:
-                    case.issues = overview.issues
+                # Preserve an empty issue list so callers can distinguish a
+                # successful overview response with no links from a failed
+                # overview request, which leaves this field as None.
+                case.issues = overview.issues or []
             except Exception as e:
                 logger.warning(f"Failed to fetch overview for test case {test_case_id}: {e}")
 

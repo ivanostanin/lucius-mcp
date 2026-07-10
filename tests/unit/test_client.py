@@ -202,13 +202,18 @@ async def test_get_test_case_success(base_url: str, token: SecretStr, oauth_rout
     """Test successful get_test_case."""
     mock_response = {"id": 1, "name": "Test Case"}
     route = respx.get(f"{base_url}/api/testcase/1").mock(return_value=Response(200, json=mock_response))
+    overview_route = respx.get(f"{base_url}/api/testcase/1/overview").mock(
+        return_value=Response(200, json={"issues": []})
+    )
 
     async with AllureClient(base_url, token, project=1) as client:
         result = await client.get_test_case(1)
 
     assert result.id == 1
     assert result.name == "Test Case"
+    assert result.issues == []
     assert route.called
+    assert overview_route.called
 
 
 @pytest.mark.asyncio

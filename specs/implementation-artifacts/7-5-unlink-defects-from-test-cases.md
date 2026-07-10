@@ -1,6 +1,6 @@
 # Story 7.5: Unlink Defects from Test Cases
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -80,6 +80,14 @@ so that **I can correct erroneous associations or manage defect resolution statu
 
 - [x] **9. Validation**
   - [x] Run full test suite: `./scripts/full-test-suite.sh`
+
+### Review Findings
+
+- [x] [Review][Patch] Resolve duplicate issue keys deterministically or reject ambiguous key-based unlink requests [src/services/test_case_service.py:803]
+- [x] [Review][Patch] Reject boolean values for `test_case_id` with the standardized validation error [src/services/test_case_service.py:793]
+- [x] [Review][Patch] Distinguish a concurrent test-case deletion from an already-unlinked issue after a bulk-remove 404 [src/services/test_case_service.py:822]
+- [x] [Review][Patch] Do not return an unlink confirmation when the issue-link overview could not be retrieved [src/services/test_case_service.py:802]
+- [x] [Review][Patch] Revert unrelated Epic 5, 6, 9, 10-2, and 11-1 status transitions from this story branch [specs/implementation-artifacts/sprint-status.yaml:90]
 
 ## Dev Notes
 

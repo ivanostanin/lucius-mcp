@@ -790,7 +790,7 @@ class TestCaseService:
             AllureValidationError: If either identifier is invalid.
             TestCaseNotFoundError: If the test case does not exist.
         """
-        if not isinstance(test_case_id, int) or test_case_id <= 0:
+        if isinstance(test_case_id, bool) or not isinstance(test_case_id, int) or test_case_id <= 0:
             raise AllureValidationError("Test case ID must be a positive integer")
         if isinstance(issue_id, bool) or not isinstance(issue_id, (int, str)):
             raise AllureValidationError("Issue ID must be a non-empty string or positive integer")
@@ -800,15 +800,10 @@ class TestCaseService:
             raise AllureValidationError("Issue ID must be a non-empty string or positive integer")
 
         current_case = await self.get_test_case(test_case_id)
-        matched_issue = next(
-            (
-                issue
-                for issue in (current_case.issues or [])
-                if (issue.id is not None and str(issue.id) == issue_identifier)
-                or (issue.name is not None and issue.name.casefold() == issue_identifier.casefold())
-            ),
-            None,
-        )
+        if current_case.issues is None:
+            raise AllureAPIError(f"Unable to retrieve issue links for Test Case ID {test_case_id}")
+
+        matched_issue = self._resolve_issue_link(current_case.issues, issue_identifier)
         if matched_issue is None or matched_issue.id is None:
             return False
 
@@ -823,10 +818,36 @@ class TestCaseService:
             await bulk_api.issue_remove1(TestCaseBulkEntityIdsDto(ids=[matched_issue.id], selection=selection))
         except ApiException as exc:
             if exc.status == 404:
+                # The link may have been removed after the read. Recheck the
+                # test case so a concurrently deleted case still surfaces as
+                # the required not-found error rather than a false success,
+                # and do not treat an unchanged link as an idempotent result.
+                refreshed_case = await self.get_test_case(test_case_id)
+                if any(issue.id == matched_issue.id for issue in (refreshed_case.issues or [])):
+                    raise AllureAPIError(
+                        f"Issue {issue_identifier} is still linked to Test Case ID {test_case_id} after removal failed"
+                    ) from exc
                 logger.info("Issue %s was already unlinked from Test Case %s", issue_identifier, test_case_id)
                 return False
             raise
         return True
+
+    @staticmethod
+    def _resolve_issue_link(issues: list[IssueDto], issue_identifier: str) -> IssueDto | None:
+        """Find exactly one issue link matching an internal ID or issue key."""
+        matched_issues = [
+            issue
+            for issue in issues
+            if (issue.id is not None and str(issue.id) == issue_identifier)
+            or (issue.name is not None and issue.name.casefold() == issue_identifier.casefold())
+        ]
+        if not matched_issues:
+            return None
+        if len(matched_issues) > 1:
+            raise AllureValidationError(
+                f"Issue key '{issue_identifier}' matches multiple links. Provide the internal issue-link ID instead."
+            )
+        return matched_issues[0]
 
     MAX_ISSUE_KEY_LENGTH = 50
     ISSUE_KEY_PATTERN = re.compile(r"^[A-Z0-9]+-\d+$", re.IGNORECASE)
