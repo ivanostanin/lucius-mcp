@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.12.0] - 2026-07-15
+
+### Added
+- Added `upload_test_results` to append externally produced test results to an existing launch with concurrent batch processing and per-result failure reporting (#271).
+- Added `unlink_issue_from_test_case` for idempotent issue-link removal from test cases by issue key or internal link ID (#272).
+
+### Changed
+- Updated locked runtime and tooling dependencies, including FastMCP 3.4.4, Cyclopts 4.21.0, Mypy 2.2.0, Ruff 0.15.21, and Uvicorn 0.51.0 (#278).
+
 ## [v0.11.0] - 2026-07-06
 
 ### Added
@@ -269,7 +278,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.12.0...HEAD
+[v0.12.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.11.0...v0.12.0
 [v0.11.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.6...v0.11.0
 [v0.10.6]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.5...v0.10.6
 [v0.10.5]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.4...v0.10.5
