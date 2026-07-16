@@ -1,7 +1,7 @@
 <!-- mcp-name: io.github.ivanostanin/lucius-mcp -->
 [![PyPI Version](https://img.shields.io/pypi/v/lucius-mcp)](https://pypi.org/project/lucius-mcp/)
 [![PyPI Python Version](https://img.shields.io/pypi/pyversions/lucius-mcp)](https://pypi.org/project/lucius-mcp/)
-[![PyPI Downloads](https://shields.io/pypi/dm/lucius-mcp)](https://pypi.org/project/lucius-mcp/)
+[![PyPI Downloads](https://shields.io/pypi/dw/lucius-mcp)](https://pypi.org/project/lucius-mcp/)
 [![GitHub License](https://img.shields.io/github/license/ivanostanin/lucius-mcp)](https://github.com/ivanostanin/lucius-mcp/blob/main/LICENSE)
 
 # Allure TestOps MCP Server
