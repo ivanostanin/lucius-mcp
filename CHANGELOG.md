@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.12.1] - 2026-07-17
+
+### Changed
+- Updated the MCP runtime dependency to 1.28.1 (#282).
+- Synchronized the MCP manifest release workflow (#283).
+- Updated download badges and weekly download metrics (#280, #281).
+
+### Fixed
+- Corrected launch deletion semantics (#284).
+- Improved MCPB validation to inspect FastMCP tools (#285).
+- Hardened authentication response handling (#286).
+
 ## [v0.12.0] - 2026-07-15
 
 ### Added
@@ -278,7 +290,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.12.1...HEAD
+[v0.12.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.12.0...v0.12.1
 [v0.12.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.11.0...v0.12.0
 [v0.11.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.6...v0.11.0
 [v0.10.6]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.5...v0.10.6
