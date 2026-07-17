@@ -38,6 +38,10 @@ uv run mypy src
 - When touching telemetry, preserve the privacy constraints documented in `docs/development.md`.
 - When updating stories or sprint artifacts, keep them consistent with the code and tests.
 
+## Pull Request Defaults
+
+- When creating a pull request, use a Conventional Commit title and complete the repository's existing pull-request template unless the user instructs otherwise.
+
 ## Validation
 
 - Run the smallest relevant checks first.
