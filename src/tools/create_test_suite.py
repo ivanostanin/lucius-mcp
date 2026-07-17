@@ -14,8 +14,10 @@ from pydantic import Field
 from src.client import AllureClient
 from src.services.test_hierarchy_service import TestHierarchyService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
+from src.tools.output_schemas import output_fields
 
 
+@output_fields("id", "name", "tree_id", "parent_suite_id")
 async def create_test_suite(
     name: Annotated[str, Field(description="Suite name to create in hierarchy.")],
     project_id: Annotated[int | None, Field(description="Allure TestOps project ID.")] = None,

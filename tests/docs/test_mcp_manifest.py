@@ -6,6 +6,7 @@ import pytest
 
 from src.tools import all_tools
 from src.tools.annotations import TOOL_HINT_POLICY, TOOL_TAGS
+from src.tools.output_schemas import output_schema_for
 
 
 def _project_root() -> Path:
@@ -174,3 +175,21 @@ def test_manifest_tools_have_title_description_annotations_and_tags() -> None:
 
     if errors:
         pytest.fail("Manifest metadata validation failed:\n- " + "\n- ".join(errors))
+
+
+def test_manifest_output_schemas_match_the_registered_contracts() -> None:
+    tools = _manifest_tools(_load_manifest())
+
+    for tool in tools:
+        name = tool["name"]
+        assert isinstance(name, str)
+        schema = tool.get("outputSchema")
+        assert isinstance(schema, dict), f"{name}: outputSchema must be an object"
+        assert schema.get("type") == "object", f"{name}: outputSchema must have an object root"
+        assert schema.get("properties"), f"{name}: outputSchema must declare properties"
+        assert schema.get("properties") != {"result": {"type": "string"}}, f"{name}: generic wrapper is forbidden"
+        registered_schema = output_schema_for(name)
+        assert schema.get("title") == registered_schema.get("title"), f"{name}: manifest schema title drifted"
+        assert set(schema["properties"]) == set(registered_schema["properties"]), f"{name}: manifest fields drifted"
+        assert schema.get("required", []) == registered_schema.get("required", []), f"{name}: required fields drifted"
+        assert schema.get("additionalProperties") is False, f"{name}: undeclared fields must be rejected"

@@ -7,8 +7,10 @@ from pydantic import Field
 from src.client import AllureClient
 from src.services.test_layer_service import TestLayerService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
+from src.tools.output_schemas import output_fields
 
 
+@output_fields("id", "key", "test_layer_id", "test_layer_name")
 async def create_test_layer_schema(
     key: Annotated[str, Field(description="The schema key (e.g., custom field name like 'layer' or 'test_layer').")],
     test_layer_id: Annotated[int, Field(description="ID of the test layer to link to this schema.")],

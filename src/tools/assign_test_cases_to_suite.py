@@ -14,8 +14,10 @@ from pydantic import Field
 from src.client import AllureClient
 from src.services.test_hierarchy_service import TestHierarchyService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
+from src.tools.output_schemas import output_fields
 
 
+@output_fields("tree_id", "suite_id", "test_case_ids", "assigned_count")
 async def assign_test_cases_to_suite(
     suite_id: Annotated[int, Field(description="Target suite/group node ID for assignment.")],
     test_case_ids: Annotated[list[int], Field(description="List of test case IDs to assign to the suite.")],

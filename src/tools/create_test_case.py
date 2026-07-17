@@ -7,9 +7,11 @@ from pydantic import Field
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
+from src.tools.output_schemas import output_fields
 from src.utils.links import test_case_url
 
 
+@output_fields("id", "name", "issues", "url")
 async def create_test_case(
     name: Annotated[str, Field(description="The name of the test case.")],
     description: Annotated[str | None, Field(description="A markdown description of the test case.")] = None,

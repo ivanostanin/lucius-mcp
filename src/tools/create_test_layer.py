@@ -7,8 +7,10 @@ from pydantic import Field
 from src.client import AllureClient
 from src.services.test_layer_service import TestLayerService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
+from src.tools.output_schemas import output_fields
 
 
+@output_fields("id", "name")
 async def create_test_layer(
     name: Annotated[str, Field(description="Name of the test layer (e.g., 'Unit', 'Integration', 'E2E').")],
     project_id: Annotated[

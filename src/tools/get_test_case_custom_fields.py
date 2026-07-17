@@ -5,8 +5,10 @@ from pydantic import Field
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
+from src.tools.output_schemas import output_fields
 
 
+@output_fields("test_case_id", "custom_fields")
 async def get_test_case_custom_fields(
     test_case_id: Annotated[int, Field(description="The ID of the test case to retrieve custom fields for")],
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,

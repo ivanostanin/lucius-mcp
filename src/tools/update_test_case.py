@@ -5,9 +5,11 @@ from pydantic import Field
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService, TestCaseUpdate
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
+from src.tools.output_schemas import output_fields
 from src.utils.links import normalize_links, test_case_url
 
 
+@output_fields("requires_confirmation", "action", "test_case_id", "id", "name", "summary", "changes", "url")
 async def update_test_case(  # noqa: C901
     test_case_id: Annotated[int, Field(description="The ID of the test case to update")],
     name: Annotated[str | None, Field(description="New name for the test case")] = None,

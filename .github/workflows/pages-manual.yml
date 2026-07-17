@@ -1,6 +1,11 @@
 name: Pages Deploy
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - docs/mcp-registry.html
+      - docs/mcp_manifest.json
   workflow_dispatch:
 
 permissions:

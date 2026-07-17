@@ -18,10 +18,29 @@ from src.services.launch_service import (
     ManualTestSubmissionResult,
 )
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
+from src.tools.output_schemas import output_fields
 from src.utils.auth_resolution import resolve_auth_settings
 from src.utils.links import launch_url
 
+_COLLECTION_OUTPUT_FIELDS = ("items", "total", "page", "size", "total_pages")
+_LAUNCH_OUTPUT_FIELDS = (
+    "id",
+    "name",
+    "closed",
+    "created_date",
+    "last_modified_date",
+    "project_id",
+    "autoclose",
+    "external",
+    "known_defects_count",
+    "new_defects_count",
+    "manual_execution_guidance",
+    "url",
+    "operation",
+)
 
+
+@output_fields(*_LAUNCH_OUTPUT_FIELDS)
 async def create_launch(
     name: Annotated[str, Field(description="Launch name (required).")],
     autoclose: Annotated[bool | None, Field(description="Whether the launch auto-closes.")] = None,
@@ -79,6 +98,7 @@ async def create_launch(
     )
 
 
+@output_fields("launch_id", "requested_count", "uploaded_count", "result_ids", "failures")
 async def upload_test_results(
     launch_id: Annotated[int, Field(description="Launch ID to receive the results (required).")],
     results: Annotated[
@@ -132,6 +152,7 @@ async def upload_test_results(
     )
 
 
+@output_fields(*_COLLECTION_OUTPUT_FIELDS)
 async def list_launches(
     page: Annotated[int, Field(description="Zero-based page index.")] = 0,
     size: Annotated[int, Field(description="Number of results per page (max 100).", le=100)] = 20,
@@ -186,6 +207,7 @@ async def list_launches(
     )
 
 
+@output_fields(*_LAUNCH_OUTPUT_FIELDS)
 async def get_launch(
     launch_id: Annotated[int, Field(description="Launch ID (required).")],
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
@@ -216,6 +238,7 @@ async def get_launch(
     )
 
 
+@output_fields("launch_id", "manual_only", "failed_only", *_COLLECTION_OUTPUT_FIELDS)
 async def list_launch_test_results(
     launch_id: Annotated[int, Field(description="Launch ID (required).")],
     manual_only: Annotated[
@@ -297,6 +320,7 @@ async def list_launch_test_results(
     )
 
 
+@output_fields("launch_id", "result_ids", "scheduled_count", "assignees", "force_manual")
 async def rerun_test_results_manually(
     launch_id: Annotated[int, Field(description="Launch ID containing the failed results (required).")],
     result_ids: Annotated[
@@ -352,6 +376,7 @@ async def rerun_test_results_manually(
     )
 
 
+@output_fields("test_session_id", "launch_id", "job_id", "job_run_id", "project_id", "environment")
 async def start_manual_test_session(
     launch_id: Annotated[int, Field(description="Launch ID (required).")],
     environment: Annotated[
@@ -392,6 +417,7 @@ async def start_manual_test_session(
     )
 
 
+@output_fields("test_session_id", "result_ids", "submitted_count")
 async def submit_manual_test_results(
     test_session_id: Annotated[int, Field(description="Manual test session ID (required).")],
     results: Annotated[
@@ -440,6 +466,7 @@ async def submit_manual_test_results(
     )
 
 
+@output_fields("target_kind", "target_id", "file_names", "status_code")
 async def add_test_result_attachment(
     test_result_id: Annotated[int, Field(description="Manual test result ID (required).")],
     attachment: Annotated[
@@ -481,6 +508,7 @@ async def add_test_result_attachment(
     )
 
 
+@output_fields("target_kind", "target_id", "file_names", "status_code")
 async def add_test_step_attachment(
     test_result_id: Annotated[int, Field(description="Parent test result ID (required).")],
     attachment: Annotated[
@@ -562,6 +590,7 @@ async def add_test_step_attachment(
     )
 
 
+@output_fields("launch_id", "status", "message")
 async def delete_launch(
     launch_id: Annotated[int, Field(description="Launch ID to delete (required).")],
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
@@ -595,6 +624,7 @@ async def delete_launch(
     )
 
 
+@output_fields(*_LAUNCH_OUTPUT_FIELDS)
 async def close_launch(
     launch_id: Annotated[int, Field(description="Launch ID (required).")],
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
@@ -633,6 +663,7 @@ async def close_launch(
     )
 
 
+@output_fields(*_LAUNCH_OUTPUT_FIELDS)
 async def reopen_launch(
     launch_id: Annotated[int, Field(description="Launch ID (required).")],
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,

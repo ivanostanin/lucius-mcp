@@ -15,9 +15,11 @@ from src.tools.output_contract import (
     render_confirmation_required,
     render_output,
 )
+from src.tools.output_schemas import output_fields
 from src.utils.links import defect_url, test_case_url
 
 
+@output_fields("id", "name", "description", "url")
 async def create_defect(
     name: Annotated[str, "Name / title of the defect"],
     description: Annotated[str | None, "Optional markdown description"] = None,
@@ -58,6 +60,7 @@ async def create_defect(
         )
 
 
+@output_fields("id", "name", "description", "status", "closed", "url")
 async def get_defect(
     defect_id: Annotated[int, "ID of the defect to retrieve"],
     output_format: Annotated[
@@ -101,6 +104,7 @@ async def get_defect(
         )
 
 
+@output_fields("id", "name", "description", "status", "closed", "url")
 async def update_defect(
     defect_id: Annotated[int, "ID of the defect to update"],
     name: Annotated[str | None, "New defect name"] = None,
@@ -152,6 +156,7 @@ async def update_defect(
         )
 
 
+@output_fields("defect_id", "id", "status", "url")
 async def delete_defect(
     defect_id: Annotated[int, "ID of the defect to delete"],
     confirm: Annotated[
@@ -194,6 +199,7 @@ async def delete_defect(
         )
 
 
+@output_fields("items", "total", "page", "size", "total_pages")
 async def list_defects(
     output_format: Annotated[
         OutputFormat | None, "Output format: 'json' (default) or 'plain'."
@@ -232,6 +238,15 @@ async def list_defects(
         )
 
 
+@output_fields(
+    "defect_id",
+    "defect_url",
+    "test_case_id",
+    "test_case_url",
+    "integration_id",
+    "issue_key",
+    "already_linked",
+)
 async def link_defect_to_test_case(
     defect_id: Annotated[int, "ID of the defect to link"],
     test_case_id: Annotated[int, "ID of the test case to link"],
@@ -324,6 +339,7 @@ async def link_defect_to_test_case(
         )
 
 
+@output_fields("defect_id", "defect_url", "items", "total", "page", "size", "total_pages")
 async def list_defect_test_cases(
     defect_id: Annotated[int, "ID of the defect whose linked test cases should be listed"],
     page: Annotated[int, "Zero-based page index"] = 0,
@@ -382,6 +398,7 @@ async def list_defect_test_cases(
         )
 
 
+@output_fields("test_case_id", "issue_id", "status", "already_unlinked")
 async def unlink_issue_from_test_case(
     test_case_id: Annotated[int, "ID of the test case to unlink from"],
     issue_id: Annotated[int | str, "Issue key or internal issue-link ID to unlink"],
@@ -425,6 +442,7 @@ async def unlink_issue_from_test_case(
 # ── Defect Matcher tools ──────────────────────────────────────────
 
 
+@output_fields("id", "defect_id", "name", "message_regex", "trace_regex")
 async def create_defect_matcher(
     defect_id: Annotated[int, "ID of the parent defect"],
     name: Annotated[str, "Human-readable matcher rule name"],
@@ -483,6 +501,7 @@ async def create_defect_matcher(
         )
 
 
+@output_fields("id", "name", "message_regex", "trace_regex")
 async def update_defect_matcher(
     matcher_id: Annotated[int, "ID of the matcher to update"],
     name: Annotated[str | None, "New matcher name"] = None,
@@ -527,6 +546,7 @@ async def update_defect_matcher(
         )
 
 
+@output_fields("matcher_id", "id", "status")
 async def delete_defect_matcher(
     matcher_id: Annotated[int, "ID of the matcher to delete"],
     confirm: Annotated[
@@ -568,6 +588,7 @@ async def delete_defect_matcher(
         )
 
 
+@output_fields("defect_id", "items", "total", "page", "size", "total_pages")
 async def list_defect_matchers(
     defect_id: Annotated[int, "ID of the parent defect"],
     output_format: Annotated[

@@ -5,8 +5,10 @@ from pydantic import Field
 from src.client import AllureClient
 from src.services.test_case_service import TestCaseService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
+from src.tools.output_schemas import output_fields
 
 
+@output_fields("items", "total", "filter_name")
 async def get_custom_fields(
     name: Annotated[
         str | None, Field(description="Optional case-insensitive name filter to search for specific custom fields.")

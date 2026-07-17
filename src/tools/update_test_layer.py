@@ -7,8 +7,10 @@ from pydantic import Field
 from src.client import AllureClient
 from src.services.test_layer_service import TestLayerService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
+from src.tools.output_schemas import output_fields
 
 
+@output_fields("requires_confirmation", "action", "layer_id", "id", "name", "changed")
 async def update_test_layer(
     layer_id: Annotated[int, Field(description="ID of the test layer to update.")],
     name: Annotated[str, Field(description="New name for the test layer.")],

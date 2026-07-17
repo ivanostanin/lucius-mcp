@@ -7,8 +7,10 @@ from pydantic import Field
 from src.client import AllureClient
 from src.services.test_hierarchy_service import TestHierarchyService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
+from src.tools.output_schemas import output_fields
 
 
+@output_fields("requires_confirmation", "action", "suite_id", "status")
 async def delete_test_suite(
     suite_id: Annotated[int, Field(description="Suite/group node ID to delete from hierarchy.")],
     confirm: Annotated[
