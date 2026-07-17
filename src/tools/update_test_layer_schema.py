@@ -7,8 +7,18 @@ from pydantic import Field
 from src.client import AllureClient
 from src.services.test_layer_service import TestLayerService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
+from src.tools.output_schemas import output_fields
 
 
+@output_fields(
+    "requires_confirmation",
+    "action",
+    "schema_id",
+    "id",
+    "key",
+    "test_layer_name",
+    "changed",
+)
 async def update_test_layer_schema(
     schema_id: Annotated[int, Field(description="ID of the test layer schema to update.")],
     test_layer_id: Annotated[int | None, Field(description="New test layer ID to link to.")] = None,

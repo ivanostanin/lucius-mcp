@@ -6,9 +6,11 @@ from src.client import AllureClient, AllureValidationError
 from src.client.generated.models.shared_step_step_dto import SharedStepStepDto
 from src.services.search_service import SearchQueryParser, SearchService, TestCaseDetails, TestCaseListResult
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
+from src.tools.output_schemas import SearchTestCasesOutput, output_fields
 from src.utils.links import shared_step_url, test_case_url
 
 
+@output_fields("total", "page", "size", "total_pages", "items")
 async def list_test_cases(
     page: Annotated[int, Field(description="Zero-based page index.")] = 0,
     size: Annotated[int, Field(description="Number of results per page (max 100).", le=100)] = 20,
@@ -60,6 +62,7 @@ async def list_test_cases(
     )
 
 
+@output_fields("total", "page", "size", "total_pages", "items", "query", model=SearchTestCasesOutput)
 async def search_test_cases(
     query: Annotated[
         str | None,
@@ -185,6 +188,18 @@ async def search_test_cases(
     )
 
 
+@output_fields(
+    "id",
+    "name",
+    "status",
+    "description",
+    "precondition",
+    "tags",
+    "custom_fields",
+    "attachments",
+    "steps",
+    "url",
+)
 async def get_test_case_details(
     test_case_id: Annotated[int, Field(description="ID of the test case to retrieve.")],
     project_id: Annotated[int | None, Field(description="Allure TestOps project ID to list test cases from.")] = None,

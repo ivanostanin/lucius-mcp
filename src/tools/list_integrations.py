@@ -7,8 +7,10 @@ from pydantic import Field
 from src.client import AllureClient
 from src.services.integration_service import IntegrationService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
+from src.tools.output_schemas import output_fields
 
 
+@output_fields("items", "total")
 async def list_integrations(
     project_id: Annotated[
         int | None,

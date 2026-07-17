@@ -10,6 +10,7 @@ from src.tools.output_contract import (
     render_confirmation_required,
     render_output,
 )
+from src.tools.output_schemas import output_fields
 from src.utils.links import test_case_url, test_plan_url
 
 
@@ -24,6 +25,7 @@ def _append_test_case_urls(lines: list[str], label: str, urls: list[str]) -> Non
     lines.extend(f"- {url}" for url in urls)
 
 
+@output_fields("id", "name", "aql_filter", "test_case_ids", "test_case_urls", "url")
 async def create_test_plan(
     name: Annotated[str, "Name of the test plan"],
     test_case_ids: Annotated[list[int] | None, "List of Test Case IDs to include"] = None,
@@ -79,6 +81,7 @@ async def create_test_plan(
         )
 
 
+@output_fields("id", "name", "url")
 async def update_test_plan(
     plan_id: Annotated[int, "ID of the test plan"],
     name: Annotated[str | None, "New name"] = None,
@@ -116,6 +119,15 @@ async def update_test_plan(
         )
 
 
+@output_fields(
+    "plan_id",
+    "add_test_case_ids",
+    "remove_test_case_ids",
+    "aql_filter",
+    "add_test_case_urls",
+    "remove_test_case_urls",
+    "url",
+)
 async def manage_test_plan_content(
     plan_id: Annotated[int, "ID of the test plan"],
     add_test_case_ids: Annotated[list[int] | None, "List of Test Case IDs to add"] = None,
@@ -172,6 +184,7 @@ async def manage_test_plan_content(
         )
 
 
+@output_fields("items", "total", "page", "size", "total_pages")
 async def list_test_plans(
     page: Annotated[int, "Page number (0-based)"] = 0,
     size: Annotated[int, "Page size"] = 100,
@@ -222,6 +235,7 @@ async def list_test_plans(
         )
 
 
+@output_fields("requires_confirmation", "action", "plan_id", "status", "url")
 async def delete_test_plan(
     plan_id: Annotated[int, "ID of the test plan to delete"],
     confirm: Annotated[bool, "Must be set to True to proceed with deletion. Safety measure."] = False,

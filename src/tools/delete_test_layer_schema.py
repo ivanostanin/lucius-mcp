@@ -7,8 +7,10 @@ from pydantic import Field
 from src.client import AllureClient
 from src.services.test_layer_service import TestLayerService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
+from src.tools.output_schemas import output_fields
 
 
+@output_fields("requires_confirmation", "action", "schema_id", "id", "status")
 async def delete_test_layer_schema(
     schema_id: Annotated[int, Field(description="ID of the test layer schema to delete.")],
     project_id: Annotated[int | None, Field(description="Allure TestOps project ID.")] = None,

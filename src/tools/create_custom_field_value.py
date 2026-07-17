@@ -5,8 +5,10 @@ from pydantic import Field
 from src.client import AllureClient
 from src.services.custom_field_value_service import CustomFieldValueService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
+from src.tools.output_schemas import output_fields
 
 
+@output_fields("id", "name", "custom_field_id", "custom_field_name")
 async def create_custom_field_value(
     name: Annotated[str, Field(description="Name for the new custom field value.")],
     custom_field_id: Annotated[

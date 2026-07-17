@@ -263,167 +263,6 @@ def _model_name(tool_name: str) -> str:
     return "".join(part.capitalize() for part in tool_name.split("_")) + "Output"
 
 
-_COLLECTION_FIELDS = ("items", "total", "page", "size", "total_pages")
-_LAUNCH_FIELDS = (
-    "id",
-    "name",
-    "closed",
-    "created_date",
-    "last_modified_date",
-    "project_id",
-    "autoclose",
-    "external",
-    "known_defects_count",
-    "new_defects_count",
-    "manual_execution_guidance",
-    "url",
-    "operation",
-)
-_TEST_CASE_LIST_FIELDS = ("total", "page", "size", "total_pages", "items")
-
-# Each tool explicitly selects the fields its documented branches can produce.
-# Values are optional at the object level because confirmation and idempotent
-# responses intentionally have different envelopes for the same operation.
-_TOOL_FIELDS: dict[str, tuple[str, ...]] = {
-    "add_test_result_attachment": ("target_kind", "target_id", "file_names", "status_code"),
-    "add_test_step_attachment": ("target_kind", "target_id", "file_names", "status_code"),
-    "assign_test_cases_to_suite": ("tree_id", "suite_id", "test_case_ids", "assigned_count"),
-    "close_launch": _LAUNCH_FIELDS,
-    "create_custom_field_value": ("id", "name", "custom_field_id", "custom_field_name"),
-    "create_defect": ("id", "name", "description", "url"),
-    "create_defect_matcher": ("id", "defect_id", "name", "message_regex", "trace_regex"),
-    "create_launch": _LAUNCH_FIELDS,
-    "create_shared_step": ("id", "name", "project_id", "url"),
-    "create_test_case": ("id", "name", "issues", "url"),
-    "create_test_layer": ("id", "name"),
-    "create_test_layer_schema": ("id", "key", "test_layer_id", "test_layer_name"),
-    "create_test_plan": ("id", "name", "aql_filter", "test_case_ids", "test_case_urls", "url"),
-    "create_test_suite": ("id", "name", "tree_id", "parent_suite_id"),
-    "delete_archived_shared_steps": ("deleted_count",),
-    "delete_archived_test_cases": ("deleted_count",),
-    "delete_custom_field_value": ("requires_confirmation", "action", "cfv_id", "id", "status"),
-    "delete_defect": ("defect_id", "id", "status", "url"),
-    "delete_defect_matcher": ("matcher_id", "id", "status"),
-    "delete_launch": ("launch_id", "status", "message"),
-    "delete_shared_step": ("requires_confirmation", "action", "step_id", "id", "status", "url"),
-    "delete_test_case": ("requires_confirmation", "action", "test_case_id", "name", "status", "error", "url"),
-    "delete_test_layer": ("requires_confirmation", "action", "layer_id", "id", "status"),
-    "delete_test_layer_schema": ("requires_confirmation", "action", "schema_id", "id", "status"),
-    "delete_test_plan": ("requires_confirmation", "action", "plan_id", "status", "url"),
-    "delete_test_suite": ("requires_confirmation", "action", "suite_id", "status"),
-    "delete_unused_custom_fields": ("deleted_count",),
-    "get_custom_fields": ("items", "total", "filter_name"),
-    "get_defect": ("id", "name", "description", "status", "closed", "url"),
-    "get_launch": _LAUNCH_FIELDS,
-    "get_test_case_custom_fields": ("test_case_id", "custom_fields"),
-    "get_test_case_details": (
-        "id",
-        "name",
-        "status",
-        "description",
-        "precondition",
-        "tags",
-        "custom_fields",
-        "attachments",
-        "steps",
-        "url",
-    ),
-    "link_defect_to_test_case": (
-        "defect_id",
-        "defect_url",
-        "test_case_id",
-        "test_case_url",
-        "integration_id",
-        "issue_key",
-        "already_linked",
-    ),
-    "link_shared_step": (
-        "requires_confirmation",
-        "action",
-        "test_case_id",
-        "test_case_url",
-        "shared_step_id",
-        "shared_step_url",
-        "steps",
-        "status",
-        "error",
-    ),
-    "list_custom_field_values": _COLLECTION_FIELDS,
-    "list_defect_matchers": ("defect_id", *_COLLECTION_FIELDS),
-    "list_defect_test_cases": ("defect_id", "defect_url", *_COLLECTION_FIELDS),
-    "list_defects": _COLLECTION_FIELDS,
-    "list_integrations": ("items", "total"),
-    "list_launch_test_results": ("launch_id", "manual_only", "failed_only", *_COLLECTION_FIELDS),
-    "list_launches": _COLLECTION_FIELDS,
-    "list_shared_steps": _COLLECTION_FIELDS,
-    "list_test_cases": _TEST_CASE_LIST_FIELDS,
-    "list_test_layer_schemas": _COLLECTION_FIELDS,
-    "list_test_layers": _COLLECTION_FIELDS,
-    "list_test_plans": _COLLECTION_FIELDS,
-    "list_test_suites": ("tree", "items", "total"),
-    "manage_test_plan_content": (
-        "plan_id",
-        "add_test_case_ids",
-        "remove_test_case_ids",
-        "aql_filter",
-        "add_test_case_urls",
-        "remove_test_case_urls",
-        "url",
-    ),
-    "reopen_launch": _LAUNCH_FIELDS,
-    "rerun_test_results_manually": ("launch_id", "result_ids", "scheduled_count", "assignees", "force_manual"),
-    "search_test_cases": (*_TEST_CASE_LIST_FIELDS, "query"),
-    "start_manual_test_session": ("test_session_id", "launch_id", "job_id", "job_run_id", "project_id", "environment"),
-    "submit_manual_test_results": ("test_session_id", "result_ids", "submitted_count"),
-    "unlink_issue_from_test_case": ("test_case_id", "issue_id", "status", "already_unlinked"),
-    "unlink_shared_step": (
-        "requires_confirmation",
-        "action",
-        "test_case_id",
-        "test_case_url",
-        "shared_step_id",
-        "shared_step_url",
-        "steps",
-        "status",
-        "error",
-    ),
-    "update_custom_field_value": (
-        "requires_confirmation",
-        "action",
-        "cfv_id",
-        "id",
-        "name",
-        "custom_field_id",
-        "custom_field_name",
-    ),
-    "update_defect": ("id", "name", "description", "status", "closed", "url"),
-    "update_defect_matcher": ("id", "name", "message_regex", "trace_regex"),
-    "update_shared_step": (
-        "requires_confirmation",
-        "action",
-        "step_id",
-        "id",
-        "name",
-        "changed",
-        "updated_fields",
-        "url",
-    ),
-    "update_test_case": ("requires_confirmation", "action", "test_case_id", "id", "name", "summary", "changes", "url"),
-    "update_test_layer": ("requires_confirmation", "action", "layer_id", "id", "name", "changed"),
-    "update_test_layer_schema": (
-        "requires_confirmation",
-        "action",
-        "schema_id",
-        "id",
-        "key",
-        "test_layer_name",
-        "changed",
-    ),
-    "update_test_plan": ("id", "name", "url"),
-    "upload_test_results": ("launch_id", "requested_count", "uploaded_count", "result_ids", "failures"),
-}
-
-
 def _create_tool_output_model(tool: ToolFn) -> type[BaseModel]:
     fields: dict[str, Any] = {
         field_name: (
@@ -445,18 +284,24 @@ def _output_fields_for(tool: ToolFn) -> tuple[str, ...]:
     fields = getattr(tool, _OUTPUT_FIELDS_ATTRIBUTE, None)
     if isinstance(fields, tuple) and all(isinstance(field, str) for field in fields):
         return fields
-    from src.tools import output_fields_for
+    raise ValueError(f"No output fields declared for tool '{tool.__name__}'")
 
-    return output_fields_for(tool)
+
+def _output_model_for_tool(tool: ToolFn) -> type[BaseModel]:
+    declared_model = getattr(tool, _OUTPUT_MODEL_ATTRIBUTE, None)
+    if declared_model is None:
+        return _create_tool_output_model(tool)
+    if isinstance(declared_model, type) and issubclass(declared_model, BaseModel):
+        return declared_model
+    raise TypeError(f"Invalid output model declared for tool '{tool.__name__}'")
 
 
 def _ensure_output_models() -> None:
     if OUTPUT_MODELS:
         return
-    from src.tools import all_tools, search_test_cases
+    from src.tools import all_tools
 
-    OUTPUT_MODELS.update({tool.__name__: _create_tool_output_model(tool) for tool in all_tools})
-    OUTPUT_MODELS[search_test_cases.__name__] = SearchTestCasesOutput
+    OUTPUT_MODELS.update({tool.__name__: _output_model_for_tool(tool) for tool in all_tools})
 
 
 def output_model_for(tool_name: str) -> type[BaseModel]:
@@ -476,9 +321,7 @@ def output_schema_for(tool_name: str) -> dict[str, Any]:
 def validate_registry_coverage() -> None:
     """Fail fast when tools and their output-contract registrations drift."""
     _ensure_output_models()
-    from src.tools import all_tools, validate_output_field_coverage
-
-    validate_output_field_coverage()
+    from src.tools import all_tools
 
     registered = {tool.__name__ for tool in all_tools}
     schemas = set(OUTPUT_MODELS)

@@ -7,8 +7,10 @@ from pydantic import Field
 from src.client import AllureClient
 from src.services.test_layer_service import TestLayerService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
+from src.tools.output_schemas import output_fields
 
 
+@output_fields("items", "total", "page", "size", "total_pages")
 async def list_test_layer_schemas(
     project_id: Annotated[
         int | None, Field(description="Allure TestOps project ID to fetch test layer schemas from.")

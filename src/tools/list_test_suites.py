@@ -14,6 +14,7 @@ from pydantic import Field
 from src.client import AllureClient
 from src.services.test_hierarchy_service import SuiteNode, TestHierarchyService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
+from src.tools.output_schemas import output_fields
 
 
 def _format_suite_lines(nodes: list[SuiteNode], indent: int = 0) -> list[str]:
@@ -26,6 +27,7 @@ def _format_suite_lines(nodes: list[SuiteNode], indent: int = 0) -> list[str]:
     return lines
 
 
+@output_fields("tree", "items", "total")
 async def list_test_suites(
     project_id: Annotated[int | None, Field(description="Allure TestOps project ID.")] = None,
     tree_id: Annotated[

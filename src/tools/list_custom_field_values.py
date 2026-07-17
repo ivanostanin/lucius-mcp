@@ -5,8 +5,10 @@ from pydantic import Field
 from src.client import AllureClient
 from src.services.custom_field_value_service import CustomFieldValueService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
+from src.tools.output_schemas import output_fields
 
 
+@output_fields("items", "total", "page", "size", "total_pages")
 async def list_custom_field_values(
     custom_field_id: Annotated[
         int | None, Field(description="Project-scoped custom field ID to list values for.")

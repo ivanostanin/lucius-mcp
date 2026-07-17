@@ -12,9 +12,11 @@ from src.tools.output_contract import (
     render_confirmation_required,
     render_output,
 )
+from src.tools.output_schemas import output_fields
 from src.utils.links import shared_step_url
 
 
+@output_fields("id", "name", "project_id", "url")
 async def create_shared_step(
     name: Annotated[str, Field(description='The name of the shared step (e.g., "Login as Admin").')],
     steps: Annotated[
@@ -75,6 +77,7 @@ async def create_shared_step(
         )
 
 
+@output_fields("items", "total", "page", "size", "total_pages")
 async def list_shared_steps(
     page: Annotated[int, Field(description="Page number (0-based, default 0).")] = 0,
     size: Annotated[int, Field(description="Number of items per page (default 100).")] = 100,
@@ -128,6 +131,7 @@ async def list_shared_steps(
         )
 
 
+@output_fields("requires_confirmation", "action", "step_id", "id", "name", "changed", "updated_fields", "url")
 async def update_shared_step(
     step_id: Annotated[int, Field(description="The shared step ID to update (required).")],
     name: Annotated[str | None, Field(description="New name for the shared step (optional).")] = None,
@@ -219,6 +223,7 @@ async def update_shared_step(
         )
 
 
+@output_fields("requires_confirmation", "action", "step_id", "id", "status", "url")
 async def delete_shared_step(
     step_id: Annotated[int, Field(description="The shared step ID to delete (required).")],
     confirm: Annotated[bool, Field(description="Must be True to proceed (safety measure).")] = False,

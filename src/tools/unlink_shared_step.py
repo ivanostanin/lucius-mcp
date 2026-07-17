@@ -8,6 +8,7 @@ from src.client import AllureClient
 from src.client.generated.models.shared_step_step_dto import SharedStepStepDto
 from src.services.test_case_service import TestCaseService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
+from src.tools.output_schemas import output_fields
 from src.utils.links import shared_step_url, test_case_url
 
 
@@ -33,6 +34,17 @@ def _format_steps(scenario: object, *, base_url: str, project_id: int) -> str:
     return "\n".join(output)
 
 
+@output_fields(
+    "requires_confirmation",
+    "action",
+    "test_case_id",
+    "test_case_url",
+    "shared_step_id",
+    "shared_step_url",
+    "steps",
+    "status",
+    "error",
+)
 async def unlink_shared_step(
     test_case_id: Annotated[int, Field(description="The test case to modify.")],
     shared_step_id: Annotated[int, Field(description="The shared step to unlink.")],

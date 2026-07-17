@@ -1,4 +1,4 @@
-from src.tools import all_tools, output_fields_for
+from src.tools import all_tools
 from src.tools.output_schemas import OUTPUT_MODELS, output_model_for, output_schema_for, validate_registry_coverage
 
 
@@ -12,7 +12,9 @@ def test_output_schema_registry_covers_registered_tools_exactly() -> None:
 
 def test_registered_tools_own_their_output_field_contracts() -> None:
     for tool in all_tools:
-        assert output_fields_for(tool), f"{tool.__name__} must declare output fields beside its registry entry"
+        assert getattr(tool, "__lucius_output_fields__", ()), (
+            f"{tool.__name__} must declare output fields at its definition site"
+        )
 
 
 def test_registered_schemas_are_concrete_object_schemas() -> None:

@@ -51,7 +51,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 ### Tool Names & Args
 *   **Naming:** `snake_case` (e.g., `create_test_case`, not `CreateTestCase`).
 *   **Descriptions:** Detailed Google-style docstrings are MANDATORY. The "Args" section defines the prompt engineering for the tool user.
-*   **Output schemas:** Every change to `src.tools.all_tools` (add, remove, or rename) must update the matching output-field entry in `src/tools/__init__.py`. `src/tools/output_schemas.py` derives schema registrations from `all_tools`; run the manifest and registry tests after the change.
+*   **Output schemas:** Every registered tool must declare its output fields with `@output_fields(...)` beside its function definition. When changing `src.tools.all_tools` (add, remove, or rename), add, remove, or rename that definition and its decorator in the same change. `src/tools/output_schemas.py` derives schema registrations lazily from `all_tools`; run the manifest and registry tests after the change.
 
 ## 4. File Structure Boundaries
 *   `src/tools/`: **Only** FastMCP tool definitions.
