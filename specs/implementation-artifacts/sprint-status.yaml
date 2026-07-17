@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2025-12-27 18:46
-last_updated: 2026-07-10
+last_updated: 2026-07-17
 project: lucius-mcp
 project_key: lucius-mcp
 tracking_system: file-system
@@ -138,6 +138,7 @@ development_status:
   9-11-cli-table-human-readable-dates-local-timezone-fallback: done
   9-12-cli-short-entity-aliases: done
   9-13-cli-comprehensive-e2e-coverage-via-uv-run-lucius: done
+  9-14-publish-accurate-mcp-tool-output-schemas: ready-for-dev
   epic-9-retrospective: optional
 
   # Epic 10: Quality of Life and API Coverage

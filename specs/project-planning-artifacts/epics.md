@@ -1045,6 +1045,34 @@ so that CLI behavior is verified end-to-end without depending on built binaries 
 **Then** its acceptance criteria explicitly require extending the shared `uv run lucius` CLI E2E suite
 **And** story tasks identify the concrete test file(s) to update.
 
+### Story 9.14: Publish Accurate MCP Tool Output Schemas
+
+As an MCP client or AI agent,
+I want every Lucius tool to publish an accurate structured-output schema,
+so that I can reliably understand and validate the JSON payload returned by each tool.
+
+**Acceptance Criteria:**
+
+**Given** the server advertises its tools through MCP or the generated documentation manifest
+**When** a client inspects any registered tool
+**Then** the tool has a non-null, object-root `outputSchema` generated from its concrete JSON output model
+**And** the schema describes that tool's real structured payload rather than a generic wrapped string result.
+
+**Given** a tool produces its default structured response or is called with `output_format=json`
+**When** its response is returned through FastMCP
+**Then** `structuredContent` conforms to that tool's published schema
+**And** all documented success, empty, confirmation-required, and other normal response branches are covered.
+
+**Given** a tool is called with `output_format=plain`
+**When** FastMCP publishes the response while the tool has an output schema
+**Then** the plain-text contract and CLI passthrough behavior remain unchanged
+**And** no invalid scalar `structuredContent` is emitted.
+
+**Given** the manifest is regenerated or a release is prepared
+**When** documentation checks run
+**Then** generated metadata contains schemas for every exposed tool
+**And** automated checks fail if a tool is missing a schema, has an invalid root, or its payload drifts from the registered model.
+
 
 ## Epic 10: Quality of Life and API Coverage
 
