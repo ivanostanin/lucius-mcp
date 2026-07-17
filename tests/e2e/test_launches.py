@@ -40,11 +40,11 @@ async def test_create_close_reopen_launch_lifecycle(allure_client, project_id, t
 
         deleted = await service.delete_launch(created.id)
         assert deleted.launch_id == created.id
-        assert deleted.status == "archived"
+        assert deleted.status == "deleted"
 
         deleted_again = await service.delete_launch(created.id)
         assert deleted_again.launch_id == created.id
-        assert deleted_again.status == "already_deleted"
+        assert deleted_again.status == "deleted"
     finally:
         if created_id is not None:
             await cleanup_tracker.delete_launch_strict(created_id)

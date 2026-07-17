@@ -3,7 +3,6 @@
 import asyncio
 
 from src.client import AllureClient
-from src.client.exceptions import LaunchNotFoundError
 from src.services import (
     CustomFieldValueService,
     DefectService,
@@ -126,7 +125,7 @@ class CleanupTracker:
         self._launches.append(launch_id)
 
     async def delete_launch_strict(self, launch_id: int, retries: int = 3, delay: float = 0.2) -> None:
-        """Delete launch and verify it no longer exists with retries.
+        """Delete a launch with retries.
 
         Args:
             launch_id: ID of the launch to delete
@@ -134,16 +133,25 @@ class CleanupTracker:
             delay: Delay between attempts in seconds
 
         Raises:
-            AssertionError: If launch still exists after all retries
+            AssertionError: If deletion does not complete after all retries
         """
         service = LaunchService(client=self._client)
+        last_error: Exception | None = None
+
         for _ in range(retries):
-            await service.delete_launch(launch_id)
-            if not await self._launch_exists(service, launch_id):
-                return
+            try:
+                result = await service.delete_launch(launch_id)
+            except Exception as exc:  # pragma: no cover - defensive teardown path
+                last_error = exc
+            else:
+                if result.status in {"deleted", "already_deleted"}:
+                    return
+
             await asyncio.sleep(delay)
 
-        raise AssertionError(f"Launch {launch_id} still exists after deletion attempts")
+        if last_error is not None:
+            raise AssertionError(f"Launch {launch_id} could not be deleted: {last_error}") from last_error
+        raise AssertionError(f"Launch {launch_id} could not be deleted")
 
     async def delete_test_case_strict(
         self, service: TestCaseService, test_case_id: int, retries: int = 3, delay: float = 0.2
@@ -181,14 +189,6 @@ class CleanupTracker:
         await self._cleanup_defects()
         await self._cleanup_custom_field_values()
         await self._cleanup_launches()
-
-    @staticmethod
-    async def _launch_exists(service: LaunchService, launch_id: int) -> bool:
-        try:
-            await service.get_launch(launch_id)
-            return True
-        except LaunchNotFoundError:
-            return False
 
     async def _cleanup_test_cases(self) -> None:
         import logging

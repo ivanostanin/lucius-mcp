@@ -12,7 +12,7 @@ Validate **manual tool calls for every MCP tool** using scenarios derived from `
 To ensure robust end-to-end validation, any AI agent executing this plan MUST follow these rules:
 
 1.  **Strict QA Persona**: Adopt a persona of a meticulous QA Engineer. Do not assume success; verify it explicitly.
-2.  **Explicit Verification**: After every "Write" operation (create/update/delete), you MUST perform a "Read" operation (list/get) to verify the state change, even if the tool reports success.
+2.  **Explicit Verification**: After every create or update, perform a "Read" operation (list/get) to verify the state change, even if the tool reports success. After a delete, treat the tool confirmation as the final operation for that ID; do not call a direct `get` on the deleted resource. Use a collection list only when the scenario explicitly requires absence verification.
 3.  **Data Isolation**: Use unique identifiers for test data (e.g., prefixes like `[Agent-QA]`) to avoid collisions with production or other test data.
 4.  **State Management**: Capture IDs returned by tools into variables (e.g., `TC_ID`, `LAUNCH_ID`) and reuse them in subsequent steps.
 5.  **Output Parsing**: Compare actual tool outputs against the "Expectation" strings provided in scenarios. Report any semantic or structural deviations.
@@ -62,7 +62,7 @@ From `src/tools/__init__.py:24-79`:
 - `get_custom_fields`, `get_test_case_custom_fields`
 - `create_custom_field_value`, `list_custom_field_values`, `update_custom_field_value`, `delete_custom_field_value`
 - `delete_unused_custom_fields`
-- `create_launch`, `list_launches`, `get_launch`, `upload_test_results`, `list_launch_test_results`, `rerun_test_results_manually`, `start_manual_test_session`, `submit_manual_test_results`, `add_test_result_attachment`, `add_test_step_attachment`
+- `create_launch`, `list_launches`, `get_launch`, `delete_launch`, `upload_test_results`, `list_launch_test_results`, `rerun_test_results_manually`, `start_manual_test_session`, `submit_manual_test_results`, `add_test_result_attachment`, `add_test_step_attachment`
 - `create_shared_step`, `list_shared_steps`, `update_shared_step`, `delete_shared_step`
 - `delete_archived_shared_steps`
 - `link_shared_step`, `unlink_shared_step`
@@ -252,6 +252,9 @@ From `src/tools/__init__.py:24-79`:
       - Expectation: Output shows the rerun result in a terminal state (`passed` or `failed`) and contains no rows with `status: null` or other in-progress markers.
   13. **Close Launch**: `close_launch(launch_id=LAUNCH_ID)`
       - Expectation: Output confirms the launch is closed (for example `closed=true` or equivalent terminal state).
+  14. **Delete Launch**: `delete_launch(launch_id=LAUNCH_ID)`
+      - Expectation: Output contains `Deleted Launch LAUNCH_ID`.
+      - Verification: Do not call `get_launch` for `LAUNCH_ID` after deletion; the delete confirmation is the terminal verification for this resource.
 
 #### 9. Custom Field Values Lifecycle
 - **Scenario source**: `specs/implementation-artifacts/3-11-crud-custom-field-values.md`

@@ -563,17 +563,17 @@ async def add_test_step_attachment(
 
 
 async def delete_launch(
-    launch_id: Annotated[int, Field(description="Launch ID to delete/archive (required).")],
+    launch_id: Annotated[int, Field(description="Launch ID to delete (required).")],
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
     output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
 ) -> ToolOutput:
-    """Delete/archive a launch by ID.
+    """Delete a launch by ID.
     ⚠️ CAUTION: Destructive.
 
     Args:
-        launch_id: The unique ID of the launch to archive.
+        launch_id: The unique ID of the launch to delete.
         project_id: Optional override for the default Project ID.
         output_format: Output format: 'json' (default) or 'plain'.
 
@@ -583,18 +583,13 @@ async def delete_launch(
     async with _launch_client_context(project_id=project_id) as client:
         service = LaunchService(client=client)
         result = await service.delete_launch(launch_id)
-        base_url = client.get_base_url()
-        resolved_project_id = client.get_project()
-        url = launch_url(base_url, resolved_project_id, result.launch_id)
 
     return render_output(
-        plain=f"{_format_launch_delete(result)}\nLaunch URL: {url}",
+        plain=_format_launch_delete(result),
         json_payload={
             "launch_id": result.launch_id,
-            "name": result.name,
             "status": result.status,
             "message": result.message,
-            "url": url,
         },
         output_format=output_format,
     )
@@ -833,10 +828,9 @@ def _append_statistic_lines(lines: list[str], launch: object) -> None:
 
 def _format_launch_delete(result: LaunchDeleteResult) -> str:
     if result.status == "already_deleted":
-        return f"ℹ️ Launch {result.launch_id} was already archived or doesn't exist."  # noqa: RUF001
+        return f"ℹ️ Launch {result.launch_id} was already deleted or doesn't exist."  # noqa: RUF001
 
-    name_part = f": '{result.name}'" if result.name else ""
-    return f"✅ Archived Launch {result.launch_id}{name_part}"
+    return f"✅ Deleted Launch {result.launch_id}"
 
 
 def _format_launch_test_result_list(result: LaunchTestResultListResult) -> str:

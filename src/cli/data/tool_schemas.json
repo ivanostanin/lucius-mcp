@@ -1058,14 +1058,14 @@
     "name": "delete_launch",
     "entity": "launch",
     "action": "delete",
-    "description": "Delete/archive a launch by ID.\n\u26a0\ufe0f CAUTION: Destructive.\n\nArgs:\n    launch_id: The unique ID of the launch to archive.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Confirmation message with launch ID and idempotent status.",
+    "description": "Delete a launch by ID.\n\u26a0\ufe0f CAUTION: Destructive.\n\nArgs:\n    launch_id: The unique ID of the launch to delete.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Confirmation message with launch ID and idempotent status.",
     "input_schema": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "launch_id": {
           "type": "integer",
-          "description": "Launch ID to delete/archive (required)."
+          "description": "Launch ID to delete (required)."
         },
         "project_id": {
           "anyOf": [
