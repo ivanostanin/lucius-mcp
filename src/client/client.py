@@ -451,6 +451,12 @@ class AllureClient:
                     status_code=e.response.status_code,
                     response_body=e.response.text,
                 ) from e
+            except (json.JSONDecodeError, KeyError, TypeError) as e:
+                raise AllureAuthError(
+                    "Token exchange failed: invalid response",
+                    status_code=response.status_code,
+                    response_body=response.text,
+                ) from e
             except httpx.RequestError as e:
                 raise AllureAPIError(f"Token exchange request error: {e}") from e
 
