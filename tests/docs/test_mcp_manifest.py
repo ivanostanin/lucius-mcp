@@ -1,4 +1,5 @@
 import json
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -18,6 +19,19 @@ def _load_manifest() -> dict[str, object]:
     raw = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert isinstance(raw, dict), "docs/mcp_manifest.json must be a JSON object"
     return raw
+
+
+def _project_version() -> str:
+    pyproject_path = _project_root() / "pyproject.toml"
+    with pyproject_path.open("rb") as pyproject_file:
+        pyproject = tomllib.load(pyproject_file)
+
+    project = pyproject.get("project")
+    assert isinstance(project, dict), "pyproject.toml must contain a project table"
+
+    version = project.get("version")
+    assert isinstance(version, str) and version.strip(), "pyproject.toml project.version must be a non-empty string"
+    return version
 
 
 def _manifest_tools(manifest: dict[str, object]) -> list[dict[str, object]]:
@@ -134,6 +148,13 @@ def test_manifest_lists_all_registered_tools() -> None:
 
     if errors:
         pytest.fail("Tool coverage mismatch:\n- " + "\n- ".join(errors))
+
+
+def test_manifest_version_matches_project_version() -> None:
+    manifest = _load_manifest()
+    server_info = manifest.get("serverInfo")
+    assert isinstance(server_info, dict), "manifest.serverInfo must be an object"
+    assert server_info.get("version") == _project_version()
 
 
 def test_manifest_tools_have_title_description_annotations_and_tags() -> None:
