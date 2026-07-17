@@ -126,3 +126,18 @@ def test_server_json_description_stays_registry_friendly() -> None:
     assert isinstance(description, str)
     assert 1 <= len(description) <= 100
     assert re.fullmatch(r"^[a-zA-Z0-9.-]+/[a-zA-Z0-9._-]+$", str(server["name"]))
+
+
+def test_registry_page_renders_output_schema_from_manifest() -> None:
+    page = (_project_root() / "docs" / "mcp-registry.html").read_text(encoding="utf-8")
+    render_details = page[page.index("function renderDetails()") : page.index("function renderMetrics()")]
+
+    assert 'renderSchemaBlock("Output Schema", tool.outputSchema, "output")' in render_details
+
+
+def test_pages_workflow_deploys_registry_assets_after_main_updates() -> None:
+    workflow = (_project_root() / ".github" / "workflows" / "pages-manual.yml").read_text(encoding="utf-8")
+
+    assert re.search(r"^\s+push:\n\s+branches: \[main\]$", workflow, re.MULTILINE)
+    assert "- docs/mcp-registry.html" in workflow
+    assert "- docs/mcp_manifest.json" in workflow
