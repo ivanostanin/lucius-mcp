@@ -68,17 +68,17 @@ def validate_server_entry_point(manifest):
 
 def validate_tools(manifest, mcp_instance):
     if not mcp_instance:
-        print("⚠️  Skipping tool validation against code")
-        return
+        print("❌ Could not inspect FastMCP tools: no FastMCP instance found")
+        sys.exit(1)
 
     manifest_tools = {t["name"] for t in manifest.get("tools", [])}
     # Use FastMCP's public async API. The former private _tool_manager registry
     # was removed in FastMCP 3.x.
     try:
         code_tools = {tool.name for tool in asyncio.run(mcp_instance.list_tools(run_middleware=False))}
-    except Exception:
-        print("⚠️  Could not inspect FastMCP tools directly")
-        return
+    except Exception as e:
+        print(f"❌ Could not inspect FastMCP tools: {e}")
+        sys.exit(1)
 
     print(f"ℹ️  Manifest tools: {len(manifest_tools)}")
     print(f"ℹ️  Code tools: {len(code_tools)}")
