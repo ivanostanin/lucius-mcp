@@ -357,260 +357,26 @@
             "title": "Attachment",
             "type": "object"
           },
-          "EntitySummary": {
+          "CustomFieldEntry": {
             "additionalProperties": false,
-            "description": "Closed common vocabulary for collection entries across Lucius tools.",
+            "description": "A named custom-field value exposed by test-case details.",
             "properties": {
-              "id": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Id"
-              },
               "name": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Name"
+                "description": "Custom field name.",
+                "title": "Name",
+                "type": "string"
               },
-              "key": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Key"
-              },
-              "status": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Status"
-              },
-              "url": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Url"
-              },
-              "type": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Type"
-              },
-              "closed": {
-                "anyOf": [
-                  {
-                    "type": "boolean"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Closed"
-              },
-              "tags": {
-                "anyOf": [
-                  {
-                    "items": {
-                      "type": "string"
-                    },
-                    "type": "array"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Tags"
-              },
-              "project_id": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Project Id"
-              },
-              "test_case_id": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Test Case Id"
-              },
-              "test_layer_id": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Test Layer Id"
-              },
-              "test_layer_name": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Test Layer Name"
-              },
-              "steps_count": {
-                "anyOf": [
-                  {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Steps Count"
-              },
-              "test_cases_count": {
-                "anyOf": [
-                  {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Test Cases Count"
-              },
-              "required": {
-                "anyOf": [
-                  {
-                    "type": "boolean"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Required"
-              },
-              "values": {
-                "anyOf": [
-                  {
-                    "items": {
-                      "type": "string"
-                    },
-                    "type": "array"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Values"
-              },
-              "manual": {
-                "anyOf": [
-                  {
-                    "type": "boolean"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Manual"
-              },
-              "assignee": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Assignee"
-              },
-              "tested_by": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Tested By"
-              },
-              "result_id": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Result Id"
+              "value": {
+                "description": "Rendered custom field value.",
+                "title": "Value",
+                "type": "string"
               }
             },
-            "title": "EntitySummary",
+            "required": [
+              "name",
+              "value"
+            ],
+            "title": "CustomFieldEntry",
             "type": "object"
           },
           "Step": {
@@ -713,6 +479,7 @@
           }
         },
         "additionalProperties": false,
+        "description": "Structured details for one test case.",
         "properties": {
           "id": {
             "anyOf": [
@@ -793,44 +560,15 @@
             "anyOf": [
               {
                 "items": {
-                  "$ref": "#/$defs/EntitySummary"
+                  "$ref": "#/$defs/CustomFieldEntry"
                 },
                 "type": "array"
-              },
-              {
-                "additionalProperties": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "integer"
-                    },
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "boolean"
-                    },
-                    {
-                      "items": {
-                        "type": "string"
-                      },
-                      "type": "array"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "type": "object"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "description": "Custom-field values as named entries or a value map.",
             "title": "Custom Fields"
           },
           "attachments": {
@@ -861,7 +599,6 @@
               }
             ],
             "default": null,
-            "description": "Serialized scenario steps.",
             "title": "Steps"
           },
           "url": {
@@ -877,7 +614,7 @@
             "title": "Url"
           }
         },
-        "title": "GetTestCaseDetailsOutput",
+        "title": "TestCaseDetailsOutput",
         "type": "object"
       },
       "icons": null,
@@ -1542,6 +1279,31 @@
       "outputSchema": {
         "additionalProperties": false,
         "properties": {
+          "requires_confirmation": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Requires Confirmation"
+          },
+          "action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Requested operation name.",
+            "title": "Action"
+          },
           "deleted_count": {
             "anyOf": [
               {
@@ -2419,6 +2181,31 @@
       "outputSchema": {
         "additionalProperties": false,
         "properties": {
+          "requires_confirmation": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Requires Confirmation"
+          },
+          "action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Requested operation name.",
+            "title": "Action"
+          },
           "deleted_count": {
             "anyOf": [
               {
@@ -3488,258 +3275,24 @@
               {
                 "items": {
                   "additionalProperties": false,
-                  "description": "Closed common vocabulary for collection entries across Lucius tools.",
+                  "description": "A named custom-field value exposed by test-case details.",
                   "properties": {
-                    "id": {
-                      "anyOf": [
-                        {
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Id"
-                    },
                     "name": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Name"
+                      "description": "Custom field name.",
+                      "title": "Name",
+                      "type": "string"
                     },
-                    "key": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Key"
-                    },
-                    "status": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Status"
-                    },
-                    "url": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Url"
-                    },
-                    "type": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Type"
-                    },
-                    "closed": {
-                      "anyOf": [
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Closed"
-                    },
-                    "tags": {
-                      "anyOf": [
-                        {
-                          "items": {
-                            "type": "string"
-                          },
-                          "type": "array"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Tags"
-                    },
-                    "project_id": {
-                      "anyOf": [
-                        {
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Project Id"
-                    },
-                    "test_case_id": {
-                      "anyOf": [
-                        {
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Test Case Id"
-                    },
-                    "test_layer_id": {
-                      "anyOf": [
-                        {
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Test Layer Id"
-                    },
-                    "test_layer_name": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Test Layer Name"
-                    },
-                    "steps_count": {
-                      "anyOf": [
-                        {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Steps Count"
-                    },
-                    "test_cases_count": {
-                      "anyOf": [
-                        {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Test Cases Count"
-                    },
-                    "required": {
-                      "anyOf": [
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Required"
-                    },
-                    "values": {
-                      "anyOf": [
-                        {
-                          "items": {
-                            "type": "string"
-                          },
-                          "type": "array"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Values"
-                    },
-                    "manual": {
-                      "anyOf": [
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Manual"
-                    },
-                    "assignee": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Assignee"
-                    },
-                    "tested_by": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Tested By"
-                    },
-                    "result_id": {
-                      "anyOf": [
-                        {
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Result Id"
+                    "value": {
+                      "description": "Rendered custom field value.",
+                      "title": "Value",
+                      "type": "string"
                     }
                   },
-                  "title": "EntitySummary",
+                  "required": [
+                    "name",
+                    "value"
+                  ],
+                  "title": "CustomFieldEntry",
                   "type": "object"
                 },
                 "type": "array"
@@ -4126,6 +3679,7 @@
       },
       "outputSchema": {
         "additionalProperties": false,
+        "description": "The launch fields emitted by the launch list and detail tools.",
         "properties": {
           "id": {
             "anyOf": [
@@ -4166,7 +3720,7 @@
           "created_date": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "integer"
               },
               {
                 "type": "null"
@@ -4178,7 +3732,7 @@
           "last_modified_date": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "integer"
               },
               {
                 "type": "null"
@@ -4226,6 +3780,7 @@
           "known_defects_count": {
             "anyOf": [
               {
+                "minimum": 0,
                 "type": "integer"
               },
               {
@@ -4238,6 +3793,7 @@
           "new_defects_count": {
             "anyOf": [
               {
+                "minimum": 0,
                 "type": "integer"
               },
               {
@@ -4284,7 +3840,7 @@
             "title": "Operation"
           }
         },
-        "title": "CreateLaunchOutput",
+        "title": "LaunchSummary",
         "type": "object"
       },
       "icons": null,
@@ -4351,6 +3907,7 @@
       },
       "outputSchema": {
         "additionalProperties": false,
+        "description": "The launch fields emitted by the launch list and detail tools.",
         "properties": {
           "id": {
             "anyOf": [
@@ -4391,7 +3948,7 @@
           "created_date": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "integer"
               },
               {
                 "type": "null"
@@ -4403,7 +3960,7 @@
           "last_modified_date": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "integer"
               },
               {
                 "type": "null"
@@ -4451,6 +4008,7 @@
           "known_defects_count": {
             "anyOf": [
               {
+                "minimum": 0,
                 "type": "integer"
               },
               {
@@ -4463,6 +4021,7 @@
           "new_defects_count": {
             "anyOf": [
               {
+                "minimum": 0,
                 "type": "integer"
               },
               {
@@ -4509,7 +4068,7 @@
             "title": "Operation"
           }
         },
-        "title": "GetLaunchOutput",
+        "title": "LaunchSummary",
         "type": "object"
       },
       "icons": null,
@@ -4619,13 +4178,66 @@
       },
       "outputSchema": {
         "additionalProperties": false,
+        "description": "Paginated launch summaries.",
         "properties": {
+          "total": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Total"
+          },
+          "page": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Page"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Size"
+          },
+          "total_pages": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Total Pages"
+          },
           "items": {
             "anyOf": [
               {
                 "items": {
                   "additionalProperties": false,
-                  "description": "Closed common vocabulary for collection entries across Lucius tools.",
+                  "description": "The launch fields emitted by the launch list and detail tools.",
                   "properties": {
                     "id": {
                       "anyOf": [
@@ -4651,54 +4263,6 @@
                       "default": null,
                       "title": "Name"
                     },
-                    "key": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Key"
-                    },
-                    "status": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Status"
-                    },
-                    "url": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Url"
-                    },
-                    "type": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Type"
-                    },
                     "closed": {
                       "anyOf": [
                         {
@@ -4711,20 +4275,29 @@
                       "default": null,
                       "title": "Closed"
                     },
-                    "tags": {
+                    "created_date": {
                       "anyOf": [
                         {
-                          "items": {
-                            "type": "string"
-                          },
-                          "type": "array"
+                          "type": "integer"
                         },
                         {
                           "type": "null"
                         }
                       ],
                       "default": null,
-                      "title": "Tags"
+                      "title": "Created Date"
+                    },
+                    "last_modified_date": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Last Modified Date"
                     },
                     "project_id": {
                       "anyOf": [
@@ -4738,43 +4311,31 @@
                       "default": null,
                       "title": "Project Id"
                     },
-                    "test_case_id": {
+                    "autoclose": {
                       "anyOf": [
                         {
-                          "type": "integer"
+                          "type": "boolean"
                         },
                         {
                           "type": "null"
                         }
                       ],
                       "default": null,
-                      "title": "Test Case Id"
+                      "title": "Autoclose"
                     },
-                    "test_layer_id": {
+                    "external": {
                       "anyOf": [
                         {
-                          "type": "integer"
+                          "type": "boolean"
                         },
                         {
                           "type": "null"
                         }
                       ],
                       "default": null,
-                      "title": "Test Layer Id"
+                      "title": "External"
                     },
-                    "test_layer_name": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Test Layer Name"
-                    },
-                    "steps_count": {
+                    "known_defects_count": {
                       "anyOf": [
                         {
                           "minimum": 0,
@@ -4785,9 +4346,9 @@
                         }
                       ],
                       "default": null,
-                      "title": "Steps Count"
+                      "title": "Known Defects Count"
                     },
-                    "test_cases_count": {
+                    "new_defects_count": {
                       "anyOf": [
                         {
                           "minimum": 0,
@@ -4798,48 +4359,9 @@
                         }
                       ],
                       "default": null,
-                      "title": "Test Cases Count"
+                      "title": "New Defects Count"
                     },
-                    "required": {
-                      "anyOf": [
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Required"
-                    },
-                    "values": {
-                      "anyOf": [
-                        {
-                          "items": {
-                            "type": "string"
-                          },
-                          "type": "array"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Values"
-                    },
-                    "manual": {
-                      "anyOf": [
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Manual"
-                    },
-                    "assignee": {
+                    "manual_execution_guidance": {
                       "anyOf": [
                         {
                           "type": "string"
@@ -4849,9 +4371,9 @@
                         }
                       ],
                       "default": null,
-                      "title": "Assignee"
+                      "title": "Manual Execution Guidance"
                     },
-                    "tested_by": {
+                    "url": {
                       "anyOf": [
                         {
                           "type": "string"
@@ -4861,22 +4383,22 @@
                         }
                       ],
                       "default": null,
-                      "title": "Tested By"
+                      "title": "Url"
                     },
-                    "result_id": {
+                    "operation": {
                       "anyOf": [
                         {
-                          "type": "integer"
+                          "type": "string"
                         },
                         {
                           "type": "null"
                         }
                       ],
                       "default": null,
-                      "title": "Result Id"
+                      "title": "Operation"
                     }
                   },
-                  "title": "EntitySummary",
+                  "title": "LaunchSummary",
                   "type": "object"
                 },
                 "type": "array"
@@ -4886,56 +4408,7 @@
               }
             ],
             "default": null,
-            "description": "Entity-specific collection entries.",
             "title": "Items"
-          },
-          "total": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Total"
-          },
-          "page": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Page"
-          },
-          "size": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Size"
-          },
-          "total_pages": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Total Pages"
           }
         },
         "title": "ListLaunchesOutput",
@@ -6564,6 +6037,7 @@
       },
       "outputSchema": {
         "additionalProperties": false,
+        "description": "The launch fields emitted by the launch list and detail tools.",
         "properties": {
           "id": {
             "anyOf": [
@@ -6604,7 +6078,7 @@
           "created_date": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "integer"
               },
               {
                 "type": "null"
@@ -6616,7 +6090,7 @@
           "last_modified_date": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "integer"
               },
               {
                 "type": "null"
@@ -6664,6 +6138,7 @@
           "known_defects_count": {
             "anyOf": [
               {
+                "minimum": 0,
                 "type": "integer"
               },
               {
@@ -6676,6 +6151,7 @@
           "new_defects_count": {
             "anyOf": [
               {
+                "minimum": 0,
                 "type": "integer"
               },
               {
@@ -6722,7 +6198,7 @@
             "title": "Operation"
           }
         },
-        "title": "CloseLaunchOutput",
+        "title": "LaunchSummary",
         "type": "object"
       },
       "icons": null,
@@ -6801,6 +6277,7 @@
       },
       "outputSchema": {
         "additionalProperties": false,
+        "description": "The launch fields emitted by the launch list and detail tools.",
         "properties": {
           "id": {
             "anyOf": [
@@ -6841,7 +6318,7 @@
           "created_date": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "integer"
               },
               {
                 "type": "null"
@@ -6853,7 +6330,7 @@
           "last_modified_date": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "integer"
               },
               {
                 "type": "null"
@@ -6901,6 +6378,7 @@
           "known_defects_count": {
             "anyOf": [
               {
+                "minimum": 0,
                 "type": "integer"
               },
               {
@@ -6913,6 +6391,7 @@
           "new_defects_count": {
             "anyOf": [
               {
+                "minimum": 0,
                 "type": "integer"
               },
               {
@@ -6959,7 +6438,7 @@
             "title": "Operation"
           }
         },
-        "title": "ReopenLaunchOutput",
+        "title": "LaunchSummary",
         "type": "object"
       },
       "icons": null,
@@ -8252,6 +7731,31 @@
       "outputSchema": {
         "additionalProperties": false,
         "properties": {
+          "requires_confirmation": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Requires Confirmation"
+          },
+          "action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Requested operation name.",
+            "title": "Action"
+          },
           "deleted_count": {
             "anyOf": [
               {
@@ -10663,265 +10167,310 @@
         "type": "object"
       },
       "outputSchema": {
+        "$defs": {
+          "EntitySummary": {
+            "additionalProperties": false,
+            "description": "Closed common vocabulary for collection entries across Lucius tools.",
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Id"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Name"
+              },
+              "key": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Key"
+              },
+              "status": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Status"
+              },
+              "url": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Url"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Type"
+              },
+              "closed": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Closed"
+              },
+              "tags": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Tags"
+              },
+              "project_id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Project Id"
+              },
+              "test_case_id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Test Case Id"
+              },
+              "test_layer_id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Test Layer Id"
+              },
+              "test_layer_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Test Layer Name"
+              },
+              "steps_count": {
+                "anyOf": [
+                  {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Steps Count"
+              },
+              "test_cases_count": {
+                "anyOf": [
+                  {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Test Cases Count"
+              },
+              "required": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Required"
+              },
+              "values": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Values"
+              },
+              "manual": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Manual"
+              },
+              "assignee": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Assignee"
+              },
+              "tested_by": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Tested By"
+              },
+              "result_id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Result Id"
+              }
+            },
+            "title": "EntitySummary",
+            "type": "object"
+          },
+          "SuiteNodeOutput": {
+            "additionalProperties": false,
+            "description": "A recursive hierarchy-suite node.",
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Id"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Name"
+              },
+              "children": {
+                "items": {
+                  "$ref": "#/$defs/SuiteNodeOutput"
+                },
+                "title": "Children",
+                "type": "array"
+              }
+            },
+            "title": "SuiteNodeOutput",
+            "type": "object"
+          }
+        },
         "additionalProperties": false,
+        "description": "Hierarchy tree and its recursive suite nodes.",
         "properties": {
           "tree": {
             "anyOf": [
               {
-                "additionalProperties": false,
-                "description": "Closed common vocabulary for collection entries across Lucius tools.",
-                "properties": {
-                  "id": {
-                    "anyOf": [
-                      {
-                        "type": "integer"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Id"
-                  },
-                  "name": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Name"
-                  },
-                  "key": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Key"
-                  },
-                  "status": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Status"
-                  },
-                  "url": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Url"
-                  },
-                  "type": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Type"
-                  },
-                  "closed": {
-                    "anyOf": [
-                      {
-                        "type": "boolean"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Closed"
-                  },
-                  "tags": {
-                    "anyOf": [
-                      {
-                        "items": {
-                          "type": "string"
-                        },
-                        "type": "array"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Tags"
-                  },
-                  "project_id": {
-                    "anyOf": [
-                      {
-                        "type": "integer"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Project Id"
-                  },
-                  "test_case_id": {
-                    "anyOf": [
-                      {
-                        "type": "integer"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Test Case Id"
-                  },
-                  "test_layer_id": {
-                    "anyOf": [
-                      {
-                        "type": "integer"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Test Layer Id"
-                  },
-                  "test_layer_name": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Test Layer Name"
-                  },
-                  "steps_count": {
-                    "anyOf": [
-                      {
-                        "minimum": 0,
-                        "type": "integer"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Steps Count"
-                  },
-                  "test_cases_count": {
-                    "anyOf": [
-                      {
-                        "minimum": 0,
-                        "type": "integer"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Test Cases Count"
-                  },
-                  "required": {
-                    "anyOf": [
-                      {
-                        "type": "boolean"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Required"
-                  },
-                  "values": {
-                    "anyOf": [
-                      {
-                        "items": {
-                          "type": "string"
-                        },
-                        "type": "array"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Values"
-                  },
-                  "manual": {
-                    "anyOf": [
-                      {
-                        "type": "boolean"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Manual"
-                  },
-                  "assignee": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Assignee"
-                  },
-                  "tested_by": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Tested By"
-                  },
-                  "result_id": {
-                    "anyOf": [
-                      {
-                        "type": "integer"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Result Id"
-                  }
-                },
-                "title": "EntitySummary",
-                "type": "object"
+                "$ref": "#/$defs/EntitySummary"
               },
               {
                 "type": "null"
@@ -10933,260 +10482,7 @@
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": false,
-                  "description": "Closed common vocabulary for collection entries across Lucius tools.",
-                  "properties": {
-                    "id": {
-                      "anyOf": [
-                        {
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Id"
-                    },
-                    "name": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Name"
-                    },
-                    "key": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Key"
-                    },
-                    "status": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Status"
-                    },
-                    "url": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Url"
-                    },
-                    "type": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Type"
-                    },
-                    "closed": {
-                      "anyOf": [
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Closed"
-                    },
-                    "tags": {
-                      "anyOf": [
-                        {
-                          "items": {
-                            "type": "string"
-                          },
-                          "type": "array"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Tags"
-                    },
-                    "project_id": {
-                      "anyOf": [
-                        {
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Project Id"
-                    },
-                    "test_case_id": {
-                      "anyOf": [
-                        {
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Test Case Id"
-                    },
-                    "test_layer_id": {
-                      "anyOf": [
-                        {
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Test Layer Id"
-                    },
-                    "test_layer_name": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Test Layer Name"
-                    },
-                    "steps_count": {
-                      "anyOf": [
-                        {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Steps Count"
-                    },
-                    "test_cases_count": {
-                      "anyOf": [
-                        {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Test Cases Count"
-                    },
-                    "required": {
-                      "anyOf": [
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Required"
-                    },
-                    "values": {
-                      "anyOf": [
-                        {
-                          "items": {
-                            "type": "string"
-                          },
-                          "type": "array"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Values"
-                    },
-                    "manual": {
-                      "anyOf": [
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Manual"
-                    },
-                    "assignee": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Assignee"
-                    },
-                    "tested_by": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Tested By"
-                    },
-                    "result_id": {
-                      "anyOf": [
-                        {
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Result Id"
-                    }
-                  },
-                  "title": "EntitySummary",
-                  "type": "object"
+                  "$ref": "#/$defs/SuiteNodeOutput"
                 },
                 "type": "array"
               },
@@ -11195,12 +10491,12 @@
               }
             ],
             "default": null,
-            "description": "Entity-specific collection entries.",
             "title": "Items"
           },
           "total": {
             "anyOf": [
               {
+                "minimum": 0,
                 "type": "integer"
               },
               {
@@ -13344,6 +12640,7 @@
       },
       "outputSchema": {
         "additionalProperties": false,
+        "description": "Confirmation for unlinking an issue by numeric ID or issue key.",
         "properties": {
           "test_case_id": {
             "anyOf": [
@@ -13361,6 +12658,9 @@
             "anyOf": [
               {
                 "type": "integer"
+              },
+              {
+                "type": "string"
               },
               {
                 "type": "null"
@@ -14480,6 +13780,7 @@
       },
       "outputSchema": {
         "additionalProperties": false,
+        "description": "Matcher list for a defect.",
         "properties": {
           "defect_id": {
             "anyOf": [
@@ -14498,7 +13799,7 @@
               {
                 "items": {
                   "additionalProperties": false,
-                  "description": "Closed common vocabulary for collection entries across Lucius tools.",
+                  "description": "A matcher entry returned when listing a defect's automation rules.",
                   "properties": {
                     "id": {
                       "anyOf": [
@@ -14524,7 +13825,7 @@
                       "default": null,
                       "title": "Name"
                     },
-                    "key": {
+                    "message_regex": {
                       "anyOf": [
                         {
                           "type": "string"
@@ -14534,9 +13835,9 @@
                         }
                       ],
                       "default": null,
-                      "title": "Key"
+                      "title": "Message Regex"
                     },
-                    "status": {
+                    "trace_regex": {
                       "anyOf": [
                         {
                           "type": "string"
@@ -14546,210 +13847,10 @@
                         }
                       ],
                       "default": null,
-                      "title": "Status"
-                    },
-                    "url": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Url"
-                    },
-                    "type": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Type"
-                    },
-                    "closed": {
-                      "anyOf": [
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Closed"
-                    },
-                    "tags": {
-                      "anyOf": [
-                        {
-                          "items": {
-                            "type": "string"
-                          },
-                          "type": "array"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Tags"
-                    },
-                    "project_id": {
-                      "anyOf": [
-                        {
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Project Id"
-                    },
-                    "test_case_id": {
-                      "anyOf": [
-                        {
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Test Case Id"
-                    },
-                    "test_layer_id": {
-                      "anyOf": [
-                        {
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Test Layer Id"
-                    },
-                    "test_layer_name": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Test Layer Name"
-                    },
-                    "steps_count": {
-                      "anyOf": [
-                        {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Steps Count"
-                    },
-                    "test_cases_count": {
-                      "anyOf": [
-                        {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Test Cases Count"
-                    },
-                    "required": {
-                      "anyOf": [
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Required"
-                    },
-                    "values": {
-                      "anyOf": [
-                        {
-                          "items": {
-                            "type": "string"
-                          },
-                          "type": "array"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Values"
-                    },
-                    "manual": {
-                      "anyOf": [
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Manual"
-                    },
-                    "assignee": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Assignee"
-                    },
-                    "tested_by": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Tested By"
-                    },
-                    "result_id": {
-                      "anyOf": [
-                        {
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Result Id"
+                      "title": "Trace Regex"
                     }
                   },
-                  "title": "EntitySummary",
+                  "title": "DefectMatcherSummary",
                   "type": "object"
                 },
                 "type": "array"
@@ -14759,12 +13860,12 @@
               }
             ],
             "default": null,
-            "description": "Entity-specific collection entries.",
             "title": "Items"
           },
           "total": {
             "anyOf": [
               {
+                "minimum": 0,
                 "type": "integer"
               },
               {
@@ -14777,6 +13878,7 @@
           "page": {
             "anyOf": [
               {
+                "minimum": 0,
                 "type": "integer"
               },
               {
@@ -14789,6 +13891,7 @@
           "size": {
             "anyOf": [
               {
+                "minimum": 0,
                 "type": "integer"
               },
               {
@@ -14801,6 +13904,7 @@
           "total_pages": {
             "anyOf": [
               {
+                "minimum": 0,
                 "type": "integer"
               },
               {

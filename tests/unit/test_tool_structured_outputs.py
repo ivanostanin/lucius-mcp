@@ -2,12 +2,13 @@ from unittest.mock import AsyncMock
 
 import pytest
 from fastmcp.tools import Tool
+from fastmcp.tools.base import ToolResult
 
 import src.tools.search as search_tools
 from src.client import PageTestCaseDto, TestCaseDto
 from src.client.generated.models.test_tag_dto import TestTagDto
 from src.tools.output_schemas import output_model_for, output_schema_for
-from src.utils.telemetry import wrap_tool_with_telemetry
+from src.utils.telemetry import _apply_mcp_output_contract, wrap_tool_with_telemetry
 
 
 class _ClientContext:
@@ -150,3 +151,12 @@ async def test_fastmcp_emits_only_structured_content_when_json_output_is_request
     assert result.structured_content is not None
     assert result.structured_content["items"][0]["tags"] == ["smoke"]
     assert result.structured_content["items"][0]["url"] == "https://example.com/project/123/test-cases/1"
+
+
+def test_mcp_contract_preserves_explicit_null_fields() -> None:
+    result = ToolResult(content=[], structured_content={"id": 1, "name": "Defect", "description": None, "url": "x"})
+
+    validated = _apply_mcp_output_contract(result, output_model_for("create_defect"))
+
+    assert isinstance(validated, ToolResult)
+    assert validated.structured_content == {"id": 1, "name": "Defect", "description": None, "url": "x"}

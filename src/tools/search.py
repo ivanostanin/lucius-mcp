@@ -6,7 +6,7 @@ from src.client import AllureClient, AllureValidationError
 from src.client.generated.models.shared_step_step_dto import SharedStepStepDto
 from src.services.search_service import SearchQueryParser, SearchService, TestCaseDetails, TestCaseListResult
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
-from src.tools.output_schemas import SearchTestCasesOutput, output_fields
+from src.tools.output_schemas import SearchTestCasesOutput, TestCaseDetailsOutput, output_fields
 from src.utils.links import shared_step_url, test_case_url
 
 
@@ -199,6 +199,7 @@ async def search_test_cases(
     "attachments",
     "steps",
     "url",
+    model=TestCaseDetailsOutput,
 )
 async def get_test_case_details(
     test_case_id: Annotated[int, Field(description="ID of the test case to retrieve.")],

@@ -71,7 +71,7 @@ def _apply_mcp_output_contract(result: object, output_model: type[BaseModel]) ->
         return result
 
     payload = output_model.model_validate(result.structured_content).model_dump(
-        mode="json", by_alias=True, exclude_none=True
+        mode="json", by_alias=True, exclude_unset=True
     )
     return ToolResult(
         content=result.content,

@@ -18,7 +18,7 @@ from src.services.launch_service import (
     ManualTestSubmissionResult,
 )
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
-from src.tools.output_schemas import output_fields
+from src.tools.output_schemas import LaunchSummary, ListLaunchesOutput, output_fields
 from src.utils.auth_resolution import resolve_auth_settings
 from src.utils.links import launch_url
 
@@ -40,7 +40,7 @@ _LAUNCH_OUTPUT_FIELDS = (
 )
 
 
-@output_fields(*_LAUNCH_OUTPUT_FIELDS)
+@output_fields(*_LAUNCH_OUTPUT_FIELDS, model=LaunchSummary)
 async def create_launch(
     name: Annotated[str, Field(description="Launch name (required).")],
     autoclose: Annotated[bool | None, Field(description="Whether the launch auto-closes.")] = None,
@@ -152,7 +152,7 @@ async def upload_test_results(
     )
 
 
-@output_fields(*_COLLECTION_OUTPUT_FIELDS)
+@output_fields(*_COLLECTION_OUTPUT_FIELDS, model=ListLaunchesOutput)
 async def list_launches(
     page: Annotated[int, Field(description="Zero-based page index.")] = 0,
     size: Annotated[int, Field(description="Number of results per page (max 100).", le=100)] = 20,
@@ -207,7 +207,7 @@ async def list_launches(
     )
 
 
-@output_fields(*_LAUNCH_OUTPUT_FIELDS)
+@output_fields(*_LAUNCH_OUTPUT_FIELDS, model=LaunchSummary)
 async def get_launch(
     launch_id: Annotated[int, Field(description="Launch ID (required).")],
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
@@ -624,7 +624,7 @@ async def delete_launch(
     )
 
 
-@output_fields(*_LAUNCH_OUTPUT_FIELDS)
+@output_fields(*_LAUNCH_OUTPUT_FIELDS, model=LaunchSummary)
 async def close_launch(
     launch_id: Annotated[int, Field(description="Launch ID (required).")],
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
@@ -663,7 +663,7 @@ async def close_launch(
     )
 
 
-@output_fields(*_LAUNCH_OUTPUT_FIELDS)
+@output_fields(*_LAUNCH_OUTPUT_FIELDS, model=LaunchSummary)
 async def reopen_launch(
     launch_id: Annotated[int, Field(description="Launch ID (required).")],
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,

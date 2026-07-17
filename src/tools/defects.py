@@ -15,7 +15,7 @@ from src.tools.output_contract import (
     render_confirmation_required,
     render_output,
 )
-from src.tools.output_schemas import output_fields
+from src.tools.output_schemas import ListDefectMatchersOutput, UnlinkIssueFromTestCaseOutput, output_fields
 from src.utils.links import defect_url, test_case_url
 
 
@@ -398,7 +398,7 @@ async def list_defect_test_cases(
         )
 
 
-@output_fields("test_case_id", "issue_id", "status", "already_unlinked")
+@output_fields("test_case_id", "issue_id", "status", "already_unlinked", model=UnlinkIssueFromTestCaseOutput)
 async def unlink_issue_from_test_case(
     test_case_id: Annotated[int, "ID of the test case to unlink from"],
     issue_id: Annotated[int | str, "Issue key or internal issue-link ID to unlink"],
@@ -588,7 +588,7 @@ async def delete_defect_matcher(
         )
 
 
-@output_fields("defect_id", "items", "total", "page", "size", "total_pages")
+@output_fields("defect_id", "items", "total", "page", "size", "total_pages", model=ListDefectMatchersOutput)
 async def list_defect_matchers(
     defect_id: Annotated[int, "ID of the parent defect"],
     output_format: Annotated[
