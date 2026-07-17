@@ -138,7 +138,7 @@ development_status:
   9-11-cli-table-human-readable-dates-local-timezone-fallback: done
   9-12-cli-short-entity-aliases: done
   9-13-cli-comprehensive-e2e-coverage-via-uv-run-lucius: done
-  9-14-publish-accurate-mcp-tool-output-schemas: ready-for-dev
+  9-14-publish-accurate-mcp-tool-output-schemas: review
   epic-9-retrospective: optional
 
   # Epic 10: Quality of Life and API Coverage

@@ -6,6 +6,8 @@ from fastmcp.tools import Tool
 import src.tools.search as search_tools
 from src.client import PageTestCaseDto, TestCaseDto
 from src.client.generated.models.test_tag_dto import TestTagDto
+from src.tools.output_schemas import output_model_for, output_schema_for
+from src.utils.telemetry import wrap_tool_with_telemetry
 
 
 class _ClientContext:
@@ -89,7 +91,11 @@ async def test_search_test_cases_preserves_explicit_text_formats(search_client: 
 
 @pytest.mark.asyncio
 async def test_fastmcp_emits_structured_content_for_default_search_output(search_client: _SearchClient) -> None:
-    tool = Tool.from_function(search_tools.search_test_cases, output_schema=None)
+    schema = output_schema_for("search_test_cases")
+    tool = Tool.from_function(
+        wrap_tool_with_telemetry(search_tools.search_test_cases, output_model=output_model_for("search_test_cases")),
+        output_schema=schema,
+    )
 
     result = await tool.run({"query": "login"})
 
@@ -110,11 +116,15 @@ async def test_fastmcp_emits_structured_content_for_default_search_output(search
         "query": "login",
     }
     assert result.content == []
+    assert "x-fastmcp-wrap-result" not in schema
 
 
 @pytest.mark.asyncio
 async def test_fastmcp_keeps_text_content_when_plain_output_is_requested(search_client: _SearchClient) -> None:
-    tool = Tool.from_function(search_tools.search_test_cases, output_schema=None)
+    tool = Tool.from_function(
+        wrap_tool_with_telemetry(search_tools.search_test_cases, output_model=output_model_for("search_test_cases")),
+        output_schema=output_schema_for("search_test_cases"),
+    )
 
     result = await tool.run({"query": "login", "output_format": "plain"})
 
@@ -129,7 +139,10 @@ async def test_fastmcp_keeps_text_content_when_plain_output_is_requested(search_
 async def test_fastmcp_emits_only_structured_content_when_json_output_is_requested(
     search_client: _SearchClient,
 ) -> None:
-    tool = Tool.from_function(search_tools.search_test_cases, output_schema=None)
+    tool = Tool.from_function(
+        wrap_tool_with_telemetry(search_tools.search_test_cases, output_model=output_model_for("search_test_cases")),
+        output_schema=output_schema_for("search_test_cases"),
+    )
 
     result = await tool.run({"query": "login", "output_format": "json"})
 

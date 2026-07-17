@@ -1,6 +1,6 @@
 # Story 9.14: Publish Accurate MCP Tool Output Schemas
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -52,37 +52,37 @@ so that I can reliably understand and validate the JSON payload returned by each
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Establish the output-schema registry and model conventions** (AC: 1, 2, 4)
-  - [ ] 1.1 Create a focused output-model module/package under `src/tools/` (for example `src/tools/output_schemas.py`); do not reuse generated API DTOs as tool response schemas.
-  - [ ] 1.2 Define composable Pydantic v2 response models for shared concepts (confirmation, pagination, entity summaries, links, attachments, steps) and one concrete object-root model per registered tool.
-  - [ ] 1.3 Use `BaseModel`, `ConfigDict`, `Field` descriptions, concrete nested models, `Literal`/enums, and typed maps where the response contract intentionally permits variable keys. Prefer `extra="forbid"`; document and narrowly justify any allowed additional properties.
-  - [ ] 1.4 Build one authoritative registry keyed by `tool.__name__`; add an import-time/test-time coverage check comparing the registry keys to `all_tools`.
-  - [ ] 1.5 Generate registration schemas with `model_json_schema(mode="serialization", by_alias=True)`. Do not register a root list, scalar, or root-union schema because FastMCP requires object-root output schemas.
+- [x] **Task 1: Establish the output-schema registry and model conventions** (AC: 1, 2, 4)
+  - [x] 1.1 Create a focused output-model module/package under `src/tools/` (for example `src/tools/output_schemas.py`); do not reuse generated API DTOs as tool response schemas.
+  - [x] 1.2 Define composable Pydantic v2 response models for shared concepts (confirmation, pagination, entity summaries, links, attachments, steps) and one concrete object-root model per registered tool.
+  - [x] 1.3 Use `BaseModel`, `ConfigDict`, `Field` descriptions, concrete nested models, `Literal`/enums, and typed maps where the response contract intentionally permits variable keys. Prefer `extra="forbid"`; document and narrowly justify any allowed additional properties.
+  - [x] 1.4 Build one authoritative registry keyed by `tool.__name__`; add an import-time/test-time coverage check comparing the registry keys to `all_tools`.
+  - [x] 1.5 Generate registration schemas with `model_json_schema(mode="serialization", by_alias=True)`. Do not register a root list, scalar, or root-union schema because FastMCP requires object-root output schemas.
 
-- [ ] **Task 2: Make structured output schema-aware without changing direct-call semantics** (AC: 2, 3, 4, 6)
-  - [ ] 2.1 Extend the central output contract and/or MCP wrapper so the active tool's model validates and serializes every structured payload before constructing `ToolResult`.
-  - [ ] 2.2 Preserve direct tool invocation behavior: `output_format="plain"` remains a string and default/`json` remain the existing structured result shape expected by callers and CLI adapters.
-  - [ ] 2.3 At the FastMCP-only boundary, adapt a plain string to a text-only `ToolResult` when an explicit output schema is registered. Do not attach scalar `structured_content` and do not change the CLI's service-first execution path.
-  - [ ] 2.4 Preserve the flat structured payload. Do not introduce FastMCP's generic wrapped-result extension or make clients unwrap a new `result` property.
-  - [ ] 2.5 Model and validate each normal output branch produced by the existing helpers: `render_output`, `render_message_output`, `render_confirmation_required`, and `render_collection_output`, including tool-specific conditional branches.
+- [x] **Task 2: Make structured output schema-aware without changing direct-call semantics** (AC: 2, 3, 4, 6)
+  - [x] 2.1 Extend the central output contract and/or MCP wrapper so the active tool's model validates and serializes every structured payload before constructing `ToolResult`.
+  - [x] 2.2 Preserve direct tool invocation behavior: `output_format="plain"` remains a string and default/`json` remain the existing structured result shape expected by callers and CLI adapters.
+  - [x] 2.3 At the FastMCP-only boundary, adapt a plain string to a text-only `ToolResult` when an explicit output schema is registered. Do not attach scalar `structured_content` and do not change the CLI's service-first execution path.
+  - [x] 2.4 Preserve the flat structured payload. Do not introduce FastMCP's generic wrapped-result extension or make clients unwrap a new `result` property.
+  - [x] 2.5 Model and validate each normal output branch produced by the existing helpers: `render_output`, `render_message_output`, `render_confirmation_required`, and `render_collection_output`, including tool-specific conditional branches.
 
-- [ ] **Task 3: Register Pydantic-generated schemas with FastMCP** (AC: 1, 3)
-  - [ ] 3.1 Replace the blanket `output_schema=None` in `src/main.py` with lookup of the registered schema for each tool.
-  - [ ] 3.2 Keep existing tags, annotations, telemetry events, tool names, and input schemas unchanged.
-  - [ ] 3.3 Add a focused regression test proving a representative nested model is accepted by the pinned FastMCP 3.4.4 registration API and appears without `x-fastmcp-wrap-result`.
+- [x] **Task 3: Register Pydantic-generated schemas with FastMCP** (AC: 1, 3)
+  - [x] 3.1 Replace the blanket `output_schema=None` in `src/main.py` with lookup of the registered schema for each tool.
+  - [x] 3.2 Keep existing tags, annotations, telemetry events, tool names, and input schemas unchanged.
+  - [x] 3.3 Add a focused regression test proving a representative nested model is accepted by the pinned FastMCP 3.4.4 registration API and appears without `x-fastmcp-wrap-result`.
 
-- [ ] **Task 4: Regenerate and harden the published manifest workflow** (AC: 5)
-  - [ ] 4.1 Regenerate `docs/mcp_manifest.json` using the locked FastMCP command after implementation; commit the generated artifact.
-  - [ ] 4.2 Extend `tests/docs/test_mcp_manifest.py` to assert one-to-one schema coverage, non-null object roots, meaningful constraints, and absence of the obsolete generic string wrapper.
-  - [ ] 4.3 Add tests that validate representative success, empty, confirmation, and complex nested payloads for every registry entry against the matching Pydantic model/schema. Use focused fixtures/mocks rather than live TestOps dependencies.
-  - [ ] 4.4 Update `scripts/pre_commit_sync_mcp_manifest.sh` trigger detection to include schema registration changes in `src/main.py` as well as output definitions under `src/tools/`.
-  - [ ] 4.5 Retain the release workflow in `scripts/prepare-release.md`; its locked regeneration and manifest test command is the release-level verification path.
+- [x] **Task 4: Regenerate and harden the published manifest workflow** (AC: 5)
+  - [x] 4.1 Regenerate `docs/mcp_manifest.json` using the locked FastMCP command after implementation; commit the generated artifact.
+  - [x] 4.2 Extend `tests/docs/test_mcp_manifest.py` to assert one-to-one schema coverage, non-null object roots, meaningful constraints, and absence of the obsolete generic string wrapper.
+  - [x] 4.3 Add tests that validate representative success, empty, confirmation, and complex nested payloads for every registry entry against the matching Pydantic model/schema. Use focused fixtures/mocks rather than live TestOps dependencies.
+  - [x] 4.4 Update `scripts/pre_commit_sync_mcp_manifest.sh` trigger detection to include schema registration changes in `src/main.py` as well as output definitions under `src/tools/`.
+  - [x] 4.5 Retain the release workflow in `scripts/prepare-release.md`; its locked regeneration and manifest test command is the release-level verification path.
 
-- [ ] **Task 5: Validate behavior across MCP and CLI boundaries** (AC: 2, 3, 4, 6)
-  - [ ] 5.1 Extend `tests/unit/test_tool_structured_outputs.py` to execute registered FastMCP tools with explicit schemas and assert valid structured content for omitted and `json` output formats.
-  - [ ] 5.2 Add tests for the plain FastMCP path to ensure it produces text content with no scalar structured content, while direct tool tests continue to receive the expected string.
-  - [ ] 5.3 Retain/extend CLI mocked and source-invoked checks proving JSON passthrough and `plain|table|csv` behavior remain unchanged and the CLI does not import `src.main`.
-  - [ ] 5.4 Run focused checks first: `uv run --locked pytest tests/docs/test_mcp_manifest.py tests/unit/test_tool_structured_outputs.py tests/cli -q`, then applicable integration and source-invoked CLI E2E coverage; run `uv run --locked ruff check` and `uv run --locked mypy src` on touched areas.
+- [x] **Task 5: Validate behavior across MCP and CLI boundaries** (AC: 2, 3, 4, 6)
+  - [x] 5.1 Extend `tests/unit/test_tool_structured_outputs.py` to execute registered FastMCP tools with explicit schemas and assert valid structured content for omitted and `json` output formats.
+  - [x] 5.2 Add tests for the plain FastMCP path to ensure it produces text content with no scalar structured content, while direct tool tests continue to receive the expected string.
+  - [x] 5.3 Retain/extend CLI mocked and source-invoked checks proving JSON passthrough and `plain|table|csv` behavior remain unchanged and the CLI does not import `src.main`.
+  - [x] 5.4 Run focused checks first: `uv run --locked pytest tests/docs/test_mcp_manifest.py tests/unit/test_tool_structured_outputs.py tests/cli -q`, then applicable integration and source-invoked CLI E2E coverage; run `uv run --locked ruff check` and `uv run --locked mypy src` on touched areas.
 
 ## Dev Notes
 
@@ -151,9 +151,25 @@ Codex GPT-5
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
 - Confirmed by local proof: a Pydantic output model generated nested object JSON Schema and FastMCP 3.4.4 accepted it as an explicit `output_schema`.
+- Added an authoritative 64-tool Pydantic output-schema registry with closed object-root models and reusable nested response concepts.
+- Registered serialization schemas with FastMCP and validated MCP structured results in the telemetry registration boundary; plain MCP responses are now explicitly text-only `ToolResult`s without changing direct or CLI calls.
+- Regenerated the manifest: all 64 tools publish object-root output schemas with no wrapper extension.
+- Verified with focused docs/unit/CLI tests, source-invoked CLI E2E coverage, `ruff`, `mypy`, and the full non-live regression suite.
 
 ### File List
 
+- docs/mcp_manifest.json
+- scripts/pre_commit_sync_mcp_manifest.sh
 - specs/project-planning-artifacts/epics.md
 - specs/implementation-artifacts/9-14-publish-accurate-mcp-tool-output-schemas.md
 - specs/implementation-artifacts/sprint-status.yaml
+- src/main.py
+- src/tools/output_schemas.py
+- src/utils/telemetry.py
+- tests/docs/test_mcp_manifest.py
+- tests/unit/test_output_schemas.py
+- tests/unit/test_tool_structured_outputs.py
+
+## Change Log
+
+- 2026-07-17: Added validated, per-tool MCP output schemas, regenerated the manifest, and hardened schema/CLI regression coverage.
