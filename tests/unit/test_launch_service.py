@@ -276,15 +276,13 @@ async def test_get_launch_not_found_maps_error(service: LaunchService, mock_clie
 
 @pytest.mark.asyncio
 async def test_delete_launch_success(service: LaunchService, mock_client: MagicMock) -> None:
-    launch = LaunchDto(id=88, name="To Delete")
-    mock_client.get_launch.return_value = launch
-
     result = await service.delete_launch(88)
 
     assert isinstance(result, LaunchDeleteResult)
     assert result.launch_id == 88
-    assert result.status == "archived"
-    assert result.name == "To Delete"
+    assert result.status == "deleted"
+    assert result.message == "Launch 88 was deleted."
+    mock_client.get_launch.assert_not_called()
     mock_client.delete_launch.assert_called_once_with(88)
 
 
@@ -296,14 +294,39 @@ async def test_delete_launch_invalid_id(service: LaunchService) -> None:
 
 @pytest.mark.asyncio
 async def test_delete_launch_already_deleted(service: LaunchService, mock_client: MagicMock) -> None:
-    mock_client.get_launch.side_effect = AllureNotFoundError("Not found", status_code=404, response_body="{}")
+    mock_client.delete_launch.side_effect = AllureNotFoundError("Not found", status_code=404, response_body="{}")
 
     result = await service.delete_launch(99)
 
     assert result.launch_id == 99
     assert result.status == "already_deleted"
-    assert "already archived" in result.message
-    mock_client.delete_launch.assert_not_called()
+    assert "already deleted" in result.message
+    mock_client.get_launch.assert_not_called()
+    mock_client.delete_launch.assert_called_once_with(99)
+
+
+@pytest.mark.asyncio
+async def test_delete_launch_repeated_success_does_not_fetch_deleted_launch(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    first_result = await service.delete_launch(99)
+    second_result = await service.delete_launch(99)
+
+    assert first_result.status == "deleted"
+    assert second_result.status == "deleted"
+    mock_client.get_launch.assert_not_called()
+    assert mock_client.delete_launch.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_delete_launch_propagates_non_not_found_api_error(service: LaunchService, mock_client: MagicMock) -> None:
+    mock_client.delete_launch.side_effect = AllureAPIError("Server error", status_code=500, response_body="{}")
+
+    with pytest.raises(AllureAPIError, match="Server error"):
+        await service.delete_launch(99)
+
+    mock_client.get_launch.assert_not_called()
+    mock_client.delete_launch.assert_called_once_with(99)
 
 
 @pytest.mark.asyncio

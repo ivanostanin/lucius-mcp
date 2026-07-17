@@ -292,7 +292,7 @@ async def test_submit_manual_test_results_and_attachment_outputs() -> None:
 
 
 @pytest.mark.asyncio
-async def test_delete_launch_output_archived() -> None:
+async def test_delete_launch_output_deleted() -> None:
     with patch("src.tools.launches.resolve_auth_settings", return_value=_resolved_auth()):
         with patch("src.tools.launches.AllureClient") as mock_client_cls:
             mock_client = _mock_url_context()
@@ -303,14 +303,41 @@ async def test_delete_launch_output_archived() -> None:
                 mock_result = type(
                     "LaunchDeleteResult",
                     (),
-                    {"launch_id": 42, "status": "archived", "name": "Launch 42", "message": "Archived"},
+                    {"launch_id": 42, "status": "deleted", "message": "Deleted"},
                 )
                 mock_service.delete_launch = AsyncMock(return_value=mock_result)
 
                 output = await delete_launch(launch_id=42, output_format="plain")
 
-                assert "Archived Launch 42" in output
-                assert "Launch 42" in output
+                assert "Deleted Launch 42" in output
+                assert "Launch URL" not in output
+
+
+@pytest.mark.asyncio
+async def test_delete_launch_json_output_deleted_omits_launch_details() -> None:
+    with patch("src.tools.launches.resolve_auth_settings", return_value=_resolved_auth()):
+        with patch("src.tools.launches.AllureClient") as mock_client_cls:
+            mock_client = _mock_url_context()
+            mock_client_cls.return_value.__aenter__.return_value = mock_client
+
+            with patch("src.tools.launches.LaunchService") as mock_service_cls:
+                mock_service = mock_service_cls.return_value
+                mock_result = type(
+                    "LaunchDeleteResult",
+                    (),
+                    {"launch_id": 42, "status": "deleted", "message": "Deleted"},
+                )
+                mock_service.delete_launch = AsyncMock(return_value=mock_result)
+
+                output = await delete_launch(launch_id=42, output_format="json")
+
+                assert output.structured_content == {
+                    "launch_id": 42,
+                    "status": "deleted",
+                    "message": "Deleted",
+                }
+                assert "name" not in output.structured_content
+                assert "url" not in output.structured_content
 
 
 @pytest.mark.asyncio
@@ -328,7 +355,6 @@ async def test_delete_launch_output_already_deleted() -> None:
                     {
                         "launch_id": 77,
                         "status": "already_deleted",
-                        "name": None,
                         "message": "Already deleted",
                     },
                 )
@@ -337,7 +363,7 @@ async def test_delete_launch_output_already_deleted() -> None:
                 output = await delete_launch(launch_id=77, output_format="plain")
 
                 assert "Launch 77" in output
-                assert "already archived or doesn't exist" in output
+                assert "already deleted or doesn't exist" in output
 
 
 @pytest.mark.asyncio

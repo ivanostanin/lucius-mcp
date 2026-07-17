@@ -207,7 +207,7 @@
     },
     {
       "name": "delete_launch",
-      "description": "Delete/archive a launch by ID."
+      "description": "Delete a launch by ID."
     },
     {
       "name": "close_launch",

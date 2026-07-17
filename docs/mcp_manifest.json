@@ -2546,12 +2546,12 @@
     {
       "name": "delete_launch",
       "title": "Delete Launch",
-      "description": "Delete/archive a launch by ID.\n⚠️ CAUTION: Destructive.",
+      "description": "Delete a launch by ID.\n⚠️ CAUTION: Destructive.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
           "launch_id": {
-            "description": "Launch ID to delete/archive (required).",
+            "description": "Launch ID to delete (required).",
             "type": "integer"
           },
           "project_id": {
