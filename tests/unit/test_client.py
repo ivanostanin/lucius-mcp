@@ -258,6 +258,51 @@ async def test_token_exchange_failure_raises_auth_error(base_url: str, token: Se
 
 @pytest.mark.asyncio
 @respx.mock
+async def test_token_exchange_invalid_json_raises_auth_error(base_url: str, token: SecretStr) -> None:
+    """Test that a successful non-JSON token response raises AllureAuthError."""
+    response_body = "not json"
+    respx.post(f"{base_url}/api/uaa/oauth/token").mock(return_value=Response(200, text=response_body))
+
+    with pytest.raises(AllureAuthError, match="Token exchange failed") as error:
+        async with AllureClient(base_url, token, project=1):
+            pass
+
+    assert error.value.status_code == 200
+    assert error.value.response_body == response_body
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_token_exchange_missing_access_token_raises_auth_error(base_url: str, token: SecretStr) -> None:
+    """Test that a successful token response missing access_token raises AllureAuthError."""
+    response_body = '{"expires_in":3600}'
+    respx.post(f"{base_url}/api/uaa/oauth/token").mock(return_value=Response(200, content=response_body))
+
+    with pytest.raises(AllureAuthError, match="Token exchange failed") as error:
+        async with AllureClient(base_url, token, project=1):
+            pass
+
+    assert error.value.status_code == 200
+    assert error.value.response_body == response_body
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_token_exchange_non_object_json_raises_auth_error(base_url: str, token: SecretStr) -> None:
+    """Test that a successful non-object token response raises AllureAuthError."""
+    response_body = "[]"
+    respx.post(f"{base_url}/api/uaa/oauth/token").mock(return_value=Response(200, content=response_body))
+
+    with pytest.raises(AllureAuthError, match="Token exchange failed") as error:
+        async with AllureClient(base_url, token, project=1):
+            pass
+
+    assert error.value.status_code == 200
+    assert error.value.response_body == response_body
+
+
+@pytest.mark.asyncio
+@respx.mock
 async def test_token_renewal_on_expiry(base_url: str, token: SecretStr, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test that expired token is automatically renewed before request."""
     call_count = 0
