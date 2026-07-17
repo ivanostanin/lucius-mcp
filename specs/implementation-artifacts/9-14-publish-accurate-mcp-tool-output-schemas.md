@@ -1,6 +1,6 @@
 # Story 9.14: Publish Accurate MCP Tool Output Schemas
 
-Status: review
+Status: done
 
 ## Story
 
@@ -173,3 +173,21 @@ Codex GPT-5
 ## Change Log
 
 - 2026-07-17: Added validated, per-tool MCP output schemas, regenerated the manifest, and hardened schema/CLI regression coverage.
+- 2026-07-18: Fixed review findings for concrete nested output models, nullable payload preservation, and MCP contract regression coverage.
+
+### Review Findings
+
+- [x] [Review][Patch] Collection item schemas reject normal non-empty payloads [src/tools/output_schemas.py:193]
+  - `items` is always `list[EntitySummary]` with `extra="forbid"`, but `list_launches` emits launch metadata, `list_test_suites` emits recursive `children`, and `list_defect_matchers` emits regex fields. The MCP validation boundary therefore raises a validation error instead of returning these normal responses (AC2, AC4).
+- [x] [Review][Patch] Test-case details reject populated custom-field entries [src/tools/output_schemas.py:174]
+  - The `custom_fields` list accepts `EntitySummary`, while `get_test_case_details` emits `{name, value}` items. `value` is forbidden by that model, so normal structured MCP output fails for test cases with custom fields (AC2, AC4).
+- [x] [Review][Patch] Issue-key unlink responses reject documented string identifiers [src/tools/output_schemas.py:191]
+  - `unlink_issue_from_test_case` accepts and returns an `int | str` issue ID, but the schema accepts only `int`; a documented key such as `PROJ-123` fails MCP output validation (AC2, AC4).
+- [x] [Review][Patch] Launch date fields are typed as strings instead of their emitted integer timestamps [src/tools/output_schemas.py:171]
+  - The generated launch DTO exposes `created_date` and `last_modified_date` as strict integers, while these schema fields are strict strings. Create/get/close/reopen launch responses fail validation whenever those dates are present (AC2, AC4).
+- [x] [Review][Patch] Cleanup tools omit their confirmation response fields [src/tools/cleanup.py:23]
+  - The three cleanup tools declare only `deleted_count` but return `requires_confirmation` and `action` before confirmation. Their default/json MCP confirmation path fails closed-schema validation (AC2, AC4).
+- [x] [Review][Patch] MCP wrapper silently removes nullable response fields [src/utils/telemetry.py:73]
+  - `model_dump(..., exclude_none=True)` changes existing structured payloads by dropping explicitly null keys. Preserve nulls so the published schema and flat MCP contract remain faithful (AC2, AC3, AC6).
+- [x] [Review][Patch] Contract tests do not exercise each tool's actual normal payloads [tests/unit/test_output_schemas.py:30]
+  - Tests fabricate minimal empty/confirmation payloads and only validate one concrete success payload. Add representative success, empty, confirmation, and complex nested branches per registered output model (AC5.3).

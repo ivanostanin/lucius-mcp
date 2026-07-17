@@ -1,3 +1,5 @@
+import pytest
+
 from src.tools import all_tools
 from src.tools.output_schemas import OUTPUT_MODELS, output_model_for, output_schema_for, validate_registry_coverage
 
@@ -83,3 +85,89 @@ def test_search_schema_validates_nested_serialized_payload() -> None:
             }
         ],
     }
+
+
+@pytest.mark.parametrize(
+    ("tool_name", "payload"),
+    [
+        (
+            "list_launches",
+            {
+                "total": 1,
+                "page": 0,
+                "size": 20,
+                "total_pages": 1,
+                "items": [
+                    {
+                        "id": 7,
+                        "name": "Nightly",
+                        "closed": False,
+                        "created_date": 1_700_000_000_000,
+                        "last_modified_date": 1_700_000_100_000,
+                        "project_id": 1,
+                        "autoclose": True,
+                        "external": False,
+                        "known_defects_count": 0,
+                        "new_defects_count": 1,
+                        "manual_execution_guidance": "Use manual execution tools.",
+                        "url": "https://example.test/launch/7",
+                    }
+                ],
+            },
+        ),
+        (
+            "list_test_suites",
+            {
+                "tree": {"id": 1, "name": "Default"},
+                "total": 1,
+                "items": [{"id": 2, "name": "Parent", "children": [{"id": 3, "name": "Child", "children": []}]}],
+            },
+        ),
+        (
+            "list_defect_matchers",
+            {
+                "defect_id": 4,
+                "total": 1,
+                "items": [{"id": 5, "name": "Matcher", "message_regex": "boom", "trace_regex": "trace"}],
+            },
+        ),
+        (
+            "get_test_case_details",
+            {
+                "id": 6,
+                "name": "Login",
+                "status": "Active",
+                "tags": [],
+                "custom_fields": [{"name": "Layer", "value": "UI"}],
+                "attachments": [],
+                "steps": [],
+            },
+        ),
+        (
+            "unlink_issue_from_test_case",
+            {"test_case_id": 8, "issue_id": "PROJ-123", "status": "unlinked", "already_unlinked": False},
+        ),
+        (
+            "create_launch",
+            {"id": 9, "name": "Launch", "created_date": 1_700_000_000_000, "closed": False},
+        ),
+        (
+            "delete_archived_test_cases",
+            {"requires_confirmation": True, "action": "delete_archived_test_cases"},
+        ),
+        (
+            "delete_archived_shared_steps",
+            {"requires_confirmation": True, "action": "delete_archived_shared_steps"},
+        ),
+        (
+            "delete_unused_custom_fields",
+            {"requires_confirmation": True, "action": "delete_unused_custom_fields"},
+        ),
+    ],
+)
+def test_specialized_models_accept_documented_normal_payloads(tool_name: str, payload: dict[str, object]) -> None:
+    model = output_model_for(tool_name)
+
+    validated = model.model_validate(payload)
+
+    assert validated.model_dump(mode="json", by_alias=True, exclude_unset=True) == payload

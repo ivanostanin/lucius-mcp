@@ -141,6 +141,119 @@ class SearchTestCasesOutput(BaseModel):
     items: list[TestCaseSummary] = Field(description="Matching test cases.")
 
 
+class SuiteNodeOutput(BaseModel):
+    """A recursive hierarchy-suite node."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = Field(default=None)
+    name: str | None = Field(default=None)
+    children: list[SuiteNodeOutput] = Field(default_factory=list)
+
+
+class LaunchSummary(BaseModel):
+    """The launch fields emitted by the launch list and detail tools."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = Field(default=None)
+    name: str | None = Field(default=None)
+    closed: bool | None = Field(default=None)
+    created_date: int | None = Field(default=None)
+    last_modified_date: int | None = Field(default=None)
+    project_id: int | None = Field(default=None)
+    autoclose: bool | None = Field(default=None)
+    external: bool | None = Field(default=None)
+    known_defects_count: int | None = Field(default=None, ge=0)
+    new_defects_count: int | None = Field(default=None, ge=0)
+    manual_execution_guidance: str | None = Field(default=None)
+    url: str | None = Field(default=None)
+    operation: str | None = Field(default=None)
+
+
+class ListLaunchesOutput(BaseModel):
+    """Paginated launch summaries."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    total: int | None = Field(default=None, ge=0)
+    page: int | None = Field(default=None, ge=0)
+    size: int | None = Field(default=None, ge=0)
+    total_pages: int | None = Field(default=None, ge=0)
+    items: list[LaunchSummary] | None = Field(default=None)
+
+
+class ListTestSuitesOutput(BaseModel):
+    """Hierarchy tree and its recursive suite nodes."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    tree: EntitySummary | None = Field(default=None)
+    items: list[SuiteNodeOutput] | None = Field(default=None)
+    total: int | None = Field(default=None, ge=0)
+
+
+class DefectMatcherSummary(BaseModel):
+    """A matcher entry returned when listing a defect's automation rules."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = Field(default=None)
+    name: str | None = Field(default=None)
+    message_regex: str | None = Field(default=None)
+    trace_regex: str | None = Field(default=None)
+
+
+class ListDefectMatchersOutput(BaseModel):
+    """Matcher list for a defect."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    defect_id: int | None = Field(default=None)
+    items: list[DefectMatcherSummary] | None = Field(default=None)
+    total: int | None = Field(default=None, ge=0)
+    page: int | None = Field(default=None, ge=0)
+    size: int | None = Field(default=None, ge=0)
+    total_pages: int | None = Field(default=None, ge=0)
+
+
+class CustomFieldEntry(BaseModel):
+    """A named custom-field value exposed by test-case details."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    name: str = Field(description="Custom field name.")
+    value: str = Field(description="Rendered custom field value.")
+
+
+class TestCaseDetailsOutput(BaseModel):
+    """Structured details for one test case."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = Field(default=None)
+    name: str | None = Field(default=None)
+    status: str | None = Field(default=None)
+    description: str | None = Field(default=None)
+    precondition: str | None = Field(default=None)
+    tags: list[str] | None = Field(default=None)
+    custom_fields: list[CustomFieldEntry] | None = Field(default=None)
+    attachments: list[Attachment] | None = Field(default=None)
+    steps: list[Step] | None = Field(default=None)
+    url: str | None = Field(default=None)
+
+
+class UnlinkIssueFromTestCaseOutput(BaseModel):
+    """Confirmation for unlinking an issue by numeric ID or issue key."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    test_case_id: int | None = Field(default=None)
+    issue_id: int | str | None = Field(default=None)
+    status: str | None = Field(default=None)
+    already_unlinked: bool | None = Field(default=None)
+
+
 class ToolOutputModel(BaseModel):
     """Shared, closed vocabulary used by concrete per-tool response models.
 
@@ -168,10 +281,10 @@ class ToolOutputModel(BaseModel):
     changed: bool | None = Field(default=None)
     changes: list[str] | None = Field(default=None)
     closed: bool | None = Field(default=None)
-    created_date: str | None = Field(default=None)
+    created_date: int | None = Field(default=None)
     custom_field_id: int | None = Field(default=None)
     custom_field_name: str | None = Field(default=None)
-    custom_fields: list[EntitySummary] | dict[str, str | int | float | bool | list[str] | None] | None = Field(
+    custom_fields: list[CustomFieldEntry] | dict[str, str | int | float | bool | list[str] | None] | None = Field(
         default=None, description="Custom-field values as named entries or a value map."
     )
     defect_id: int | None = Field(default=None)
@@ -188,14 +301,14 @@ class ToolOutputModel(BaseModel):
     force_manual: bool | None = Field(default=None)
     id: int | None = Field(default=None)
     integration_id: int | None = Field(default=None)
-    issue_id: int | None = Field(default=None)
+    issue_id: int | str | None = Field(default=None)
     issue_key: str | None = Field(default=None)
     items: list[EntitySummary] | None = Field(default=None, description="Entity-specific collection entries.")
     job_id: int | None = Field(default=None)
     job_run_id: int | None = Field(default=None)
     key: str | None = Field(default=None)
     known_defects_count: int | None = Field(default=None, ge=0)
-    last_modified_date: str | None = Field(default=None)
+    last_modified_date: int | None = Field(default=None)
     launch_id: int | None = Field(default=None)
     layer_id: int | None = Field(default=None)
     manual_execution_guidance: str | None = Field(default=None)

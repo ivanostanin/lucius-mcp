@@ -20,7 +20,7 @@ from src.tools.output_schemas import output_fields
 DESTRUCTIVE_CONFIRMATION_MESSAGE = "⚠️ Destructive operation. Pass confirm=True to proceed."
 
 
-@output_fields("deleted_count")
+@output_fields("requires_confirmation", "action", "deleted_count")
 async def delete_archived_test_cases(
     confirm: Annotated[bool, Field(description="Must be set to True to proceed.")] = False,
     project_id: Annotated[int | None, Field(description="Optional Allure TestOps project ID override.")] = None,
@@ -52,7 +52,7 @@ async def delete_archived_test_cases(
         )
 
 
-@output_fields("deleted_count")
+@output_fields("requires_confirmation", "action", "deleted_count")
 async def delete_archived_shared_steps(
     confirm: Annotated[bool, Field(description="Must be set to True to proceed.")] = False,
     project_id: Annotated[int | None, Field(description="Optional Allure TestOps project ID override.")] = None,
@@ -84,7 +84,7 @@ async def delete_archived_shared_steps(
         )
 
 
-@output_fields("deleted_count")
+@output_fields("requires_confirmation", "action", "deleted_count")
 async def delete_unused_custom_fields(
     confirm: Annotated[bool, Field(description="Must be set to True to proceed.")] = False,
     project_id: Annotated[int | None, Field(description="Optional Allure TestOps project ID override.")] = None,
