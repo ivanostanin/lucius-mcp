@@ -1,3 +1,4 @@
+import asyncio
 import importlib.util
 import json
 import sys
@@ -71,17 +72,10 @@ def validate_tools(manifest, mcp_instance):
         return
 
     manifest_tools = {t["name"] for t in manifest.get("tools", [])}
-    # FastMCP stores tools in _tool_manager.tools usually, or we can access the underlying tools
-    # Inspecting FastMCP internals might be fragile, but let's try to see if we can get the list.
-    # FastMCP uses a ToolManager.
-
-    code_tools = set()
-    # Attempt to list tools from mcp instance
-    # Depending on FastMCP version. assuming >= 0.3.0
+    # Use FastMCP's public async API. The former private _tool_manager registry
+    # was removed in FastMCP 3.x.
     try:
-        # This part is heuristic based on standard FastMCP usage
-        for tool_name in mcp_instance._tool_manager._tools.keys():
-            code_tools.add(tool_name)
+        code_tools = {tool.name for tool in asyncio.run(mcp_instance.list_tools(run_middleware=False))}
     except Exception:
         print("⚠️  Could not inspect FastMCP tools directly")
         return
