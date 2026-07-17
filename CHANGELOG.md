@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.12.2] - 2026-07-18
+
+### Changed
+- Published accurate MCP tool output schemas in the MCP registry and documentation manifest (#288).
+- Refined structured MCP output schema contracts across tool responses (#289).
+
 ## [v0.12.1] - 2026-07-17
 
 ### Changed
@@ -290,7 +296,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.12.1...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.12.2...HEAD
+[v0.12.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.12.1...v0.12.2
 [v0.12.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.12.0...v0.12.1
 [v0.12.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.11.0...v0.12.0
 [v0.11.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.10.6...v0.11.0
