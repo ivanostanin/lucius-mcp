@@ -140,7 +140,7 @@ jobs:
 
       - name: Create GitHub Release (with CLI artifacts)
         if: ${{ vars.FEATURE_CLI == 'true' }}
-        uses: softprops/action-gh-release@v3.0.1
+        uses: softprops/action-gh-release@v3.0.2
         with:
           body: ${{ steps.changelog_reader.outputs.changes }}
           fail_on_unmatched_files: true
@@ -152,7 +152,7 @@ jobs:
 
       - name: Create GitHub Release (MCPB only)
         if: ${{ vars.FEATURE_CLI != 'true' }}
-        uses: softprops/action-gh-release@v3.0.1
+        uses: softprops/action-gh-release@v3.0.2
         with:
           body: ${{ steps.changelog_reader.outputs.changes }}
           fail_on_unmatched_files: true
@@ -186,7 +186,7 @@ jobs:
         run: uv build
 
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.14.0
+        uses: pypa/gh-action-pypi-publish@v1.14.1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
 
