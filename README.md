@@ -38,16 +38,6 @@ See the full reference in [Tool Reference](docs/tools.md).
 | **Test Plans**                 | Manage test plans and their content.                            | `create_test_plan`, `update_test_plan`, `delete_test_plan`, `list_test_plans`, `manage_test_plan_content`                                                                                                                                |
 | **Defect Mgmt**                | Track defects, linkage, and automation rules.                   | `create_defect`, `get_defect`, `update_defect`, `delete_defect`, `list_defects`, `link_defect_to_test_case`, `unlink_issue_from_test_case`, `list_defect_test_cases`, `create_defect_matcher`, `list_defect_matchers`, `update_defect_matcher`, `delete_defect_matcher` |
 
-### Automation code generation
-
-`generate_test_code` requires an explicit language and compatible framework. Choose Java, Python, TypeScript,
-JavaScript, Kotlin, PHP, or .NET; its schema presents the verified framework choices for discovery and validates their
-language-specific compatibility before contacting TestOps. The existing `python`/`pytest`, `ts`/`playwright`, and
-`java`/`junit` aliases are still accepted.
-
-Pass `metadata` to select any of Name, Tags, Custom fields, Members, Issues, and Scenario. Omitting it selects Name,
-Tags, Custom fields, and Scenario; pass `[]` to synchronize none. JSON output returns the resolved metadata selection.
-
 ## 🚀 Quick Start
 
 1. **Install uv**: `curl -LsSf https://astral.sh/uv/install.sh | sh`
