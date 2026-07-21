@@ -193,3 +193,34 @@ def test_manifest_output_schemas_match_the_registered_contracts() -> None:
         assert set(schema["properties"]) == set(registered_schema["properties"]), f"{name}: manifest fields drifted"
         assert schema.get("required", []) == registered_schema.get("required", []), f"{name}: required fields drifted"
         assert schema.get("additionalProperties") is False, f"{name}: undeclared fields must be rejected"
+
+
+def test_generate_test_code_schema_publishes_selectable_targets_and_metadata() -> None:
+    tool = next(tool for tool in _manifest_tools(_load_manifest()) if tool["name"] == "generate_test_code")
+    input_schema = tool.get("inputSchema")
+    assert isinstance(input_schema, dict)
+    properties = input_schema.get("properties")
+    assert isinstance(properties, dict)
+
+    language = properties.get("language")
+    framework = properties.get("framework")
+    metadata = properties.get("metadata")
+    assert isinstance(language, dict) and isinstance(framework, dict) and isinstance(metadata, dict)
+    assert {"Java", "Python", "TypeScript", "JavaScript", "Kotlin", "PHP", ".NET"}.issubset(language["enum"])
+    assert {
+        "CodeceptJS",
+        "Cucumber",
+        "Jasmine",
+        "Jest",
+        "Mocha",
+        "Playwright",
+        "Vitest",
+        "WebdriverIO",
+        "ZeroStep",
+    }.issubset(framework["enum"])
+    metadata_schema = metadata.get("anyOf", [metadata])[0]
+    assert isinstance(metadata_schema, dict)
+    items = metadata_schema.get("items")
+    assert isinstance(items, dict)
+    assert items.get("enum") == ["Name", "Tags", "Custom fields", "Members", "Issues", "Scenario"]
+    assert {"language", "framework"}.issubset(input_schema.get("required", []))

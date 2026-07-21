@@ -373,6 +373,10 @@ class ToolOutputModel(BaseModel):
     steps_count: int | None = Field(default=None, ge=0)
     assignee: str | None = Field(default=None)
     manual: bool | None = Field(default=None)
+    metadata: list[str] | None = Field(
+        default=None,
+        description="Canonical test-case metadata selections included in generated code.",
+    )
     result_id: int | None = Field(default=None)
     tested_by: str | None = Field(default=None)
 

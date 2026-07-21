@@ -112,6 +112,7 @@ development_status:
   7-5-unlink-defects-from-test-cases: done
   7-6-get-projects-tool: done
   7-7-test-code-generator: done
+  7-8-test-code-generation-selection-options: done
   epic-7-retrospective: optional
 
   # Epic 8: Enterprise Security & Intelligence (Phase 3)

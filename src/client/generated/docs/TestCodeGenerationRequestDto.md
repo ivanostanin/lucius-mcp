@@ -10,6 +10,8 @@ Name | Type | Description | Notes
 **sync_fields** | **bool** |  | 
 **sync_name** | **bool** |  | 
 **sync_tags** | **bool** |  | 
+**sync_members** | **bool** |  | 
+**sync_issues** | **bool** |  | 
 **sync_scenario** | **bool** |  | 
 
 ## Example
