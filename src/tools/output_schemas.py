@@ -268,6 +268,7 @@ class ToolOutputModel(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     action: str | None = Field(default=None, description="Requested operation name.")
+    abbr: str | None = Field(default=None, description="Project abbreviation.")
     add_test_case_ids: list[int] | None = Field(default=None)
     add_test_case_urls: list[str] | None = Field(default=None)
     already_linked: bool | None = Field(default=None)
@@ -301,6 +302,7 @@ class ToolOutputModel(BaseModel):
     force_manual: bool | None = Field(default=None)
     id: int | None = Field(default=None)
     integration_id: int | None = Field(default=None)
+    is_public: bool | None = Field(default=None, description="Whether the project is publicly visible.")
     issue_id: int | str | None = Field(default=None)
     issue_key: str | None = Field(default=None)
     items: list[EntitySummary] | None = Field(default=None, description="Entity-specific collection entries.")

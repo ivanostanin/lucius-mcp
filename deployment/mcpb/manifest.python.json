@@ -223,6 +223,10 @@
       "description": "List available integrations in Allure TestOps."
     },
     {
+      "name": "get_project",
+      "description": "Resolve a project by name or list accessible projects."
+    },
+    {
       "name": "create_test_plan",
       "description": "Create a new Test Plan."
     },

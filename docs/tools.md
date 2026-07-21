@@ -27,6 +27,7 @@ route is verified.
 | `search_test_cases` | Advanced search using simple query or AQL.             | `query`, `aql`                |
 | `get_custom_fields` | List available custom fields and their allowed values. | `name` (filter)               |
 | `list_integrations` | List configured issue trackers (Jira, GitHub).         | `project_id`                  |
+| `get_project`      | Resolve a project by name or list accessible projects. | `name` (optional)             |
 
 ## 🔄 Shared Steps
 

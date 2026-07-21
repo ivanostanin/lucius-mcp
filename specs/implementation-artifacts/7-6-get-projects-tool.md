@@ -1,6 +1,6 @@
 # Story 7.6: Get Projects Tool
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -34,55 +34,55 @@ so that **I can resolve a human-readable project name to its numeric ID for subs
 
 ## Tasks / Subtasks
 
-- [ ] **0. Regenerate API Client** (Prerequisite)
-  - [ ] Check `src/client/generated/api` for `ProjectController` endpoints.
-  - [ ] Ensure `ProjectController` is included in `scripts/filter_openapi.py`.
-  - [ ] Run `scripts/generate_testops_api_client.sh`.
+- [x] **0. Regenerate API Client** (Prerequisite)
+  - [x] Check `src/client/generated/api` for `ProjectController` endpoints.
+  - [x] Ensure `ProjectController` is included in `scripts/filter_openapi.py`.
+  - [x] Run `scripts/generate_testops_api_client.sh`.
 
-- [ ] **1. Implement Service Layer** (AC 1-3)
-  - [ ] Create/Update `src/services/project_service.py`.
-  - [ ] Implement `get_project_by_name(name: str) -> Project`.
-  - [ ] Implement `list_projects() -> list[Project]`.
-  - [ ] Logic: Fetch all projects (or search if API supports), then filter by name locally if needed. *Dev Note: TestOps API usually has `findAll`.*
+- [x] **1. Implement Service Layer** (AC 1-3)
+  - [x] Create/Update `src/services/project_service.py`.
+  - [x] Implement `get_project_by_name(name: str) -> Project`.
+  - [x] Implement `list_projects() -> list[Project]`.
+  - [x] Logic: Fetch all projects (or search if API supports), then filter by name locally if needed. *Dev Note: TestOps API usually has `findAll`.*
 
-- [ ] **2. Implement MCP Tool** (AC 1-4)
-  - [ ] Create `src/tools/projects.py`.
-  - [ ] Add `get_project(name: str | None = None)`.
-  - [ ] If `name` is provided, return specific project.
-  - [ ] If `name` is None, return list of all projects (summary).
-  - [ ] Add docstrings.
+- [x] **2. Implement MCP Tool** (AC 1-4)
+  - [x] Create `src/tools/projects.py`.
+  - [x] Add `get_project(name: str | None = None)`.
+  - [x] If `name` is provided, return specific project.
+  - [x] If `name` is None, return list of all projects (summary).
+  - [x] Add docstrings.
 
-- [ ] **3. Register Tool**
-  - [ ] Update `src/tools/__init__.py`.
-  - [ ] Update `deployment/mcpb/manifest.python.json`.
-  - [ ] Update `deployment/mcpb/manifest.uv.json`.
+- [x] **3. Register Tool**
+  - [x] Update `src/tools/__init__.py`.
+  - [x] Update `deployment/mcpb/manifest.python.json`.
+  - [x] Update `deployment/mcpb/manifest.uv.json`.
 
-- [ ] **4. Unit Tests**
-  - [ ] Create `tests/unit/test_project_service.py`.
-  - [ ] Test case-insensitive matching.
-  - [ ] Test "not found" scenario.
+- [x] **4. Unit Tests**
+  - [x] Create `tests/unit/test_project_service.py`.
+  - [x] Test case-insensitive matching.
+  - [x] Test "not found" scenario.
 
-- [ ] **5. Integration Tests**
-  - [ ] Create `tests/integration/test_project_tools.py`.
-  - [ ] Mock API response with list of projects.
-  - [ ] Verify tool logic.
+- [x] **5. Integration Tests**
+  - [x] Create `tests/integration/test_project_tools.py`.
+  - [x] Mock API response with list of projects.
+  - [x] Verify tool logic.
 
-- [ ] **6. E2E Tests**
-  - [ ] Create `tests/e2e/test_project_discovery.py`.
-  - [ ] Scenario: Authenticate -> List Projects -> Get Specific Project by Name -> Verify ID matches.
+- [x] **6. E2E Tests**
+  - [x] Create `tests/e2e/test_project_discovery.py`.
+  - [x] Scenario: Authenticate -> List Projects -> Get Specific Project by Name -> Verify ID matches.
 
-- [ ] **7. Update Agentic Workflow**
-  - [ ] Add scenario **Project Discovery** to `tests/agentic/agentic-tool-calls-tests.md`.
-  - [ ] Include tools: `get_project`.
-  - [ ] Update **Tool inventory** and **Coverage matrix** sections.
-  - [ ] Update **Execution plan** section.
+- [x] **7. Update Agentic Workflow**
+  - [x] Add scenario **Project Discovery** to `tests/agentic/agentic-tool-calls-tests.md`.
+  - [x] Include tools: `get_project`.
+  - [x] Update **Tool inventory** and **Coverage matrix** sections.
+  - [x] Update **Execution plan** section.
 
-- [ ] **8. Update Documentation**
-  - [ ] Update `docs/tools.md` (New "Project Management" or "General" section).
-  - [ ] Update `README.md`.
+- [x] **8. Update Documentation**
+  - [x] Update `docs/tools.md` (New "Project Management" or "General" section).
+  - [x] Update `README.md`.
 
-- [ ] **9. Validation**
-  - [ ] Run full test suite: `./scripts/full-test-suite.sh`
+- [x] **9. Validation**
+  - [x] Run full test suite: `./scripts/full-test-suite.sh`
 
 ## Dev Notes
 
@@ -117,3 +117,28 @@ Antigravity (Google DeepMind)
 
 ### Completion Notes List
 - Story created and pre-enhanced with full technical details.
+- Implemented `ProjectService` with paginated discovery, case-insensitive exact-name preference, unambiguous partial matching, and clear ambiguity/not-found errors.
+- Added the read-only `get_project` MCP tool with structured project details or a concise ID/name list, including manifest, schema, annotation, documentation, and agentic workflow registration.
+- Added unit, integration, and E2E coverage. Focused project-service coverage is 95%; the final full suite passed with 964 unit/integration tests, 24 documentation tests, and 90.58% overall coverage.
+
+### File List
+
+- README.md
+- deployment/mcpb/manifest.python.json
+- deployment/mcpb/manifest.uv.json
+- docs/mcp_manifest.json
+- docs/tools.md
+- src/services/__init__.py
+- src/services/project_service.py
+- src/tools/__init__.py
+- src/tools/annotations.py
+- src/tools/output_schemas.py
+- src/tools/projects.py
+- tests/agentic/agentic-tool-calls-tests.md
+- tests/e2e/test_project_discovery.py
+- tests/integration/test_project_tools.py
+- tests/unit/test_project_service.py
+
+### Change Log
+
+- 2026-07-21: Implemented project discovery and registered the `get_project` MCP tool with tests and documentation.

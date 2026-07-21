@@ -47,6 +47,7 @@ from src.tools.plans import (
     manage_test_plan_content,
     update_test_plan,
 )
+from src.tools.projects import get_project
 from src.tools.search import get_test_case_details, list_test_cases, search_test_cases
 from src.tools.shared_steps import create_shared_step, delete_shared_step, list_shared_steps, update_shared_step
 from src.tools.test_layers import (
@@ -98,6 +99,7 @@ __all__ = [
     "get_custom_fields",
     "get_defect",
     "get_launch",
+    "get_project",
     "get_test_case_custom_fields",
     "get_test_case_details",
     "link_defect_to_test_case",
@@ -153,6 +155,7 @@ all_tools: list[ToolFn] = [
     search_test_cases,
     create_launch,
     get_launch,
+    get_project,
     list_launches,
     list_launch_test_results,
     rerun_test_results_manually,

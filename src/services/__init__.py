@@ -5,6 +5,7 @@ from .custom_field_service import CustomFieldService
 from .custom_field_value_service import CustomFieldValueService
 from .defect_service import DefectService
 from .plan_service import PlanService
+from .project_service import ProjectService
 from .search_service import SearchService
 from .shared_step_service import SharedStepService
 from .telemetry_service import TelemetryService
@@ -18,6 +19,7 @@ __all__ = [
     "CustomFieldValueService",
     "DefectService",
     "PlanService",
+    "ProjectService",
     "SearchService",
     "SharedStepService",
     "TelemetryService",
