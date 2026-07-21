@@ -12961,6 +12961,48 @@
           "tree-controller-v-2"
         ]
       }
+    },
+    "/api/ide/testcase/{id}/testcode": {
+      "post": {
+        "tags": [
+          "ide-controller"
+        ],
+        "operationId": "generateTestCode",
+        "summary": "Generate test code from a test case",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestCodeGenerationRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Generated test code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestCodeGenerationResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -31760,6 +31802,48 @@
           "workflowId": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "TestCodeGenerationRequestDto": {
+        "type": "object",
+        "required": [
+          "lang",
+          "testFramework",
+          "syncFields",
+          "syncName",
+          "syncTags",
+          "syncScenario"
+        ],
+        "properties": {
+          "lang": {
+            "type": "string"
+          },
+          "testFramework": {
+            "type": "string"
+          },
+          "syncFields": {
+            "type": "boolean"
+          },
+          "syncName": {
+            "type": "boolean"
+          },
+          "syncTags": {
+            "type": "boolean"
+          },
+          "syncScenario": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TestCodeGenerationResponseDto": {
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
           }
         }
       }

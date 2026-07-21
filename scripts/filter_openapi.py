@@ -56,7 +56,79 @@ KEEP_TAGS = {
     "upload-controller",
     "upload-test-result-controller",
     "test-result-fixture-controller",
+    # IDE test code generation (not published in the standard TestOps spec)
+    "ide-controller",
 }
+
+
+def _add_ide_test_code_endpoint(spec: dict) -> None:
+    """Add the documented IDE test-code endpoint absent from the public spec.
+
+    TestOps exposes this endpoint to its IDE integrations, but it is not
+    included in the report-service OpenAPI document. Keeping the small
+    contract overlay here lets the generated client remain the single HTTP
+    interface used by application services.
+    """
+    components = spec.setdefault("components", {})
+    schemas = components.setdefault("schemas", {})
+    schemas.setdefault(
+        "TestCodeGenerationRequestDto",
+        {
+            "type": "object",
+            "required": ["lang", "testFramework", "syncFields", "syncName", "syncTags", "syncScenario"],
+            "properties": {
+                "lang": {"type": "string"},
+                "testFramework": {"type": "string"},
+                "syncFields": {"type": "boolean"},
+                "syncName": {"type": "boolean"},
+                "syncTags": {"type": "boolean"},
+                "syncScenario": {"type": "boolean"},
+            },
+        },
+    )
+    schemas.setdefault(
+        "TestCodeGenerationResponseDto",
+        {
+            "type": "object",
+            "required": ["code"],
+            "properties": {"code": {"type": "string"}},
+        },
+    )
+
+    spec.setdefault("paths", {}).setdefault(
+        "/api/ide/testcase/{id}/testcode",
+        {
+            "post": {
+                "tags": ["ide-controller"],
+                "operationId": "generateTestCode",
+                "summary": "Generate test code from a test case",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": True,
+                        "schema": {"type": "integer", "format": "int64"},
+                    }
+                ],
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {"schema": {"$ref": "#/components/schemas/TestCodeGenerationRequestDto"}}
+                    },
+                },
+                "responses": {
+                    "200": {
+                        "description": "Generated test code.",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/TestCodeGenerationResponseDto"}
+                            }
+                        },
+                    }
+                },
+            }
+        },
+    )
 
 
 def _patch_manual_session_schema(spec: dict) -> None:
@@ -82,6 +154,8 @@ def filter_spec() -> None:
     print(f"Reading spec from {INPUT_FILE}...")
     with open(INPUT_FILE) as f:
         spec = json.load(f)
+
+    _add_ide_test_code_endpoint(spec)
 
     original_paths_count = len(spec.get("paths", {}))
     print(f"Original paths: {original_paths_count}")

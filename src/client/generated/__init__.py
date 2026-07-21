@@ -26,6 +26,7 @@ __all__ = [
     "CustomFieldValueProjectControllerApi",
     "DefectControllerApi",
     "DefectMatcherControllerApi",
+    "IdeControllerApi",
     "IntegrationControllerApi",
     "LaunchControllerApi",
     "LaunchSearchControllerApi",
@@ -604,6 +605,8 @@ __all__ = [
     "TestCaseVersionDto",
     "TestCaseVersionPatchDto",
     "TestCaseVersionRqDto",
+    "TestCodeGenerationRequestDto",
+    "TestCodeGenerationResponseDto",
     "TestDurationCount",
     "TestFixtureResultAttachmentPatchDto",
     "TestFixtureResultAttachmentRowDto",
@@ -761,6 +764,7 @@ from src.client.generated.api.custom_field_value_controller_api import CustomFie
 from src.client.generated.api.custom_field_value_project_controller_api import CustomFieldValueProjectControllerApi as CustomFieldValueProjectControllerApi
 from src.client.generated.api.defect_controller_api import DefectControllerApi as DefectControllerApi
 from src.client.generated.api.defect_matcher_controller_api import DefectMatcherControllerApi as DefectMatcherControllerApi
+from src.client.generated.api.ide_controller_api import IdeControllerApi as IdeControllerApi
 from src.client.generated.api.integration_controller_api import IntegrationControllerApi as IntegrationControllerApi
 from src.client.generated.api.launch_controller_api import LaunchControllerApi as LaunchControllerApi
 from src.client.generated.api.launch_search_controller_api import LaunchSearchControllerApi as LaunchSearchControllerApi
@@ -1343,6 +1347,8 @@ from src.client.generated.models.test_case_update_schema_patch_dto import TestCa
 from src.client.generated.models.test_case_version_dto import TestCaseVersionDto as TestCaseVersionDto
 from src.client.generated.models.test_case_version_patch_dto import TestCaseVersionPatchDto as TestCaseVersionPatchDto
 from src.client.generated.models.test_case_version_rq_dto import TestCaseVersionRqDto as TestCaseVersionRqDto
+from src.client.generated.models.test_code_generation_request_dto import TestCodeGenerationRequestDto as TestCodeGenerationRequestDto
+from src.client.generated.models.test_code_generation_response_dto import TestCodeGenerationResponseDto as TestCodeGenerationResponseDto
 from src.client.generated.models.test_duration_count import TestDurationCount as TestDurationCount
 from src.client.generated.models.test_fixture_result_attachment_patch_dto import TestFixtureResultAttachmentPatchDto as TestFixtureResultAttachmentPatchDto
 from src.client.generated.models.test_fixture_result_attachment_row_dto import TestFixtureResultAttachmentRowDto as TestFixtureResultAttachmentRowDto

@@ -123,6 +123,7 @@ Class | Method | HTTP request | Description
 *DefectMatcherControllerApi* | [**create46**](src/client/generated/docs/DefectMatcherControllerApi.md#create46) | **POST** /api/defect/matcher | 
 *DefectMatcherControllerApi* | [**delete38**](src/client/generated/docs/DefectMatcherControllerApi.md#delete38) | **DELETE** /api/defect/matcher/{id} | 
 *DefectMatcherControllerApi* | [**patch43**](src/client/generated/docs/DefectMatcherControllerApi.md#patch43) | **PATCH** /api/defect/matcher/{id} | 
+*IdeControllerApi* | [**generate_test_code**](src/client/generated/docs/IdeControllerApi.md#generate_test_code) | **POST** /api/ide/testcase/{id}/testcode | Generate test code from a test case
 *IntegrationControllerApi* | [**create37**](src/client/generated/docs/IntegrationControllerApi.md#create37) | **POST** /api/integration | 
 *IntegrationControllerApi* | [**create_project_integration**](src/client/generated/docs/IntegrationControllerApi.md#create_project_integration) | **POST** /api/integration/project | 
 *IntegrationControllerApi* | [**delete_by_id3**](src/client/generated/docs/IntegrationControllerApi.md#delete_by_id3) | **DELETE** /api/integration/{id} | 
@@ -892,6 +893,8 @@ Class | Method | HTTP request | Description
  - [TestCaseVersionDto](src/client/generated/docs/TestCaseVersionDto.md)
  - [TestCaseVersionPatchDto](src/client/generated/docs/TestCaseVersionPatchDto.md)
  - [TestCaseVersionRqDto](src/client/generated/docs/TestCaseVersionRqDto.md)
+ - [TestCodeGenerationRequestDto](src/client/generated/docs/TestCodeGenerationRequestDto.md)
+ - [TestCodeGenerationResponseDto](src/client/generated/docs/TestCodeGenerationResponseDto.md)
  - [TestDurationCount](src/client/generated/docs/TestDurationCount.md)
  - [TestFixtureResultAttachmentPatchDto](src/client/generated/docs/TestFixtureResultAttachmentPatchDto.md)
  - [TestFixtureResultAttachmentRowDto](src/client/generated/docs/TestFixtureResultAttachmentRowDto.md)
