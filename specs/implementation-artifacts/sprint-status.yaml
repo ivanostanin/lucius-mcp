@@ -87,7 +87,7 @@ development_status:
   epic-4-retrospective: optional
 
   # Epic 5: Execution Management (Phase 2)
-  epic-5: in-progress
+  epic-5: done
   5-1-create-and-list-launches: done
   5-2-get-launch-details: done
   5-3-delete-launch: done
@@ -96,7 +96,7 @@ development_status:
   epic-5-retrospective: optional
 
   # Epic 6: Advanced Organization & Discovery (Phase 2)
-  epic-6: in-progress
+  epic-6: done
   6-1-test-hierarchy-management: done
   6-2-advanced-search-with-aql: done
   6-3-delete-test-suite: done
@@ -104,7 +104,7 @@ development_status:
   epic-6-retrospective: optional
 
   # Epic 7: Test Planning & Governance (Phase 3)
-  epic-7: in-progress
+  epic-7: done
   7-1-test-plan-management: done
   7-2-defect-lifecycle-management-with-automation-rules: done
   7-3-delete-test-plans: done
@@ -124,7 +124,7 @@ development_status:
   epic-8-retrospective: optional
 
   # Epic 9: Documentation & Knowledge Base & CLI
-  epic-9: in-progress
+  epic-9: done
   9-1-comprehensive-project-documentation: done
   9-2-fastmcp-cli-integration: done
   9-3-service-first-cli-entity-action: done
@@ -144,10 +144,10 @@ development_status:
   # Epic 10: Quality of Life and API Coverage
   epic-10: in-progress
   10-1-include-testops-entity-urls-in-tool-responses: done
-  10-2-manual-test-execution-inside-launches: in-progress
+  10-2-manual-test-execution-inside-launches: done
   epic-10-retrospective: optional
 
   # Epic 11: Telemetry Signal Simplification
   epic-11: in-progress
-  11-1-flatten-telemetry-event-names: review
+  11-1-flatten-telemetry-event-names: done
   epic-11-retrospective: optional
