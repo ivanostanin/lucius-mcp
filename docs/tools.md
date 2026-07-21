@@ -25,6 +25,17 @@ route is verified.
 |:---------------------|:-------------------------------------------------------------------|:---------------------------------------|
 | `generate_test_code` | Generate current, framework-specific code from a TestOps test case. | `test_case_id`, `language`, `framework` |
 
+`generate_test_code` requires both `language` and `framework`. Languages are Java, Python, TypeScript, JavaScript,
+Kotlin, PHP, and .NET. Frameworks are constrained per language: Java (JUnit 5, JUnit 4, TestNG, Cucumber); Python
+(Behave, Pytest, Pytest BDD); TypeScript (CodeceptJS, Cucumber, Jasmine, Jest, Mocha, Playwright, Vitest,
+WebdriverIO, ZeroStep); JavaScript (the same list except ZeroStep); Kotlin (JUnit 5, JUnit 4, TestNG); PHP (PHPUnit,
+Codeception); and .NET (NUnit, XUnit, SpecFlow). The existing `python`/`pytest`, `ts`/`playwright`, and `java`/`junit`
+aliases remain accepted.
+
+Use the optional `metadata` list to select from Name, Tags, Custom fields, Members, Issues, and Scenario. If omitted,
+Lucius selects Name, Tags, Custom fields, and Scenario; pass `[]` to synchronize none of them. Structured JSON output
+returns the resolved canonical metadata list.
+
 ## 🔍 Search & Discovery
 
 | Tool                | Description                                            | Key Parameters                |

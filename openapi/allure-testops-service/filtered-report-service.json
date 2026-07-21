@@ -31813,6 +31813,8 @@
           "syncFields",
           "syncName",
           "syncTags",
+          "syncMembers",
+          "syncIssues",
           "syncScenario"
         ],
         "properties": {
@@ -31829,6 +31831,12 @@
             "type": "boolean"
           },
           "syncTags": {
+            "type": "boolean"
+          },
+          "syncMembers": {
+            "type": "boolean"
+          },
+          "syncIssues": {
             "type": "boolean"
           },
           "syncScenario": {

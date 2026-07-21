@@ -32,8 +32,10 @@ class TestCodeGenerationRequestDto(BaseModel):
     sync_fields: StrictBool = Field(alias="syncFields")
     sync_name: StrictBool = Field(alias="syncName")
     sync_tags: StrictBool = Field(alias="syncTags")
+    sync_members: StrictBool = Field(alias="syncMembers")
+    sync_issues: StrictBool = Field(alias="syncIssues")
     sync_scenario: StrictBool = Field(alias="syncScenario")
-    __properties: ClassVar[List[str]] = ["lang", "testFramework", "syncFields", "syncName", "syncTags", "syncScenario"]
+    __properties: ClassVar[List[str]] = ["lang", "testFramework", "syncFields", "syncName", "syncTags", "syncMembers", "syncIssues", "syncScenario"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -91,6 +93,8 @@ class TestCodeGenerationRequestDto(BaseModel):
             "syncFields": obj.get("syncFields"),
             "syncName": obj.get("syncName"),
             "syncTags": obj.get("syncTags"),
+            "syncMembers": obj.get("syncMembers"),
+            "syncIssues": obj.get("syncIssues"),
             "syncScenario": obj.get("syncScenario")
         })
         return _obj

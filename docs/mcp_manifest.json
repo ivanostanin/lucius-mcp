@@ -3562,7 +3562,7 @@
     {
       "name": "generate_test_code",
       "title": "Generate Test Code",
-      "description": "Generate a current, framework-specific test snippet from a TestOps test case.\n\nTestOps synchronizes the test case's fields, name, tags, and scenario before\ngeneration. Language and framework values are passed to TestOps unchanged,\nallowing the server to report unsupported combinations precisely.",
+      "description": "Generate a current, framework-specific test snippet from a TestOps test case.\n\nBoth target selections are required. The tool validates verified TestOps\nlanguage/framework compatibility locally and synchronizes only requested\ntest-case metadata before generation.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -3571,14 +3571,93 @@
             "type": "integer"
           },
           "language": {
-            "default": "python",
-            "description": "Target programming language accepted by TestOps, for example 'python', 'ts', or 'java'.",
-            "type": "string"
+            "enum": [
+              "Java",
+              "Python",
+              "TypeScript",
+              "JavaScript",
+              "Kotlin",
+              "PHP",
+              ".NET",
+              "java",
+              "python",
+              "ts",
+              "js",
+              "dotnet"
+            ],
+            "type": "string",
+            "description": "Required target language. Choose Java, Python, TypeScript, JavaScript, Kotlin, PHP, or .NET. Backward-compatible aliases: java, python, ts, js, and dotnet."
           },
           "framework": {
-            "default": "pytest",
-            "description": "Target testing framework accepted by TestOps, for example 'pytest', 'playwright', or 'junit'.",
-            "type": "string"
+            "enum": [
+              "JUnit 5",
+              "JUnit 4",
+              "TestNG",
+              "Cucumber",
+              "Behave",
+              "Pytest",
+              "Pytest BDD",
+              "CodeceptJS",
+              "Jasmine",
+              "Jest",
+              "Mocha",
+              "Playwright",
+              "Vitest",
+              "WebdriverIO",
+              "ZeroStep",
+              "PHPUnit",
+              "Codeception",
+              "NUnit",
+              "XUnit",
+              "SpecFlow",
+              "junit",
+              "junit5",
+              "junit4",
+              "testng",
+              "cucumber-jvm",
+              "behave",
+              "pytest",
+              "pytest-bdd",
+              "codeceptjs",
+              "cucumber-js",
+              "jasmine",
+              "jest",
+              "mocha",
+              "playwright",
+              "vitest",
+              "wdio",
+              "zerostep",
+              "phpunit",
+              "codeception",
+              "nunit",
+              "xunit",
+              "specflow"
+            ],
+            "type": "string",
+            "description": "Required framework compatible with language. TypeScript choices: CodeceptJS, Cucumber, Jasmine, Jest, Mocha, Playwright, Vitest, WebdriverIO, ZeroStep. Compatibility is language-specific."
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "Name",
+                    "Tags",
+                    "Custom fields",
+                    "Members",
+                    "Issues",
+                    "Scenario"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional metadata to synchronize: Name, Tags, Custom fields, Members, Issues, Scenario. Omit for Name, Tags, Custom fields, Scenario; use [] to disable all."
           },
           "output_format": {
             "anyOf": [
@@ -3598,7 +3677,9 @@
           }
         },
         "required": [
-          "test_case_id"
+          "test_case_id",
+          "language",
+          "framework"
         ],
         "type": "object"
       },
@@ -3642,6 +3723,22 @@
             "default": null,
             "description": "Requested target testing framework.",
             "title": "Framework"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Canonical test-case metadata selections included in generated code.",
+            "title": "Metadata"
           },
           "code": {
             "anyOf": [
