@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.13.1] - 2026-07-21
+
+### Added
+- Added configurable language, framework, and metadata synchronization selections to `generate_test_code`, with compatibility validation and backward-compatible aliases (#305).
+
 ## [v0.13.0] - 2026-07-21
 
 ### Added
@@ -308,7 +313,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.13.1...HEAD
+[v0.13.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.13.0...v0.13.1
 [v0.13.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.12.3...v0.13.0
 [v0.12.3]: https://github.com/ivanostanin/lucius-mcp/compare/v0.12.2...v0.12.3
 [v0.12.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.12.1...v0.12.2
