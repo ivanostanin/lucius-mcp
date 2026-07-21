@@ -550,6 +550,8 @@ from src.client.generated.models.test_case_update_schema_patch_dto import TestCa
 from src.client.generated.models.test_case_version_dto import TestCaseVersionDto
 from src.client.generated.models.test_case_version_patch_dto import TestCaseVersionPatchDto
 from src.client.generated.models.test_case_version_rq_dto import TestCaseVersionRqDto
+from src.client.generated.models.test_code_generation_request_dto import TestCodeGenerationRequestDto
+from src.client.generated.models.test_code_generation_response_dto import TestCodeGenerationResponseDto
 from src.client.generated.models.test_duration_count import TestDurationCount
 from src.client.generated.models.test_fixture_result_attachment_patch_dto import TestFixtureResultAttachmentPatchDto
 from src.client.generated.models.test_fixture_result_attachment_row_dto import TestFixtureResultAttachmentRowDto

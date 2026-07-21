@@ -74,6 +74,7 @@ From `src/tools/__init__.py:24-79`:
 - `create_defect`, `get_defect`, `update_defect`, `delete_defect`, `list_defects`, `link_defect_to_test_case`, `unlink_issue_from_test_case`, `list_defect_test_cases`
 - `create_defect_matcher`, `update_defect_matcher`, `delete_defect_matcher`, `list_defect_matchers`
 - `get_project`
+- `generate_test_code`
 
 ## Execution plan
 
@@ -434,6 +435,20 @@ From `src/tools/__init__.py:24-79`:
   3. **Negative Test**: `get_project(name="[Agent] missing project 987654321")`
      - Expectation: A clear `Project ... not found` message with a hint to list projects.
 
+#### 17. Generate Test Code
+- **Scenario source**: `specs/implementation-artifacts/7-7-test-code-generator.md`
+- **Goal**: Generate an automation scaffold from a current TestOps test case.
+- **Steps**:
+  1. **Create Source Case**: `create_test_case(name="[Agent] Code Generation", steps=[{"action":"Open login page","expected":"Login form is visible"}])`
+     - Action: Capture the created ID as `CODE_TC_ID`.
+  2. **Generate Python/Pytest Code**: `generate_test_code(test_case_id=CODE_TC_ID, language="python", framework="pytest")`
+     - Expectation: Generated output includes `import` or `test` and reflects the current case.
+  3. **Alternative Target**: `generate_test_code(test_case_id=CODE_TC_ID, language="ts", framework="playwright")`
+     - Expectation: TestOps accepts the target values or returns its clear unsupported-combination error.
+  4. **Invalid Case**: `generate_test_code(test_case_id=0)`
+     - Expectation: A standardized validation error states that the test case ID must be a positive integer.
+  5. **Cleanup**: `delete_test_case(test_case_id=CODE_TC_ID, confirm=true)`.
+
 ## Report
 - After all checks are complete, produce a final test report.
 - The report must list **every performed check** with a strict result: **Pass / Fail / Skipped**.
@@ -462,6 +477,7 @@ From `src/tools/__init__.py:24-79`:
 - Launches: formatted list with pagination (`launches.py:91-112`).
 - Cleanup tools: fixed safeguard warning text when `confirm=false`; deletion count summary when `confirm=true`.
 - Projects: `get_project()` lists accessible names and IDs; `get_project(name=...)` resolves a case-insensitive name.
+- Code generation: `generate_test_code()` returns the generated source code for the requested language and framework.
 
 ## Coverage matrix (tool → scenario module)
 - **Test cases**: 1-3 cover `create_test_case`, `get_test_case_details`, `update_test_case`, `delete_test_case`, `list_test_cases`, `search_test_cases`, `get_test_case_custom_fields`.
@@ -476,6 +492,7 @@ From `src/tools/__init__.py:24-79`:
 - **Defects**: 12 covers `create_defect`, `get_defect`, `update_defect`, `delete_defect`, `list_defects`, `create_defect_matcher`, `update_defect_matcher`, `delete_defect_matcher`, `list_defect_matchers`; 13 (Defect-TestCase Linking) covers `link_defect_to_test_case` and `list_defect_test_cases`; 14 (Unlink Issues) covers `unlink_issue_from_test_case`, including invalid-ID validation.
 - **Cleanup**: 15 covers `delete_archived_test_cases`, `delete_archived_shared_steps`, `delete_unused_custom_fields`.
 - **Projects**: 16 covers `get_project` for listing and case-insensitive name resolution.
+- **Automation Generation**: 17 covers `generate_test_code` for Python/pytest, alternate target pass-through, and invalid-ID validation.
 
 ## Notes / constraints
 - Some E2E checks use service-level assertions (scenario DTOs). Manual validation relies on tool outputs + `get_test_case_details` as the closest proxy.

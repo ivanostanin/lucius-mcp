@@ -3560,6 +3560,124 @@
       "execution": null
     },
     {
+      "name": "generate_test_code",
+      "title": "Generate Test Code",
+      "description": "Generate a current, framework-specific test snippet from a TestOps test case.\n\nTestOps synchronizes the test case's fields, name, tags, and scenario before\ngeneration. Language and framework values are passed to TestOps unchanged,\nallowing the server to report unsupported combinations precisely.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "test_case_id": {
+            "description": "ID of the TestOps test case to generate code for.",
+            "type": "integer"
+          },
+          "language": {
+            "default": "python",
+            "description": "Target programming language accepted by TestOps, for example 'python', 'ts', or 'java'.",
+            "type": "string"
+          },
+          "framework": {
+            "default": "pytest",
+            "description": "Target testing framework accepted by TestOps, for example 'pytest', 'playwright', or 'junit'.",
+            "type": "string"
+          },
+          "output_format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "plain",
+                  "json"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Output format: 'json' (default) or 'plain'."
+          }
+        },
+        "required": [
+          "test_case_id"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "test_case_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Test Case Id"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Requested target programming language.",
+            "title": "Language"
+          },
+          "framework": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Requested target testing framework.",
+            "title": "Framework"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Generated source-code snippet.",
+            "title": "Code"
+          }
+        },
+        "title": "GenerateTestCodeOutput",
+        "type": "object"
+      },
+      "icons": null,
+      "annotations": {
+        "title": "Generate Test Code",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": null
+      },
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "test-case"
+          ]
+        }
+      },
+      "execution": null
+    },
+    {
       "name": "create_launch",
       "title": "Create Launch",
       "description": "Create a new launch in Allure TestOps.",

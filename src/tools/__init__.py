@@ -50,6 +50,7 @@ from src.tools.plans import (
 from src.tools.projects import get_project
 from src.tools.search import get_test_case_details, list_test_cases, search_test_cases
 from src.tools.shared_steps import create_shared_step, delete_shared_step, list_shared_steps, update_shared_step
+from src.tools.test_code import generate_test_code
 from src.tools.test_layers import (
     assign_test_cases_to_suite,
     create_test_layer,
@@ -96,6 +97,7 @@ __all__ = [
     "delete_test_plan",
     "delete_test_suite",
     "delete_unused_custom_fields",
+    "generate_test_code",
     "get_custom_fields",
     "get_defect",
     "get_launch",
@@ -153,6 +155,7 @@ all_tools: list[ToolFn] = [
     delete_custom_field_value,
     get_test_case_custom_fields,
     search_test_cases,
+    generate_test_code,
     create_launch,
     get_launch,
     get_project,

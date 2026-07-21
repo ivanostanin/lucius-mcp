@@ -19,6 +19,12 @@ route is verified.
 | `get_test_case_details`       | Retrieve complete details including steps and attachments.  | `test_case_id`                  |
 | `get_test_case_custom_fields` | Retrieve only custom field values for a test case.          | `test_case_id`                  |
 
+## ⚙️ Automation Generation
+
+| Tool                 | Description                                                        | Key Parameters                         |
+|:---------------------|:-------------------------------------------------------------------|:---------------------------------------|
+| `generate_test_code` | Generate current, framework-specific code from a TestOps test case. | `test_case_id`, `language`, `framework` |
+
 ## 🔍 Search & Discovery
 
 | Tool                | Description                                            | Key Parameters                |
