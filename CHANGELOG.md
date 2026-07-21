@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.13.0] - 2026-07-21
+
+### Added
+- Added `get_project` to discover accessible projects and resolve project IDs by name (#301).
+- Added `generate_test_code` to create framework-specific automation snippets from TestOps test cases (#302).
+
 ## [v0.12.3] - 2026-07-20
 
 ### Changed
@@ -302,7 +308,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.12.3...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.13.0...HEAD
+[v0.13.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.12.3...v0.13.0
 [v0.12.3]: https://github.com/ivanostanin/lucius-mcp/compare/v0.12.2...v0.12.3
 [v0.12.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.12.1...v0.12.2
 [v0.12.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.12.0...v0.12.1
