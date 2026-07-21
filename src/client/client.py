@@ -361,17 +361,22 @@ class AllureClient:
         self._is_entered = False
 
     @classmethod
-    def from_env(cls, project: int | None = None, timeout: float = 30.0) -> AllureClient:
+    def from_env(
+        cls, project: int | None = None, timeout: float = 30.0, *, require_project: bool = True
+    ) -> AllureClient:
         """Initialize AllureClient from environment variables.
 
         Expects:
             ALLURE_ENDPOINT: The base URL of the Allure TestOps instance.
             ALLURE_API_TOKEN: The API token for authentication.
-            ALLURE_PROJECT_ID: The target project ID.
+            ALLURE_PROJECT_ID: The target project ID, unless ``require_project`` is false.
 
         Args:
             project: Optional target Allure TestOps project ID to override the one from environment variables.
             timeout: Request timeout in seconds (default: 30.0)
+            require_project: Whether a default project ID is required. Set to
+                ``False`` only for global discovery endpoints that do not use
+                project context.
 
         Returns:
             An initialized AllureClient instance.
@@ -380,19 +385,19 @@ class AllureClient:
             KeyError: If required environment variables are missing.
             ValueError: If settings validation fails.
         """
-        resolved = resolve_auth_settings(project_id=project)
+        resolved = resolve_auth_settings(project_id=project, include_project_id=require_project)
 
         if not resolved.api_token:
             raise KeyError("ALLURE_API_TOKEN is not set in environment or config")
         if not resolved.endpoint:
             raise KeyError("ALLURE_ENDPOINT is not set in environment or config")
-        if not isinstance(resolved.project_id, int) or resolved.project_id <= 0:
+        if require_project and (not isinstance(resolved.project_id, int) or resolved.project_id <= 0):
             raise ValueError("Project ID is required and must be positive")
 
         return cls(
             base_url=resolved.endpoint,
             token=resolved.api_token,
-            project=resolved.project_id,
+            project=resolved.project_id or 0,
             timeout=timeout,
         )
 

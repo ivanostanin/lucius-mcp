@@ -49,6 +49,20 @@ async def test_client_from_env_missing_endpoint_after_token() -> None:
 
 
 @pytest.mark.asyncio
+async def test_client_from_env_allows_projectless_global_discovery() -> None:
+    """Global discovery endpoints can authenticate before a project is known."""
+    with (
+        patch.dict(
+            os.environ, {"ALLURE_ENDPOINT": "https://env.allure.com", "ALLURE_API_TOKEN": "env-token"}, clear=True
+        ),
+        patch("src.utils.auth_resolution.load_auth_config", return_value=None),
+    ):
+        client = AllureClient.from_env(require_project=False)
+
+    assert client.get_project() == 0
+
+
+@pytest.mark.asyncio
 async def test_client_init_parameters() -> None:
     """Verify that init parameters are correctly stored."""
     base_url = "https://custom.allure.com"

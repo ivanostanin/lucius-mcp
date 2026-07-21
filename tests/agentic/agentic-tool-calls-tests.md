@@ -73,6 +73,7 @@ From `src/tools/__init__.py:24-79`:
 - `create_test_plan`, `update_test_plan`, `manage_test_plan_content`, `list_test_plans`, `delete_test_plan`
 - `create_defect`, `get_defect`, `update_defect`, `delete_defect`, `list_defects`, `link_defect_to_test_case`, `unlink_issue_from_test_case`, `list_defect_test_cases`
 - `create_defect_matcher`, `update_defect_matcher`, `delete_defect_matcher`, `list_defect_matchers`
+- `get_project`
 
 ## Execution plan
 
@@ -419,7 +420,19 @@ From `src/tools/__init__.py:24-79`:
   4. **Safety Check (No Confirm)**: `delete_unused_custom_fields(confirm=false)`
      - Expectation: Output equals `⚠️ Destructive operation. Pass confirm=True to proceed.`
   5. **Delete Unused Custom Fields**: `delete_unused_custom_fields(confirm=true)`
-     - Expectation: Output contains `Deleted <n> unused custom field(s).`
+      - Expectation: Output contains `Deleted <n> unused custom field(s).`
+
+#### 16. Project Discovery
+- **Scenario source**: `specs/implementation-artifacts/7-6-get-projects-tool.md`
+- **Goal**: Resolve a human-readable project name to its numeric TestOps project ID.
+- **Steps**:
+  1. **List Projects**: `get_project()`
+     - Expectation: A concise list of accessible project names and IDs.
+     - Action: Capture one listed name as `PROJECT_NAME` and its ID as `PROJECT_ID`.
+  2. **Case-insensitive Lookup**: `get_project(name=PROJECT_NAME.lower())`
+     - Expectation: The output identifies the project and contains `PROJECT_ID`.
+  3. **Negative Test**: `get_project(name="[Agent] missing project 987654321")`
+     - Expectation: A clear `Project ... not found` message with a hint to list projects.
 
 ## Report
 - After all checks are complete, produce a final test report.
@@ -448,6 +461,7 @@ From `src/tools/__init__.py:24-79`:
 - Test hierarchy: suite create/list/assign/delete messages as defined in hierarchy tool files.
 - Launches: formatted list with pagination (`launches.py:91-112`).
 - Cleanup tools: fixed safeguard warning text when `confirm=false`; deletion count summary when `confirm=true`.
+- Projects: `get_project()` lists accessible names and IDs; `get_project(name=...)` resolves a case-insensitive name.
 
 ## Coverage matrix (tool → scenario module)
 - **Test cases**: 1-3 cover `create_test_case`, `get_test_case_details`, `update_test_case`, `delete_test_case`, `list_test_cases`, `search_test_cases`, `get_test_case_custom_fields`.
@@ -461,6 +475,7 @@ From `src/tools/__init__.py:24-79`:
 - **Test Plans**: 11 covers `create_test_plan`, `update_test_plan`, `manage_test_plan_content`, `list_test_plans`, `delete_test_plan`.
 - **Defects**: 12 covers `create_defect`, `get_defect`, `update_defect`, `delete_defect`, `list_defects`, `create_defect_matcher`, `update_defect_matcher`, `delete_defect_matcher`, `list_defect_matchers`; 13 (Defect-TestCase Linking) covers `link_defect_to_test_case` and `list_defect_test_cases`; 14 (Unlink Issues) covers `unlink_issue_from_test_case`, including invalid-ID validation.
 - **Cleanup**: 15 covers `delete_archived_test_cases`, `delete_archived_shared_steps`, `delete_unused_custom_fields`.
+- **Projects**: 16 covers `get_project` for listing and case-insensitive name resolution.
 
 ## Notes / constraints
 - Some E2E checks use service-level assertions (scenario DTOs). Manual validation relies on tool outputs + `get_test_case_details` as the closest proxy.

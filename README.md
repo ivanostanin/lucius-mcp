@@ -28,7 +28,7 @@ See the full reference in [Tool Reference](docs/tools.md).
 | Tool Category                  | Description                                                     | All Tools                                                                                                                                                                                                                                |
 |:-------------------------------|:----------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **Test Case Mgmt**             | Full lifecycle for test documentation.                          | `create_test_case`, `update_test_case`, `delete_test_case`, `delete_archived_test_cases`, `get_test_case_details`, `get_test_case_custom_fields`                                                                                       |
-| **Search & Discovery**         | Advanced search and project metadata discovery.                 | `list_test_cases`, `search_test_cases`, `get_custom_fields`, `list_integrations`                                                                                                                                                        |
+| **Search & Discovery**         | Advanced search and project metadata discovery.                 | `list_test_cases`, `search_test_cases`, `get_custom_fields`, `list_integrations`, `get_project`                                                                                                                                         |
 | **Shared Steps**               | Create and manage reusable step sequences.                      | `create_shared_step`, `list_shared_steps`, `update_shared_step`, `delete_shared_step`, `delete_archived_shared_steps`, `link_shared_step`, `unlink_shared_step`                                                                          |
 | **Test Layers**        | Manage test taxonomy and auto-mapping schemas.   | `list_test_layers`, `create_test_layer`, `update_test_layer`, `delete_test_layer`, `list_test_layer_schemas`, `create_test_layer_schema`, `update_test_layer_schema`, `delete_test_layer_schema`                                         |
 | **Test Hierarchy**             | Organize suites and assign tests in tree paths.                 | `create_test_suite`, `list_test_suites`, `assign_test_cases_to_suite`, `delete_test_suite`                                                                                                                                               |
@@ -48,7 +48,7 @@ See the full reference in [Tool Reference](docs/tools.md).
 | Variable | Description | Example |
 |:---------|:------------|:--------|
 | `ALLURE_ENDPOINT` | Allure TestOps base URL | `https://example.testops.cloud` |
-| `ALLURE_PROJECT_ID` | Default Allure project ID | `123` |
+| `ALLURE_PROJECT_ID` | Default Allure project ID (optional for `get_project`; required by project-scoped tools) | `123` |
 | `ALLURE_API_TOKEN` | Allure API token | `<your_api_token>` |
 | `MCP_MODE` | MCP transport mode for Lucius runtime | `stdio` |
 
