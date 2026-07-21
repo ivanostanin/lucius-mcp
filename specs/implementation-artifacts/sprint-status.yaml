@@ -110,7 +110,7 @@ development_status:
   7-3-delete-test-plans: done
   7-4-link-defects-to-test-cases: done
   7-5-unlink-defects-from-test-cases: done
-  7-6-get-projects-tool: review
+  7-6-get-projects-tool: done
   7-7-test-code-generator: ready-for-dev
   epic-7-retrospective: optional
 

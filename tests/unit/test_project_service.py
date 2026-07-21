@@ -30,6 +30,7 @@ def service(project_api: MagicMock) -> ProjectService:
     client = MagicMock()
     client._project_api = project_api
     client._handle_api_exception = MagicMock()
+    client._timeout = 30.0
     return ProjectService(client)
 
 
@@ -37,7 +38,7 @@ async def test_list_projects_returns_all_available_projects(service: ProjectServ
     projects = await service.list_projects()
 
     assert [project.id for project in projects] == [1, 2]
-    project_api.find_all21.assert_awaited_once_with(page=0, size=100, sort=["name,asc"])
+    project_api.find_all21.assert_awaited_once_with(page=0, size=100, sort=["name,asc"], _request_timeout=30.0)
 
 
 async def test_list_projects_fetches_every_page(service: ProjectService, project_api: MagicMock) -> None:

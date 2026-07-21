@@ -34,7 +34,12 @@ class ProjectService:
         page_number = 0
         try:
             while True:
-                page = await api.find_all21(page=page_number, size=100, sort=["name,asc"])
+                page = await api.find_all21(
+                    page=page_number,
+                    size=100,
+                    sort=["name,asc"],
+                    _request_timeout=self._client._timeout,
+                )
                 projects.extend(page.content or [])
                 total_pages = page.total_pages or 0
                 if page_number + 1 >= total_pages:

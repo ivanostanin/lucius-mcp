@@ -48,7 +48,7 @@ See the full reference in [Tool Reference](docs/tools.md).
 | Variable | Description | Example |
 |:---------|:------------|:--------|
 | `ALLURE_ENDPOINT` | Allure TestOps base URL | `https://example.testops.cloud` |
-| `ALLURE_PROJECT_ID` | Default Allure project ID | `123` |
+| `ALLURE_PROJECT_ID` | Default Allure project ID (optional for `get_project`; required by project-scoped tools) | `123` |
 | `ALLURE_API_TOKEN` | Allure API token | `<your_api_token>` |
 | `MCP_MODE` | MCP transport mode for Lucius runtime | `stdio` |
 

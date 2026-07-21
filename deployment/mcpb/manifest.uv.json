@@ -305,8 +305,8 @@
     "allure_project_id": {
       "type": "string",
       "title": "Project ID",
-      "description": "Identifier of the project in Allure TestOps.",
-      "required": true,
+      "description": "Default project identifier in Allure TestOps. Optional for project discovery; required by project-scoped tools.",
+      "required": false,
       "sensitive": false
     },
     "allure_api_token": {

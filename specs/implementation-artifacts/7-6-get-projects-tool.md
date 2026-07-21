@@ -1,6 +1,6 @@
 # Story 7.6: Get Projects Tool
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -142,3 +142,8 @@ Antigravity (Google DeepMind)
 ### Change Log
 
 - 2026-07-21: Implemented project discovery and registered the `get_project` MCP tool with tests and documentation.
+
+### Review Findings
+
+- [x] [Review][Patch] Allow project discovery without a configured default project [src/client/client.py:364-391] — `get_project()` now uses the opt-in projectless client mode, while project-scoped tools continue to require a valid default project ID.
+- [x] [Review][Patch] Apply the configured request timeout to project-list requests [src/services/project_service.py:37] — every paginated request now uses `AllureClient`'s configured timeout.

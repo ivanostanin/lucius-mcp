@@ -39,7 +39,7 @@ async def get_project(
         A project record with its ID and details, or a concise list of project
         IDs and names when no name is supplied.
     """
-    async with AllureClient.from_env() as client:
+    async with AllureClient.from_env(require_project=False) as client:
         service = ProjectService(client)
         if name is None:
             projects = await service.list_projects()

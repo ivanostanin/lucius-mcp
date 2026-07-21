@@ -22,6 +22,7 @@ async def test_get_project_returns_named_project_details() -> None:
     assert "Project #7: Lucius MCP" in output
     assert "Description: Project details" in output
     assert "Abbreviation: LCP" in output
+    client_factory.assert_called_once_with(require_project=False)
     service_class.return_value.get_project_by_name.assert_awaited_once_with("lucius mcp")
 
 
@@ -39,3 +40,4 @@ async def test_get_project_without_name_lists_project_summaries() -> None:
     assert "Available Projects (2 found)" in output
     assert "Lucius MCP (ID: 7)" in output
     assert "Demo (ID: 8)" in output
+    client_factory.assert_called_once_with(require_project=False)
