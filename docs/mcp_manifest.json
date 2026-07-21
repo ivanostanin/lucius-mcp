@@ -3571,6 +3571,7 @@
             "type": "integer"
           },
           "language": {
+            "description": "Required target language. Choose Java, Python, TypeScript, JavaScript, Kotlin, PHP, or .NET. Backward-compatible aliases: java, python, ts, js, and dotnet.",
             "enum": [
               "Java",
               "Python",
@@ -3585,10 +3586,10 @@
               "js",
               "dotnet"
             ],
-            "type": "string",
-            "description": "Required target language. Choose Java, Python, TypeScript, JavaScript, Kotlin, PHP, or .NET. Backward-compatible aliases: java, python, ts, js, and dotnet."
+            "type": "string"
           },
           "framework": {
+            "description": "Required framework compatible with language. TypeScript choices: CodeceptJS, Cucumber, Jasmine, Jest, Mocha, Playwright, Vitest, WebdriverIO, ZeroStep. Compatibility is language-specific.",
             "enum": [
               "JUnit 5",
               "JUnit 4",
@@ -3633,8 +3634,7 @@
               "xunit",
               "specflow"
             ],
-            "type": "string",
-            "description": "Required framework compatible with language. TypeScript choices: CodeceptJS, Cucumber, Jasmine, Jest, Mocha, Playwright, Vitest, WebdriverIO, ZeroStep. Compatibility is language-specific."
+            "type": "string"
           },
           "metadata": {
             "anyOf": [

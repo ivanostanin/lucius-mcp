@@ -139,6 +139,21 @@ async def test_generate_code_enables_each_metadata_flag_independently(client: Ma
     )
 
 
+@pytest.mark.parametrize(
+    ("metadata", "expected"),
+    [
+        (list(METADATA_LABELS), METADATA_LABELS),
+        (["Scenario", "Name", "Name", "Tags"], ("Name", "Tags", "Scenario")),
+    ],
+)
+def test_resolve_selection_normalizes_all_and_duplicate_metadata_in_canonical_order(
+    client: MagicMock, metadata: list[str], expected: tuple[str, ...]
+) -> None:
+    selection = TestCodeService(client).resolve_selection("Python", "Pytest", metadata)
+
+    assert selection.metadata == expected
+
+
 @pytest.mark.parametrize("test_case_id", [0, -1, True, "42"])
 async def test_generate_code_requires_a_positive_integer_test_case_id(client: MagicMock, test_case_id: object) -> None:
     with pytest.raises(AllureValidationError, match="positive integer"):

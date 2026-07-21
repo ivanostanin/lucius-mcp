@@ -1,6 +1,6 @@
 # Story 7.8: Test Code Generation Selection Options
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -276,3 +276,10 @@ The screenshot describes the TestOps selection experience; it is not a request t
 
 - 2026-07-21: Created Story 7.8 for selectable test-code language, framework, and metadata options.
 - 2026-07-21: Implemented verified language/framework choices, metadata selection, generated-client support, documentation, and all-pairs live E2E coverage.
+
+### Review Findings
+
+- [x] [Review][Patch] Validate schema-valid selections before opening the TestOps client [src/tools/test_code.py:175]
+- [x] [Review][Patch] Keep published selection enums while routing unsupported values through language-aware Agent Hints [src/tools/test_code.py:125]
+- [x] [Review][Patch] Document the required selection and metadata contract in README.md [README.md:41]
+- [x] [Review][Patch] Cover all-selected and deterministic metadata normalization cases [tests/unit/test_test_code_service.py:143]

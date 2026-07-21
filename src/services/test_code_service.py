@@ -122,8 +122,14 @@ class TestCodeService:
         """Return the generated controller for the IDE API."""
         return IdeControllerApi(self._client.api_client)
 
+    @staticmethod
+    def validate_test_case_id(test_case_id: int) -> None:
+        """Validate a test-case identifier before opening a TestOps client."""
+        if not isinstance(test_case_id, int) or isinstance(test_case_id, bool) or test_case_id <= 0:
+            raise AllureValidationError("Test Case ID must be a positive integer")
+
+    @staticmethod
     def resolve_selection(
-        self,
         lang: str | None,
         framework: str | None,
         metadata: Sequence[str] | None = None,
@@ -141,13 +147,13 @@ class TestCodeService:
         if not isinstance(framework, str) or not framework.strip():
             raise AllureValidationError(
                 f"Framework is required for {language_label}. Compatible frameworks: "
-                f"{', '.join(self._framework_labels(language_label))}"
+                f"{', '.join(TestCodeService._framework_labels(language_label))}"
             )
         framework_option = _FRAMEWORKS[language_label].get(framework.strip().casefold())
         if framework_option is None:
             raise AllureValidationError(
                 f"Unsupported framework '{framework}' for {language_label}. Compatible frameworks: "
-                f"{', '.join(self._framework_labels(language_label))}"
+                f"{', '.join(TestCodeService._framework_labels(language_label))}"
             )
 
         return CodeGenerationSelection(
@@ -155,7 +161,7 @@ class TestCodeService:
             language_wire=language_wire,
             framework=framework_option[0],
             framework_wire=framework_option[1],
-            metadata=self._normalize_metadata(metadata),
+            metadata=TestCodeService._normalize_metadata(metadata),
         )
 
     @staticmethod
@@ -189,6 +195,8 @@ class TestCodeService:
         lang: str | None,
         framework: str | None,
         metadata: Sequence[str] | None = None,
+        *,
+        selection: CodeGenerationSelection | None = None,
     ) -> str:
         """Generate code for one test case in the requested language and framework.
 
@@ -207,9 +215,8 @@ class TestCodeService:
         Raises:
             AllureValidationError: If the test case ID, language, or framework is blank.
         """
-        if not isinstance(test_case_id, int) or isinstance(test_case_id, bool) or test_case_id <= 0:
-            raise AllureValidationError("Test Case ID must be a positive integer")
-        selection = self.resolve_selection(lang, framework, metadata)
+        self.validate_test_case_id(test_case_id)
+        selection = selection or self.resolve_selection(lang, framework, metadata)
         selected_metadata = set(selection.metadata)
 
         request = TestCodeGenerationRequestDto(

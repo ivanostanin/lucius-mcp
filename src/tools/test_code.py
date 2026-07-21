@@ -57,14 +57,75 @@ type FrameworkSelection = Literal[
     "specflow",
 ]
 type MetadataSelection = Literal["Name", "Tags", "Custom fields", "Members", "Issues", "Scenario"]
+LANGUAGE_SELECTIONS = (
+    "Java",
+    "Python",
+    "TypeScript",
+    "JavaScript",
+    "Kotlin",
+    "PHP",
+    ".NET",
+    "java",
+    "python",
+    "ts",
+    "js",
+    "dotnet",
+)
+FRAMEWORK_SELECTIONS = (
+    "JUnit 5",
+    "JUnit 4",
+    "TestNG",
+    "Cucumber",
+    "Behave",
+    "Pytest",
+    "Pytest BDD",
+    "CodeceptJS",
+    "Jasmine",
+    "Jest",
+    "Mocha",
+    "Playwright",
+    "Vitest",
+    "WebdriverIO",
+    "ZeroStep",
+    "PHPUnit",
+    "Codeception",
+    "NUnit",
+    "XUnit",
+    "SpecFlow",
+    "junit",
+    "junit5",
+    "junit4",
+    "testng",
+    "cucumber-jvm",
+    "behave",
+    "pytest",
+    "pytest-bdd",
+    "codeceptjs",
+    "cucumber-js",
+    "jasmine",
+    "jest",
+    "mocha",
+    "playwright",
+    "vitest",
+    "wdio",
+    "zerostep",
+    "phpunit",
+    "codeception",
+    "nunit",
+    "xunit",
+    "specflow",
+)
+METADATA_SELECTIONS = ("Name", "Tags", "Custom fields", "Members", "Issues", "Scenario")
+type SchemaMetadataSelection = Annotated[str, Field(json_schema_extra={"enum": METADATA_SELECTIONS})]
 
 
 @output_fields("test_case_id", "language", "framework", "metadata", "code")
 async def generate_test_code(
     test_case_id: Annotated[int, Field(description="ID of the TestOps test case to generate code for.")],
     language: Annotated[
-        LanguageSelection,
+        str,
         Field(
+            json_schema_extra={"enum": LANGUAGE_SELECTIONS},
             description=(
                 "Required target language. Choose Java, Python, TypeScript, JavaScript, Kotlin, PHP, or .NET. "
                 "Backward-compatible aliases: java, python, ts, js, and dotnet."
@@ -72,16 +133,17 @@ async def generate_test_code(
         ),
     ],
     framework: Annotated[
-        FrameworkSelection,
+        str,
         Field(
+            json_schema_extra={"enum": FRAMEWORK_SELECTIONS},
             description=(
                 "Required framework compatible with language. TypeScript choices: CodeceptJS, Cucumber, Jasmine, "
                 "Jest, Mocha, Playwright, Vitest, WebdriverIO, ZeroStep. Compatibility is language-specific."
-            )
+            ),
         ),
     ],
     metadata: Annotated[
-        list[MetadataSelection] | None,
+        list[SchemaMetadataSelection] | None,
         Field(
             description=(
                 "Optional metadata to synchronize: Name, Tags, Custom fields, Members, Issues, Scenario. "
@@ -110,10 +172,12 @@ async def generate_test_code(
     Returns:
         Generated source code with the requested language and framework metadata.
     """
+    TestCodeService.validate_test_case_id(test_case_id)
+    selection = TestCodeService.resolve_selection(language, framework, metadata)
     async with AllureClient.from_env() as client:
-        service = TestCodeService(client)
-        selection = service.resolve_selection(language, framework, metadata)
-        code = await service.generate_code(test_case_id, language, framework, metadata)
+        code = await TestCodeService(client).generate_code(
+            test_case_id, language, framework, metadata, selection=selection
+        )
         # Generated source can legitimately contain literal escape sequences
         # (for example, ``"\\n"`` in a Python string). The generic plain-text
         # renderer expands those sequences for human-readable tool responses,
