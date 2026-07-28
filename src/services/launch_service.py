@@ -555,7 +555,7 @@ class LaunchService:
         launch_id: int,
         *,
         test_case_id: int,
-        status: str | None | Literal["any"] = "any",
+        status: str | Literal["any"] | None = "any",
     ) -> LaunchTestResultListItem:
         """Resolve one visible manual launch result for a specific test case."""
         self._validate_project_id(self._project_id)
@@ -1207,7 +1207,7 @@ class LaunchService:
         )
 
     @staticmethod
-    def _normalize_launch_result_status_filter(status: str | None | Literal["any"]) -> str | None | Literal["any"]:
+    def _normalize_launch_result_status_filter(status: str | Literal["any"] | None) -> str | Literal["any"] | None:
         if status == "any":
             return "any"
         if status is None:
