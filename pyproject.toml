@@ -9,7 +9,7 @@ authors = [{ name = "Ivan Ostanin", email = "ivan@ostanin.me" }]
 keywords = ["mcp", "allure", "testops", "allure-testops", "mcp-server", "fastmcp", "model-context-protocol"]
 requires-python = ">=3.13"
 dependencies = [
-    "cyclopts>=4.8.0",
+    "cyclopts>=4.22.2",
     "fastmcp>=3.0.0",
     "httpx>=0.28.1",
     "pydantic>=2.12.5",
@@ -83,8 +83,8 @@ packages = ["src"]
 [project.optional-dependencies]
 dev = [
     "allure-pytest>=2.15.3",
-    "openapi-generator-cli>=7.19.0",
-    "faker>=40.1.2",
+    "openapi-generator-cli>=7.24.0",
+    "faker>=40.36.0",
     "mypy>=1.19.1",
     "nuitka[onefile]>=2.5.8",
     "pytest>=9.0.2",
@@ -92,9 +92,9 @@ dev = [
     "pytest-cov>=7.0.0",
     "pytest-mock>=3.15.1",
     "respx>=0.22.0",
-    "ruff>=0.14.14",
+    "ruff>=0.16.0",
     "twine>=6.2.0",
-    "pre-commit>=4.0.0",
+    "pre-commit>=4.6.1",
     "pytest-xdist>=3.8.0",
 ]
 
