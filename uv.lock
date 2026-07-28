@@ -374,7 +374,7 @@ resolution-markers = [
     "(python_full_version < '3.14' and platform_machine == 'ARM64' and sys_platform == 'win32') or (python_full_version < '3.14' and platform_machine == 'aarch64' and sys_platform == 'win32')",
 ]
 dependencies = [
-    { name = "cffi", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "cffi", marker = "(platform_machine == 'ARM64' and platform_python_implementation != 'PyPy' and sys_platform == 'win32') or (platform_machine == 'aarch64' and platform_python_implementation != 'PyPy' and sys_platform == 'win32')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/9f/33/c00162f49c0e2fe8064a62cb92b93e50c74a72bc370ab92f86112b33ff62/cryptography-46.0.3.tar.gz", hash = "sha256:a8b17438104fed022ce745b362294d9ce35b4c2e45c1d958ad4a4b019285f4a1", size = 749258, upload-time = "2025-10-15T23:18:31.74Z" }
 wheels = [
@@ -395,7 +395,7 @@ resolution-markers = [
     "python_full_version < '3.14' and sys_platform != 'win32'",
 ]
 dependencies = [
-    { name = "cffi", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "cffi", marker = "(platform_machine != 'ARM64' and platform_machine != 'aarch64' and platform_python_implementation != 'PyPy') or (platform_python_implementation != 'PyPy' and sys_platform != 'win32')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/12/45/870e7f4bef50e5f53b9f51d4428aee5290eedf58ba443f16b1ebb7ab8e66/cryptography-48.0.1.tar.gz", hash = "sha256:266f4ee051abb2f725b74ef8072b521ce1feacf685a3364fa6a6b45548db791a", size = 832989, upload-time = "2026-06-09T22:32:31.8Z" }
 wheels = [
@@ -1152,11 +1152,11 @@ onefile = [
 
 [[package]]
 name = "openapi-generator-cli"
-version = "7.23.0"
+version = "7.24.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/a1/4d/ea82fdfb536a8323aad4227ba89876cbfabee637f583aea530c1e0f73262/openapi_generator_cli-7.23.0.tar.gz", hash = "sha256:6af02de4dd2bbd052da2495cc792580bc9f8b245ad1620c2d5d06daaf440ff1a", size = 28423717, upload-time = "2026-06-10T03:51:13.579Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7b/88/a8aeda38d664b7fcacf94f8c26c32b439619c50165e7893e1d7e836a2d70/openapi_generator_cli-7.24.0.tar.gz", hash = "sha256:89493ecf8d8f736b9d137991a8c8d81282fb2fd84cceff1d0975ee477db24bb4", size = 28579058, upload-time = "2026-07-21T02:45:15.525Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e2/d3/b3225ef2c75f70e538c89919ebaddb5a623a07718fca08a19cecd9656107/openapi_generator_cli-7.23.0-py3-none-any.whl", hash = "sha256:4ff9547eff66b74a9349345164df3d8c1c524a378c14700ac202d2f678520b54", size = 28437930, upload-time = "2026-06-10T03:51:09.043Z" },
+    { url = "https://files.pythonhosted.org/packages/cf/c0/8273992c601b2595d54f34315c1a01e4e1b9623575c025499648aedbb44e/openapi_generator_cli-7.24.0-py3-none-any.whl", hash = "sha256:5aa997a45b571afd2d5e3a4553e1fa54cb7beb38c0ad37439f25ddc8a0a4313f", size = 28593838, upload-time = "2026-07-21T02:45:11.308Z" },
 ]
 
 [[package]]
@@ -1776,8 +1776,8 @@ name = "secretstorage"
 version = "3.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cryptography", version = "48.0.1", source = { registry = "https://pypi.org/simple" } },
-    { name = "jeepney" },
+    { name = "cryptography", version = "48.0.1", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.15' and platform_machine != 'ARM64' and platform_machine != 'aarch64') or sys_platform != 'win32'" },
+    { name = "jeepney", marker = "(python_full_version >= '3.15' and platform_machine != 'ARM64' and platform_machine != 'aarch64') or sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/1c/03/e834bcd866f2f8a49a85eaff47340affa3bfa391ee9912a952a1faa68c7b/secretstorage-3.5.0.tar.gz", hash = "sha256:f04b8e4689cbce351744d5537bf6b1329c6fc68f91fa666f60a380edddcd11be", size = 19884, upload-time = "2025-11-23T19:02:53.191Z" }
 wheels = [
