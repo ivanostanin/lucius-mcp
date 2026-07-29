@@ -249,7 +249,7 @@ async def delete_shared_step(
 
     Example (safe delete):
         delete_shared_step(step_id=789, confirm=True)
-        → "🗑️  Archived Shared Step 789"
+        → "✅ Shared Step 789 is archived."
 
     Note:
         This performs a soft delete by archiving the shared step.

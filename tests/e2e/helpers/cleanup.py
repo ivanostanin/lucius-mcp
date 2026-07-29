@@ -162,7 +162,7 @@ class CleanupTracker:
         for _ in range(retries):
             try:
                 result = await service.delete_test_case(test_case_id)
-                if result.status in {"archived", "already_deleted"}:
+                if result.status in {"archived", "already_archived", "already_deleted", "not_found"}:
                     return
             except Exception as exc:  # pragma: no cover - defensive teardown path
                 last_error = exc
