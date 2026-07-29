@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- Made `list_launches` item output compact and moved rich launch statistics, defect counts, environment, jobs, and manual execution guidance to exact-ID `get_launch` responses. This is a breaking output-contract change.
+- Made `list_launches` item output compact and moved rich launch statistics, defect counts, environment, jobs, and manual execution guidance to exact-ID `get_launch` responses. This is a breaking output-contract change (#318).
 
 ## [v0.13.2] - 2026-07-28
 

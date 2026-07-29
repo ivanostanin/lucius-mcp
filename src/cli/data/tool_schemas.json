@@ -1090,7 +1090,7 @@
     "name": "delete_shared_step",
     "entity": "shared_step",
     "action": "delete",
-    "description": "Delete a shared step from the library.\n\u26a0\ufe0f CAUTION: Destructive.\n\n\u26a0\ufe0f CAUTION: If this shared step is used by test cases, deleting it\nwill break those references.\n\nArgs:\n    step_id: The shared step ID to delete (required).\n    confirm: Must be True to proceed (safety measure).\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Confirmation message.\n\nExample (safe delete):\n    delete_shared_step(step_id=789, confirm=True)\n    \u2192 \"\ud83d\uddd1\ufe0f  Archived Shared Step 789\"\n\nNote:\n    This performs a soft delete by archiving the shared step.",
+    "description": "Delete a shared step from the library.\n\u26a0\ufe0f CAUTION: Destructive.\n\n\u26a0\ufe0f CAUTION: If this shared step is used by test cases, deleting it\nwill break those references.\n\nArgs:\n    step_id: The shared step ID to delete (required).\n    confirm: Must be True to proceed (safety measure).\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Confirmation message.\n\nExample (safe delete):\n    delete_shared_step(step_id=789, confirm=True)\n    \u2192 \"\u2705 Shared Step 789 is archived.\"\n\nNote:\n    This performs a soft delete by archiving the shared step.",
     "input_schema": {
       "type": "object",
       "additionalProperties": false,

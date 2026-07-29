@@ -181,7 +181,7 @@ async def test_delete_shared_step_success_e2e(
     # 2. Delete with confirmation
     delete_output = await delete_shared_step(step_id=shared_step_id, confirm=True, output_format="plain")
 
-    assert "Archived Shared Step" in delete_output
+    assert f"Shared Step {shared_step_id} is archived" in delete_output
     assert str(shared_step_id) in delete_output
 
 
