@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.14.0] - 2026-07-30
+
 ### Changed
 - Made `list_launches` item output compact and moved rich launch statistics, defect counts, environment, jobs, and manual execution guidance to exact-ID `get_launch` responses. This is a breaking output-contract change (#318).
 
@@ -324,7 +326,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.13.2...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.14.0...HEAD
+[v0.14.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.13.2...v0.14.0
 [v0.13.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.13.1...v0.13.2
 [v0.13.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.13.0...v0.13.1
 [v0.13.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.12.3...v0.13.0
