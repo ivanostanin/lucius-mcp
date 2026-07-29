@@ -78,16 +78,16 @@ async def test_delete_test_case_tool_success_message(mock_service: Mock, mock_cl
 @pytest.mark.asyncio
 @pytest.mark.test_id("1.5-INTEGRATION-003")
 async def test_delete_test_case_tool_already_deleted_message(mock_service: Mock, mock_client: Mock) -> None:
-    """Test ID: 1.5-INTEGRATION-003 - Tool returns correct already-deleted message (P2)"""
-    # GIVEN: Service returns already_deleted status (idempotent case)
+    """Test ID: 1.5-INTEGRATION-003 - Tool returns correct not-found message (P2)"""
+    # GIVEN: Service cannot confirm an archived entity (idempotent case)
     test_case_id = 789
 
     service_instance = mock_service.return_value
     service_instance.delete_test_case = AsyncMock()
     service_instance.delete_test_case.return_value = DeleteResult(
         test_case_id=test_case_id,
-        status="already_deleted",
-        message="Test case was already deleted or doesn't exist",
+        status="not_found",
+        message="Test case was not found",
     )
 
     # WHEN: Tool is called with confirm=True
@@ -96,11 +96,32 @@ async def test_delete_test_case_tool_already_deleted_message(mock_service: Mock,
     # THEN: Returns already-deleted message with correct format
     assert result.startswith("ℹ️ Test Case")  # noqa: RUF001
     assert str(test_case_id) in result
-    assert "already archived or doesn't exist" in result
-    assert f"Test Case URL: https://example.com/project/99/test-cases/{test_case_id}" in result
+    assert "not found" in result
+    assert f"Test Case URL: https://example.com/project/99/test-cases/{test_case_id}" not in result
 
     # AND: Service was called
     service_instance.delete_test_case.assert_called_once_with(test_case_id)
+
+
+@pytest.mark.asyncio
+async def test_delete_test_case_tool_already_archived_keeps_confirmed_url(
+    mock_service: Mock, mock_client: Mock
+) -> None:
+    test_case_id = 790
+    service_instance = mock_service.return_value
+    service_instance.delete_test_case = AsyncMock(
+        return_value=DeleteResult(
+            test_case_id=test_case_id,
+            status="already_archived",
+            name="Archived Login Test",
+            message="Already archived",
+        )
+    )
+
+    result = await delete_test_case(test_case_id=test_case_id, confirm=True, output_format="plain")
+
+    assert "already archived" in result
+    assert f"Test Case URL: https://example.com/project/99/test-cases/{test_case_id}" in result
 
 
 @pytest.mark.asyncio
@@ -120,7 +141,7 @@ async def test_delete_test_case_tool_error_handling(mock_service: Mock, mock_cli
     # THEN: Returns error message without raising exception
     assert "Error archiving test case" in result
     assert "API connection failed" in result
-    assert f"Test Case URL: https://example.com/project/99/test-cases/{test_case_id}" in result
+    assert f"Test Case URL: https://example.com/project/99/test-cases/{test_case_id}" not in result
 
     # AND: Service was called (exception caught by tool)
     service_instance.delete_test_case.assert_called_once_with(test_case_id)

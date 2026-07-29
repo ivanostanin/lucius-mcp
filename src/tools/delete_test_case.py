@@ -60,20 +60,32 @@ async def delete_test_case(
 
     async with AllureClient.from_env(project=project_id) as client:
         service = TestCaseService(client=client)
-        url = test_case_url(client.get_base_url(), client.get_project(), test_case_id)
         try:
             result = await service.delete_test_case(test_case_id)
         except Exception as e:
             return render_output(
-                plain=f"Error archiving test case: {e}\nTest Case URL: {url}",
-                json_payload={"test_case_id": test_case_id, "status": "error", "error": str(e), "url": url},
+                plain=f"Error archiving test case: {e}",
+                json_payload={"test_case_id": test_case_id, "status": "error", "error": str(e)},
                 output_format=output_format,
             )
 
-        if result.status == "already_deleted":
+        if result.status == "not_found":
             return render_output(
-                plain=f"ℹ️ Test Case {test_case_id} was already archived or doesn't exist.\nTest Case URL: {url}",  # noqa: RUF001
-                json_payload={"test_case_id": test_case_id, "status": "already_archived", "url": url},
+                plain=f"ℹ️ Test Case {test_case_id} was not found; no archive was confirmed.",  # noqa: RUF001
+                json_payload={"test_case_id": test_case_id, "status": "not_found"},
+                output_format=output_format,
+            )
+
+        url = test_case_url(client.get_base_url(), client.get_project(), result.test_case_id)
+        if result.status == "already_archived":
+            return render_output(
+                plain=f"ℹ️ Test Case {result.test_case_id} was already archived.\nTest Case URL: {url}",  # noqa: RUF001
+                json_payload={
+                    "test_case_id": result.test_case_id,
+                    "name": result.name,
+                    "status": result.status,
+                    "url": url,
+                },
                 output_format=output_format,
             )
 

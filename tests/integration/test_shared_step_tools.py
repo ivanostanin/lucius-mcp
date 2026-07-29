@@ -78,8 +78,27 @@ async def test_delete_shared_step_includes_url_in_json_output() -> None:
 
         with patch("src.tools.shared_steps.SharedStepService") as mock_service_cls:
             mock_service = mock_service_cls.return_value
-            mock_service.delete_shared_step = AsyncMock(return_value=True)
+            mock_service.delete_shared_step = AsyncMock(return_value=type("DeleteResult", (), {"status": "archived"})())
 
             output = await delete_shared_step(step_id=12, confirm=True, output_format="json")
 
             assert output.structured_content["url"] == "https://example.com/project/456/shared-steps/12"
+
+
+@pytest.mark.asyncio
+async def test_delete_shared_step_omits_url_when_not_found() -> None:
+    with patch("src.tools.shared_steps.AllureClient.from_env") as mock_client_ctx:
+        mock_client = MagicMock()
+        mock_client.get_project.return_value = 456
+        mock_client.get_base_url.return_value = "https://example.com"
+        mock_client_ctx.return_value.__aenter__.return_value = mock_client
+
+        with patch("src.tools.shared_steps.SharedStepService") as mock_service_cls:
+            mock_service = mock_service_cls.return_value
+            mock_service.delete_shared_step = AsyncMock(
+                return_value=type("DeleteResult", (), {"status": "not_found"})()
+            )
+
+            output = await delete_shared_step(step_id=12, confirm=True, output_format="json")
+
+            assert output.structured_content == {"id": 12, "status": "not_found"}

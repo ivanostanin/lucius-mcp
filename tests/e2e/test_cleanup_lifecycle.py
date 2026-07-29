@@ -134,7 +134,7 @@ async def test_cleanup_archived_shared_steps_e2e(
     cleanup_tracker.track_shared_step(shared_step.id)
 
     archived = await service.delete_shared_step(shared_step.id)
-    assert archived is True
+    assert archived.status == "archived"
 
     output = await delete_archived_shared_steps(confirm=True, project_id=project_id, output_format="plain")
     assert _extract_count(output) >= 1

@@ -156,7 +156,7 @@ async def update_defect(
         )
 
 
-@output_fields("defect_id", "id", "status", "url")
+@output_fields("defect_id", "id", "status")
 async def delete_defect(
     defect_id: Annotated[int, "ID of the defect to delete"],
     confirm: Annotated[
@@ -191,10 +191,9 @@ async def delete_defect(
     async with AllureClient.from_env() as client:
         service = DefectService(client)
         await service.delete_defect(defect_id)
-        url = defect_url(client.get_base_url(), client.get_project(), defect_id)
         return render_output(
-            plain=f"Deleted Defect #{defect_id}\nDefect URL: {url}",
-            json_payload={"id": defect_id, "status": "deleted", "url": url},
+            plain=f"Deleted Defect #{defect_id}",
+            json_payload={"id": defect_id, "status": "deleted"},
             output_format=output_format,
         )
 

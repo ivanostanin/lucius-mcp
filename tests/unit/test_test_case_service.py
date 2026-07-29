@@ -832,8 +832,8 @@ async def test_delete_test_case_already_deleted(service: TestCaseService, mock_c
     result = await service.delete_test_case(test_case_id)
 
     assert result.test_case_id == test_case_id
-    assert result.status == "already_deleted"
-    assert "already archived" in result.message
+    assert result.status == "not_found"
+    assert "not found" in result.message
 
     mock_client.get_test_case.assert_called_once_with(test_case_id)
     mock_client.delete_test_case.assert_not_called()
@@ -853,8 +853,8 @@ async def test_delete_test_case_already_deleted_when_get_wraps_404(
     result = await service.delete_test_case(test_case_id)
 
     assert result.test_case_id == test_case_id
-    assert result.status == "already_deleted"
-    assert "already archived" in result.message
+    assert result.status == "not_found"
+    assert "not found" in result.message
 
     mock_client.get_test_case.assert_called_once_with(test_case_id)
     mock_client.delete_test_case.assert_not_called()
@@ -876,7 +876,7 @@ async def test_delete_test_case_already_archived_status(service: TestCaseService
 
     result = await service.delete_test_case(test_case_id)
 
-    assert result.status == "already_deleted"
+    assert result.status == "already_archived"
     assert "already archived" in result.message
 
     mock_client.get_test_case.assert_called_once_with(test_case_id)

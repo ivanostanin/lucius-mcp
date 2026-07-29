@@ -268,20 +268,18 @@ async def delete_shared_step(
 
     async with AllureClient.from_env(project=project_id) as client:
         service = SharedStepService(client=client)
-        deleted = await service.delete_shared_step(step_id=step_id)
-        url = shared_step_url(client.get_base_url(), client.get_project(), step_id)
+        result = await service.delete_shared_step(step_id=step_id)
 
-        if deleted:
+        if result.status in {"archived", "already_archived"}:
+            url = shared_step_url(client.get_base_url(), client.get_project(), step_id)
+            status_message = "archived" if result.status == "archived" else "already archived"
             return render_output(
-                plain=(
-                    f"✅ Archived Shared Step {step_id}\n\n"
-                    f"The shared step has been successfully archived.\nShared Step URL: {url}"
-                ),
-                json_payload={"id": step_id, "status": "archived", "url": url},
+                plain=(f"✅ Shared Step {step_id} is {status_message}.\nShared Step URL: {url}"),
+                json_payload={"id": step_id, "status": result.status, "url": url},
                 output_format=output_format,
             )
         return render_output(
-            plain=f"ℹ️ Shared Step {step_id} was already archived or doesn't exist.\nShared Step URL: {url}",  # noqa: RUF001
-            json_payload={"id": step_id, "status": "already_archived", "url": url},
+            plain=f"ℹ️ Shared Step {step_id} was not found; no archive was confirmed.",  # noqa: RUF001
+            json_payload={"id": step_id, "status": result.status},
             output_format=output_format,
         )

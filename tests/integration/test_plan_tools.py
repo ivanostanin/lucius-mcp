@@ -164,7 +164,7 @@ async def test_delete_test_plan_tool() -> None:
             output = await delete_test_plan(plan_id=100, confirm=True, output_format="plain")
 
             assert "Successfully deleted Test Plan 100" in output
-            assert "Test Plan URL: https://example.com/testplan/100" in output
+            assert "Test Plan URL:" not in output
             mock_service.delete_plan.assert_called_once_with(plan_id=100)
 
 
