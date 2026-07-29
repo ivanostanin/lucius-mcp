@@ -1,6 +1,7 @@
 import base64
 import logging
-from typing import cast
+from dataclasses import dataclass
+from typing import Literal, cast
 
 from pydantic import ValidationError as PydanticValidationError
 
@@ -21,6 +22,13 @@ logger = logging.getLogger(__name__)
 # Constants
 MAX_NAME_LENGTH = 255
 MAX_BODY_LENGTH = 10000
+
+
+@dataclass(frozen=True)
+class SharedStepDeleteResult:
+    """Outcome of an idempotent shared-step archive operation."""
+
+    status: Literal["archived", "already_archived", "not_found"]
 
 
 class SharedStepService:
@@ -182,31 +190,39 @@ class SharedStepService:
         updated = await self._client.update_shared_step(step_id, patch_data)
         return updated, True
 
-    async def delete_shared_step(self, step_id: int) -> bool:
+    async def delete_shared_step(self, step_id: int) -> SharedStepDeleteResult:
         """Delete (archive) a shared step with idempotent behavior.
 
         Args:
             step_id: The shared step ID to delete.
 
         Returns:
-            True if deleted, False if already deleted/not found.
+            The archive outcome, including whether an archived entity was
+            confirmed to exist for safe URL rendering.
 
         Raises:
             AllureAPIError: If the API request fails (other than 404).
 
         Note:
-            This operation is idempotent following Story 1.5 pattern.
-            If already deleted (404), returns False.
+            This operation is idempotent following Story 1.5 pattern. A 404
+            is reported as ``not_found`` so callers do not link to a deleted
+            entity.
         """
         try:
-            # Check existence first for accurate feedback
-            await self.get_shared_step(step_id)
-            await self._client.delete_shared_step(step_id)
-            return True
+            current = await self.get_shared_step(step_id)
         except AllureNotFoundError:
-            # Idempotent: if already deleted, this is fine
-            logger.debug(f"Shared step {step_id} already deleted or not found")
-            return False
+            logger.debug("Shared step %s was not found during archive", step_id)
+            return SharedStepDeleteResult(status="not_found")
+
+        if current.archived is True:
+            return SharedStepDeleteResult(status="already_archived")
+
+        try:
+            await self._client.delete_shared_step(step_id)
+        except AllureNotFoundError:
+            logger.debug("Shared step %s disappeared during archive", step_id)
+            return SharedStepDeleteResult(status="not_found")
+        return SharedStepDeleteResult(status="archived")
 
     async def cleanup_archived(self, page_size: int = 100) -> int:
         """Permanently remove archived shared steps from the project."""

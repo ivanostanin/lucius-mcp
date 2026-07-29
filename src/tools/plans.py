@@ -235,7 +235,7 @@ async def list_test_plans(
         )
 
 
-@output_fields("requires_confirmation", "action", "plan_id", "status", "url")
+@output_fields("requires_confirmation", "action", "plan_id", "status")
 async def delete_test_plan(
     plan_id: Annotated[int, "ID of the test plan to delete"],
     confirm: Annotated[bool, "Must be set to True to proceed with deletion. Safety measure."] = False,
@@ -272,9 +272,8 @@ async def delete_test_plan(
     async with AllureClient.from_env() as client:
         service = PlanService(client)
         await service.delete_plan(plan_id=plan_id)
-        url = test_plan_url(client.get_base_url(), client.get_project(), plan_id)
         return render_output(
-            plain=f"Successfully deleted Test Plan {plan_id}.\nTest Plan URL: {url}",
-            json_payload={"plan_id": plan_id, "status": "deleted", "url": url},
+            plain=f"Successfully deleted Test Plan {plan_id}.",
+            json_payload={"plan_id": plan_id, "status": "deleted"},
             output_format=output_format,
         )

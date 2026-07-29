@@ -220,7 +220,7 @@ async def test_delete_shared_step_success(service, mock_client):
 
     result = await service.delete_shared_step(step_id=100)
 
-    assert result is True
+    assert result.status == "archived"
     mock_client.get_shared_step.assert_called_once_with(100)
     mock_client.delete_shared_step.assert_called_once_with(100)
 
@@ -238,9 +238,23 @@ async def test_delete_shared_step_idempotent(service, mock_client):
     mock_client.get_shared_step = AsyncMock(side_effect=AllureNotFoundError("Not found", 404, "{}"))
     mock_client.delete_shared_step = AsyncMock()
 
-    # Should not raise, just return False
+    # Should not raise, just report that no archived entity was confirmed.
     result = await service.delete_shared_step(step_id=100)
 
-    assert result is False
+    assert result.status == "not_found"
     mock_client.get_shared_step.assert_called_once_with(100)
+    mock_client.delete_shared_step.assert_not_called()
+
+
+@pytest.mark.priority("P1")
+@pytest.mark.asyncio
+async def test_delete_shared_step_already_archived(service, mock_client):
+    mock_client.get_shared_step = AsyncMock(
+        return_value=SharedStepDto(id=100, name="Archived Step", project_id=1, archived=True)
+    )
+    mock_client.delete_shared_step = AsyncMock()
+
+    result = await service.delete_shared_step(step_id=100)
+
+    assert result.status == "already_archived"
     mock_client.delete_shared_step.assert_not_called()

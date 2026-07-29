@@ -12340,18 +12340,6 @@
             ],
             "default": null,
             "title": "Status"
-          },
-          "url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Url"
           }
         },
         "title": "DeleteTestPlanOutput",
@@ -13576,18 +13564,6 @@
             ],
             "default": null,
             "title": "Status"
-          },
-          "url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Url"
           }
         },
         "title": "DeleteDefectOutput",

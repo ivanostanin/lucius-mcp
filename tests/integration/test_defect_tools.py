@@ -109,7 +109,7 @@ async def test_delete_defect_tool_confirmed() -> None:
             output = await delete_defect(defect_id=10, confirm=True, output_format="plain")
 
             assert "Deleted Defect #10" in output
-            assert "Defect URL: https://example.com/project/1/defects/10" in output
+            assert "Defect URL:" not in output
             mock_svc.delete_defect.assert_called_once_with(10)
 
 

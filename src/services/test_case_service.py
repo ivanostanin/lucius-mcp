@@ -93,7 +93,7 @@ class DeleteResult:
     """Result of a delete operation."""
 
     test_case_id: int
-    status: str  # "archived", "deleted", "already_deleted", "not_found"
+    status: str  # "archived", "already_archived", "not_found"
     message: str
     name: str | None = None
 
@@ -526,14 +526,15 @@ class TestCaseService:
             if test_case.status and test_case.status.name and test_case.status.name.lower() in ("archived", "deleted"):
                 return DeleteResult(
                     test_case_id=test_case_id,
-                    status="already_deleted",
+                    status="already_archived",
+                    name=test_case.name,
                     message=f"Test Case {test_case_id} was already archived (Status: {test_case.status.name}).",
                 )
         except (AllureNotFoundError, TestCaseNotFoundError):
             return DeleteResult(
                 test_case_id=test_case_id,
-                status="already_deleted",
-                message=f"Test Case {test_case_id} was already archived or doesn't exist.",
+                status="not_found",
+                message=f"Test Case {test_case_id} was not found; no archive was confirmed.",
             )
 
         # 2. Perform deletion
