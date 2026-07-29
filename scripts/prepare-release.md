@@ -66,6 +66,7 @@ gh pr create \
   --body "Prepare release v0.x.x."
 ```
 - Wait for CI/CD checks to pass on the PR.
+- Merge the PR using the squash merge strategy after all CI/CD checks pass.
 
 ### 8. Tagging (Manual/Triggered)
 - Once the PR is merged to `main`, a git tag MUST be created for the new version.
