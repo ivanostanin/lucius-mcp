@@ -1155,6 +1155,47 @@ so that I can complete manual QA workflows in Allure TestOps without leaving MCP
 **Then** the automated test plan includes end-to-end coverage for listing launch results, rerunning failed manual results, starting a manual session, submitting manual results, and attaching result or step evidence
 **And** those tests verify tool execution results against the sandbox instance rather than relying only on mocked unit or integration coverage.
 
+### Story 10.3: Align Launch List and Detail DTOs
+
+As an AI Agent,
+I want launch collection results to stay compact while a single-launch lookup returns rich execution context,
+so that I can scan many launches efficiently and inspect one launch without losing statistics or metadata.
+
+**Acceptance Criteria:**
+
+**Given** a project with multiple launches
+**When** I call `list_launches`
+**Then** each item uses the basic `LaunchDto` semantics needed for collection discovery
+**And** pagination, search, filtering, sorting, URLs, and CLI rendering remain supported
+**And** the implementation does not perform one detail request per listed launch
+**And** removing the currently published defect-count and manual-guidance fields from list items is an intentional breaking output-contract change documented in the changelog and commit metadata.
+
+**Given** a valid Launch ID
+**When** I call `get_launch`
+**Then** the response uses rich `LaunchPreviewDto` semantics for that exact launch
+**And** it includes available statistics, known/new defect counts, environment, jobs, tags, issues, links, creator/modifier metadata, timing, URL, and manual-execution guidance in both JSON and plain output
+**And** optional fields are populated only from verified by-ID responses or documented exact-ID endpoints and are never fabricated.
+
+**Given** the upstream OpenAPI contract exposes the rich shape through a collection response but the by-ID endpoint declares sparse `LaunchDto`
+**When** the rich detail path is implemented
+**Then** it verifies the live by-ID response or composes exact-ID launch endpoints behind the client/service boundary
+**And** it never returns a fuzzy name match, scans an unbounded collection, or edits generated client files by hand.
+
+**Given** launch counts or other numeric values are zero
+**When** output is serialized
+**Then** zero is preserved rather than treated as missing
+**And** list and detail tools publish distinct output schemas matching their actual payloads
+**And** only a missing authoritative base read maps to launch-not-found; enrichment failures follow explicit typed error/unavailable-field semantics.
+
+**Given** existing launch lifecycle and manual-execution workflows
+**When** the DTO alignment is introduced
+**Then** create, close, reopen, delete, upload, result discovery, and manual execution behavior remains backward compatible
+**And** invalid and missing launch IDs continue to produce typed Agent Hints.
+
+**Given** automated verification runs
+**When** unit, integration, CLI, schema, and sandbox E2E tests execute
+**Then** they prove compact list output, exact rich detail output, zero-value preservation, no oneOf field loss, and no lifecycle regressions.
+
 ## Epic 11: Telemetry Signal Simplification
 
 Goal: Simplify telemetry event naming so analytics stay queryable without encoding tool names, deployment methods, or error classes in the event name itself.
