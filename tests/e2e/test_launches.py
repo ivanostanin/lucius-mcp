@@ -25,6 +25,9 @@ async def test_create_close_reopen_launch_lifecycle(allure_client, project_id, t
         retrieved = await service.get_launch(created_id)
         assert retrieved.id == created_id
         assert retrieved.closed is not True
+        assert retrieved.statistic is None or isinstance(retrieved.statistic, list)
+        assert retrieved.environment is None or isinstance(retrieved.environment, list)
+        assert retrieved.jobs is None or isinstance(retrieved.jobs, list)
 
         closed = await service.close_launch(created_id)
         assert closed.id == created_id
@@ -37,6 +40,7 @@ async def test_create_close_reopen_launch_lifecycle(allure_client, project_id, t
         result = await service.list_launches(page=0, size=50, sort=["createdDate,DESC"])
         names = [getattr(item, "name", None) for item in result.items]
         assert launch_name in names
+        assert all(not hasattr(item, "known_defects_count") for item in result.items)
 
         deleted = await service.delete_launch(created.id)
         assert deleted.launch_id == created.id

@@ -1,6 +1,7 @@
 """Launch management tools."""
 
-from collections.abc import AsyncIterator
+import json
+from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 from typing import Annotated
 
@@ -18,7 +19,7 @@ from src.services.launch_service import (
     ManualTestSubmissionResult,
 )
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
-from src.tools.output_schemas import LaunchSummary, ListLaunchesOutput, output_fields
+from src.tools.output_schemas import LaunchDetailOutput, LaunchMutationSummary, ListLaunchesOutput, output_fields
 from src.utils.auth_resolution import resolve_auth_settings
 from src.utils.links import launch_url
 
@@ -38,9 +39,31 @@ _LAUNCH_OUTPUT_FIELDS = (
     "url",
     "operation",
 )
+_LAUNCH_DETAIL_OUTPUT_FIELDS = (
+    "id",
+    "name",
+    "closed",
+    "created_date",
+    "last_modified_date",
+    "project_id",
+    "autoclose",
+    "external",
+    "created_by",
+    "last_modified_by",
+    "statistic",
+    "known_defects_count",
+    "new_defects_count",
+    "environment",
+    "jobs",
+    "tags",
+    "issues",
+    "links",
+    "manual_execution_guidance",
+    "url",
+)
 
 
-@output_fields(*_LAUNCH_OUTPUT_FIELDS, model=LaunchSummary)
+@output_fields(*_LAUNCH_OUTPUT_FIELDS, model=LaunchMutationSummary)
 async def create_launch(
     name: Annotated[str, Field(description="Launch name (required).")],
     autoclose: Annotated[bool | None, Field(description="Whether the launch auto-closes.")] = None,
@@ -93,7 +116,7 @@ async def create_launch(
     message = f"✅ Launch created successfully! ID: {launch.id}, Name: {launch.name}\nLaunch URL: {url}"
     return render_output(
         plain=message,
-        json_payload=_launch_payload(launch, base_url=base_url, project_id=resolved_project_id),
+        json_payload=_launch_mutation_payload(launch, base_url=base_url, project_id=resolved_project_id),
         output_format=output_format,
     )
 
@@ -193,7 +216,9 @@ async def list_launches(
         base_url = client.get_base_url()
         resolved_project_id = client.get_project()
 
-    items = [_launch_payload(launch, base_url=base_url, project_id=resolved_project_id) for launch in result.items]
+    items = [
+        _compact_launch_payload(launch, base_url=base_url, project_id=resolved_project_id) for launch in result.items
+    ]
     return render_output(
         plain=_format_launch_list(result, base_url=base_url, project_id=resolved_project_id),
         json_payload={
@@ -207,7 +232,7 @@ async def list_launches(
     )
 
 
-@output_fields(*_LAUNCH_OUTPUT_FIELDS, model=LaunchSummary)
+@output_fields(*_LAUNCH_DETAIL_OUTPUT_FIELDS, model=LaunchDetailOutput)
 async def get_launch(
     launch_id: Annotated[int, Field(description="Launch ID (required).")],
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
@@ -233,7 +258,7 @@ async def get_launch(
 
     return render_output(
         plain=_format_launch_detail(launch, base_url=base_url, project_id=resolved_project_id),
-        json_payload=_launch_payload(launch, base_url=base_url, project_id=resolved_project_id),
+        json_payload=_launch_detail_payload(launch, base_url=base_url, project_id=resolved_project_id),
         output_format=output_format,
     )
 
@@ -624,7 +649,7 @@ async def delete_launch(
     )
 
 
-@output_fields(*_LAUNCH_OUTPUT_FIELDS, model=LaunchSummary)
+@output_fields(*_LAUNCH_OUTPUT_FIELDS, model=LaunchMutationSummary)
 async def close_launch(
     launch_id: Annotated[int, Field(description="Launch ID (required).")],
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
@@ -654,7 +679,7 @@ async def close_launch(
         f"Launch closed successfully.\n"
         f"{_format_launch_detail(launch, base_url=base_url, project_id=resolved_project_id)}"
     )
-    payload = _launch_payload(launch, base_url=base_url, project_id=resolved_project_id)
+    payload = _launch_mutation_payload(launch, base_url=base_url, project_id=resolved_project_id)
     payload["operation"] = "closed"
     return render_output(
         plain=message,
@@ -663,7 +688,7 @@ async def close_launch(
     )
 
 
-@output_fields(*_LAUNCH_OUTPUT_FIELDS, model=LaunchSummary)
+@output_fields(*_LAUNCH_OUTPUT_FIELDS, model=LaunchMutationSummary)
 async def reopen_launch(
     launch_id: Annotated[int, Field(description="Launch ID (required).")],
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
@@ -693,7 +718,7 @@ async def reopen_launch(
         f"Launch reopened successfully.\n"
         f"{_format_launch_detail(launch, base_url=base_url, project_id=resolved_project_id)}"
     )
-    payload = _launch_payload(launch, base_url=base_url, project_id=resolved_project_id)
+    payload = _launch_mutation_payload(launch, base_url=base_url, project_id=resolved_project_id)
     payload["operation"] = "reopened"
     return render_output(
         plain=message,
@@ -702,30 +727,158 @@ async def reopen_launch(
     )
 
 
-def _launch_payload(launch: object, *, base_url: str, project_id: int) -> dict[str, object]:
+_MANUAL_EXECUTION_GUIDANCE = (
+    "Use list_launch_test_results for result-level manual execution work, "
+    "then submit_manual_test_results with result_id to resolve the existing launch result in place. "
+    "After rerun_test_results_manually, refresh result discovery and use the resolved result IDs for attachments."
+)
+
+
+def _value(launch: object, snake_case: str, camel_case: str | None = None) -> object | None:
+    """Read a value without treating valid zero or false values as missing."""
+    value = getattr(launch, snake_case, None)
+    if value is not None or camel_case is None:
+        return value
+    return getattr(launch, camel_case, None)
+
+
+def _compact_launch_payload(launch: object, *, base_url: str, project_id: int) -> dict[str, object]:
     launch_id = getattr(launch, "id", None)
     payload: dict[str, object] = {
         "id": launch_id,
         "name": getattr(launch, "name", None),
         "closed": getattr(launch, "closed", None),
-        "created_date": getattr(launch, "created_date", None) or getattr(launch, "createdDate", None),
-        "last_modified_date": getattr(launch, "last_modified_date", None) or getattr(launch, "lastModifiedDate", None),
-        "project_id": getattr(launch, "project_id", None) or getattr(launch, "projectId", None),
+        "created_date": _value(launch, "created_date", "createdDate"),
+        "last_modified_date": _value(launch, "last_modified_date", "lastModifiedDate"),
+        "project_id": _value(launch, "project_id", "projectId"),
         "autoclose": getattr(launch, "autoclose", None),
         "external": getattr(launch, "external", None),
-        "known_defects_count": getattr(launch, "known_defects_count", None)
-        or getattr(launch, "knownDefectsCount", None),
-        "new_defects_count": getattr(launch, "new_defects_count", None) or getattr(launch, "newDefectsCount", None),
-        "manual_execution_guidance": (
-            "Use list_launch_test_results for result-level manual execution work, "
-            "then submit_manual_test_results with result_id to resolve the existing launch result in place. "
-            "After rerun_test_results_manually, refresh result discovery and use the resolved result IDs for "
-            "attachments."
-        ),
     }
     if isinstance(launch_id, int):
         payload["url"] = launch_url(base_url, project_id, launch_id)
     return payload
+
+
+def _launch_mutation_payload(launch: object, *, base_url: str, project_id: int) -> dict[str, object]:
+    """Keep create/close/reopen output stable while list and detail contracts diverge."""
+    payload = _compact_launch_payload(launch, base_url=base_url, project_id=project_id)
+    payload["known_defects_count"] = _value(launch, "known_defects_count", "knownDefectsCount")
+    payload["new_defects_count"] = _value(launch, "new_defects_count", "newDefectsCount")
+    payload["manual_execution_guidance"] = _MANUAL_EXECUTION_GUIDANCE
+    return payload
+
+
+def _launch_detail_payload(launch: object, *, base_url: str, project_id: int) -> dict[str, object]:
+    payload = _compact_launch_payload(launch, base_url=base_url, project_id=project_id)
+    payload.update(
+        {
+            "created_by": _value(launch, "created_by", "createdBy"),
+            "last_modified_by": _value(launch, "last_modified_by", "lastModifiedBy"),
+            "statistic": _statistic_payload(getattr(launch, "statistic", None)),
+            "known_defects_count": _value(launch, "known_defects_count", "knownDefectsCount"),
+            "new_defects_count": _value(launch, "new_defects_count", "newDefectsCount"),
+            "environment": _environment_payload(getattr(launch, "environment", None)),
+            "jobs": _jobs_payload(getattr(launch, "jobs", None)),
+            "tags": _tags_payload(getattr(launch, "tags", None)),
+            "issues": _issues_payload(getattr(launch, "issues", None)),
+            "links": _links_payload(getattr(launch, "links", None)),
+            "manual_execution_guidance": _MANUAL_EXECUTION_GUIDANCE,
+        }
+    )
+    return payload
+
+
+def _as_text(value: object | None) -> str | None:
+    if value is None:
+        return None
+    raw_value = getattr(value, "value", value)
+    return raw_value if isinstance(raw_value, str) else str(raw_value)
+
+
+def _statistic_payload(items: Sequence[object] | None) -> list[dict[str, object]] | None:
+    if items is None:
+        return None
+    return [
+        {"status": _as_text(getattr(item, "status", None)), "count": getattr(item, "count", None)} for item in items
+    ]
+
+
+def _environment_payload(items: Sequence[object] | None) -> list[dict[str, object]] | None:
+    if items is None:
+        return None
+    return [
+        {
+            "id": getattr(item, "id", None),
+            "name": getattr(item, "name", None),
+            "variable": (
+                {"id": getattr(variable, "id", None), "name": getattr(variable, "name", None)}
+                if (variable := getattr(item, "variable", None)) is not None
+                else None
+            ),
+        }
+        for item in items
+    ]
+
+
+def _jobs_payload(items: Sequence[object] | None) -> list[dict[str, object]] | None:
+    if items is None:
+        return None
+    return [
+        {
+            "id": getattr(item, "id", None),
+            "name": getattr(item, "name", None),
+            "status": _as_text(getattr(item, "status", None)),
+            "stage": _as_text(getattr(item, "stage", None)),
+            "url": getattr(item, "url", None),
+            "error_message": _value(item, "error_message", "errorMessage"),
+            "external_id": _value(item, "external_id", "externalId"),
+            "job": (
+                {
+                    "id": getattr(job, "id", None),
+                    "name": getattr(job, "name", None),
+                    "type": _as_text(getattr(job, "type", None)),
+                    "url": getattr(job, "url", None),
+                }
+                if (job := getattr(item, "job", None)) is not None
+                else None
+            ),
+        }
+        for item in items
+    ]
+
+
+def _tags_payload(items: Sequence[object] | None) -> list[dict[str, object]] | None:
+    return (
+        None
+        if items is None
+        else [{"id": getattr(item, "id", None), "name": getattr(item, "name", None)} for item in items]
+    )
+
+
+def _issues_payload(items: Sequence[object] | None) -> list[dict[str, object]] | None:
+    if items is None:
+        return None
+    return [
+        {
+            "id": getattr(item, "id", None),
+            "name": getattr(item, "name", None),
+            "display_name": _value(item, "display_name", "displayName"),
+            "status": getattr(item, "status", None),
+            "summary": getattr(item, "summary", None),
+            "url": getattr(item, "url", None),
+            "closed": getattr(item, "closed", None),
+        }
+        for item in items
+    ]
+
+
+def _links_payload(items: Sequence[object] | None) -> list[dict[str, object]] | None:
+    if items is None:
+        return None
+    return [
+        {"name": getattr(item, "name", None), "type": getattr(item, "type", None), "url": getattr(item, "url", None)}
+        for item in items
+    ]
 
 
 @asynccontextmanager
@@ -759,7 +912,7 @@ def _format_launch_list(result: LaunchListResult, *, base_url: str, project_id: 
     for launch in result.items:
         name = getattr(launch, "name", None) or "(unnamed)"
         launch_id = getattr(launch, "id", None)
-        created_date = getattr(launch, "created_date", None) or getattr(launch, "createdDate", None)
+        created_date = _value(launch, "created_date", "createdDate")
         closed = getattr(launch, "closed", None)
 
         status = "closed" if closed else "open"
@@ -793,6 +946,7 @@ def _format_launch_detail(launch: object, *, base_url: str, project_id: int) -> 
     _append_timing_lines(lines, launch)
     _append_metadata_lines(lines, launch)
     _append_statistic_lines(lines, launch)
+    _append_rich_detail_lines(lines, launch)
     lines.append(
         "- Manual execution: use list_launch_test_results for result discovery, "
         "then submit_manual_test_results with result_id to resolve the existing launch result in place. "
@@ -810,8 +964,8 @@ def _append_close_report_line(lines: list[str], launch: object) -> None:
 
 
 def _append_timing_lines(lines: list[str], launch: object) -> None:
-    started_at = getattr(launch, "created_date", None) or getattr(launch, "createdDate", None)
-    ended_at = getattr(launch, "last_modified_date", None) or getattr(launch, "lastModifiedDate", None)
+    started_at = _value(launch, "created_date", "createdDate")
+    ended_at = _value(launch, "last_modified_date", "lastModifiedDate")
 
     if started_at is not None:
         lines.append(f"- Started: {started_at}")
@@ -842,7 +996,10 @@ def _append_metadata_lines(lines: list[str], launch: object) -> None:
 
 def _append_statistic_lines(lines: list[str], launch: object) -> None:
     statistic = getattr(launch, "statistic", None)
+    if statistic is None:
+        return
     if not statistic:
+        lines.append("- Summary: []")
         return
 
     summary_parts: list[str] = []
@@ -855,6 +1012,24 @@ def _append_statistic_lines(lines: list[str], launch: object) -> None:
 
     if summary_parts:
         lines.append(f"- Summary: {', '.join(summary_parts)}")
+
+
+def _append_rich_detail_lines(lines: list[str], launch: object) -> None:
+    """Render every rich detail projection in plain mode as well as JSON mode."""
+    payload = _launch_detail_payload(launch, base_url="", project_id=0)
+    labels = {
+        "created_by": "Created by",
+        "last_modified_by": "Last modified by",
+        "environment": "Environment",
+        "jobs": "Jobs",
+        "tags": "Tags",
+        "issues": "Issues",
+        "links": "Links",
+    }
+    for field, label in labels.items():
+        value = payload[field]
+        if value is not None:
+            lines.append(f"- {label}: {json.dumps(value, sort_keys=True)}")
 
 
 def _format_launch_delete(result: LaunchDeleteResult) -> str:

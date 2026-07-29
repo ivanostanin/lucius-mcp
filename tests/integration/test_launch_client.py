@@ -8,17 +8,20 @@ import pytest
 from pydantic import SecretStr
 
 from src.client import AllureClient
-from src.client.exceptions import AllureNotFoundError, AllureValidationError
+from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError
 from src.client.generated.exceptions import ApiException
 from src.client.generated.models.aql_validate_response_dto import AqlValidateResponseDto
+from src.client.generated.models.env_var_value_dto import EnvVarValueDto
 from src.client.generated.models.external_run_response_dto import ExternalRunResponseDto
 from src.client.generated.models.external_run_start_request_dto import ExternalRunStartRequestDto
 from src.client.generated.models.find_all29200_response import FindAll29200Response
 from src.client.generated.models.job import Job
 from src.client.generated.models.job_run import JobRun
+from src.client.generated.models.job_run_dto import JobRunDto
 from src.client.generated.models.launch import Launch
 from src.client.generated.models.launch_create_dto import LaunchCreateDto
 from src.client.generated.models.launch_dto import LaunchDto
+from src.client.generated.models.launch_preview_dto import LaunchPreviewDto
 from src.client.generated.models.launch_upload_response_dto import LaunchUploadResponseDto
 from src.client.generated.models.manual_session_request_dto import ManualSessionRequestDto
 from src.client.generated.models.page_launch_dto import PageLaunchDto
@@ -37,6 +40,7 @@ from src.client.generated.models.test_result_row_dto import TestResultRowDto
 from src.client.generated.models.test_result_scenario_v2_dto import TestResultScenarioV2Dto
 from src.client.generated.models.test_result_tree_selection_dto import TestResultTreeSelectionDto
 from src.client.generated.models.test_session_response_dto import TestSessionResponseDto
+from src.client.generated.models.test_status_count import TestStatusCount
 from src.client.generated.models.upload_fixtures_results_dto import UploadFixturesResultsDto
 from src.client.generated.models.upload_results_dto import UploadResultsDto
 from src.client.generated.models.upload_test_fixture_result_dto import UploadTestFixtureResultDto
@@ -101,17 +105,112 @@ async def test_client_list_launches_falls_back_on_oneof() -> None:
 
 
 @pytest.mark.asyncio
+async def test_client_list_launches_normalizes_rich_generated_page_to_basic_contract() -> None:
+    client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
+    client._is_entered = True
+    client._token_expires_at = time.time() + 3600
+    client._launch_api = MagicMock()
+    rich_page = PageLaunchPreviewDto(
+        content=[LaunchPreviewDto(id=1, name="Launch", known_defects_count=9, statistic=[])],
+        total_elements=1,
+        number=0,
+        size=20,
+        total_pages=1,
+    )
+    client._launch_api.find_all29 = AsyncMock(return_value=FindAll29200Response(rich_page))
+
+    result = await client.list_launches(project_id=1)
+
+    assert isinstance(result.actual_instance, PageLaunchDto)
+    item = result.actual_instance.content[0]  # type: ignore[union-attr,index]
+    assert item.id == 1
+    assert not hasattr(item, "known_defects_count")
+
+
+@pytest.mark.asyncio
+async def test_client_get_launch_enriches_sparse_exact_id_response() -> None:
+    client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
+    client._is_entered = True
+    client._token_expires_at = time.time() + 3600
+    client._launch_api = MagicMock()
+    response = MagicMock()
+    response.status_code = 200
+    response.json.return_value = {"id": 2, "name": "Launch", "autoclose": True}
+    client._launch_api.find_one23_without_preload_content = AsyncMock(return_value=response)
+    client._launch_api.get_statistic = AsyncMock(return_value=[TestStatusCount(status="passed", count=0)])
+    client._launch_api.get_environment = AsyncMock(return_value=[EnvVarValueDto(id=4, name="staging")])
+    client._launch_api.get_jobs1 = AsyncMock(return_value=[JobRunDto(id=5, name="build")])
+
+    result = await client.get_launch(2)
+
+    assert result.base.autoclose is True
+    assert result.preview.statistic[0].count == 0  # type: ignore[index]
+    assert result.preview.environment[0].name == "staging"  # type: ignore[index]
+    assert result.preview.jobs[0].name == "build"  # type: ignore[index]
+
+
+@pytest.mark.asyncio
+async def test_client_get_launch_treats_forbidden_optional_enrichment_as_unavailable() -> None:
+    client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
+    client._is_entered = True
+    client._token_expires_at = time.time() + 3600
+    client._launch_api = MagicMock()
+    response = MagicMock()
+    response.status_code = 200
+    response.json.return_value = {"id": 2, "name": "Launch"}
+    client._launch_api.find_one23_without_preload_content = AsyncMock(return_value=response)
+    client._launch_api.get_statistic = AsyncMock(side_effect=ApiException(status=403, reason="Forbidden", body="{}"))
+    client._launch_api.get_environment = AsyncMock(return_value=[])
+    client._launch_api.get_jobs1 = AsyncMock(return_value=[])
+
+    result = await client.get_launch(2)
+
+    assert result.preview.statistic is None
+    assert result.preview.environment == []
+    assert result.preview.jobs == []
+
+
+@pytest.mark.asyncio
+async def test_client_get_launch_propagates_unexpected_enrichment_failure_with_endpoint_context() -> None:
+    client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
+    client._is_entered = True
+    client._token_expires_at = time.time() + 3600
+    client._launch_api = MagicMock()
+    response = MagicMock()
+    response.status_code = 200
+    response.json.return_value = {"id": 2, "name": "Launch"}
+    client._launch_api.find_one23_without_preload_content = AsyncMock(return_value=response)
+    client._launch_api.get_statistic = AsyncMock(side_effect=ApiException(status=500, reason="Server Error", body="{}"))
+    client._launch_api.get_environment = AsyncMock(return_value=[])
+    client._launch_api.get_jobs1 = AsyncMock(return_value=[])
+
+    with pytest.raises(AllureAPIError, match="statistic endpoint"):
+        await client.get_launch(2)
+
+
+@pytest.mark.asyncio
 async def test_client_get_launch_calls_api() -> None:
     client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
     client._is_entered = True
     client._token_expires_at = time.time() + 3600
     client._launch_api = MagicMock()
-    client._launch_api.find_one23 = AsyncMock(return_value=LaunchDto(id=2, name="Launch"))
+    response = MagicMock()
+    response.status_code = 200
+    response.json.return_value = {
+        "id": 2,
+        "name": "Launch",
+        "closed": False,
+        "statistic": [],
+        "environment": [],
+        "jobs": [],
+    }
+    client._launch_api.find_one23_without_preload_content = AsyncMock(return_value=response)
 
     result = await client.get_launch(launch_id=2)
 
-    assert result.id == 2
-    client._launch_api.find_one23.assert_called_once()
+    assert result.base.id == 2
+    assert result.preview.statistic == []
+    client._launch_api.find_one23_without_preload_content.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -120,7 +219,9 @@ async def test_client_get_launch_not_found_raises() -> None:
     client._is_entered = True
     client._token_expires_at = time.time() + 3600
     client._launch_api = MagicMock()
-    client._launch_api.find_one23 = AsyncMock(side_effect=ApiException(status=404, reason="Not Found", body="{}"))
+    client._launch_api.find_one23_without_preload_content = AsyncMock(
+        side_effect=ApiException(status=404, reason="Not Found", body="{}")
+    )
 
     with pytest.raises(AllureNotFoundError, match="Resource not found"):
         await client.get_launch(launch_id=404)

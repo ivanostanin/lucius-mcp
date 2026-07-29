@@ -13,6 +13,7 @@ repos:
         entry: uv run ruff format .
         language: system
         types: [python]
+        exclude: ^specs/
         pass_filenames: false
 
       - id: ruff-check

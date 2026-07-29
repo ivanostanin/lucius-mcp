@@ -170,7 +170,7 @@ async def test_search_launch_and_custom_field_delegation(facade_client: AllureCl
     facade_client._search_api = search_api  # type: ignore[assignment]
     facade_client._custom_field_value_project_api = custom_field_values_api  # type: ignore[assignment]
 
-    assert (await facade_client.get_launch(5)).status_code == 204
+    assert (await facade_client.get_launch_base(5)).status_code == 204
     assert await facade_client.close_launch(5) == 204
     await facade_client.reopen_launch(5)
     await facade_client.delete_launch(5)

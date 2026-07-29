@@ -3894,7 +3894,7 @@
       },
       "outputSchema": {
         "additionalProperties": false,
-        "description": "The launch fields emitted by the launch list and detail tools.",
+        "description": "Stable compact launch fields emitted by create and lifecycle tools.",
         "properties": {
           "id": {
             "anyOf": [
@@ -4055,7 +4055,7 @@
             "title": "Operation"
           }
         },
-        "title": "LaunchSummary",
+        "title": "LaunchMutationSummary",
         "type": "object"
       },
       "icons": null,
@@ -4122,7 +4122,7 @@
       },
       "outputSchema": {
         "additionalProperties": false,
-        "description": "The launch fields emitted by the launch list and detail tools.",
+        "description": "Rich exact-ID launch fields, with explicit stable nested projections.",
         "properties": {
           "id": {
             "anyOf": [
@@ -4220,6 +4220,74 @@
             "default": null,
             "title": "External"
           },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Created By"
+          },
+          "last_modified_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Last Modified By"
+          },
+          "statistic": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Status"
+                    },
+                    "count": {
+                      "anyOf": [
+                        {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Count"
+                    }
+                  },
+                  "title": "LaunchStatisticItem",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Statistic"
+          },
           "known_defects_count": {
             "anyOf": [
               {
@@ -4246,6 +4314,455 @@
             "default": null,
             "title": "New Defects Count"
           },
+          "environment": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Id"
+                    },
+                    "name": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Name"
+                    },
+                    "variable": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "id": {
+                              "anyOf": [
+                                {
+                                  "type": "integer"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null,
+                              "title": "Id"
+                            },
+                            "name": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null,
+                              "title": "Name"
+                            }
+                          },
+                          "title": "LaunchEnvironmentVariable",
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null
+                    }
+                  },
+                  "title": "LaunchEnvironmentValue",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Environment"
+          },
+          "jobs": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Id"
+                    },
+                    "name": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Name"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Status"
+                    },
+                    "stage": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Stage"
+                    },
+                    "url": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Url"
+                    },
+                    "error_message": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Error Message"
+                    },
+                    "external_id": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "External Id"
+                    },
+                    "job": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "id": {
+                              "anyOf": [
+                                {
+                                  "type": "integer"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null,
+                              "title": "Id"
+                            },
+                            "name": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null,
+                              "title": "Name"
+                            },
+                            "type": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null,
+                              "title": "Type"
+                            },
+                            "url": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null,
+                              "title": "Url"
+                            }
+                          },
+                          "title": "LaunchJob",
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null
+                    }
+                  },
+                  "title": "LaunchJobRun",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Jobs"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Id"
+                    },
+                    "name": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Name"
+                    }
+                  },
+                  "title": "LaunchTag",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tags"
+          },
+          "issues": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Id"
+                    },
+                    "name": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Name"
+                    },
+                    "display_name": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Display Name"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Status"
+                    },
+                    "summary": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Summary"
+                    },
+                    "url": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Url"
+                    },
+                    "closed": {
+                      "anyOf": [
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Closed"
+                    }
+                  },
+                  "title": "LaunchIssue",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Issues"
+          },
+          "links": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Name"
+                    },
+                    "type": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Type"
+                    },
+                    "url": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Url"
+                    }
+                  },
+                  "title": "LaunchLink",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Links"
+          },
           "manual_execution_guidance": {
             "anyOf": [
               {
@@ -4269,21 +4786,9 @@
             ],
             "default": null,
             "title": "Url"
-          },
-          "operation": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Operation"
           }
         },
-        "title": "LaunchSummary",
+        "title": "LaunchDetailOutput",
         "type": "object"
       },
       "icons": null,
@@ -4798,7 +5303,7 @@
       },
       "outputSchema": {
         "additionalProperties": false,
-        "description": "Paginated launch summaries.",
+        "description": "Paginated compact launches.",
         "properties": {
           "total": {
             "anyOf": [
@@ -4857,7 +5362,7 @@
               {
                 "items": {
                   "additionalProperties": false,
-                  "description": "The launch fields emitted by the launch list and detail tools.",
+                  "description": "Compact launch fields emitted only for collection discovery.",
                   "properties": {
                     "id": {
                       "anyOf": [
@@ -4955,44 +5460,6 @@
                       "default": null,
                       "title": "External"
                     },
-                    "known_defects_count": {
-                      "anyOf": [
-                        {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Known Defects Count"
-                    },
-                    "new_defects_count": {
-                      "anyOf": [
-                        {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "New Defects Count"
-                    },
-                    "manual_execution_guidance": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Manual Execution Guidance"
-                    },
                     "url": {
                       "anyOf": [
                         {
@@ -5004,21 +5471,9 @@
                       ],
                       "default": null,
                       "title": "Url"
-                    },
-                    "operation": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Operation"
                     }
                   },
-                  "title": "LaunchSummary",
+                  "title": "LaunchListItem",
                   "type": "object"
                 },
                 "type": "array"
@@ -6657,7 +7112,7 @@
       },
       "outputSchema": {
         "additionalProperties": false,
-        "description": "The launch fields emitted by the launch list and detail tools.",
+        "description": "Stable compact launch fields emitted by create and lifecycle tools.",
         "properties": {
           "id": {
             "anyOf": [
@@ -6818,7 +7273,7 @@
             "title": "Operation"
           }
         },
-        "title": "LaunchSummary",
+        "title": "LaunchMutationSummary",
         "type": "object"
       },
       "icons": null,
@@ -6897,7 +7352,7 @@
       },
       "outputSchema": {
         "additionalProperties": false,
-        "description": "The launch fields emitted by the launch list and detail tools.",
+        "description": "Stable compact launch fields emitted by create and lifecycle tools.",
         "properties": {
           "id": {
             "anyOf": [
@@ -7058,7 +7513,7 @@
             "title": "Operation"
           }
         },
-        "title": "LaunchSummary",
+        "title": "LaunchMutationSummary",
         "type": "object"
       },
       "icons": null,

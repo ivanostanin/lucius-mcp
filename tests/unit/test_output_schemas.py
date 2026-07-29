@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 
 from src.tools import all_tools
 from src.tools.output_schemas import OUTPUT_MODELS, output_model_for, output_schema_for, validate_registry_coverage
@@ -87,6 +88,30 @@ def test_search_schema_validates_nested_serialized_payload() -> None:
     }
 
 
+def test_list_launches_schema_rejects_removed_detail_and_mutation_fields() -> None:
+    model = output_model_for("list_launches")
+
+    with pytest.raises(ValidationError):
+        model.model_validate(
+            {
+                "total": 1,
+                "page": 0,
+                "size": 20,
+                "total_pages": 1,
+                "items": [
+                    {
+                        "id": 7,
+                        "name": "Nightly",
+                        "known_defects_count": 0,
+                        "new_defects_count": 0,
+                        "manual_execution_guidance": "Use get_launch instead.",
+                        "operation": "created",
+                    }
+                ],
+            }
+        )
+
+
 @pytest.mark.parametrize(
     ("tool_name", "payload"),
     [
@@ -107,9 +132,6 @@ def test_search_schema_validates_nested_serialized_payload() -> None:
                         "project_id": 1,
                         "autoclose": True,
                         "external": False,
-                        "known_defects_count": 0,
-                        "new_defects_count": 1,
-                        "manual_execution_guidance": "Use manual execution tools.",
                         "url": "https://example.test/launch/7",
                     }
                 ],
@@ -150,6 +172,20 @@ def test_search_schema_validates_nested_serialized_payload() -> None:
         (
             "create_launch",
             {"id": 9, "name": "Launch", "created_date": 1_700_000_000_000, "closed": False},
+        ),
+        (
+            "get_launch",
+            {
+                "id": 9,
+                "name": "Launch",
+                "known_defects_count": 0,
+                "statistic": [{"status": "passed", "count": 0}],
+                "environment": [],
+                "jobs": [],
+                "tags": [],
+                "issues": [],
+                "links": [],
+            },
         ),
         (
             "delete_archived_test_cases",
