@@ -7,13 +7,15 @@ standardized error handling.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 from collections.abc import Awaitable
+from dataclasses import dataclass
 from typing import Literal, TypeVar, cast, overload
 
 import httpx
-from pydantic import Field, SecretStr, ValidationError
+from pydantic import Field, SecretStr
 
 from src.utils.auth_resolution import resolve_auth_settings
 from src.utils.logger import get_logger
@@ -79,6 +81,7 @@ from .generated.models.issue_dto import IssueDto
 from .generated.models.launch_create_dto import LaunchCreateDto
 from .generated.models.launch_dto import LaunchDto
 from .generated.models.launch_existing_upload_dto import LaunchExistingUploadDto
+from .generated.models.launch_preview_dto import LaunchPreviewDto
 from .generated.models.launch_upload_response_dto import LaunchUploadResponseDto
 from .generated.models.manual_session_request_dto import ManualSessionRequestDto
 from .generated.models.normalized_scenario_dto import NormalizedScenarioDto
@@ -173,6 +176,14 @@ class StepWithExpected(BodyStepDto):
     expected_result: str | None = Field(default=None, alias="expectedResult")
     steps: list[SharedStepScenarioDtoStepsInner] | None = None
     id: int | None = None
+
+
+@dataclass(frozen=True)
+class LaunchDetailResponse:
+    """Exact-ID launch data, retaining base metadata and rich detail fields."""
+
+    base: LaunchDto
+    preview: LaunchPreviewDto
 
 
 class AttachmentStepDtoWithName(AttachmentStepDto):
@@ -1291,7 +1302,7 @@ class AllureClient:
             raise AllureValidationError("Size must be between 1 and 100")
 
         try:
-            return await self._call_api(
+            response = await self._call_api(
                 api.find_all29(
                     project_id=project_id,
                     search=search,
@@ -1302,8 +1313,9 @@ class AllureClient:
                     _request_timeout=self._timeout,
                 )
             )
+            return self._normalize_launch_list(response)
         except ValueError:
-            response = await self._call_api_raw(
+            raw_response = await self._call_api_raw(
                 api.find_all29_without_preload_content(
                     project_id=project_id,
                     search=search,
@@ -1314,26 +1326,24 @@ class AllureClient:
                     _request_timeout=self._timeout,
                 )
             )
-            data = self._extract_response_data(response)
             try:
-                page_data = PageLaunchDto.from_dict(data)
-                if page_data is None:
-                    raise AllureValidationError("Unexpected launch list response from API")
-                return FindAll29200Response(page_data)
-            except ValidationError as e:
-                preview_data = PageLaunchPreviewDto.from_dict(data)
-                if preview_data is None:
-                    raise AllureValidationError("Unexpected launch list response from API") from e
-                return FindAll29200Response(preview_data)
+                data = self._extract_response_data(raw_response)
+            except ApiException as exc:
+                self._handle_api_exception(exc)
+                raise
+            page_data = PageLaunchDto.from_dict(data)
+            if page_data is None:
+                raise AllureValidationError("Unexpected launch list response from API") from None
+            return FindAll29200Response(page_data)
 
-    async def get_launch(self, launch_id: int) -> LaunchDto:
+    async def get_launch(self, launch_id: int) -> LaunchDetailResponse:
         """Retrieve a specific launch by its ID.
 
         Args:
             launch_id: The unique ID of the launch.
 
         Returns:
-            The launch data.
+            Exact-ID launch data with basic metadata and rich detail fields.
 
         Raises:
             AllureNotFoundError: If launch doesn't exist.
@@ -1346,7 +1356,103 @@ class AllureClient:
         if not isinstance(launch_id, int) or launch_id <= 0:
             raise AllureValidationError("Launch ID must be a positive integer")
 
+        raw_response = await self._call_api_raw(
+            api.find_one23_without_preload_content(id=launch_id, _request_timeout=self._timeout)
+        )
+        try:
+            data = self._extract_response_data(raw_response)
+        except ApiException as exc:
+            self._handle_api_exception(exc)
+            raise
+
+        base = LaunchDto.from_dict(data)
+        if base is None:
+            raise AllureValidationError("Unexpected launch detail response from API")
+
+        preview = LaunchPreviewDto.from_dict(data)
+        if preview is None:
+            raise AllureValidationError("Unexpected launch detail response from API")
+
+        await self._enrich_sparse_launch_preview(api=api, launch_id=launch_id, raw_data=data, preview=preview)
+        return LaunchDetailResponse(base=base, preview=preview)
+
+    async def get_launch_base(self, launch_id: int) -> LaunchDto:
+        """Retrieve sparse authoritative launch metadata for lifecycle checks."""
+        api = await self._get_api("_launch_api", error_name="launch APIs")
+        if not isinstance(launch_id, int) or launch_id <= 0:
+            raise AllureValidationError("Launch ID must be a positive integer")
         return await self._call_api(api.find_one23(id=launch_id, _request_timeout=self._timeout))
+
+    @staticmethod
+    def _normalize_launch_list(response: FindAll29200Response) -> FindAll29200Response:
+        """Project ambiguous generated pages onto the stable compact list contract."""
+        page = response.actual_instance
+        if isinstance(page, PageLaunchDto):
+            return response
+        if not isinstance(page, PageLaunchPreviewDto):
+            raise AllureValidationError("Unexpected launch list response from API")
+
+        return FindAll29200Response(
+            PageLaunchDto(
+                content=[LaunchDto.model_validate(item.model_dump(by_alias=True)) for item in page.content or []],
+                empty=page.empty,
+                first=page.first,
+                last=page.last,
+                number=page.number,
+                number_of_elements=page.number_of_elements,
+                pageable=page.pageable,
+                size=page.size,
+                sort=page.sort,
+                total_elements=page.total_elements,
+                total_pages=page.total_pages,
+            )
+        )
+
+    async def _enrich_sparse_launch_preview(
+        self,
+        *,
+        api: LaunchControllerApi,
+        launch_id: int,
+        raw_data: dict[str, object],
+        preview: LaunchPreviewDto,
+    ) -> None:
+        """Fill absent exact-ID detail fields from documented, bounded endpoints."""
+        requests: list[tuple[str, Awaitable[object]]] = []
+        if "statistic" not in raw_data:
+            requests.append(("statistic", api.get_statistic(id=launch_id, _request_timeout=self._timeout)))
+        if "environment" not in raw_data:
+            requests.append(("environment", api.get_environment(id=launch_id, _request_timeout=self._timeout)))
+        if "jobs" not in raw_data:
+            requests.append(("jobs", api.get_jobs1(id=launch_id, _request_timeout=self._timeout)))
+
+        if not requests:
+            return
+
+        results = await asyncio.gather(*(self._optional_launch_enrichment(name, request) for name, request in requests))
+        for (name, _), result in zip(requests, results, strict=True):
+            if name == "statistic":
+                preview.statistic = result  # type: ignore[assignment]
+            elif name == "environment":
+                preview.environment = result  # type: ignore[assignment]
+            else:
+                preview.jobs = result  # type: ignore[assignment]
+
+    async def _optional_launch_enrichment(self, endpoint: str, request: Awaitable[object]) -> object | None:
+        """Return unavailable for optional 403/404 enrichment; preserve other failures."""
+        try:
+            return await self._call_api(request)
+        except AllureNotFoundError:
+            return None
+        except AllureAuthError as exc:
+            if exc.status_code == 403:
+                return None
+            raise
+        except AllureAPIError as exc:
+            raise AllureAPIError(
+                f"Unable to enrich launch detail from {endpoint} endpoint: {exc}",
+                status_code=exc.status_code,
+                response_body=exc.response_body,
+            ) from exc
 
     async def close_launch(self, launch_id: int) -> int:
         """Close a launch by its ID.

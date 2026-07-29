@@ -13,7 +13,14 @@ from urllib.parse import urlsplit
 import httpx
 from pydantic import ValidationError as PydanticValidationError
 
-from src.client import AllureClient, FindAll29200Response, LaunchCreateDto, LaunchDto, LaunchUploadResponseDto
+from src.client import (
+    AllureClient,
+    FindAll29200Response,
+    LaunchCreateDto,
+    LaunchDetailResponse,
+    LaunchDto,
+    LaunchUploadResponseDto,
+)
 from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError, LaunchNotFoundError
 from src.client.generated.models.aql_validate_response_dto import AqlValidateResponseDto
 from src.client.generated.models.external_link_dto import ExternalLinkDto
@@ -70,7 +77,7 @@ ALLOWED_ATTACHMENT_URL_SCHEMES = frozenset({"http", "https"})
 BLOCKED_ATTACHMENT_HOSTNAMES = frozenset({"localhost"})
 BLOCKED_ATTACHMENT_HOST_SUFFIXES = (".localhost", ".local")
 
-type LaunchListItem = LaunchDto | LaunchPreviewDto
+type LaunchListItem = LaunchDto
 
 
 @dataclass
@@ -82,6 +89,31 @@ class LaunchListResult:
     page: int
     size: int
     total_pages: int
+
+
+@dataclass
+class LaunchDetail:
+    """Application-owned rich launch detail used only for exact-ID reads."""
+
+    id: int | None
+    name: str | None
+    closed: bool | None
+    created_date: int | None
+    last_modified_date: int | None
+    project_id: int | None
+    autoclose: bool | None
+    external: bool | None
+    created_by: str | None = None
+    last_modified_by: str | None = None
+    statistic: Sequence[object] | None = None
+    known_defects_count: int | None = None
+    new_defects_count: int | None = None
+    environment: Sequence[object] | None = None
+    jobs: Sequence[object] | None = None
+    tags: Sequence[object] | None = None
+    issues: Sequence[object] | None = None
+    links: Sequence[object] | None = None
+    close_report_generation: str | None = None
 
 
 @dataclass
@@ -294,7 +326,7 @@ class LaunchService:
 
         page_data = self._extract_page(response)
 
-        items = page_data.content or []
+        items = [item for item in page_data.content or [] if isinstance(item, LaunchDto)]
 
         return LaunchListResult(
             items=items,
@@ -335,7 +367,7 @@ class LaunchService:
             sort=sort,
         )
 
-        items = response.content or []
+        items = [item for item in response.content or [] if isinstance(item, LaunchDto)]
 
         return LaunchListResult(
             items=items,
@@ -345,7 +377,7 @@ class LaunchService:
             total_pages=response.total_pages or 1,
         )
 
-    async def get_launch(self, launch_id: int) -> LaunchDto:
+    async def get_launch(self, launch_id: int) -> LaunchDetail:
         """Retrieve a specific launch by its ID.
 
         Args:
@@ -358,7 +390,13 @@ class LaunchService:
         self._validate_launch_id(launch_id)
 
         try:
-            return await self._client.get_launch(launch_id)
+            response = await self._client.get_launch(launch_id)
+            if isinstance(response, LaunchDetailResponse):
+                return self._launch_detail(response.base, response.preview)
+            # Backward-compatible client doubles and callers still receive a stable detail model.
+            if isinstance(response, LaunchDto):
+                return self._launch_detail(response)
+            raise AllureAPIError("Unexpected launch detail response from API")
         except AllureNotFoundError as exc:
             raise LaunchNotFoundError(
                 launch_id=launch_id,
@@ -366,16 +404,58 @@ class LaunchService:
                 response_body=exc.response_body,
             ) from exc
 
-    async def close_launch(self, launch_id: int) -> LaunchDto:
+    async def _get_launch_base(self, launch_id: int) -> LaunchDto:
+        """Read authoritative sparse metadata for lifecycle and existence checks."""
+        try:
+            return await self._client.get_launch_base(launch_id)
+        except AllureNotFoundError as exc:
+            raise LaunchNotFoundError(
+                launch_id=launch_id,
+                status_code=exc.status_code,
+                response_body=exc.response_body,
+            ) from exc
+
+    @staticmethod
+    def _launch_detail(
+        base: LaunchDto,
+        preview: LaunchPreviewDto | None = None,
+        *,
+        close_report_generation: str | None = None,
+    ) -> LaunchDetail:
+        """Merge authoritative base metadata with verified rich exact-ID fields."""
+        rich = preview or LaunchPreviewDto()
+        return LaunchDetail(
+            id=base.id,
+            name=base.name,
+            closed=base.closed,
+            created_date=base.created_date,
+            last_modified_date=base.last_modified_date,
+            project_id=base.project_id,
+            autoclose=base.autoclose,
+            external=base.external,
+            created_by=rich.created_by,
+            last_modified_by=rich.last_modified_by,
+            statistic=rich.statistic,
+            known_defects_count=rich.known_defects_count,
+            new_defects_count=rich.new_defects_count,
+            environment=rich.environment,
+            jobs=rich.jobs,
+            tags=rich.tags if rich.tags is not None else base.tags,
+            issues=rich.issues if rich.issues is not None else base.issues,
+            links=rich.links if rich.links is not None else base.links,
+            close_report_generation=close_report_generation,
+        )
+
+    async def close_launch(self, launch_id: int) -> LaunchDetail:
         """Close a launch and return updated launch details."""
         self._validate_project_id(self._project_id)
         self._validate_launch_id(launch_id)
 
-        pre_close = await self.get_launch(launch_id)
+        pre_close = await self._get_launch_base(launch_id)
 
         try:
             await self._client.close_launch(launch_id)
-            closed_launch = await self._client.get_launch(launch_id)
+            closed_launch = await self._get_launch_base(launch_id)
         except AllureNotFoundError as exc:
             raise LaunchNotFoundError(
                 launch_id=launch_id,
@@ -390,17 +470,16 @@ class LaunchService:
             )
 
         close_report = self._determine_close_report_status(pre_close, closed_launch)
-        closed_launch.__dict__["close_report_generation"] = close_report
-        return closed_launch
+        return self._launch_detail(closed_launch, close_report_generation=close_report)
 
-    async def reopen_launch(self, launch_id: int) -> LaunchDto:
+    async def reopen_launch(self, launch_id: int) -> LaunchDetail:
         """Reopen a launch and return updated launch details."""
         self._validate_project_id(self._project_id)
         self._validate_launch_id(launch_id)
 
         try:
             await self._client.reopen_launch(launch_id)
-            reopened = await self._client.get_launch(launch_id)
+            reopened = await self._get_launch_base(launch_id)
         except AllureNotFoundError as exc:
             raise LaunchNotFoundError(
                 launch_id=launch_id,
@@ -414,7 +493,7 @@ class LaunchService:
                 suggestions=["Retry reopen_launch", "Inspect launch state via get_launch"],
             )
 
-        return reopened
+        return self._launch_detail(reopened)
 
     async def upload_results_to_launch(
         self,
@@ -446,7 +525,7 @@ class LaunchService:
 
         # Validate and normalize every item before creating remote results.
         upload_results = [self._build_upload_test_result(result, index=index) for index, result in enumerate(results)]
-        await self.get_launch(launch_id)
+        await self._get_launch_base(launch_id)
         semaphore = asyncio.Semaphore(MAX_LAUNCH_RESULT_UPLOAD_CONCURRENCY)
 
         async def create_one(index: int, result: dict[str, Any], upload_result: UploadTestResultDto) -> TestResultDto:

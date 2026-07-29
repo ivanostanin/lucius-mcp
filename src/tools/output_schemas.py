@@ -151,8 +151,8 @@ class SuiteNodeOutput(BaseModel):
     children: list[SuiteNodeOutput] = Field(default_factory=list)
 
 
-class LaunchSummary(BaseModel):
-    """The launch fields emitted by the launch list and detail tools."""
+class LaunchMutationSummary(BaseModel):
+    """Stable compact launch fields emitted by create and lifecycle tools."""
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -171,8 +171,126 @@ class LaunchSummary(BaseModel):
     operation: str | None = Field(default=None)
 
 
+class LaunchListItem(BaseModel):
+    """Compact launch fields emitted only for collection discovery."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = Field(default=None)
+    name: str | None = Field(default=None)
+    closed: bool | None = Field(default=None)
+    created_date: int | None = Field(default=None)
+    last_modified_date: int | None = Field(default=None)
+    project_id: int | None = Field(default=None)
+    autoclose: bool | None = Field(default=None)
+    external: bool | None = Field(default=None)
+    known_defects_count: int | None = Field(default=None, ge=0)
+    new_defects_count: int | None = Field(default=None, ge=0)
+    manual_execution_guidance: str | None = Field(default=None)
+    url: str | None = Field(default=None)
+    operation: str | None = Field(default=None)
+
+
+class LaunchStatisticItem(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    status: str | None = Field(default=None)
+    count: int | None = Field(default=None, ge=0)
+
+
+class LaunchEnvironmentVariable(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = Field(default=None)
+    name: str | None = Field(default=None)
+
+
+class LaunchEnvironmentValue(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = Field(default=None)
+    name: str | None = Field(default=None)
+    variable: LaunchEnvironmentVariable | None = Field(default=None)
+
+
+class LaunchJob(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = Field(default=None)
+    name: str | None = Field(default=None)
+    type: str | None = Field(default=None)
+    url: str | None = Field(default=None)
+
+
+class LaunchJobRun(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = Field(default=None)
+    name: str | None = Field(default=None)
+    status: str | None = Field(default=None)
+    stage: str | None = Field(default=None)
+    url: str | None = Field(default=None)
+    error_message: str | None = Field(default=None)
+    external_id: str | None = Field(default=None)
+    job: LaunchJob | None = Field(default=None)
+
+
+class LaunchTag(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = Field(default=None)
+    name: str | None = Field(default=None)
+
+
+class LaunchIssue(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = Field(default=None)
+    name: str | None = Field(default=None)
+    display_name: str | None = Field(default=None)
+    status: str | None = Field(default=None)
+    summary: str | None = Field(default=None)
+    url: str | None = Field(default=None)
+    closed: bool | None = Field(default=None)
+
+
+class LaunchLink(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    name: str | None = Field(default=None)
+    type: str | None = Field(default=None)
+    url: str | None = Field(default=None)
+
+
+class LaunchDetailOutput(BaseModel):
+    """Rich exact-ID launch fields, with explicit stable nested projections."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = Field(default=None)
+    name: str | None = Field(default=None)
+    closed: bool | None = Field(default=None)
+    created_date: int | None = Field(default=None)
+    last_modified_date: int | None = Field(default=None)
+    project_id: int | None = Field(default=None)
+    autoclose: bool | None = Field(default=None)
+    external: bool | None = Field(default=None)
+    created_by: str | None = Field(default=None)
+    last_modified_by: str | None = Field(default=None)
+    statistic: list[LaunchStatisticItem] | None = Field(default=None)
+    known_defects_count: int | None = Field(default=None, ge=0)
+    new_defects_count: int | None = Field(default=None, ge=0)
+    environment: list[LaunchEnvironmentValue] | None = Field(default=None)
+    jobs: list[LaunchJobRun] | None = Field(default=None)
+    tags: list[LaunchTag] | None = Field(default=None)
+    issues: list[LaunchIssue] | None = Field(default=None)
+    links: list[LaunchLink] | None = Field(default=None)
+    manual_execution_guidance: str | None = Field(default=None)
+    url: str | None = Field(default=None)
+
+
 class ListLaunchesOutput(BaseModel):
-    """Paginated launch summaries."""
+    """Paginated compact launches."""
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -180,7 +298,7 @@ class ListLaunchesOutput(BaseModel):
     page: int | None = Field(default=None, ge=0)
     size: int | None = Field(default=None, ge=0)
     total_pages: int | None = Field(default=None, ge=0)
-    items: list[LaunchSummary] | None = Field(default=None)
+    items: list[LaunchListItem] | None = Field(default=None)
 
 
 class ListTestSuitesOutput(BaseModel):

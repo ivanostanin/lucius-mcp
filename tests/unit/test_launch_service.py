@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx
 import pytest
 
-from src.client import AllureClient, LaunchUploadResponseDto
+from src.client import AllureClient, LaunchDetailResponse, LaunchUploadResponseDto
 from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError, LaunchNotFoundError
 from src.client.generated.models.aql_validate_response_dto import AqlValidateResponseDto
 from src.client.generated.models.body_step_dto import BodyStepDto
@@ -13,7 +13,6 @@ from src.client.generated.models.find_all29200_response import FindAll29200Respo
 from src.client.generated.models.launch_dto import LaunchDto
 from src.client.generated.models.launch_preview_dto import LaunchPreviewDto
 from src.client.generated.models.page_launch_dto import PageLaunchDto
-from src.client.generated.models.page_launch_preview_dto import PageLaunchPreviewDto
 from src.client.generated.models.page_test_result_flat_dto import PageTestResultFlatDto
 from src.client.generated.models.shared_step_scenario_dto_steps_inner import SharedStepScenarioDtoStepsInner
 from src.client.generated.models.test_case_scenario_v2_dto import TestCaseScenarioV2Dto
@@ -43,6 +42,7 @@ def mock_client() -> MagicMock:
     client.search_launches_aql = AsyncMock()
     client.validate_launch_query = AsyncMock(return_value=(True, 0))
     client.get_launch = AsyncMock()
+    client.get_launch_base = AsyncMock()
     client.delete_launch = AsyncMock()
     client.close_launch = AsyncMock()
     client.reopen_launch = AsyncMock()
@@ -148,10 +148,10 @@ async def test_list_launches_page_launch_dto(service: LaunchService, mock_client
 
 
 @pytest.mark.asyncio
-async def test_list_launches_page_launch_preview_dto(service: LaunchService, mock_client: MagicMock) -> None:
-    page = PageLaunchPreviewDto(
-        content=[LaunchPreviewDto(id=2, name="Preview")], total_elements=1, number=0, size=20, total_pages=1
-    )
+async def test_list_launches_uses_compact_items_after_client_normalization(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    page = PageLaunchDto(content=[LaunchDto(id=2, name="Preview")], total_elements=1, number=0, size=20, total_pages=1)
     response = FindAll29200Response(page)
     mock_client.list_launches.return_value = response
 
@@ -261,6 +261,22 @@ async def test_get_launch_valid(service: LaunchService, mock_client: MagicMock) 
 
 
 @pytest.mark.asyncio
+async def test_get_launch_merges_base_metadata_and_preserves_zero_counts(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    base = LaunchDto(id=12, name="Launch", autoclose=True, tags=[])
+    preview = LaunchPreviewDto(id=12, known_defects_count=0, new_defects_count=0, statistic=[])
+    mock_client.get_launch.return_value = LaunchDetailResponse(base=base, preview=preview)
+
+    result = await service.get_launch(12)
+
+    assert result.autoclose is True
+    assert result.known_defects_count == 0
+    assert result.new_defects_count == 0
+    assert result.statistic == []
+
+
+@pytest.mark.asyncio
 async def test_get_launch_invalid_id(service: LaunchService) -> None:
     with pytest.raises(AllureValidationError, match="Launch ID must be a positive integer"):
         await service.get_launch(0)
@@ -353,7 +369,7 @@ async def test_validate_launch_query_rejects_unexpected_api_payload(
 async def test_close_launch_valid(service: LaunchService, mock_client: MagicMock) -> None:
     open_launch = LaunchDto(id=15, name="Launch 15", closed=False)
     closed_launch = LaunchDto(id=15, name="Launch 15", closed=True)
-    mock_client.get_launch.side_effect = [open_launch, closed_launch]
+    mock_client.get_launch_base.side_effect = [open_launch, closed_launch]
 
     result = await service.close_launch(15)
 
@@ -361,7 +377,7 @@ async def test_close_launch_valid(service: LaunchService, mock_client: MagicMock
     assert result.closed is True
     assert getattr(result, "close_report_generation", None) == "scheduled"
     mock_client.close_launch.assert_called_once_with(15)
-    assert mock_client.get_launch.call_count == 2
+    assert mock_client.get_launch_base.call_count == 2
 
 
 @pytest.mark.asyncio
@@ -370,7 +386,7 @@ async def test_close_launch_when_already_closed_marks_report_state(
     mock_client: MagicMock,
 ) -> None:
     already_closed = LaunchDto(id=18, name="Launch 18", closed=True)
-    mock_client.get_launch.side_effect = [already_closed, already_closed]
+    mock_client.get_launch_base.side_effect = [already_closed, already_closed]
 
     result = await service.close_launch(18)
 
@@ -409,19 +425,19 @@ async def test_close_launch_invalid_transition_bubbles_api_error(
 @pytest.mark.asyncio
 async def test_reopen_launch_valid(service: LaunchService, mock_client: MagicMock) -> None:
     reopened_launch = LaunchDto(id=16, name="Launch 16", closed=False)
-    mock_client.get_launch.return_value = reopened_launch
+    mock_client.get_launch_base.return_value = reopened_launch
 
     result = await service.reopen_launch(16)
 
     assert result.id == 16
     assert result.closed is False
     mock_client.reopen_launch.assert_called_once_with(16)
-    mock_client.get_launch.assert_called_once_with(16)
+    mock_client.get_launch_base.assert_called_once_with(16)
 
 
 @pytest.mark.asyncio
 async def test_reopen_launch_unexpectedly_closed_raises(service: LaunchService, mock_client: MagicMock) -> None:
-    mock_client.get_launch.return_value = LaunchDto(id=17, name="Launch 17", closed=True)
+    mock_client.get_launch_base.return_value = LaunchDto(id=17, name="Launch 17", closed=True)
 
     with pytest.raises(AllureAPIError, match="was not reopened by API"):
         await service.reopen_launch(17)
@@ -564,7 +580,7 @@ async def test_add_results_rejects_invalid_status_before_creating_a_session(
 async def test_add_results_maps_missing_launch_to_launch_not_found(
     service: LaunchService, mock_client: MagicMock
 ) -> None:
-    mock_client.get_launch.side_effect = AllureNotFoundError("missing", status_code=404, response_body="{}")
+    mock_client.get_launch_base.side_effect = AllureNotFoundError("missing", status_code=404, response_body="{}")
 
     with pytest.raises(LaunchNotFoundError, match="Launch ID 22 not found"):
         await service.add_results(

@@ -165,6 +165,54 @@ async def test_get_launch_output_format() -> None:
 
 
 @pytest.mark.asyncio
+async def test_list_and_detail_launch_payloads_publish_distinct_contracts() -> None:
+    with patch("src.tools.launches.AllureClient.from_env") as mock_client_ctx:
+        mock_client = _mock_url_context()
+        mock_client_ctx.return_value.__aenter__.return_value = mock_client
+        with patch("src.tools.launches.LaunchService") as mock_service_cls:
+            mock_service = mock_service_cls.return_value
+            compact = type("LaunchDto", (), {"id": 7, "name": "Launch", "closed": False})
+            mock_service.list_launches = AsyncMock(
+                return_value=type(
+                    "Result", (), {"items": [compact], "total": 1, "page": 0, "size": 20, "total_pages": 1}
+                )
+            )
+            listed = await list_launches(output_format="json")
+
+            assert "known_defects_count" not in listed.structured_content["items"][0]
+            assert "manual_execution_guidance" not in listed.structured_content["items"][0]
+
+    with patch("src.tools.launches.resolve_auth_settings", return_value=_resolved_auth()):
+        with patch("src.tools.launches.AllureClient") as mock_client_cls:
+            mock_client = _mock_url_context()
+            mock_client_cls.return_value.__aenter__.return_value = mock_client
+            with patch("src.tools.launches.LaunchService") as mock_service_cls:
+                mock_service = mock_service_cls.return_value
+                detail = type(
+                    "LaunchDetail",
+                    (),
+                    {
+                        "id": 7,
+                        "name": "Launch",
+                        "closed": False,
+                        "known_defects_count": 0,
+                        "new_defects_count": 0,
+                        "statistic": [type("Statistic", (), {"status": "passed", "count": 0})],
+                        "environment": [],
+                        "jobs": [],
+                        "tags": [],
+                        "issues": [],
+                        "links": [],
+                    },
+                )
+                mock_service.get_launch = AsyncMock(return_value=detail)
+                retrieved = await get_launch(launch_id=7, output_format="json")
+
+                assert retrieved.structured_content["known_defects_count"] == 0
+                assert retrieved.structured_content["statistic"] == [{"status": "passed", "count": 0}]
+
+
+@pytest.mark.asyncio
 async def test_list_launch_test_results_output_format() -> None:
     with patch("src.tools.launches.resolve_auth_settings", return_value=_resolved_auth()):
         with patch("src.tools.launches.AllureClient") as mock_client_cls:

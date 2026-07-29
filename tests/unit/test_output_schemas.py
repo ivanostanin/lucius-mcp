@@ -107,9 +107,6 @@ def test_search_schema_validates_nested_serialized_payload() -> None:
                         "project_id": 1,
                         "autoclose": True,
                         "external": False,
-                        "known_defects_count": 0,
-                        "new_defects_count": 1,
-                        "manual_execution_guidance": "Use manual execution tools.",
                         "url": "https://example.test/launch/7",
                     }
                 ],
@@ -150,6 +147,20 @@ def test_search_schema_validates_nested_serialized_payload() -> None:
         (
             "create_launch",
             {"id": 9, "name": "Launch", "created_date": 1_700_000_000_000, "closed": False},
+        ),
+        (
+            "get_launch",
+            {
+                "id": 9,
+                "name": "Launch",
+                "known_defects_count": 0,
+                "statistic": [{"status": "passed", "count": 0}],
+                "environment": [],
+                "jobs": [],
+                "tags": [],
+                "issues": [],
+                "links": [],
+            },
         ),
         (
             "delete_archived_test_cases",

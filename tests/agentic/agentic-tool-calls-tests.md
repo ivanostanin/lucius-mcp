@@ -225,9 +225,9 @@ From `src/tools/__init__.py:24-79`:
      - Expectation: Output contains `Created Launch ID`.
      - Action: Capture `id` as `LAUNCH_ID`.
   2. **List**: `list_launches(search="[Agent]")`
-     - Expectation: List contains launch with `id: LAUNCH_ID` and `name: "[Agent] Launch"`.
+     - Expectation: List contains compact metadata with `id: LAUNCH_ID` and `name: "[Agent] Launch"`; it must not contain preview-only statistics, defect counts, environments, jobs, or manual-execution guidance.
   3. **Get Details**: `get_launch(launch_id=LAUNCH_ID)`
-     - Expectation: Output contains strict keys: `id`, `name`, `status`, `created_date`.
+     - Expectation: Output contains `id`, `name`, `status`, `created_date`, plus available rich detail fields: `statistic`, defect counts, environment, jobs, tags, issues, links, creator/modifier metadata, and manual-execution guidance.
      - Verification: `id` matches `LAUNCH_ID`.
   4. **Create Upload Case**: `create_test_case(name="[Agent] Launch Upload Case")`
      - Expectation: Output contains `Created Test Case ID`.
