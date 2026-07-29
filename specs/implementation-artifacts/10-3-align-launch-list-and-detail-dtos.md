@@ -1,6 +1,6 @@
 # Story 10.3: Align Launch List and Detail DTOs
 
-Status: review
+Status: done
 
 <!-- Note: Ultimate context engine analysis completed - comprehensive developer guide created. -->
 
@@ -290,5 +290,12 @@ GPT-5
 
 ### Change Log
 
-- 2026-07-29: Created Story 10.3 and marked it ready for development. 
+- 2026-07-29: Created Story 10.3 and marked it ready for development.
+- 2026-07-29: Completed code review; restricted the published list-item schema to its compact contract.
 - 2026-07-29: Implemented and validated compact list and rich exact-ID launch DTO contracts; marked ready for review.
+
+### Review Findings
+
+- [x] [Review][Patch] Restrict the published compact list-item schema to collection fields only [src/tools/output_schemas.py:174] — removed detail-only defect counts and manual guidance plus mutation-only operation, and added a regression test.
+- [x] [Review][Patch] Preserve verified empty rich collections in plain launch details [src/tools/launches.py:997] — render explicit `[]` markers for present empty statistics, environment, jobs, tags, issues, and links; added a plain/JSON parity test.
+- [x] [Review][Patch] Keep unavailable rich collections distinct from verified-empty collections [tests/unit/test_launch_tools.py:257] — added regression coverage that confirms `None` fields remain absent from plain output.

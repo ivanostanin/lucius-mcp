@@ -213,6 +213,75 @@ async def test_list_and_detail_launch_payloads_publish_distinct_contracts() -> N
 
 
 @pytest.mark.asyncio
+async def test_get_launch_plain_output_preserves_present_empty_rich_collections() -> None:
+    with patch("src.tools.launches.resolve_auth_settings", return_value=_resolved_auth()):
+        with patch("src.tools.launches.AllureClient") as mock_client_cls:
+            mock_client = _mock_url_context()
+            mock_client_cls.return_value.__aenter__.return_value = mock_client
+            with patch("src.tools.launches.LaunchService") as mock_service_cls:
+                mock_service = mock_service_cls.return_value
+                detail = type(
+                    "LaunchDetail",
+                    (),
+                    {
+                        "id": 7,
+                        "name": "Launch",
+                        "closed": False,
+                        "statistic": [],
+                        "environment": [],
+                        "jobs": [],
+                        "tags": [],
+                        "issues": [],
+                        "links": [],
+                    },
+                )
+                mock_service.get_launch = AsyncMock(return_value=detail)
+
+                plain = await get_launch(launch_id=7, output_format="plain")
+                structured = await get_launch(launch_id=7, output_format="json")
+
+                for label in ("Summary", "Environment", "Jobs", "Tags", "Issues", "Links"):
+                    assert f"{label}: []" in plain
+                assert structured.structured_content["statistic"] == []
+                assert structured.structured_content["environment"] == []
+                assert structured.structured_content["jobs"] == []
+                assert structured.structured_content["tags"] == []
+                assert structured.structured_content["issues"] == []
+                assert structured.structured_content["links"] == []
+
+
+@pytest.mark.asyncio
+async def test_get_launch_plain_output_omits_unavailable_rich_collections() -> None:
+    with patch("src.tools.launches.resolve_auth_settings", return_value=_resolved_auth()):
+        with patch("src.tools.launches.AllureClient") as mock_client_cls:
+            mock_client = _mock_url_context()
+            mock_client_cls.return_value.__aenter__.return_value = mock_client
+            with patch("src.tools.launches.LaunchService") as mock_service_cls:
+                mock_service = mock_service_cls.return_value
+                detail = type(
+                    "LaunchDetail",
+                    (),
+                    {
+                        "id": 7,
+                        "name": "Launch",
+                        "closed": False,
+                        "statistic": None,
+                        "environment": None,
+                        "jobs": None,
+                        "tags": None,
+                        "issues": None,
+                        "links": None,
+                    },
+                )
+                mock_service.get_launch = AsyncMock(return_value=detail)
+
+                plain = await get_launch(launch_id=7, output_format="plain")
+
+                for label in ("Summary", "Environment", "Jobs", "Tags", "Issues", "Links"):
+                    assert f"{label}:" not in plain
+
+
+@pytest.mark.asyncio
 async def test_list_launch_test_results_output_format() -> None:
     with patch("src.tools.launches.resolve_auth_settings", return_value=_resolved_auth()):
         with patch("src.tools.launches.AllureClient") as mock_client_cls:

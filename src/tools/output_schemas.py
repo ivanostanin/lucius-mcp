@@ -184,11 +184,7 @@ class LaunchListItem(BaseModel):
     project_id: int | None = Field(default=None)
     autoclose: bool | None = Field(default=None)
     external: bool | None = Field(default=None)
-    known_defects_count: int | None = Field(default=None, ge=0)
-    new_defects_count: int | None = Field(default=None, ge=0)
-    manual_execution_guidance: str | None = Field(default=None)
     url: str | None = Field(default=None)
-    operation: str | None = Field(default=None)
 
 
 class LaunchStatisticItem(BaseModel):

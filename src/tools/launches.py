@@ -996,7 +996,10 @@ def _append_metadata_lines(lines: list[str], launch: object) -> None:
 
 def _append_statistic_lines(lines: list[str], launch: object) -> None:
     statistic = getattr(launch, "statistic", None)
+    if statistic is None:
+        return
     if not statistic:
+        lines.append("- Summary: []")
         return
 
     summary_parts: list[str] = []
@@ -1025,7 +1028,7 @@ def _append_rich_detail_lines(lines: list[str], launch: object) -> None:
     }
     for field, label in labels.items():
         value = payload[field]
-        if value is not None and value != []:
+        if value is not None:
             lines.append(f"- {label}: {json.dumps(value, sort_keys=True)}")
 
 

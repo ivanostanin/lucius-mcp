@@ -112,6 +112,9 @@ select = ["E", "F", "B", "I", "UP", "N", "S", "C90", "RUF"]
 "deployment/scripts/**/*.py" = ["RUF001", "E501"]
 "src/cli/cli_entry.py" = ["C901"]
 
+[tool.ruff.format]
+exclude = ["specs/**"]
+
 [tool.mypy]
 strict = true
 python_version = "3.13"

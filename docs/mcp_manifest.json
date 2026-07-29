@@ -5460,44 +5460,6 @@
                       "default": null,
                       "title": "External"
                     },
-                    "known_defects_count": {
-                      "anyOf": [
-                        {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Known Defects Count"
-                    },
-                    "new_defects_count": {
-                      "anyOf": [
-                        {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "New Defects Count"
-                    },
-                    "manual_execution_guidance": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Manual Execution Guidance"
-                    },
                     "url": {
                       "anyOf": [
                         {
@@ -5509,18 +5471,6 @@
                       ],
                       "default": null,
                       "title": "Url"
-                    },
-                    "operation": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Operation"
                     }
                   },
                   "title": "LaunchListItem",
