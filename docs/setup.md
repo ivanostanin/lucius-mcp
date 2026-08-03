@@ -150,8 +150,11 @@ MCP_MODE = "stdio"
 
 ### Prerequisites
 
-- Python 3.13 or later.
+- Python 3.13 or 3.14.
 - [uv](https://astral.sh/uv/) for dependency management.
+
+Python 3.13 is required when building local standalone CLI binaries with Nuitka. Python 3.12 and earlier are not
+supported by the runtime.
 
 ### Steps
 
