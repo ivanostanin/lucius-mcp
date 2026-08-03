@@ -45,6 +45,14 @@ Before submitting a PR, ensure all checks pass:
 - **Linting**: `uv run ruff check .`
 - **Type Checking**: `uv run mypy --strict src/`
 
+### Python compatibility
+
+Lucius runtime compatibility is tested on Python 3.13 and 3.14. Python 3.12 and earlier are currently unsupported:
+Python 3.12 encounters incompatible runtime type annotations, while Python 3.11 and earlier also contain Python 3.12
+`type` alias syntax. Python 3.9 additionally cannot resolve the current Starlette dependency because it requires Python
+3.10 or newer. Python 3.15 source compilation succeeds, but the current native dependency set does not build for the
+available Python 3.15 beta, so it remains outside the supported range.
+
 ## 🧪 Testing
 
 ### Unit & Integration Tests
