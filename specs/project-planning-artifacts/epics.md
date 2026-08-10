@@ -1196,6 +1196,46 @@ so that I can scan many launches efficiently and inspect one launch without losi
 **When** unit, integration, CLI, schema, and sandbox E2E tests execute
 **Then** they prove compact list output, exact rich detail output, zero-value preservation, no oneOf field loss, and no lifecycle regressions.
 
+### Story 10.4: Support Python 3.10 Through 3.14 at Runtime
+
+As a Lucius user,
+I want to run the server and source CLI on supported Python versions from 3.10 through 3.14,
+so that I can use Lucius in established environments without changing the project's dependency versions.
+
+**Acceptance Criteria:**
+
+**Given** a runtime Python version of 3.10, 3.11, 3.12, 3.13, or 3.14
+**When** dependencies are installed from the checked-in lockfile and Lucius is imported or started from source
+**Then** the project parses, imports, and its unit, integration, documentation, and CLI regression suites run successfully
+**And** package dependency declarations and locked dependency versions are unchanged.
+
+**Given** code and tests currently use Python 3.12-only `type Alias = ...` statements
+**When** they are made compatible with Python 3.10
+**Then** they use a Python 3.10-compatible `typing.TypeAlias` declaration pattern
+**And** their runtime behavior and static type meaning remain unchanged.
+
+**Given** Python 3.10 lacks `tomllib` and Python 3.10/3.11 lack the currently used `datetime.UTC` name
+**When** version metadata, timestamping, logging, documentation tests, packaging tests, and release metadata tooling execute
+**Then** they use standard-library-compatible alternatives without adding `tomli` or any other dependency
+**And** version, timestamp, registry, and CLI behavior remain unchanged.
+
+**Given** generator and async-generator annotations are evaluated by Python 3.12
+**When** server lifespan and pytest fixtures are imported
+**Then** every `Generator` and `AsyncGenerator` annotation supplies all required type parameters
+**And** pytest collection succeeds without weakening fixture typing.
+
+**Given** packaging and tooling metadata is published
+**When** a release or quality check is prepared
+**Then** `requires-python`, Python classifiers, Ruff's target version, and mypy's configured Python version declare the 3.10 runtime floor and the 3.14 ceiling
+**And** the generated `deployment/mcpb/manifest.uv.json` and `deployment/mcpb/manifest.python.json` declare the same `>=3.10,<3.15` runtime range, which bundle validation preserves
+**And** documentation states that runtime, generated MCPB manifests, and Nuitka standalone CLI compilation are supported for Python 3.10-3.14, Python 3.9 remains excluded by the pinned Starlette requirement, and Python 3.15 remains deferred pending dependency support.
+
+**Given** a pull request changes the compatibility surface
+**When** CI runs
+**Then** it executes the runtime regression suite on Python 3.10, 3.11, 3.12, 3.13, and 3.14 from the lockfile
+**And** it runs a representative-platform Nuitka CLI build-and-smoke check for every one of those Python minors, while retaining the existing full multi-platform binary artifact lane
+**And** linting and strict type checking continue to enforce the configured 3.10-compatible language baseline.
+
 ## Epic 11: Telemetry Signal Simplification
 
 Goal: Simplify telemetry event naming so analytics stay queryable without encoding tool names, deployment methods, or error classes in the event name itself.

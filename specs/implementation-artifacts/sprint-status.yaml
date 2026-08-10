@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2025-12-27 18:46
-last_updated: 2026-07-29
+last_updated: 2026-08-04
 project: lucius-mcp
 project_key: lucius-mcp
 tracking_system: file-system
@@ -147,6 +147,7 @@ development_status:
   10-1-include-testops-entity-urls-in-tool-responses: done
   10-2-manual-test-execution-inside-launches: done
   10-3-align-launch-list-and-detail-dtos: done
+  10-4-support-python-3-10-through-3-14-runtime: ready-for-dev
   epic-10-retrospective: optional
 
   # Epic 11: Telemetry Signal Simplification
