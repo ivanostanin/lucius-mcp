@@ -26,7 +26,7 @@ from src.services.launch_service import LaunchService
 from src.services.telemetry_service import TelemetryService
 from src.utils.logger import CustomJsonFormatter, configure_logging
 from src.utils.schema_hint import _format_dict_type, _format_union_type, _get_type_name, generate_schema_hint
-from src.version import _version_from_pyproject, read_project_version
+from src.version import read_project_version
 
 
 class FakeResponse:
@@ -290,7 +290,7 @@ def test_schema_hint_handles_typing_shapes() -> None:
 
 
 def test_version_fallback_reads_pyproject_version() -> None:
-    assert _version_from_pyproject()
+    assert read_project_version(Path(__file__).parents[2] / "pyproject.toml")
 
 
 @pytest.mark.parametrize(
@@ -298,6 +298,7 @@ def test_version_fallback_reads_pyproject_version() -> None:
     [
         '[project]\nname = "lucius-mcp"\n',
         '[project]\nversion = "   "\n',
+        "project = []\n",
     ],
 )
 def test_version_fallback_raises_when_pyproject_version_missing(tmp_path: Path, pyproject_content: str) -> None:
@@ -335,7 +336,7 @@ def test_version_module_falls_back_when_distribution_missing(monkeypatch: pytest
 
     reloaded = importlib.reload(version_module)
 
-    assert reloaded.__version__ == _version_from_pyproject()
+    assert reloaded.__version__ == read_project_version(Path(__file__).parents[2] / "pyproject.toml")
 
 
 def test_prepare_command_version_and_pretty_error_paths(capsys: pytest.CaptureFixture[str]) -> None:
