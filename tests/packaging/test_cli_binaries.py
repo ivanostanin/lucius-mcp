@@ -657,7 +657,8 @@ class TestBinaryBuildScriptConfiguration:
         unix_script = (project_root / "deployment/scripts/build_cli_unix.sh").read_text(encoding="utf-8")
 
         assert '"${TARGET_PLATFORM}" == "linux" && "${TARGET_ARCH}" == "arm64"' in unix_script
-        assert 'export CFLAGS="${CFLAGS:+${CFLAGS} }-mcmodel=large"' in unix_script
+        assert 'export CFLAGS="${CFLAGS:+${CFLAGS} }-mcmodel=large -fno-pic -fno-pie"' in unix_script
+        assert 'export LDFLAGS="${LDFLAGS:+${LDFLAGS} }-no-pie"' in unix_script
 
     def test_version_bump_renders_distinct_cache_paths(self) -> None:
         """Version N and N+1 must map to different onefile cache directories."""

@@ -201,9 +201,12 @@ fi
 
 # AArch64 direct calls have a +/-128 MiB range.  The standalone binary exceeds
 # that range when its generated C objects are linked with GCC's default small
-# code model, so compile the Linux ARM64 build with long-call sequences.
+# code model, so compile the Linux ARM64 build with long-call sequences. GCC
+# does not support its large code model with PIC, so the standalone executable
+# must also be linked as non-PIE on this target.
 if [[ "${TARGET_PLATFORM}" == "linux" && "${TARGET_ARCH}" == "arm64" ]]; then
-    export CFLAGS="${CFLAGS:+${CFLAGS} }-mcmodel=large"
+    export CFLAGS="${CFLAGS:+${CFLAGS} }-mcmodel=large -fno-pic -fno-pie"
+    export LDFLAGS="${LDFLAGS:+${LDFLAGS} }-no-pie"
 fi
 
 uv run --python "${CLI_BUILD_PYTHON_VERSION}" --extra dev nuitka "${nuitka_args[@]}" src/cli/cli_entry.py
