@@ -1,28 +1,26 @@
 import json
-import re
+import subprocess
+import sys
 import zipfile
 from pathlib import Path
 
 import pytest
 
-from deployment.scripts.update_mcpb_runtime import read_requires_python
+from deployment.scripts.update_mcpb_runtime import read_project_version, read_requires_python
 
-# Logic adapted from deployment/scripts/verify_mcpb_bundles.py
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PYPROJECT_PATH = PROJECT_ROOT / "pyproject.toml"
+VERIFY_BUNDLES_SCRIPT = PROJECT_ROOT / "deployment" / "scripts" / "verify_mcpb_bundles.py"
 
 
 def get_project_version() -> str:
-    pyproject_path = Path("pyproject.toml")
-    content = pyproject_path.read_text(encoding="utf-8")
-    match = re.search(r'^version = "([^"]+)"', content, re.MULTILINE)
-    if not match:
-        raise ValueError("Could not find version in pyproject.toml")
-    return match.group(1)
+    return read_project_version(PYPROJECT_PATH)
 
 
 @pytest.fixture(scope="module")
 def bundle_paths():
     version = get_project_version()
-    dist_dir = Path("dist")
+    dist_dir = PROJECT_ROOT / "dist"
     return {
         "uv": dist_dir / f"lucius-mcp-{version}-uv.mcpb",
         "python": dist_dir / f"lucius-mcp-{version}-python.mcpb",
@@ -38,7 +36,7 @@ def verify_manifest(manifest, expected_type, expected_version):
     assert isinstance(server, dict)
     assert server.get("type") == expected_type
     assert server.get("entry_point") == "src.main:start"
-    assert manifest["compatibility"]["runtimes"]["python"] == read_requires_python(Path("pyproject.toml"))
+    assert manifest["compatibility"]["runtimes"]["python"] == read_requires_python(PYPROJECT_PATH)
 
     mcp_config = server.get("mcp_config")
     assert isinstance(mcp_config, dict)
@@ -86,3 +84,15 @@ def test_python_bundle_contents(bundle_paths):
 
         manifest = json.loads(zf.read("manifest.json"))
         verify_manifest(manifest, "python", bundle_paths["version"])
+
+
+def test_bundle_verifier_runs_outside_repository(tmp_path: Path) -> None:
+    result = subprocess.run(
+        [sys.executable, str(VERIFY_BUNDLES_SCRIPT)],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr

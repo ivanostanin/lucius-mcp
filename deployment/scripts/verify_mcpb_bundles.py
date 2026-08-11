@@ -2,19 +2,15 @@
 from __future__ import annotations
 
 import json
-import re
+import sys
 from pathlib import Path
 from zipfile import ZipFile
 
-from deployment.scripts.update_mcpb_runtime import read_requires_python
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
-
-def read_project_version(pyproject_path: Path) -> str:
-    content = pyproject_path.read_text(encoding="utf-8")
-    match = re.search(r'^version = "([^"]+)"', content, re.MULTILINE)
-    if not match:
-        raise ValueError("Could not find version in pyproject.toml")
-    return match.group(1)
+from deployment.scripts.update_mcpb_runtime import read_project_version, read_requires_python  # noqa: E402
 
 
 def expect(condition: bool, message: str, errors: list[str]) -> None:
@@ -26,6 +22,7 @@ def verify_manifest(
     manifest: dict[str, object],
     expected_type: str,
     expected_version: str,
+    expected_runtime: str,
     errors: list[str],
 ) -> None:
     expect(manifest.get("name") == "lucius-mcp", "manifest.name must be lucius-mcp", errors)
@@ -47,7 +44,7 @@ def verify_manifest(
         errors.append("manifest.compatibility.runtimes must be an object")
         return
     expect(
-        runtimes.get("python") == read_requires_python(Path("pyproject.toml")),
+        runtimes.get("python") == expected_runtime,
         "manifest Python runtime does not match pyproject.toml",
         errors,
     )
@@ -86,29 +83,29 @@ def verify_python_bundle_contents(names: set[str], errors: list[str]) -> None:
     expect(has_uvicorn, "python bundle must include uvicorn in server/lib", errors)
 
 
-def verify_bundle(bundle_path: Path, expected_type: str, expected_version: str) -> list[str]:
+def verify_bundle(bundle_path: Path, expected_type: str, expected_version: str, expected_runtime: str) -> list[str]:
     errors: list[str] = []
     with ZipFile(bundle_path) as zf:
         names = set(zf.namelist())
         if "manifest.json" not in names:
             return ["bundle missing manifest.json"]
         manifest = json.loads(zf.read("manifest.json"))
-        verify_manifest(manifest, expected_type, expected_version, errors)
+        verify_manifest(manifest, expected_type, expected_version, expected_runtime, errors)
         if expected_type == "python":
             verify_python_bundle_contents(names, errors)
     return errors
 
 
 def main() -> int:
-    repo_root = Path(__file__).resolve().parents[2]
-    dist_dir = repo_root / "dist"
-    pyproject_path = repo_root / "pyproject.toml"
+    dist_dir = REPO_ROOT / "dist"
+    pyproject_path = REPO_ROOT / "pyproject.toml"
 
     if not dist_dir.exists():
         print(f"dist directory not found: {dist_dir}")
         return 1
 
     version = read_project_version(pyproject_path)
+    runtime_range = read_requires_python(pyproject_path)
     expected = {
         "uv": dist_dir / f"lucius-mcp-{version}-uv.mcpb",
         "python": dist_dir / f"lucius-mcp-{version}-python.mcpb",
@@ -121,7 +118,7 @@ def main() -> int:
             exit_code = 1
             continue
 
-        errors = verify_bundle(bundle_path, server_type, version)
+        errors = verify_bundle(bundle_path, server_type, version, runtime_range)
         if errors:
             exit_code = 1
             print(f"❌ {bundle_path.name} failed validation:")

@@ -5,6 +5,13 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from deployment.scripts.update_mcpb_runtime import (
+    read_project_metadata,
+    read_project_version,
+    read_pyproject_metadata,
+    read_requires_python,
+)
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PYPROJECT_PATH = PROJECT_ROOT / "pyproject.toml"
 CLI_BUILD_WORKFLOW_PATH = PROJECT_ROOT / ".github" / "workflows" / "cli-build.yml"
@@ -22,13 +29,40 @@ SUPPORTED_PYTHONS = ("3.10", "3.11", "3.12", "3.13", "3.14")
 
 
 def test_packaging_metadata_and_tooling_targets_supported_runtime_range() -> None:
-    pyproject = PYPROJECT_PATH.read_text(encoding="utf-8")
+    metadata = read_pyproject_metadata(PYPROJECT_PATH)
+    project = read_project_metadata(PYPROJECT_PATH)
+    tool = metadata.get("tool")
+    assert isinstance(tool, dict)
+    ruff = tool.get("ruff")
+    assert isinstance(ruff, dict)
+    mypy = tool.get("mypy")
+    assert isinstance(mypy, dict)
 
-    assert 'requires-python = ">=3.10,<3.15"' in pyproject
+    assert read_requires_python(PYPROJECT_PATH) == ">=3.10,<3.15"
+    classifiers = project.get("classifiers")
+    assert isinstance(classifiers, list)
     for python_version in SUPPORTED_PYTHONS:
-        assert f'"Programming Language :: Python :: {python_version}"' in pyproject
-    assert 'target-version = "py310"' in pyproject
-    assert 'python_version = "3.10"' in pyproject
+        assert f"Programming Language :: Python :: {python_version}" in classifiers
+    assert ruff.get("target-version") == "py310"
+    assert mypy.get("python_version") == "3.10"
+
+
+def test_project_metadata_reader_ignores_non_project_toml_text(tmp_path: Path) -> None:
+    pyproject_path = tmp_path / "pyproject.toml"
+    pyproject_path.write_text(
+        """# version = \"not-the-project-version\"
+[tool.example]
+metadata = 'requires-python = ">=9"'
+
+[project]
+version = "0.42.0"
+requires-python = ">=3.10,<3.15"
+""",
+        encoding="utf-8",
+    )
+
+    assert read_project_version(pyproject_path) == "0.42.0"
+    assert read_requires_python(pyproject_path) == ">=3.10,<3.15"
 
 
 def test_cli_build_workflow_uses_the_caller_selected_python_version() -> None:

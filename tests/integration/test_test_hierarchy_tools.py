@@ -1,6 +1,6 @@
 """Integration tests for test hierarchy tools."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -10,6 +10,7 @@ from src.tools.assign_test_cases_to_suite import assign_test_cases_to_suite
 from src.tools.create_test_suite import create_test_suite
 from src.tools.delete_test_suite import delete_test_suite
 from src.tools.list_test_suites import list_test_suites
+from tests.support.tool_patching import patch
 
 
 @pytest.mark.asyncio

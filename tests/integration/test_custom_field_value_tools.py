@@ -1,6 +1,6 @@
 """Integration tests for custom field value tools."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -8,6 +8,7 @@ from src.tools.create_custom_field_value import create_custom_field_value
 from src.tools.delete_custom_field_value import delete_custom_field_value
 from src.tools.list_custom_field_values import list_custom_field_values
 from src.tools.update_custom_field_value import update_custom_field_value
+from tests.support.tool_patching import patch
 
 
 @pytest.mark.asyncio

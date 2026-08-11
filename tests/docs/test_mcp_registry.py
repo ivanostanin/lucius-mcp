@@ -2,6 +2,7 @@ import json
 import re
 from pathlib import Path
 
+from deployment.scripts.update_mcpb_runtime import read_project_metadata
 from src.version import read_project_version
 
 MCP_REGISTRY_NAME = "io.github.ivanostanin/lucius-mcp"
@@ -88,9 +89,11 @@ def test_pypi_readme_contains_registry_ownership_marker() -> None:
 
 
 def test_package_exposes_registry_friendly_server_entrypoint() -> None:
-    pyproject = (_project_root() / "pyproject.toml").read_text(encoding="utf-8")
-    assert 'lucius-mcp = "src.main:start"' in pyproject
-    assert 'start = "src.main:start"' in pyproject
+    project = read_project_metadata(_project_root() / "pyproject.toml")
+    scripts = project.get("scripts")
+    assert isinstance(scripts, dict)
+    assert scripts.get("lucius-mcp") == "src.main:start"
+    assert scripts.get("start") == "src.main:start"
 
 
 def test_release_workflow_publishes_to_mcp_registry_after_pypi() -> None:

@@ -1,10 +1,11 @@
 import typing
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
 from src.services.test_case_service import TestCaseUpdate
 from src.tools.update_test_case import update_test_case
+from tests.support.tool_patching import patch
 
 
 @pytest.fixture
