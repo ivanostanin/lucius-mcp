@@ -1,5 +1,5 @@
--P ubuntu-latest=catthehacker/ubuntu:act-latest
---container-architecture linux/amd64
+-P ubuntu-latest=ghcr.io/catthehacker/ubuntu:full-latest
+-P ubuntu-24.04-arm=ghcr.io/catthehacker/ubuntu:full-24.04
 --action-offline-mode
 --artifact-server-path .artifacts
 --secret-file .ci/act/act.secrets
