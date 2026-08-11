@@ -25,7 +25,7 @@ jobs:
       run-typecheck: false
 
   nuitka-smoke:
-    if: ${{ vars.BUILD_BINARY_FOR_EVERY_PR }}
+    if: ${{ vars.BUILD_BINARY_FOR_EVERY_PR == 'true'}}
     strategy:
       fail-fast: false
       matrix:
