@@ -9,6 +9,7 @@ cd /d "%PROJECT_ROOT%"
 
 set TARGET_ARCH=
 set CLEAN=true
+if "%CLI_BUILD_PYTHON_VERSION%"=="" set CLI_BUILD_PYTHON_VERSION=3.14
 if "%ONEFILE_CACHE_TEMPDIR_SPEC%"=="" set ONEFILE_CACHE_TEMPDIR_SPEC={CACHE_DIR}/{COMPANY}/{PRODUCT}/{VERSION}
 if "%ONEFILE_CACHE_MODE%"=="" set ONEFILE_CACHE_MODE=cached
 set ONEFILE_NO_COMPRESSION=false
@@ -74,7 +75,7 @@ if /I not "%ONEFILE_CACHE_MODE%"=="cached" if /I not "%ONEFILE_CACHE_MODE%"=="of
 set OUTPUT_DIR=dist\cli
 
 echo Generating tool schemas...
-uv --quiet run --python 3.13 --extra dev python scripts\build_tool_schema.py
+uv --quiet run --python %CLI_BUILD_PYTHON_VERSION% --extra dev python scripts\build_tool_schema.py
 
 if not exist "src\cli\data\tool_schemas.json" (
     echo Error: tool_schemas.json not found after generation
@@ -82,7 +83,7 @@ if not exist "src\cli\data\tool_schemas.json" (
 )
 
 set CLI_VERSION=
-for /f "usebackq delims=" %%V in (`uv --quiet run --python 3.13 --extra dev python -c "from src.version import __version__; print(__version__)"`) do set CLI_VERSION=%%V
+for /f "usebackq delims=" %%V in (`uv --quiet run --python %CLI_BUILD_PYTHON_VERSION% --extra dev python -c "from src.version import __version__; print(__version__)"`) do set CLI_VERSION=%%V
 if "%CLI_VERSION%"=="" (
     echo Error: failed to resolve CLI version for onefile metadata
     exit /b 1
@@ -109,7 +110,7 @@ if /I "%ONEFILE_NO_COMPRESSION%"=="true" (
     set "NUITKA_COMPRESSION_FLAGS=--onefile-no-compression"
 )
 
-uv run --python 3.13 --extra dev nuitka ^
+uv run --python %CLI_BUILD_PYTHON_VERSION% --extra dev nuitka ^
     --standalone ^
     --onefile ^
     --assume-yes-for-downloads ^

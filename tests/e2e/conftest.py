@@ -24,7 +24,7 @@ def project_id() -> int:
 
 
 @pytest.fixture
-async def allure_client(project_id: int) -> AsyncGenerator[AllureClient]:
+async def allure_client(project_id: int) -> AsyncGenerator[AllureClient, None]:
     """Provide an authenticated AllureClient for E2E tests."""
     # Prioritize sandbox credentials if available
     base_url = os.getenv("ALLURE_ENDPOINT")
@@ -54,7 +54,7 @@ def api_token() -> str:
 
 
 @pytest.fixture
-async def cleanup_tracker(allure_client: AllureClient) -> AsyncGenerator[CleanupTracker]:
+async def cleanup_tracker(allure_client: AllureClient) -> AsyncGenerator[CleanupTracker, None]:
     """Track created entities for cleanup.
 
     This fixture automatically cleans up all tracked test cases after each test.

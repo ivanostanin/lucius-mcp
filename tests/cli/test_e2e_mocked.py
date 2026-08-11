@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import json
 import sys
-from datetime import UTC, datetime, timedelta, tzinfo
+from datetime import datetime, timedelta, timezone, tzinfo
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 from zoneinfo import ZoneInfo
@@ -405,7 +405,7 @@ class TestE2EFormatting:
 
         with patch(
             "src.cli.formatting._resolve_display_timezone",
-            return_value=cli_formatting.DisplayTimezone(UTC, "UTC"),
+            return_value=cli_formatting.DisplayTimezone(timezone.utc, "UTC"),
         ):
             rendered = render_table(format_as_table(rows))
 

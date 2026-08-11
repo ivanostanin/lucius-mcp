@@ -10,14 +10,14 @@ from src.tools.delete_test_case import delete_test_case
 
 
 @pytest.fixture
-def mock_service() -> typing.Generator[Mock]:
+def mock_service() -> typing.Generator[Mock, None, None]:
     """Mock TestCaseService."""
     with patch("src.tools.delete_test_case.TestCaseService") as mock:
         yield mock
 
 
 @pytest.fixture
-def mock_client() -> typing.Generator[Mock]:
+def mock_client() -> typing.Generator[Mock, None, None]:
     """Mock AllureClient."""
     with patch("src.tools.delete_test_case.AllureClient") as mock:
         instance = Mock()

@@ -17,7 +17,7 @@ class ListHandler(logging.Handler):
 
 
 @pytest.fixture
-def capture_structured_logs() -> Generator[Callable[[], list[dict[str, object]]]]:
+def capture_structured_logs() -> Generator[Callable[[], list[dict[str, object]]], None, None]:
     """
     Fixture that configures logging to capture records in memory
     and provides a helper to retrieve and parse them.

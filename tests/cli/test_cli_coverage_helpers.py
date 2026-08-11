@@ -9,7 +9,7 @@ import asyncio
 import inspect
 import json
 import sys
-from datetime import UTC, datetime, timedelta, tzinfo
+from datetime import datetime, timedelta, timezone, tzinfo
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 from zoneinfo import ZoneInfo
@@ -88,7 +88,7 @@ class TestCLICoverageHelpers:
 
         display_timezone = cli_formatting._resolve_display_timezone()
 
-        assert display_timezone.tzinfo is UTC
+        assert display_timezone.tzinfo is timezone.utc
         assert display_timezone.label == "UTC"
 
     def test_timezone_resolution_handles_absolute_tz_without_crashing(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -106,7 +106,7 @@ class TestCLICoverageHelpers:
         with patch("src.cli.formatting._timezone_from_localtime_path", return_value=None):
             display_timezone = cli_formatting._resolve_display_timezone()
 
-        assert display_timezone.tzinfo is UTC
+        assert display_timezone.tzinfo is timezone.utc
         assert display_timezone.label == "UTC"
 
     def test_table_cell_renderer_reports_when_datetime_was_rendered(self) -> None:

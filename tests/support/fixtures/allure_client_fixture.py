@@ -11,7 +11,7 @@ from src.client import AllureClient
 
 
 @pytest.fixture
-async def allure_client() -> AsyncGenerator[AllureClient]:
+async def allure_client() -> AsyncGenerator[AllureClient, None]:
     """
     Fixture that provides an initialized AllureClient with mocked OAuth.
     Uses respx for network mocking.

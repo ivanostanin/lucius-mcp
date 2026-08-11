@@ -11,7 +11,7 @@ import os
 import re
 import typing
 from dataclasses import dataclass
-from datetime import UTC, datetime, tzinfo
+from datetime import datetime, timezone, tzinfo
 from pathlib import Path
 from zoneinfo import TZPATH, ZoneInfo, ZoneInfoNotFoundError
 
@@ -88,9 +88,9 @@ def _resolve_display_timezone() -> DisplayTimezone:
             if Path(candidate).is_absolute()
             else _timezone_from_key(candidate)
         )
-        return display_timezone or DisplayTimezone(UTC, "UTC")
+        return display_timezone or DisplayTimezone(timezone.utc, "UTC")
 
-    return _timezone_from_localtime_path(Path("/etc/localtime")) or DisplayTimezone(UTC, "UTC")
+    return _timezone_from_localtime_path(Path("/etc/localtime")) or DisplayTimezone(timezone.utc, "UTC")
 
 
 def _is_datetime_field_name(field_name: str | None) -> bool:
@@ -125,7 +125,7 @@ def _parse_datetime_value(value: typing.Any, field_name: str | None = None) -> d
             epoch_value = float(value)
             if abs(epoch_value) >= 100_000_000_000:
                 epoch_value = epoch_value / 1000
-            return datetime.fromtimestamp(epoch_value, tz=UTC)
+            return datetime.fromtimestamp(epoch_value, tz=timezone.utc)
         if isinstance(value, str):
             candidate = value.strip()
             if not candidate:
@@ -150,7 +150,7 @@ def _render_table_cell(
         try:
             return parsed_datetime.astimezone(display_timezone.tzinfo).strftime("%Y-%m-%d %H:%M:%S"), True, False
         except (OSError, OverflowError, ValueError):
-            return parsed_datetime.astimezone(UTC).strftime("%Y-%m-%d %H:%M:%S"), True, True
+            return parsed_datetime.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), True, True
 
     if isinstance(value, (dict, list)):
         rendered = json.dumps(value, default=str)

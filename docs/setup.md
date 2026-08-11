@@ -150,11 +150,13 @@ MCP_MODE = "stdio"
 
 ### Prerequisites
 
-- Python 3.13 or 3.14.
+- Python 3.10 through 3.14.
 - [uv](https://astral.sh/uv/) for dependency management.
 
-Python 3.13 is required when building local standalone CLI binaries with Nuitka. Python 3.12 and earlier are not
-supported by the runtime.
+
+To use a selected interpreter from a source checkout, run `uv sync --locked --all-extras --python 3.10` and then the relevant
+`uv run --python 3.10 ...` command. Python 3.9 is excluded because `starlette==1.3.1` requires Python 3.10 or newer;
+Python 3.15 is deferred because the current native dependency set does not build for it.
 
 ### Steps
 

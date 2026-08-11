@@ -6,7 +6,7 @@ from starlette.testclient import TestClient
 
 
 @pytest.fixture
-def client(app: Starlette) -> Generator[TestClient]:
+def client(app: Starlette) -> Generator[TestClient, None, None]:
     """
     Returns a Starlette TestClient instance using the refreshed app fixture.
     """

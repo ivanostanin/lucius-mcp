@@ -17,7 +17,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
-REQUIRED_PYTHON="3.13"
+REQUIRED_PYTHON="${CLI_BUILD_PYTHON_VERSION:-3.14}"
 
 # Check prerequisites
 echo "Checking prerequisites..."
@@ -33,8 +33,8 @@ if ! command -v python3 &> /dev/null && ! command -v python &> /dev/null; then
     exit 1
 fi
 
-if ! uv python find 3.13 >/dev/null 2>&1; then
-    echo -e "${RED}Error: Python 3.13 is required for CLI Nuitka builds${NC}"
+if ! uv python find "${REQUIRED_PYTHON}" >/dev/null 2>&1; then
+    echo -e "${RED}Error: Python ${REQUIRED_PYTHON} is required for CLI Nuitka builds${NC}"
     echo "Install it with: uv python install ${REQUIRED_PYTHON}"
     exit 1
 fi

@@ -1,6 +1,6 @@
 """MCP tool for generating automated test code from TestOps test cases."""
 
-from typing import Annotated, Literal
+from typing import Annotated, Literal, TypeAlias
 
 from pydantic import Field
 
@@ -9,10 +9,10 @@ from src.services.test_code_service import TestCodeService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
 from src.tools.output_schemas import output_fields
 
-type LanguageSelection = Literal[
+LanguageSelection: TypeAlias = Literal[
     "Java", "Python", "TypeScript", "JavaScript", "Kotlin", "PHP", ".NET", "java", "python", "ts", "js", "dotnet"
 ]
-type FrameworkSelection = Literal[
+FrameworkSelection: TypeAlias = Literal[
     "JUnit 5",
     "JUnit 4",
     "TestNG",
@@ -56,7 +56,7 @@ type FrameworkSelection = Literal[
     "xunit",
     "specflow",
 ]
-type MetadataSelection = Literal["Name", "Tags", "Custom fields", "Members", "Issues", "Scenario"]
+MetadataSelection: TypeAlias = Literal["Name", "Tags", "Custom fields", "Members", "Issues", "Scenario"]
 LANGUAGE_SELECTIONS = (
     "Java",
     "Python",
@@ -116,7 +116,7 @@ FRAMEWORK_SELECTIONS = (
     "specflow",
 )
 METADATA_SELECTIONS = ("Name", "Tags", "Custom fields", "Members", "Issues", "Scenario")
-type SchemaMetadataSelection = Annotated[str, Field(json_schema_extra={"enum": METADATA_SELECTIONS})]
+SchemaMetadataSelection: TypeAlias = Annotated[str, Field(json_schema_extra={"enum": METADATA_SELECTIONS})]
 
 
 @output_fields("test_case_id", "language", "framework", "metadata", "code")

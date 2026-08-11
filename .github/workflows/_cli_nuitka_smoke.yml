@@ -1,0 +1,33 @@
+name: CLI Nuitka Smoke
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: 'Supported Python version for the representative Nuitka lane'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    env:
+      CLI_BUILD_PYTHON_VERSION: ${{ inputs.python-version }}
+      NUITKA_CACHE_DIR: ${{ github.workspace }}/.nuitka-cache
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: ./.github/actions/setup-python
+        with:
+          python-version: ${{ inputs.python-version }}
+          install-build-deps: 'true'
+      - name: Build representative CLI binary
+        run: bash deployment/scripts/build_cli_unix.sh --platform linux --arch x86_64
+      - name: Smoke test CLI binary
+        run: |
+          binary=$(find dist/cli -maxdepth 1 -type f -name 'lucius-*-linux-x86_64' -print -quit)
+          test -n "$binary"
+          "$binary" --version
+          "$binary" --help

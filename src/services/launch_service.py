@@ -7,7 +7,7 @@ import ipaddress
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Literal, cast
+from typing import Any, Literal, TypeAlias, cast
 from urllib.parse import urlsplit
 
 import httpx
@@ -77,7 +77,7 @@ ALLOWED_ATTACHMENT_URL_SCHEMES = frozenset({"http", "https"})
 BLOCKED_ATTACHMENT_HOSTNAMES = frozenset({"localhost"})
 BLOCKED_ATTACHMENT_HOST_SUFFIXES = (".localhost", ".local")
 
-type LaunchListItem = LaunchDto
+LaunchListItem: TypeAlias = LaunchDto
 
 
 @dataclass

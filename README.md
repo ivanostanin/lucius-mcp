@@ -130,9 +130,9 @@ For detailed setup, including Claude Desktop (MCPB) integration, see [Setup Guid
 
 ### 🐍 Supported Python versions
 
-Lucius supports Python 3.13 and 3.14 for runtime use. Python 3.13 is also required for local CLI binary builds with
-Nuitka; the build scripts and CI workflow enforce that toolchain version. Python 3.12 and earlier are not supported,
-and Python 3.15 is not yet supported because the current native dependency set does not build for it.
+Lucius supports Python 3.10 through 3.14 for runtime use. The generated MCPB manifests and the representative Nuitka
+CLI compiler matrix validate the same range. Python 3.9 remains unsupported because the pinned `starlette==1.3.1`
+requires Python 3.10 or newer; Python 3.15 is deferred because the current native dependency set does not build for it.
 
 ### 💻 Command-Line Interface (CLI)
 

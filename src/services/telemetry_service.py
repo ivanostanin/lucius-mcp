@@ -13,7 +13,7 @@ import sys
 import uuid
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Literal
+from typing import Literal, TypeAlias
 from urllib.parse import urlparse
 
 import httpx
@@ -26,10 +26,10 @@ from src.version import __version__
 
 logger = get_logger(__name__)
 
-type TelemetryOutcome = Literal["success", "error"]
-type TelemetryErrorCategory = Literal["validation", "auth", "api", "unexpected"]
-type DeploymentMethod = Literal["docker", "mcpb", "uvx+pypi", "cli", "plain-code-checkout"]
-type MpcMode = Literal["stdio", "http"]
+TelemetryOutcome: TypeAlias = Literal["success", "error"]
+TelemetryErrorCategory: TypeAlias = Literal["validation", "auth", "api", "unexpected"]
+DeploymentMethod: TypeAlias = Literal["docker", "mcpb", "uvx+pypi", "cli", "plain-code-checkout"]
+MpcMode: TypeAlias = Literal["stdio", "http"]
 
 
 class TelemetryService:
@@ -57,7 +57,7 @@ class TelemetryService:
         self._mcp_mode = settings.MCP_MODE if mcp_mode is None else mcp_mode
         self._server_version = server_version
         self._session_id = uuid.uuid4().hex
-        self._started_at = dt.datetime.now(dt.UTC).isoformat()
+        self._started_at = dt.datetime.now(dt.timezone.utc).isoformat()
         self._pending_tasks: set[asyncio.Task[None]] = set()
         self._missing_website_warned = False
         self._umami_ready = self._configure_umami_client()
