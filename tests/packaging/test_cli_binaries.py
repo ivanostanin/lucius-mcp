@@ -651,14 +651,14 @@ class TestBinaryBuildScriptConfiguration:
             + "\n".join(sorted(missing_conditional_guard))
         )
 
-    def test_linux_arm64_build_uses_large_code_model(self) -> None:
-        """Linux ARM64 must avoid the direct-call relocation range limit."""
+    def test_linux_arm64_build_uses_lld(self) -> None:
+        """Linux ARM64 must use a linker that supports range-extension thunks."""
         project_root = Path(__file__).parent.parent.parent
         unix_script = (project_root / "deployment/scripts/build_cli_unix.sh").read_text(encoding="utf-8")
 
         assert '"${TARGET_PLATFORM}" == "linux" && "${TARGET_ARCH}" == "arm64"' in unix_script
-        assert 'export CFLAGS="${CFLAGS:+${CFLAGS} }-mcmodel=large -fno-pic -fno-pie"' in unix_script
-        assert 'export LDFLAGS="${LDFLAGS:+${LDFLAGS} }-no-pie"' in unix_script
+        assert "nuitka_args+=(--clang)" in unix_script
+        assert 'export LDFLAGS="${LDFLAGS:+${LDFLAGS} }-fuse-ld=lld"' in unix_script
 
     def test_version_bump_renders_distinct_cache_paths(self) -> None:
         """Version N and N+1 must map to different onefile cache directories."""
