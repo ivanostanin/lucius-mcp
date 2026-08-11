@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from deployment.scripts.update_mcpb_runtime import read_requires_python
+
 # Logic adapted from deployment/scripts/verify_mcpb_bundles.py
 
 
@@ -36,6 +38,7 @@ def verify_manifest(manifest, expected_type, expected_version):
     assert isinstance(server, dict)
     assert server.get("type") == expected_type
     assert server.get("entry_point") == "src.main:start"
+    assert manifest["compatibility"]["runtimes"]["python"] == read_requires_python(Path("pyproject.toml"))
 
     mcp_config = server.get("mcp_config")
     assert isinstance(mcp_config, dict)

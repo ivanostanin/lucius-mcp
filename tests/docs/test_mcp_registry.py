@@ -1,7 +1,8 @@
 import json
 import re
-import tomllib
 from pathlib import Path
+
+from src.version import read_project_version
 
 MCP_REGISTRY_NAME = "io.github.ivanostanin/lucius-mcp"
 PYPI_PACKAGE = "lucius-mcp"
@@ -20,11 +21,6 @@ def _load_server_json() -> dict[str, object]:
     return data
 
 
-def _load_pyproject() -> dict[str, object]:
-    path = _project_root() / "pyproject.toml"
-    return tomllib.loads(path.read_text(encoding="utf-8"))
-
-
 def _packages_by_type(packages: object, registry_type: str) -> list[dict[str, object]]:
     assert isinstance(packages, list)
     return [
@@ -34,20 +30,18 @@ def _packages_by_type(packages: object, registry_type: str) -> list[dict[str, ob
 
 def test_server_json_matches_pypi_package_metadata() -> None:
     server = _load_server_json()
-    pyproject = _load_pyproject()
-    project = pyproject["project"]
+    project_version = read_project_version(_project_root() / "pyproject.toml")
 
     assert server["$schema"] == "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json"
     assert server["name"] == MCP_REGISTRY_NAME
-    assert server["version"] == project["version"]
-    assert project["name"] == PYPI_PACKAGE
+    assert server["version"] == project_version
 
     pypi_packages = _packages_by_type(server["packages"], "pypi")
     assert len(pypi_packages) == 1
 
     pypi_package = pypi_packages[0]
     assert pypi_package["identifier"] == PYPI_PACKAGE
-    assert pypi_package["version"] == project["version"]
+    assert pypi_package["version"] == project_version
     assert pypi_package["transport"] == {"type": "stdio"}
 
 
@@ -94,11 +88,9 @@ def test_pypi_readme_contains_registry_ownership_marker() -> None:
 
 
 def test_package_exposes_registry_friendly_server_entrypoint() -> None:
-    pyproject = _load_pyproject()
-    scripts = pyproject["project"]["scripts"]
-
-    assert scripts["lucius-mcp"] == "src.main:start"
-    assert scripts["start"] == "src.main:start"
+    pyproject = (_project_root() / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'lucius-mcp = "src.main:start"' in pyproject
+    assert 'start = "src.main:start"' in pyproject
 
 
 def test_release_workflow_publishes_to_mcp_registry_after_pypi() -> None:

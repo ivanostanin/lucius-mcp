@@ -6,6 +6,8 @@ import re
 from pathlib import Path
 from zipfile import ZipFile
 
+from deployment.scripts.update_mcpb_runtime import read_requires_python
+
 
 def read_project_version(pyproject_path: Path) -> str:
     content = pyproject_path.read_text(encoding="utf-8")
@@ -36,6 +38,19 @@ def verify_manifest(
 
     expect(server.get("type") == expected_type, f"server.type must be {expected_type}", errors)
     expect(server.get("entry_point") == "src.main:start", "server.entry_point must be src.main:start", errors)
+    compatibility = manifest.get("compatibility")
+    if not isinstance(compatibility, dict):
+        errors.append("manifest.compatibility must be an object")
+        return
+    runtimes = compatibility.get("runtimes")
+    if not isinstance(runtimes, dict):
+        errors.append("manifest.compatibility.runtimes must be an object")
+        return
+    expect(
+        runtimes.get("python") == read_requires_python(Path("pyproject.toml")),
+        "manifest Python runtime does not match pyproject.toml",
+        errors,
+    )
 
     mcp_config = server.get("mcp_config")
     if not isinstance(mcp_config, dict):

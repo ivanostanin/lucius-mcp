@@ -26,7 +26,7 @@ from src.services.launch_service import LaunchService
 from src.services.telemetry_service import TelemetryService
 from src.utils.logger import CustomJsonFormatter, configure_logging
 from src.utils.schema_hint import _format_dict_type, _format_union_type, _get_type_name, generate_schema_hint
-from src.version import _version_from_pyproject
+from src.version import _version_from_pyproject, read_project_version
 
 
 class FakeResponse:
@@ -293,11 +293,26 @@ def test_version_fallback_reads_pyproject_version() -> None:
     assert _version_from_pyproject()
 
 
-def test_version_fallback_raises_when_pyproject_version_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("src.version.tomllib.load", lambda _file: {"project": {}})
+@pytest.mark.parametrize(
+    "pyproject_content",
+    [
+        '[project]\nname = "lucius-mcp"\n',
+        '[project]\nversion = "   "\n',
+    ],
+)
+def test_version_fallback_raises_when_pyproject_version_missing(tmp_path: Path, pyproject_content: str) -> None:
+    pyproject_path = tmp_path / "pyproject.toml"
+    pyproject_path.write_text(pyproject_content, encoding="utf-8")
 
     with pytest.raises(RuntimeError, match="Could not resolve project version"):
-        _version_from_pyproject()
+        read_project_version(pyproject_path)
+
+
+def test_version_fallback_reads_valid_toml_version(tmp_path: Path) -> None:
+    pyproject_path = tmp_path / "pyproject.toml"
+    pyproject_path.write_text("[project]\nversion = ' 0.14.1 '\n", encoding="utf-8")
+
+    assert read_project_version(pyproject_path) == "0.14.1"
 
 
 def test_version_module_prefers_installed_distribution(monkeypatch: pytest.MonkeyPatch) -> None:

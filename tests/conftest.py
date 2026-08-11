@@ -1,3 +1,6 @@
+import importlib
+import sys
+
 import pytest
 import umami
 from starlette.applications import Starlette
@@ -14,6 +17,43 @@ pytest_plugins = [
     "tests.support.fixtures.client_fixture",
     "tests.support.fixtures.allure_client_fixture",
 ]
+
+
+@pytest.fixture(autouse=True)
+def _resolve_tool_patch_targets_on_python_310(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Expose tool modules for Python 3.10's stricter ``unittest.mock.patch`` lookup."""
+    if sys.version_info >= (3, 11):
+        return
+
+    import src.tools as tools
+
+    module_by_export = {
+        "assign_test_cases_to_suite": "src.tools.assign_test_cases_to_suite",
+        "create_custom_field_value": "src.tools.create_custom_field_value",
+        "create_test_case": "src.tools.create_test_case",
+        "create_test_layer": "src.tools.create_test_layer",
+        "create_test_layer_schema": "src.tools.create_test_layer_schema",
+        "create_test_suite": "src.tools.create_test_suite",
+        "delete_custom_field_value": "src.tools.delete_custom_field_value",
+        "delete_test_case": "src.tools.delete_test_case",
+        "delete_test_layer": "src.tools.delete_test_layer",
+        "delete_test_layer_schema": "src.tools.delete_test_layer_schema",
+        "delete_test_suite": "src.tools.delete_test_suite",
+        "get_custom_fields": "src.tools.get_custom_fields",
+        "get_test_case_custom_fields": "src.tools.get_test_case_custom_fields",
+        "link_shared_step": "src.tools.link_shared_step",
+        "list_custom_field_values": "src.tools.list_custom_field_values",
+        "list_test_layer_schemas": "src.tools.list_test_layer_schemas",
+        "list_test_layers": "src.tools.list_test_layers",
+        "list_test_suites": "src.tools.list_test_suites",
+        "unlink_shared_step": "src.tools.unlink_shared_step",
+        "update_custom_field_value": "src.tools.update_custom_field_value",
+        "update_test_case": "src.tools.update_test_case",
+        "update_test_layer": "src.tools.update_test_layer",
+        "update_test_layer_schema": "src.tools.update_test_layer_schema",
+    }
+    for export_name, module_name in module_by_export.items():
+        monkeypatch.setattr(tools, export_name, importlib.import_module(module_name))
 
 
 @pytest.fixture

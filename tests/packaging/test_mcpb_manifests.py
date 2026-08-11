@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 
+from deployment.scripts.update_mcpb_runtime import read_requires_python
+
 
 def get_manifest_path(server_type: str) -> Path:
     return Path("deployment/mcpb") / f"manifest.{server_type}.json"
@@ -24,6 +26,7 @@ def test_manifest_structure(server_type):
     assert manifest["name"] == "lucius-mcp"
     assert "entry_point" in manifest["server"]
     assert manifest["server"]["entry_point"] == "src.main:start"
+    assert manifest["compatibility"]["runtimes"]["python"] == read_requires_python(Path("pyproject.toml"))
 
 
 def test_manifest_tools_match_code():
