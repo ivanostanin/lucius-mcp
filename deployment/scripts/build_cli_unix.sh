@@ -199,6 +199,13 @@ if [[ -n "${JOBS}" ]]; then
     nuitka_args+=(--jobs="${JOBS}")
 fi
 
+# AArch64 direct calls have a +/-128 MiB range.  The standalone binary exceeds
+# that range when its generated C objects are linked with GCC's default small
+# code model, so compile the Linux ARM64 build with long-call sequences.
+if [[ "${TARGET_PLATFORM}" == "linux" && "${TARGET_ARCH}" == "arm64" ]]; then
+    export CFLAGS="${CFLAGS:+${CFLAGS} }-mcmodel=large"
+fi
+
 uv run --python "${CLI_BUILD_PYTHON_VERSION}" --extra dev nuitka "${nuitka_args[@]}" src/cli/cli_entry.py
 
 echo "Built: ${OUTPUT_FILE}"

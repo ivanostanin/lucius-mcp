@@ -651,6 +651,14 @@ class TestBinaryBuildScriptConfiguration:
             + "\n".join(sorted(missing_conditional_guard))
         )
 
+    def test_linux_arm64_build_uses_large_code_model(self) -> None:
+        """Linux ARM64 must avoid the direct-call relocation range limit."""
+        project_root = Path(__file__).parent.parent.parent
+        unix_script = (project_root / "deployment/scripts/build_cli_unix.sh").read_text(encoding="utf-8")
+
+        assert '"${TARGET_PLATFORM}" == "linux" && "${TARGET_ARCH}" == "arm64"' in unix_script
+        assert 'export CFLAGS="${CFLAGS:+${CFLAGS} }-mcmodel=large"' in unix_script
+
     def test_version_bump_renders_distinct_cache_paths(self) -> None:
         """Version N and N+1 must map to different onefile cache directories."""
         template = self.EXPECTED_ONEFILE_CACHE_SPEC
