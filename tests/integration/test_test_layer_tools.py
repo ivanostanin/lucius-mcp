@@ -1,6 +1,6 @@
 """Integration tests for test layer tools."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -14,6 +14,7 @@ from src.tools.test_layers import (
     update_test_layer,
     update_test_layer_schema,
 )
+from tests.support.tool_patching import patch
 
 
 @pytest.mark.asyncio

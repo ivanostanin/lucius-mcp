@@ -13,6 +13,29 @@ jobs:
     with:
       python-version: ${{ vars.PYTHON_VERSION }}
 
+  portable-runtime:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+    uses: ./.github/workflows/_python_check.yml
+    with:
+      python-version: ${{ matrix.python-version }}
+      run-lint: false
+      run-typecheck: false
+
+  nuitka-smoke:
+    if: ${{ vars.BUILD_BINARY_FOR_EVERY_PR == 'true'}}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_cli_nuitka_smoke.yml
+    with:
+      python-version: ${{ matrix.python-version }}
+
   extract-version:
     runs-on: ubuntu-latest
     outputs:
@@ -25,7 +48,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
   mcpb-build:
-    needs: [python-quality, extract-version]
+    needs: [python-quality, portable-runtime, extract-version]
     permissions:
       contents: read
     uses: ./.github/workflows/_mcpb_build.yml

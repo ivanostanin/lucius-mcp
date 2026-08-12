@@ -1,10 +1,16 @@
-"""Regression checks for Python 3.13 compatibility contract in CLI build flow."""
+"""Regression checks for the supported Python runtime and CLI build contract."""
 
 from __future__ import annotations
 
 import re
-import tomllib
 from pathlib import Path
+
+from deployment.scripts.update_mcpb_runtime import (
+    read_project_metadata,
+    read_project_version,
+    read_pyproject_metadata,
+    read_requires_python,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PYPROJECT_PATH = PROJECT_ROOT / "pyproject.toml"
@@ -19,28 +25,53 @@ CLI_BUILD_SCRIPTS = [
 ]
 
 
-def test_packaging_metadata_and_tooling_targets_python_313() -> None:
-    with PYPROJECT_PATH.open("rb") as fh:
-        pyproject = tomllib.load(fh)
-
-    project = pyproject["project"]
-    assert project["requires-python"] == ">=3.13"
-
-    classifiers = set(project["classifiers"])
-    assert "Programming Language :: Python :: 3.13" in classifiers
-    assert "Programming Language :: Python :: 3.14" in classifiers
-
-    assert pyproject["tool"]["ruff"]["target-version"] == "py313"
-    assert pyproject["tool"]["mypy"]["python_version"] == "3.13"
+SUPPORTED_PYTHONS = ("3.10", "3.11", "3.12", "3.13", "3.14")
 
 
-def test_cli_build_workflow_remains_pinned_to_python_313() -> None:
+def test_packaging_metadata_and_tooling_targets_supported_runtime_range() -> None:
+    metadata = read_pyproject_metadata(PYPROJECT_PATH)
+    project = read_project_metadata(PYPROJECT_PATH)
+    tool = metadata.get("tool")
+    assert isinstance(tool, dict)
+    ruff = tool.get("ruff")
+    assert isinstance(ruff, dict)
+    mypy = tool.get("mypy")
+    assert isinstance(mypy, dict)
+
+    assert read_requires_python(PYPROJECT_PATH) == ">=3.10,<3.15"
+    classifiers = project.get("classifiers")
+    assert isinstance(classifiers, list)
+    for python_version in SUPPORTED_PYTHONS:
+        assert f"Programming Language :: Python :: {python_version}" in classifiers
+    assert ruff.get("target-version") == "py310"
+    assert mypy.get("python_version") == "3.10"
+
+
+def test_project_metadata_reader_ignores_non_project_toml_text(tmp_path: Path) -> None:
+    pyproject_path = tmp_path / "pyproject.toml"
+    pyproject_path.write_text(
+        """# version = \"not-the-project-version\"
+[tool.example]
+metadata = 'requires-python = ">=9"'
+
+[project]
+version = "0.42.0"
+requires-python = ">=3.10,<3.15"
+""",
+        encoding="utf-8",
+    )
+
+    assert read_project_version(pyproject_path) == "0.42.0"
+    assert read_requires_python(pyproject_path) == ">=3.10,<3.15"
+
+
+def test_cli_build_workflow_uses_the_caller_selected_python_version() -> None:
     reusable_content = CLI_REUSABLE_WORKFLOW_PATH.read_text(encoding="utf-8")
     cli_build_content = CLI_BUILD_WORKFLOW_PATH.read_text(encoding="utf-8")
     release_content = RELEASE_WORKFLOW_PATH.read_text(encoding="utf-8")
     artifact_action_content = CLI_ARTIFACT_ACTION_PATH.read_text(encoding="utf-8")
 
-    assert "default: '3.13'" in reusable_content
+    assert "default: '3.14'" in reusable_content
     python_version_lines = re.findall(r"python-version:\s*'([^']+)'", reusable_content)
     assert python_version_lines
     assert set(python_version_lines) == {"${{ env.CLI_BUILD_PYTHON_VERSION }}"}
@@ -65,21 +96,20 @@ def test_cli_build_workflow_remains_pinned_to_python_313() -> None:
     )
 
 
-def test_cli_build_scripts_require_python_313() -> None:
-    missing_version_pin: list[str] = []
-
+def test_cli_build_scripts_use_the_selected_python_version() -> None:
     for script_path in CLI_BUILD_SCRIPTS:
         content = script_path.read_text(encoding="utf-8")
-        if "--python 3.13" not in content:
-            missing_version_pin.append(script_path.name)
+        assert (
+            'CLI_BUILD_PYTHON_VERSION="${CLI_BUILD_PYTHON_VERSION:-3.14}"' in content
+            or "set CLI_BUILD_PYTHON_VERSION=3.14" in content
+        )
+        assert '--python "${CLI_BUILD_PYTHON_VERSION}"' in content or "--python %CLI_BUILD_PYTHON_VERSION%" in content
 
-    assert not missing_version_pin, f"Missing --python 3.13 pin in: {missing_version_pin}"
 
-
-def test_master_build_script_enforces_python_313_requirement() -> None:
+def test_master_build_script_accepts_a_selected_supported_python_version() -> None:
     content = BUILD_ALL_SCRIPT.read_text(encoding="utf-8")
-    assert "uv python find 3.13" in content
-    assert "Python 3.13 is required" in content
+    assert 'REQUIRED_PYTHON="${CLI_BUILD_PYTHON_VERSION:-3.14}"' in content
+    assert 'uv python find "${REQUIRED_PYTHON}"' in content
     # Current implementation may orchestrate either canonical cross-platform scripts
     # or explicit per-platform build scripts.
     assert (

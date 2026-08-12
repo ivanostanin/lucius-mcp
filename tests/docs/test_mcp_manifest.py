@@ -1,5 +1,4 @@
 import json
-import tomllib
 from pathlib import Path
 
 import pytest
@@ -7,6 +6,7 @@ import pytest
 from src.tools import all_tools
 from src.tools.annotations import TOOL_HINT_POLICY, TOOL_TAGS
 from src.tools.output_schemas import output_schema_for
+from src.version import read_project_version
 
 
 def _project_root() -> Path:
@@ -23,16 +23,7 @@ def _load_manifest() -> dict[str, object]:
 
 
 def _project_version() -> str:
-    pyproject_path = _project_root() / "pyproject.toml"
-    with pyproject_path.open("rb") as pyproject_file:
-        pyproject = tomllib.load(pyproject_file)
-
-    project = pyproject.get("project")
-    assert isinstance(project, dict), "pyproject.toml must contain a project table"
-
-    version = project.get("version")
-    assert isinstance(version, str) and version.strip(), "pyproject.toml project.version must be a non-empty string"
-    return version
+    return read_project_version(_project_root() / "pyproject.toml")
 
 
 def _manifest_tools(manifest: dict[str, object]) -> list[dict[str, object]]:

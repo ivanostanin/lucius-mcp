@@ -41,7 +41,7 @@ def telemetry_prerequisites() -> str:
 
 
 @pytest.fixture
-def telemetry_collector() -> Generator[tuple[str, list[TelemetryCapture]]]:
+def telemetry_collector() -> Generator[tuple[str, list[TelemetryCapture]], None, None]:
     captures: list[TelemetryCapture] = []
     lock = Lock()
 

@@ -1,19 +1,20 @@
 import typing
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
 from src.tools.create_test_case import create_test_case
+from tests.support.tool_patching import patch
 
 
 @pytest.fixture
-def mock_service() -> typing.Generator[Mock]:
+def mock_service() -> typing.Generator[Mock, None, None]:
     with patch("src.tools.create_test_case.TestCaseService") as mock:
         yield mock
 
 
 @pytest.fixture
-def mock_client() -> typing.Generator[Mock]:
+def mock_client() -> typing.Generator[Mock, None, None]:
     with patch("src.tools.create_test_case.AllureClient") as mock:
         instance = Mock()
         instance.get_base_url.return_value = "https://example.com"

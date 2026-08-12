@@ -47,5 +47,4 @@ runs:
         set -euo pipefail
         # Recreate the venv on each CI run to avoid stale interpreter links
         # from cached environments and to pin the requested Python version.
-        uv venv --clear --python "${{ inputs.python-version }}"
-        uv pip install -e ".[dev]"
+        uv sync --locked --all-extras --python "${{ inputs.python-version }}"

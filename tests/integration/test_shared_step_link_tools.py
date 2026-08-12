@@ -1,11 +1,12 @@
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from src.client.generated.models.shared_step_step_dto import SharedStepStepDto
 from src.tools.link_shared_step import link_shared_step
 from src.tools.unlink_shared_step import unlink_shared_step
+from tests.support.tool_patching import patch
 
 
 def _mock_url_context(project_id: int = 1) -> MagicMock:

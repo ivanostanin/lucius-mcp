@@ -128,6 +128,12 @@ MCP_MODE = "stdio"
 
 For detailed setup, including Claude Desktop (MCPB) integration, see [Setup Guide](docs/setup.md).
 
+### 🐍 Supported Python versions
+
+Lucius supports Python 3.10 through 3.14 for runtime use. The generated MCPB manifests and the representative Nuitka
+CLI compiler matrix validate the same range. Python 3.9 remains unsupported because the pinned `starlette==1.3.1`
+requires Python 3.10 or newer; Python 3.15 is deferred because the current native dependency set does not build for it.
+
 ### 💻 Command-Line Interface (CLI)
 
 Lucius also provides a universal CLI entry point for direct tool execution from the command line:
@@ -155,8 +161,6 @@ uv run lucius auth clear
 - 🔍 Per-action help with parameters and examples
 - 🛡️ Clean error messages with guidance
 - 📦 Standalone binaries for Linux, macOS, and Windows
-
-For local CLI binary builds with Nuitka, use Python 3.13 (the build scripts and CI workflow enforce this).
 
 CLI auth precedence is:
 

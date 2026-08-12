@@ -7,14 +7,14 @@ import time
 import typing
 from collections.abc import Awaitable, Callable
 from functools import wraps
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeAlias
 
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from src.services.telemetry_service import TelemetryService
 
-type ToolFn = Callable[..., Awaitable[object]]
+ToolFn: TypeAlias = Callable[..., Awaitable[object]]
 
 _telemetry_service: TelemetryService | None = None
 

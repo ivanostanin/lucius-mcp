@@ -1,8 +1,9 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
 from src.tools.get_custom_fields import get_custom_fields
+from tests.support.tool_patching import patch
 
 
 @pytest.mark.asyncio

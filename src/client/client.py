@@ -12,7 +12,7 @@ import json
 import time
 from collections.abc import Awaitable
 from dataclasses import dataclass
-from typing import Literal, TypeVar, cast, overload
+from typing import Literal, TypeAlias, TypeVar, cast, overload
 
 import httpx
 from pydantic import Field, SecretStr
@@ -203,7 +203,7 @@ logger = get_logger(__name__)
 
 T = TypeVar("T")
 
-type ApiType = (
+ApiType: TypeAlias = (
     TestCaseControllerApi
     | SharedStepControllerApi
     | SharedStepAttachmentControllerApi
@@ -238,11 +238,11 @@ type ApiType = (
     | UploadTestResultControllerApi
 )
 
-type NormalizedScenarioDict = dict[str, object]
+NormalizedScenarioDict: TypeAlias = dict[str, object]
 
-type ScenarioStepsMap = dict[str, dict[str, object]]
+ScenarioStepsMap: TypeAlias = dict[str, dict[str, object]]
 
-type AttachmentsMap = dict[str, dict[str, object]]
+AttachmentsMap: TypeAlias = dict[str, dict[str, object]]
 
 # Export models for convenience
 __all__ = [

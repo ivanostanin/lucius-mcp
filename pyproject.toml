@@ -7,7 +7,7 @@ license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{ name = "Ivan Ostanin", email = "ivan@ostanin.me" }]
 keywords = ["mcp", "allure", "testops", "allure-testops", "mcp-server", "fastmcp", "model-context-protocol"]
-requires-python = ">=3.13"
+requires-python = ">=3.10,<3.15"
 dependencies = [
     "cyclopts>=4.22.2",
     "fastmcp>=3.0.0",
@@ -29,6 +29,7 @@ dependencies = [
     "cryptography==50.0.0; platform_system != 'Windows' or (platform_machine != 'ARM64' and platform_machine != 'aarch64')",
     "authlib>=1.6.7",
     "platformdirs>=4.9.4",
+    "tomli>=2.0.1; python_version < '3.11'",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -38,6 +39,9 @@ classifiers = [
     "Topic :: Software Development :: Quality Assurance",
     "Topic :: Software Development :: Testing",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Typing :: Typed",
@@ -100,7 +104,7 @@ dev = [
 
 [tool.ruff]
 line-length = 120
-target-version = "py313"
+target-version = "py310"
 exclude = ["src/client/generated", "src/client/overridden"]
 
 [tool.ruff.lint]
@@ -117,7 +121,7 @@ exclude = ["specs/**"]
 
 [tool.mypy]
 strict = true
-python_version = "3.13"
+python_version = "3.10"
 plugins = ["pydantic.mypy"]
 exclude = ["src/client/generated", "src/client/overridden"]
 

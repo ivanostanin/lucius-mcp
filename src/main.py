@@ -54,7 +54,7 @@ def get_mcp_asgi() -> Starlette:
 
 
 @contextlib.asynccontextmanager
-async def lifespan(app: Starlette) -> typing.AsyncGenerator[None]:
+async def lifespan(app: Starlette) -> typing.AsyncGenerator[None, None]:
     """
     Lifespan context manager for Starlette application.
     Handles startup and shutdown events.

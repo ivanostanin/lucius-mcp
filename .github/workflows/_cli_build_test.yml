@@ -6,10 +6,10 @@ on:
       python-version:
         description: 'Python version for CLI build and tests'
         type: string
-        default: '3.13'
+        default: '3.14'
 
 env:
-  CLI_BUILD_PYTHON_VERSION: ${{ inputs.python-version }} # Nuitka requires Python 3.13
+  CLI_BUILD_PYTHON_VERSION: ${{ inputs.python-version }}
 
 permissions:
   contents: read

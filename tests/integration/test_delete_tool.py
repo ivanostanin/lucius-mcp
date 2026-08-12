@@ -1,23 +1,24 @@
 """Integration tests for delete_test_case tool."""
 
 import typing
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
 from src.services.test_case_service import DeleteResult
 from src.tools.delete_test_case import delete_test_case
+from tests.support.tool_patching import patch
 
 
 @pytest.fixture
-def mock_service() -> typing.Generator[Mock]:
+def mock_service() -> typing.Generator[Mock, None, None]:
     """Mock TestCaseService."""
     with patch("src.tools.delete_test_case.TestCaseService") as mock:
         yield mock
 
 
 @pytest.fixture
-def mock_client() -> typing.Generator[Mock]:
+def mock_client() -> typing.Generator[Mock, None, None]:
     """Mock AllureClient."""
     with patch("src.tools.delete_test_case.AllureClient") as mock:
         instance = Mock()

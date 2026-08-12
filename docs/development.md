@@ -45,6 +45,14 @@ Before submitting a PR, ensure all checks pass:
 - **Linting**: `uv run ruff check .`
 - **Type Checking**: `uv run mypy --strict src/`
 
+### Python compatibility
+
+Lucius runtime compatibility is tested on Python 3.10 through 3.14. Generated MCPB manifests and the representative
+Nuitka CLI compiler matrix validate that same range. To test a selected interpreter, run
+`uv sync --locked --all-extras --python 3.10`, then use the relevant `uv run --python 3.10 ...` checks. Python 3.9
+cannot resolve the pinned `starlette==1.3.1` requirement, while Python 3.15 remains outside the supported range because
+the current native dependency set does not build for it.
+
 ## 🧪 Testing
 
 ### Unit & Integration Tests
@@ -75,7 +83,7 @@ CLI command E2E tests that do not need live TestOps access run from source with
 or CLI-only rendering behavior, extend the focused shared suite:
 
 ```bash
-uv run --python 3.13 --extra dev pytest tests/e2e/test_cli_*uv_run*.py -q
+uv run --python 3.10 --extra dev pytest tests/e2e/test_cli_*uv_run*.py -q
 ```
 
 Use `tests/e2e/test_cli_local_commands_uv_run.py` for top-level CLI-local

@@ -7,7 +7,7 @@ import os
 import tempfile
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import platformdirs
@@ -60,7 +60,7 @@ def auth_config_path() -> Path:
 
 def current_timestamp() -> str:
     """Return an ISO-8601 UTC timestamp for config metadata."""
-    return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
 def _repair_hint(path: Path) -> str:

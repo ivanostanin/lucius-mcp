@@ -33,6 +33,7 @@ DEFAULT_ONEFILE_CACHE_TEMPDIR_SPEC='{CACHE_DIR}/{COMPANY}/{PRODUCT}/{VERSION}'
 ONEFILE_CACHE_TEMPDIR_SPEC="${ONEFILE_CACHE_TEMPDIR_SPEC:-$DEFAULT_ONEFILE_CACHE_TEMPDIR_SPEC}"
 ONEFILE_CACHE_MODE="${ONEFILE_CACHE_MODE:-cached}"
 ONEFILE_NO_COMPRESSION=false
+CLI_BUILD_PYTHON_VERSION="${CLI_BUILD_PYTHON_VERSION:-3.14}"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -136,14 +137,14 @@ fi
 OUTPUT_DIR="dist/cli"
 
 echo "Generating tool schemas..."
-uv --quiet run --python 3.13 --extra dev python scripts/build_tool_schema.py
+uv --quiet run --python "${CLI_BUILD_PYTHON_VERSION}" --extra dev python scripts/build_tool_schema.py
 
 if [[ ! -f "src/cli/data/tool_schemas.json" ]]; then
     echo "Error: tool_schemas.json not found after generation"
     exit 1
 fi
 
-CLI_VERSION="$(uv --quiet run --python 3.13 --extra dev python -c "from src.version import __version__; print(__version__)")"
+CLI_VERSION="$(uv --quiet run --python "${CLI_BUILD_PYTHON_VERSION}" --extra dev python -c "from src.version import __version__; print(__version__)")"
 if [[ -z "${CLI_VERSION}" ]]; then
     echo "Error: failed to resolve CLI version for onefile metadata"
     exit 1
@@ -198,7 +199,16 @@ if [[ -n "${JOBS}" ]]; then
     nuitka_args+=(--jobs="${JOBS}")
 fi
 
-uv run --python 3.13 --extra dev nuitka "${nuitka_args[@]}" src/cli/cli_entry.py
+# AArch64 direct calls have a +/-128 MiB range. The GNU linker does not create
+# range-extension thunks for this large standalone binary, whereas LLD does.
+# Use Clang and LLD for the Linux ARM64 build; both are pre-installed on the
+# GitHub hosted ARM64 runner.
+if [[ "${TARGET_PLATFORM}" == "linux" && "${TARGET_ARCH}" == "arm64" ]]; then
+    nuitka_args+=(--clang)
+    export LDFLAGS="${LDFLAGS:+${LDFLAGS} }-fuse-ld=lld"
+fi
+
+uv run --python "${CLI_BUILD_PYTHON_VERSION}" --extra dev nuitka "${nuitka_args[@]}" src/cli/cli_entry.py
 
 echo "Built: ${OUTPUT_FILE}"
 echo "${TARGET_PLATFORM} ${TARGET_ARCH} build complete"

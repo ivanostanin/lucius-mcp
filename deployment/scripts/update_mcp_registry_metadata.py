@@ -5,9 +5,10 @@ import argparse
 import hashlib
 import json
 import re
-import tomllib
 from pathlib import Path
 from urllib.parse import urlparse, urlunparse
+
+from src.version import read_project_version
 
 MCPB_BUNDLE_NAME_PATTERN = re.compile(
     r"^(?P<prefix>.+-)(?P<version>\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)-(?P<variant>.+\.mcpb)$"
@@ -29,14 +30,6 @@ def bundle_name_from_identifier(identifier: str) -> str:
     if not name.endswith(".mcpb"):
         raise ValueError(f"MCPB identifier does not point to a .mcpb artifact: {identifier}")
     return name
-
-
-def read_project_version(pyproject_path: Path) -> str:
-    project = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))["project"]
-    version = project["version"]
-    if not isinstance(version, str):
-        raise ValueError("pyproject.toml project.version must be a string")
-    return version
 
 
 def bundle_name_for_version(identifier: str, version: str) -> str:

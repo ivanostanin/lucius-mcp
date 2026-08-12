@@ -38,7 +38,7 @@ def assert_clean_cli_result(
 
 
 @contextmanager
-def _subprocess_env(env: Mapping[str, str] | None = None) -> Generator[dict[str, str]]:
+def _subprocess_env(env: Mapping[str, str] | None = None) -> Generator[dict[str, str], None, None]:
     """Provide an environment with an isolated UV cache for one subprocess."""
     resolved = dict(os.environ if env is None else env)
     if "UV_CACHE_DIR" in resolved:
