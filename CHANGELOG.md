@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.14.3] - 2026-08-17
+
+### Changed
+- Updated the Starlette runtime dependency to 1.6.0 and synchronized the locked dependencies (#343).
+
 ## [v0.14.2] - 2026-08-12
 
 ### Changed
@@ -338,7 +343,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.14.2...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.14.3...HEAD
+[v0.14.3]: https://github.com/ivanostanin/lucius-mcp/compare/v0.14.2...v0.14.3
 [v0.14.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.14.1...v0.14.2
 [v0.14.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.14.0...v0.14.1
 [v0.14.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.13.2...v0.14.0
