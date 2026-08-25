@@ -4809,6 +4809,927 @@
       "execution": null
     },
     {
+      "name": "get_test_run_result",
+      "title": "Get Test Run Result",
+      "description": "Retrieve one complete TestOps result without recursively reading related results.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "launch_id": {
+            "description": "Launch ID from the /launch/{launch_id}/tree/... URL path.",
+            "type": "integer"
+          },
+          "test_result_id": {
+            "description": "Exact Test Result ID from the /tree/{test_result_id} URL path; ignore treeId query state.",
+            "type": "integer"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional override for the default Project ID."
+          },
+          "output_format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "plain",
+                  "json"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Output format: structured JSON (default) or 'plain'."
+          }
+        },
+        "required": [
+          "launch_id",
+          "test_result_id"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "$defs": {
+          "RelatedTestResultOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "relation": {
+                "title": "Relation",
+                "type": "string"
+              },
+              "test_result_id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Test Result Id"
+              },
+              "launch_id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Launch Id"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Name"
+              },
+              "status": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Status"
+              },
+              "url": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Url"
+              }
+            },
+            "required": [
+              "relation"
+            ],
+            "title": "RelatedTestResultOutput",
+            "type": "object"
+          },
+          "TestResultAttachmentOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Id"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Name"
+              },
+              "entity": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Entity"
+              },
+              "content_type": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Content Type"
+              },
+              "content_length": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Content Length"
+              },
+              "missed": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Missed"
+              },
+              "from_test_case": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "From Test Case"
+              },
+              "storage_key": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Storage Key"
+              },
+              "download_url": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Download Url"
+              }
+            },
+            "title": "TestResultAttachmentOutput",
+            "type": "object"
+          },
+          "TestResultFixtureOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Id"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Name"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Type"
+              },
+              "status": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Status"
+              },
+              "start": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Start"
+              },
+              "stop": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Stop"
+              },
+              "duration": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Duration"
+              },
+              "message": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Message"
+              },
+              "trace": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Trace"
+              },
+              "steps": {
+                "items": {
+                  "$ref": "#/$defs/TestResultStepOutput"
+                },
+                "title": "Steps",
+                "type": "array"
+              },
+              "attachments": {
+                "items": {
+                  "$ref": "#/$defs/TestResultAttachmentOutput"
+                },
+                "title": "Attachments",
+                "type": "array"
+              }
+            },
+            "title": "TestResultFixtureOutput",
+            "type": "object"
+          },
+          "TestResultStepOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Id"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Type"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Name"
+              },
+              "action": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Action"
+              },
+              "body": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Body"
+              },
+              "body_json": {
+                "anyOf": [
+                  {},
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Body Json"
+              },
+              "expected_result": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Expected Result"
+              },
+              "keyword": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Keyword"
+              },
+              "status": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Status"
+              },
+              "start": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Start"
+              },
+              "stop": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Stop"
+              },
+              "duration": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Duration"
+              },
+              "message": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Message"
+              },
+              "trace": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Trace"
+              },
+              "parameters": {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "title": "Parameters",
+                "type": "array"
+              },
+              "attachments": {
+                "items": {
+                  "$ref": "#/$defs/TestResultAttachmentOutput"
+                },
+                "title": "Attachments",
+                "type": "array"
+              },
+              "steps": {
+                "items": {
+                  "$ref": "#/$defs/TestResultStepOutput"
+                },
+                "title": "Steps",
+                "type": "array"
+              }
+            },
+            "title": "TestResultStepOutput",
+            "type": "object"
+          },
+          "UnavailableSectionOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "section": {
+                "title": "Section",
+                "type": "string"
+              },
+              "reason": {
+                "title": "Reason",
+                "type": "string"
+              },
+              "status_code": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Status Code"
+              },
+              "message": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Message"
+              },
+              "items_retrieved": {
+                "minimum": 0,
+                "title": "Items Retrieved",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "section",
+              "reason",
+              "items_retrieved"
+            ],
+            "title": "UnavailableSectionOutput",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Stable object-root output for one exact enriched TestOps result.",
+        "properties": {
+          "requested_launch_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Requested Launch Id"
+          },
+          "actual_launch_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Actual Launch Id"
+          },
+          "test_result_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Test Result Id"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Project Id"
+          },
+          "result_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Result Url"
+          },
+          "launch_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Launch Url"
+          },
+          "test_case": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Test Case"
+          },
+          "core": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Core"
+          },
+          "custom_fields": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Custom Fields"
+          },
+          "environment": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Environment"
+          },
+          "members": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Members"
+          },
+          "test_keys": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Test Keys"
+          },
+          "issues": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Issues"
+          },
+          "defects": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Defects"
+          },
+          "execution_steps": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/TestResultStepOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Execution Steps"
+          },
+          "fixtures": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/TestResultFixtureOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Fixtures"
+          },
+          "result_attachments": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/TestResultAttachmentOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Result Attachments"
+          },
+          "related_results": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/RelatedTestResultOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Related Results"
+          },
+          "partial": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Partial"
+          },
+          "unavailable_sections": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/UnavailableSectionOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Unavailable Sections"
+          }
+        },
+        "title": "TestRunResultDetailOutput",
+        "type": "object"
+      },
+      "icons": null,
+      "annotations": {
+        "title": "Get Test Run Result",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": null
+      },
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "launch",
+            "test-result"
+          ]
+        }
+      },
+      "execution": null
+    },
+    {
       "name": "get_project",
       "title": "Get Project",
       "description": "Retrieve one project by name or list accessible projects.\n\nName matching is case-insensitive. An exact match is preferred; an\nunambiguous partial match is accepted. Omit ``name`` to discover the\navailable project IDs and names before making project-scoped calls.",

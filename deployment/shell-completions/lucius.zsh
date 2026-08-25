@@ -58,7 +58,7 @@ _lucius() {
                 ;;
             launch|launches|ln)
                 local -a actions
-                actions=(add-test-result-attachment add-test-step-attachment add_test_result_attachment add_test_step_attachment close create delete get list list-test-results list_test_results reopen rerun-test-results-manually rerun_test_results_manually start-manual-test-session start_manual_test_session submit-manual-test-results submit_manual_test_results)
+                actions=(add-test-result-attachment add-test-step-attachment add_test_result_attachment add_test_step_attachment close create delete get get-test-run-result get_test_run_result list list-test-results list_test_results reopen rerun-test-results-manually rerun_test_results_manually start-manual-test-session start_manual_test_session submit-manual-test-results submit_manual_test_results)
                 _describe -t actions 'actions' actions
                 ;;
             shared_step|shared_steps|ss)

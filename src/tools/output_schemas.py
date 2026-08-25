@@ -285,6 +285,106 @@ class LaunchDetailOutput(BaseModel):
     url: str | None = Field(default=None)
 
 
+class TestResultAttachmentOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = None
+    name: str | None = None
+    entity: str | None = None
+    content_type: str | None = None
+    content_length: int | None = None
+    missed: bool | None = None
+    from_test_case: bool | None = None
+    storage_key: str | None = None
+    download_url: str | None = None
+
+
+class TestResultStepOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = None
+    type: str | None = None
+    name: str | None = None
+    action: str | None = None
+    body: str | None = None
+    body_json: object | None = None
+    expected_result: str | None = None
+    keyword: str | None = None
+    status: str | None = None
+    start: int | None = None
+    stop: int | None = None
+    duration: int | None = None
+    message: str | None = None
+    trace: str | None = None
+    parameters: list[dict[str, object]] = Field(default_factory=list)
+    attachments: list[TestResultAttachmentOutput] = Field(default_factory=list)
+    steps: list[TestResultStepOutput] = Field(default_factory=list)
+
+
+class TestResultFixtureOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = None
+    name: str | None = None
+    type: str | None = None
+    status: str | None = None
+    start: int | None = None
+    stop: int | None = None
+    duration: int | None = None
+    message: str | None = None
+    trace: str | None = None
+    steps: list[TestResultStepOutput] = Field(default_factory=list)
+    attachments: list[TestResultAttachmentOutput] = Field(default_factory=list)
+
+
+class RelatedTestResultOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    relation: str
+    test_result_id: int | None = None
+    launch_id: int | None = None
+    name: str | None = None
+    status: str | None = None
+    url: str | None = None
+
+
+class UnavailableSectionOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    section: str
+    reason: str
+    status_code: int | None = None
+    message: str | None = None
+    items_retrieved: int = Field(ge=0)
+
+
+class TestRunResultDetailOutput(BaseModel):
+    """Stable object-root output for one exact enriched TestOps result."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    requested_launch_id: int | None = None
+    actual_launch_id: int | None = None
+    test_result_id: int | None = None
+    project_id: int | None = None
+    result_url: str | None = None
+    launch_url: str | None = None
+    test_case: dict[str, object] | None = None
+    core: dict[str, object] | None = None
+    custom_fields: list[dict[str, object]] | None = None
+    environment: list[dict[str, object]] | None = None
+    members: list[dict[str, object]] | None = None
+    test_keys: list[dict[str, object]] | None = None
+    issues: list[dict[str, object]] | None = None
+    defects: list[dict[str, object]] | None = None
+    execution_steps: list[TestResultStepOutput] | None = None
+    fixtures: list[TestResultFixtureOutput] | None = None
+    result_attachments: list[TestResultAttachmentOutput] | None = None
+    related_results: list[RelatedTestResultOutput] | None = None
+    partial: bool | None = None
+    unavailable_sections: list[UnavailableSectionOutput] | None = None
+
+
 class ListLaunchesOutput(BaseModel):
     """Paginated compact launches."""
 

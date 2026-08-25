@@ -3,6 +3,7 @@
 import json
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
+from dataclasses import asdict
 from typing import Annotated
 
 from pydantic import Field
@@ -18,8 +19,15 @@ from src.services.launch_service import (
     ManualTestSessionResult,
     ManualTestSubmissionResult,
 )
+from src.services.test_result_service import TestResultService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
-from src.tools.output_schemas import LaunchDetailOutput, LaunchMutationSummary, ListLaunchesOutput, output_fields
+from src.tools.output_schemas import (
+    LaunchDetailOutput,
+    LaunchMutationSummary,
+    ListLaunchesOutput,
+    TestRunResultDetailOutput,
+    output_fields,
+)
 from src.utils.auth_resolution import resolve_auth_settings
 from src.utils.links import launch_url
 
@@ -60,6 +68,28 @@ _LAUNCH_DETAIL_OUTPUT_FIELDS = (
     "links",
     "manual_execution_guidance",
     "url",
+)
+_TEST_RUN_RESULT_OUTPUT_FIELDS = (
+    "requested_launch_id",
+    "actual_launch_id",
+    "test_result_id",
+    "project_id",
+    "result_url",
+    "launch_url",
+    "test_case",
+    "core",
+    "custom_fields",
+    "environment",
+    "members",
+    "test_keys",
+    "issues",
+    "defects",
+    "execution_steps",
+    "fixtures",
+    "result_attachments",
+    "related_results",
+    "partial",
+    "unavailable_sections",
 )
 
 
@@ -341,6 +371,40 @@ async def list_launch_test_results(
             "total_pages": result.total_pages,
             "items": items,
         },
+        output_format=output_format,
+    )
+
+
+@output_fields(*_TEST_RUN_RESULT_OUTPUT_FIELDS, model=TestRunResultDetailOutput)
+async def get_test_run_result(
+    launch_id: Annotated[int, Field(description="Launch ID from the /launch/{launch_id}/tree/... URL path.")],
+    test_result_id: Annotated[
+        int,
+        Field(description="Exact Test Result ID from the /tree/{test_result_id} URL path; ignore treeId query state."),
+    ],
+    project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
+    output_format: Annotated[
+        OutputFormat | None, Field(description="Output format: structured JSON (default) or 'plain'.")
+    ] = DEFAULT_OUTPUT_FORMAT,
+) -> ToolOutput:
+    """Retrieve one complete TestOps result without recursively reading related results.
+
+    Args:
+        launch_id: Navigation context from the launch URL. It is not used to scan or validate result membership.
+        test_result_id: Exact result ID from the tree URL path. Ignore a ``treeId`` query parameter.
+        project_id: Optional project override.
+        output_format: Structured JSON (default) or plain agent-readable detail.
+
+    Returns:
+        Curated result detail, authenticated attachment download paths, and explicit partial-data diagnostics.
+    """
+    async with _launch_client_context(project_id=project_id) as client:
+        result = await TestResultService(client).get_test_run_result(launch_id, test_result_id)
+
+    payload = asdict(result)
+    return render_output(
+        plain=_format_test_run_result(payload),
+        json_payload=payload,
         output_format=output_format,
     )
 
@@ -955,6 +1019,38 @@ def _format_launch_detail(launch: object, *, base_url: str, project_id: int) -> 
     )
 
     return "\n".join(lines)
+
+
+def _format_test_run_result(payload: dict[str, object]) -> str:
+    """Render the full stable payload in a compact, agent-readable form."""
+    core = payload.get("core")
+    core_values = core if isinstance(core, dict) else {}
+    lines = ["Test run result:"]
+    lines.append(f"- Test Result ID: {payload.get('test_result_id')}")
+    lines.append(f"- Requested launch ID: {payload.get('requested_launch_id')}")
+    lines.append(f"- Actual launch ID: {payload.get('actual_launch_id')}")
+    if payload.get("result_url") is not None:
+        lines.append(f"- Result URL: {payload['result_url']}")
+    lines.append(f"- Name: {core_values.get('name')}")
+    lines.append(f"- Status: {core_values.get('status')}")
+    lines.append(f"- Execution steps: {_count_payload_items(payload.get('execution_steps'))}")
+    lines.append(f"- Fixtures: {_count_payload_items(payload.get('fixtures'))}")
+    lines.append(f"- Result attachments: {_count_payload_items(payload.get('result_attachments'))}")
+    lines.append(f"- Related results: {_count_payload_items(payload.get('related_results'))}")
+    if payload.get("partial") is True:
+        lines.append("- Partial: yes")
+        unavailable = payload.get("unavailable_sections")
+        if isinstance(unavailable, list):
+            for section in unavailable:
+                if isinstance(section, dict):
+                    lines.append(f"  - {section.get('section')}: {section.get('reason')}")
+    else:
+        lines.append("- Partial: no")
+    return "\n".join(lines)
+
+
+def _count_payload_items(value: object) -> int:
+    return len(value) if isinstance(value, (list, tuple)) else 0
 
 
 def _append_close_report_line(lines: list[str], launch: object) -> None:

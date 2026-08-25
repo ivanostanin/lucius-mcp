@@ -5,7 +5,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**context** | **Dict[str, object]** |  | [optional] 
+**context** | **Dict[str, Optional[object]]** |  | [optional] 
 **created_date** | **int** |  | [optional] 
 **id** | **int** |  | [optional] 
 **job_id** | **int** |  | [optional] 

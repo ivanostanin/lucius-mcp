@@ -1479,6 +1479,43 @@
     },
     "example_command": "lucius test_case get --args '{\"test_case_id\": 123}'"
   },
+  "get_test_run_result": {
+    "name": "get_test_run_result",
+    "entity": "launch",
+    "action": "get_test_run_result",
+    "description": "Retrieve one complete TestOps result without recursively reading related results.\n\nArgs:\n    launch_id: Navigation context from the launch URL. It is not used to scan or validate result membership.\n    test_result_id: Exact result ID from the tree URL path. Ignore a ``treeId`` query parameter.\n    project_id: Optional project override.\n    output_format: Structured JSON (default) or plain agent-readable detail.\n\nReturns:\n    Curated result detail, authenticated attachment download paths, and explicit partial-data diagnostics.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "launch_id": {
+          "type": "integer",
+          "description": "Launch ID from the /launch/{launch_id}/tree/... URL path."
+        },
+        "test_result_id": {
+          "type": "integer",
+          "description": "Exact Test Result ID from the /tree/{test_result_id} URL path; ignore treeId query state."
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional override for the default Project ID.",
+          "default": null
+        }
+      },
+      "required": [
+        "launch_id",
+        "test_result_id"
+      ]
+    },
+    "example_command": "lucius launch get_test_run_result --args '{\"launch_id\": 123, \"test_result_id\": 123}'"
+  },
   "link_defect_to_test_case": {
     "name": "link_defect_to_test_case",
     "entity": "defect",

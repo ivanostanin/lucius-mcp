@@ -6,11 +6,11 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **default_project_fields** | [**List[IntegrationFieldsFormDtoDefaultProjectFieldsInner]**](IntegrationFieldsFormDtoDefaultProjectFieldsInner.md) |  | [optional] 
-**default_project_fields_values** | **Dict[str, object]** |  | [optional] 
+**default_project_fields_values** | **Dict[str, Optional[object]]** |  | [optional] 
 **default_secret_fields** | [**List[IntegrationFieldsFormDtoDefaultProjectFieldsInner]**](IntegrationFieldsFormDtoDefaultProjectFieldsInner.md) |  | [optional] 
 **default_secret_specified** | **bool** |  | [optional] 
 **global_fields** | [**List[IntegrationFieldsFormDtoDefaultProjectFieldsInner]**](IntegrationFieldsFormDtoDefaultProjectFieldsInner.md) |  | [optional] 
-**global_fields_values** | **Dict[str, object]** |  | [optional] 
+**global_fields_values** | **Dict[str, Optional[object]]** |  | [optional] 
 
 ## Example
 

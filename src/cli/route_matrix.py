@@ -32,6 +32,7 @@ CANONICAL_ROUTE_MATRIX: dict[str, dict[str, str]] = {
         "create": "create_launch",
         "list": "list_launches",
         "get": "get_launch",
+        "get_test_run_result": "get_test_run_result",
         "list_test_results": "list_launch_test_results",
         "rerun_test_results_manually": "rerun_test_results_manually",
         "start_manual_test_session": "start_manual_test_session",

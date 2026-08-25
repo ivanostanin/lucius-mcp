@@ -53,9 +53,16 @@ KEEP_TAGS = {
     "test-result-rerun-controller",
     "test-result-flat-controller",
     "test-result-attachment-controller",
+    "test-result-custom-field-controller",
+    "test-result-defect-controller",
+    "test-result-env-var-controller",
+    "test-result-issue-controller",
+    "test-result-members-controller",
+    "test-result-test-key-controller",
     "upload-controller",
     "upload-test-result-controller",
     "test-result-fixture-controller",
+    "test-fixture-result-attachment-controller",
     # IDE test code generation (not published in the standard TestOps spec)
     "ide-controller",
 }

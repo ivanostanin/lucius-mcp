@@ -342,9 +342,9 @@ class Configuration:
                 setattr(result, k, copy.deepcopy(v, memo))
         # shallow copy of loggers
         result.logger = copy.copy(self.logger)
-        # use setters to configure loggers
+        # use setter to re-create the file handler (excluded from __dict__ copy)
         result.logger_file = self.logger_file
-        result.debug = self.debug
+
         return result
 
     def __setattr__(self, name: str, value: Any) -> None:
@@ -481,7 +481,8 @@ class Configuration:
             self.refresh_api_key_hook(self)
         key = self.api_key.get(identifier, self.api_key.get(alias) if alias is not None else None)
         if key:
-            prefix = self.api_key_prefix.get(identifier)
+            prefix = self.api_key_prefix.get(
+                identifier, self.api_key_prefix.get(alias) if alias is not None else None)
             if prefix:
                 return "%s %s" % (prefix, key)
             else:

@@ -157,5 +157,5 @@ development_status:
 
   # Epic 12: Enhanced Launch Workflows
   epic-12: in-progress
-  12-1-retrieve-complete-individual-test-result-details: ready-for-dev
+  12-1-retrieve-complete-individual-test-result-details: in-progress
   epic-12-retrospective: optional

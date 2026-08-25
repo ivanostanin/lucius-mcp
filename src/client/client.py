@@ -47,15 +47,22 @@ from .generated.api.test_case_scenario_controller_api import TestCaseScenarioCon
 from .generated.api.test_case_search_controller_api import TestCaseSearchControllerApi
 from .generated.api.test_case_tree_bulk_controller_v2_api import TestCaseTreeBulkControllerV2Api
 from .generated.api.test_case_tree_controller_v2_api import TestCaseTreeControllerV2Api
+from .generated.api.test_fixture_result_attachment_controller_api import TestFixtureResultAttachmentControllerApi
 from .generated.api.test_layer_controller_api import TestLayerControllerApi
 from .generated.api.test_layer_schema_controller_api import TestLayerSchemaControllerApi
 from .generated.api.test_result_attachment_controller_api import TestResultAttachmentControllerApi
 from .generated.api.test_result_bulk_controller_api import TestResultBulkControllerApi
 from .generated.api.test_result_controller_api import TestResultControllerApi
+from .generated.api.test_result_custom_field_controller_api import TestResultCustomFieldControllerApi
+from .generated.api.test_result_defect_controller_api import TestResultDefectControllerApi
+from .generated.api.test_result_env_var_controller_api import TestResultEnvVarControllerApi
 from .generated.api.test_result_fixture_controller_api import TestResultFixtureControllerApi
 from .generated.api.test_result_flat_controller_api import TestResultFlatControllerApi
+from .generated.api.test_result_issue_controller_api import TestResultIssueControllerApi
+from .generated.api.test_result_members_controller_api import TestResultMembersControllerApi
 from .generated.api.test_result_rerun_controller_api import TestResultRerunControllerApi
 from .generated.api.test_result_run_controller_api import TestResultRunControllerApi
+from .generated.api.test_result_test_key_controller_api import TestResultTestKeyControllerApi
 from .generated.api.tree_controller_v2_api import TreeControllerV2Api
 from .generated.api.upload_controller_api import UploadControllerApi
 from .generated.api.upload_test_result_controller_api import UploadTestResultControllerApi
@@ -72,6 +79,7 @@ from .generated.models.custom_field_value_project_create_dto import CustomFieldV
 from .generated.models.custom_field_value_project_patch_dto import CustomFieldValueProjectPatchDto
 from .generated.models.custom_field_value_with_cf_dto import CustomFieldValueWithCfDto
 from .generated.models.custom_field_with_values_dto import CustomFieldWithValuesDto
+from .generated.models.env_var_value_dto import EnvVarValueDto
 from .generated.models.external_run_response_dto import ExternalRunResponseDto
 from .generated.models.external_run_start_request_dto import ExternalRunStartRequestDto
 from .generated.models.find_all29200_response import FindAll29200Response
@@ -84,9 +92,11 @@ from .generated.models.launch_existing_upload_dto import LaunchExistingUploadDto
 from .generated.models.launch_preview_dto import LaunchPreviewDto
 from .generated.models.launch_upload_response_dto import LaunchUploadResponseDto
 from .generated.models.manual_session_request_dto import ManualSessionRequestDto
+from .generated.models.member_dto import MemberDto
 from .generated.models.normalized_scenario_dto import NormalizedScenarioDto
 from .generated.models.normalized_scenario_dto_attachments_value import NormalizedScenarioDtoAttachmentsValue
 from .generated.models.page_custom_field_value_with_tc_count_dto import PageCustomFieldValueWithTcCountDto
+from .generated.models.page_defect_row_dto import PageDefectRowDto
 from .generated.models.page_id_and_name_only_dto import PageIdAndNameOnlyDto
 from .generated.models.page_launch_dto import PageLaunchDto
 from .generated.models.page_launch_preview_dto import PageLaunchPreviewDto
@@ -98,6 +108,7 @@ from .generated.models.page_test_case_tree_node_dto_content_inner import PageTes
 from .generated.models.page_test_fixture_result_attachment_row_dto import PageTestFixtureResultAttachmentRowDto
 from .generated.models.page_test_result_attachment_row_dto import PageTestResultAttachmentRowDto
 from .generated.models.page_test_result_flat_dto import PageTestResultFlatDto
+from .generated.models.page_test_result_history_dto import PageTestResultHistoryDto
 from .generated.models.page_tree_dto_v2 import PageTreeDtoV2
 from .generated.models.project_test_case_count_dto import ProjectTestCaseCountDto
 from .generated.models.resolve_request_v2_dto import ResolveRequestV2Dto
@@ -133,6 +144,7 @@ from .generated.models.test_fixture_result_attachment_row_dto import (
     TestFixtureResultAttachmentRowDto,
 )
 from .generated.models.test_fixture_result_v2_dto import TestFixtureResultV2Dto
+from .generated.models.test_key_dto import TestKeyDto
 from .generated.models.test_result_attachment_patch_dto import TestResultAttachmentPatchDto
 from .generated.models.test_result_attachment_row_dto import TestResultAttachmentRowDto
 from .generated.models.test_result_bulk_rerun_dto import TestResultBulkRerunDto
@@ -224,11 +236,18 @@ ApiType: TypeAlias = (
     | LaunchSearchControllerApi
     | TestResultAttachmentControllerApi
     | TestResultControllerApi
+    | TestResultCustomFieldControllerApi
+    | TestResultDefectControllerApi
+    | TestResultEnvVarControllerApi
     | TestResultBulkControllerApi
     | TestResultFixtureControllerApi
     | TestResultFlatControllerApi
+    | TestResultIssueControllerApi
+    | TestResultMembersControllerApi
     | TestResultRerunControllerApi
     | TestResultRunControllerApi
+    | TestResultTestKeyControllerApi
+    | TestFixtureResultAttachmentControllerApi
     | TreeControllerV2Api
     | TestCaseTreeControllerV2Api
     | TestCaseTreeBulkControllerV2Api
@@ -357,11 +376,18 @@ class AllureClient:
         self._launch_search_api: LaunchSearchControllerApi | None = None
         self._test_result_attachment_api: TestResultAttachmentControllerApi | None = None
         self._test_result_api: TestResultControllerApi | None = None
+        self._test_result_custom_field_api: TestResultCustomFieldControllerApi | None = None
+        self._test_result_defect_api: TestResultDefectControllerApi | None = None
+        self._test_result_env_var_api: TestResultEnvVarControllerApi | None = None
         self._test_result_bulk_api: TestResultBulkControllerApi | None = None
         self._test_result_fixture_api: TestResultFixtureControllerApi | None = None
         self._test_result_flat_api: TestResultFlatControllerApi | None = None
+        self._test_result_issue_api: TestResultIssueControllerApi | None = None
+        self._test_result_members_api: TestResultMembersControllerApi | None = None
         self._test_result_rerun_api: TestResultRerunControllerApi | None = None
         self._test_result_run_api: TestResultRunControllerApi | None = None
+        self._test_result_test_key_api: TestResultTestKeyControllerApi | None = None
+        self._test_fixture_result_attachment_api: TestFixtureResultAttachmentControllerApi | None = None
         self._tree_api: TreeControllerV2Api | None = None
         self._test_case_tree_api: TestCaseTreeControllerV2Api | None = None
         self._test_case_tree_bulk_api: TestCaseTreeBulkControllerV2Api | None = None
@@ -527,11 +553,18 @@ class AllureClient:
             self._launch_search_api = LaunchSearchControllerApi(self._api_client)
             self._test_result_attachment_api = TestResultAttachmentControllerApi(self._api_client)
             self._test_result_api = TestResultControllerApi(self._api_client)
+            self._test_result_custom_field_api = TestResultCustomFieldControllerApi(self._api_client)
+            self._test_result_defect_api = TestResultDefectControllerApi(self._api_client)
+            self._test_result_env_var_api = TestResultEnvVarControllerApi(self._api_client)
             self._test_result_bulk_api = TestResultBulkControllerApi(self._api_client)
             self._test_result_fixture_api = TestResultFixtureControllerApi(self._api_client)
             self._test_result_flat_api = TestResultFlatControllerApi(self._api_client)
+            self._test_result_issue_api = TestResultIssueControllerApi(self._api_client)
+            self._test_result_members_api = TestResultMembersControllerApi(self._api_client)
             self._test_result_rerun_api = TestResultRerunControllerApi(self._api_client)
             self._test_result_run_api = TestResultRunControllerApi(self._api_client)
+            self._test_result_test_key_api = TestResultTestKeyControllerApi(self._api_client)
+            self._test_fixture_result_attachment_api = TestFixtureResultAttachmentControllerApi(self._api_client)
             self._tree_api = TreeControllerV2Api(self._api_client)
             self._test_case_tree_api = TestCaseTreeControllerV2Api(self._api_client)
             self._test_case_tree_bulk_api = TestCaseTreeBulkControllerV2Api(self._api_client)
@@ -739,6 +772,21 @@ class AllureClient:
 
     @overload
     async def _get_api(
+        self, attr_name: Literal["_test_result_custom_field_api"], *, error_name: str | None = None
+    ) -> TestResultCustomFieldControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_test_result_defect_api"], *, error_name: str | None = None
+    ) -> TestResultDefectControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_test_result_env_var_api"], *, error_name: str | None = None
+    ) -> TestResultEnvVarControllerApi: ...
+
+    @overload
+    async def _get_api(
         self, attr_name: Literal["_test_result_bulk_api"], *, error_name: str | None = None
     ) -> TestResultBulkControllerApi: ...
 
@@ -754,6 +802,16 @@ class AllureClient:
 
     @overload
     async def _get_api(
+        self, attr_name: Literal["_test_result_issue_api"], *, error_name: str | None = None
+    ) -> TestResultIssueControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_test_result_members_api"], *, error_name: str | None = None
+    ) -> TestResultMembersControllerApi: ...
+
+    @overload
+    async def _get_api(
         self, attr_name: Literal["_test_result_rerun_api"], *, error_name: str | None = None
     ) -> TestResultRerunControllerApi: ...
 
@@ -761,6 +819,16 @@ class AllureClient:
     async def _get_api(
         self, attr_name: Literal["_test_result_run_api"], *, error_name: str | None = None
     ) -> TestResultRunControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_test_result_test_key_api"], *, error_name: str | None = None
+    ) -> TestResultTestKeyControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_test_fixture_result_attachment_api"], *, error_name: str | None = None
+    ) -> TestFixtureResultAttachmentControllerApi: ...
 
     @overload
     async def _get_api(
@@ -831,6 +899,18 @@ class AllureClient:
             reason=http_response.reason_phrase,
             body=http_response.text,
         )
+
+    @staticmethod
+    def _validate_test_result_id(test_result_id: int) -> None:
+        if not isinstance(test_result_id, int) or test_result_id <= 0:
+            raise AllureValidationError("Test Result ID must be a positive integer")
+
+    @staticmethod
+    def _validate_page_size(page: int, size: int) -> None:
+        if not isinstance(page, int) or page < 0:
+            raise AllureValidationError("Page must be a non-negative integer")
+        if not isinstance(size, int) or size <= 0 or size > 100:
+            raise AllureValidationError("Size must be between 1 and 100")
 
     @staticmethod
     def _unwrap_http_response(response: httpx.Response | RESTResponse) -> httpx.Response:
@@ -1585,6 +1665,103 @@ class AllureClient:
             )
         )
         return self._extract_response_data(response)
+
+    async def get_test_result_custom_fields(self, test_result_id: int) -> list[CustomFieldWithValuesDto]:
+        """Fetch custom fields with values for one exact test result."""
+        api = await self._get_api("_test_result_custom_field_api", error_name="test result custom field APIs")
+        self._validate_test_result_id(test_result_id)
+        return await self._call_api(
+            api.get_custom_fields_with_values1(test_result_id=test_result_id, _request_timeout=self._timeout)
+        )
+
+    async def get_test_result_defects(
+        self, test_result_id: int, *, page: int = 0, size: int = 100, sort: list[str] | None = None
+    ) -> PageDefectRowDto:
+        """Fetch one page of defects linked to an exact test result."""
+        api = await self._get_api("_test_result_defect_api", error_name="test result defect APIs")
+        self._validate_test_result_id(test_result_id)
+        self._validate_page_size(page, size)
+        return await self._call_api(
+            api.get_defects(
+                test_result_id=test_result_id,
+                page=page,
+                size=size,
+                sort=sort,
+                _request_timeout=self._timeout,
+            )
+        )
+
+    async def get_test_result_environment(self, test_result_id: int) -> list[EnvVarValueDto]:
+        """Fetch environment values for one exact test result."""
+        api = await self._get_api("_test_result_env_var_api", error_name="test result environment APIs")
+        self._validate_test_result_id(test_result_id)
+        return await self._call_api(
+            api.get_env_var_values(test_result_id=test_result_id, _request_timeout=self._timeout)
+        )
+
+    async def get_test_result_issues(self, test_result_id: int) -> list[IssueDto]:
+        """Fetch issues linked to one exact test result."""
+        api = await self._get_api("_test_result_issue_api", error_name="test result issue APIs")
+        self._validate_test_result_id(test_result_id)
+        return await self._call_api(api.get_issues(test_result_id=test_result_id, _request_timeout=self._timeout))
+
+    async def get_test_result_members(self, test_result_id: int) -> list[MemberDto]:
+        """Fetch members assigned to one exact test result."""
+        api = await self._get_api("_test_result_members_api", error_name="test result member APIs")
+        self._validate_test_result_id(test_result_id)
+        return await self._call_api(api.get_members(test_result_id=test_result_id, _request_timeout=self._timeout))
+
+    async def get_test_result_test_keys(self, test_result_id: int) -> list[TestKeyDto]:
+        """Fetch test keys linked to one exact test result."""
+        api = await self._get_api("_test_result_test_key_api", error_name="test result test key APIs")
+        self._validate_test_result_id(test_result_id)
+        return await self._call_api(api.get_keys(test_result_id=test_result_id, _request_timeout=self._timeout))
+
+    async def get_test_result_history(
+        self, test_result_id: int, *, page: int = 0, size: int = 100, sort: list[str] | None = None
+    ) -> PageTestResultHistoryDto:
+        """Fetch one page of history references for an exact test result."""
+        api = await self._get_api("_test_result_api", error_name="test result APIs")
+        self._validate_test_result_id(test_result_id)
+        self._validate_page_size(page, size)
+        return await self._call_api(
+            api.find_history(id=test_result_id, page=page, size=size, sort=sort, _request_timeout=self._timeout)
+        )
+
+    async def get_test_result_retries(
+        self, test_result_id: int, *, page: int = 0, size: int = 100, sort: list[str] | None = None
+    ) -> PageTestResultHistoryDto:
+        """Fetch one page of retry references for an exact test result."""
+        api = await self._get_api("_test_result_api", error_name="test result APIs")
+        self._validate_test_result_id(test_result_id)
+        self._validate_page_size(page, size)
+        return await self._call_api(
+            api.find_retries(id=test_result_id, page=page, size=size, sort=sort, _request_timeout=self._timeout)
+        )
+
+    async def read_test_result_fixture_attachment_content(self, attachment_id: int, *, inline: bool = False) -> bytes:
+        """Read content for one fixture-result attachment."""
+        api = await self._get_api(
+            "_test_fixture_result_attachment_api", error_name="test fixture result attachment APIs"
+        )
+        if not isinstance(attachment_id, int) or attachment_id <= 0:
+            raise AllureValidationError("Attachment ID must be a positive integer")
+        response = await self._call_api_raw(
+            cast(
+                Awaitable[httpx.Response],
+                api.read_content1_without_preload_content(
+                    id=attachment_id, inline=inline, _request_timeout=self._timeout
+                ),
+            )
+        )
+        http_response = self._unwrap_http_response(response)
+        if not 200 <= http_response.status_code <= 299:
+            raise ApiException(
+                status=http_response.status_code,
+                reason=http_response.reason_phrase,
+                body=http_response.text,
+            )
+        return http_response.content
 
     async def resolve_test_result(
         self,

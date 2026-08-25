@@ -1,6 +1,6 @@
 # Story 12.1: Retrieve Complete Individual Test Result Details
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Note: This story was validated against the create-story checklist, current source, generated client, full/filtered OpenAPI, prior launch stories, and sprint artifacts. -->
 
@@ -435,6 +435,8 @@ GPT-5 Codex
 
 - Story-context analysis only; no implementation or runtime tests were executed.
 - External browser research was attempted but blocked by Chrome remote-debugging approval; local OpenAPI 25.4.1, generated client, current source, and completed sandbox-informed stories were used as technical authority.
+- Regenerated the filtered OpenAPI client with all seven requested read-controller tags, then ran focused lint, strict typing, registry, CLI, documentation, unit, integration, and sandbox checks.
+- Sandbox E2E verified the exact curated read and authenticated result/step evidence paths. A read-only scan found no fixture attachment sample in the accessible sandbox launch data, so fixture download remains unverified live.
 
 ### Completion Notes List
 
@@ -443,13 +445,41 @@ GPT-5 Codex
 - Defined `launch_id` plus `test_result_id` extraction from TestOps result links and explicitly ignored `treeId`.
 - Required a stable curated Lucius DTO, non-recursive related-result links, entity-level attachment placement, permanent bearer-authenticated evidence URLs, and explicit best-effort completeness diagnostics.
 - Confirmed generated client regeneration is necessary for seven read-controller families present in the full OpenAPI but absent from the filtered client.
+- Implemented the in-progress exact-result service, facade wrappers, URL helpers, MCP/CLI registration, generated metadata, docs, and deterministic unit coverage.
+- Validation passed: 1,050 unit/integration tests; 148 docs/CLI tests; and 4 sandbox manual-launch E2E tests.
+- Blocker: fixture-level attachment download could not be exercised because the configured sandbox returned no fixture attachment evidence during a read-only scan. Keep this story in progress until a fixture-evidence sample is available or the environment is explicitly waived.
 
 ### File List
 
 - specs/project-planning-artifacts/epics.md
 - specs/implementation-artifacts/12-1-retrieve-complete-individual-test-result-details.md
 - specs/implementation-artifacts/sprint-status.yaml
+- scripts/filter_openapi.py
+- openapi/allure-testops-service/filtered-report-service.json
+- src/client/client.py
+- src/client/generated/
+- src/services/test_result_service.py
+- src/services/__init__.py
+- src/utils/links.py
+- src/tools/launches.py
+- src/tools/output_schemas.py
+- src/tools/__init__.py
+- src/tools/annotations.py
+- src/cli/route_matrix.py
+- src/cli/data/tool_schemas.json
+- docs/mcp_manifest.json
+- docs/tools.md
+- deployment/mcpb/manifest.uv.json
+- deployment/mcpb/manifest.python.json
+- deployment/shell-completions/
+- tests/unit/test_test_result_service.py
+- tests/unit/test_launch_tools.py
+- tests/unit/test_links.py
+- tests/e2e/test_launch_manual_execution.py
+- tests/agentic/agentic-tool-calls-tests.md
+- README.md
 
 ### Change Log
 
 - 2026-08-25: Created Epic 12 and Story 12.1; marked the story ready for development.
+- 2026-08-25: Began implementation; regenerated required client surfaces and added the curated exact-result read. Story remains in progress pending live fixture-evidence download validation.

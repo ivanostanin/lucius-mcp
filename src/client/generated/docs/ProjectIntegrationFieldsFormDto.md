@@ -5,10 +5,10 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**default_project_fields_values** | **Dict[str, object]** |  | [optional] 
+**default_project_fields_values** | **Dict[str, Optional[object]]** |  | [optional] 
 **default_secret_specified** | **bool** |  | [optional] 
 **project_fields** | [**List[IntegrationFieldsFormDtoDefaultProjectFieldsInner]**](IntegrationFieldsFormDtoDefaultProjectFieldsInner.md) |  | [optional] 
-**project_fields_values** | **Dict[str, object]** |  | [optional] 
+**project_fields_values** | **Dict[str, Optional[object]]** |  | [optional] 
 **secret_fields** | [**List[IntegrationFieldsFormDtoDefaultProjectFieldsInner]**](IntegrationFieldsFormDtoDefaultProjectFieldsInner.md) |  | [optional] 
 **secret_specified** | **bool** |  | [optional] 
 
