@@ -114,6 +114,10 @@ Enable Agents to manage high-level Test Plans and Defects, supporting full lifec
 Implement advanced security protocols (OAuth, TLS) and higher-order "Agent Skills" for autonomous repository maintenance and complex reasoning workflows.
 **FRs covered:** Derived from Phase 3 Requirements (Security, Skills)
 
+### Epic 12: Enhanced Launch Workflows
+Enable agents to inspect and act on individual launch test results through rich, stable result-centric contracts, resilient best-effort enrichment, and authenticated evidence links without bloating collection responses or recursively expanding related runs.
+**FRs covered:** Derived from post-MVP launch inspection and agent evidence-analysis requirements
+
 ## Epic 1: Foundation & Test Case Management
 
 Establish the MCP server foundation and enable Agents to manage the core "Test Case" entity, allowing for autonomous documentation of test scenarios. This includes the core architecture, authentication, and error handling mechanisms.
@@ -1273,3 +1277,72 @@ so that downstream dashboards can group events consistently while keeping the sa
 **When** maintainers review the change
 **Then** docs describe the flat event taxonomy explicitly
 **And** unit, integration, and e2e tests assert the new event names without weakening payload coverage.
+
+## Epic 12: Enhanced Launch Workflows
+
+Goal: Give agents complete, stable, and evidence-ready inspection of individual launch results while preserving the existing service-first architecture and avoiding recursive expansion of related executions.
+
+### Story 12.1: Retrieve Complete Individual Test Result Details
+
+As an AI Agent,
+I want to retrieve a complete curated view of one test result using its Launch ID and Test Result ID,
+so that I can diagnose the execution and download its evidence without reconstructing TestOps API calls or leaving Lucius.
+
+**Acceptance Criteria:**
+
+**Given** a TestOps link such as `/launch/89067/tree/1498142?treeId=172`
+**When** I call `get_test_run_result(launch_id=89067, test_result_id=1498142)`
+**Then** Lucius treats `1498142` as the Test Result ID and ignores `treeId`
+**And** it does not scan the launch or perform a separate client-side launch-membership check
+**And** authoritative lookup and not-found behavior are left to the upstream TestOps APIs.
+
+**Given** the authoritative test result exists
+**When** the result is returned
+**Then** a stable, curated Lucius DTO exposes every available core field and enrichment section, including identity, status, timing, duration, ownership, test case identity, parameters, environment, labels/tags, layer/category, links, job/executor/source metadata, messages and traces, custom fields, members, test keys, issues, defects, execution steps, fixtures, and attachment metadata
+**And** the response includes a stable TestOps result URL built from the result's authoritative upstream Launch ID, plus referenced entity URLs where their context and URL patterns are verified
+**And** the result URL is omitted rather than built from an unverified supplied Launch ID when authoritative launch context is unavailable
+**And** generated upstream DTOs or raw API dictionaries are not leaked as the public Lucius contract.
+
+**Given** execution steps, fixture results, or attachments exist
+**When** Lucius composes the detail response
+**Then** result-level attachments remain on the result, fixture attachments are reconciled/deduplicated on their verified fixture, and step attachments remain on their corresponding execution step
+**And** unresolved fixture ownership makes that section explicitly incomplete rather than producing guessed or orphan attachment ownership
+**And** nested step structure, status, timing, parameters, messages, traces, expected/body data, and attachment child steps are preserved without flattening away their parent context
+**And** every attachment includes its available ID, name, content type, content length, entity-specific metadata, and a direct content download URL.
+
+**Given** an attachment download URL is returned
+**When** an agent downloads the content
+**Then** the URL is a stable TestOps API content endpoint with no embedded token, signature, or expiry
+**And** it is authorized with the same bearer token used for Lucius/TestOps API access
+**And** result and fixture attachments use their verified entity-specific content endpoints.
+
+**Given** history entries, retries, nested results, or related runs exist
+**When** Lucius includes them in the response
+**Then** each related execution is represented only as a typed relation/link reference with its available ID and stable result URL
+**And** Lucius may page through the upstream relation indexes needed to discover those references
+**But** it does not recursively fetch the full detail payload for any related result or run.
+
+**Given** one or more non-authoritative enrichment calls fail, are forbidden, are unsupported, or return data that cannot be safely associated with its parent
+**When** the core result can still be retrieved
+**Then** the tool returns a successful best-effort partial response
+**And** the response sets an explicit partial-completeness indicator and lists every unavailable section with a safe reason
+**And** verified-empty sections remain distinguishable from unavailable sections
+**And** credentials, raw authorization headers, and unsafe upstream exception content are never exposed.
+
+**Given** the full TestOps OpenAPI contains result-detail controllers excluded by the current filtered client
+**When** this story is implemented
+**Then** `scripts/filter_openapi.py` retains the required read controllers for result custom fields, defects, environment values, issues, members, test keys, and fixture attachment content
+**And** `./scripts/generate_testops_api_client.sh` regenerates the client instead of developers editing `src/client/generated/` manually
+**And** existing core result, execution, history, retry, fixture, and attachment clients are reused rather than duplicated.
+
+**Given** the new tool is exposed through MCP and CLI
+**When** schemas, help, manifests, and routes are inspected
+**Then** `get_test_run_result` publishes a concrete object-root output schema matching the curated DTO
+**And** the canonical CLI action `lucius launch get_test_run_result` routes to the same service behavior
+**And** plain and JSON outputs expose equivalent result detail while table and CSV remain CLI-only rendering concerns
+**And** tool documentation explains how to extract `launch_id` and `test_result_id` from TestOps links and ignore `treeId`.
+
+**Given** automated verification runs
+**When** unit, integration, schema, CLI, agentic, and sandbox E2E tests execute
+**Then** they cover complete and partial responses, verified-empty versus unavailable sections, non-recursive related links, nested attachment placement, stable bearer-authenticated download URLs, pagination of enrichment collections, and actionable core lookup errors
+**And** sandbox E2E coverage downloads representative result, step, and fixture evidence through the returned URLs using the same bearer token and verifies the downloaded bytes.
