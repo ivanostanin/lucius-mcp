@@ -382,8 +382,8 @@ async def get_test_result(
     ],
     project_id: Annotated[int | None, Field(description="Optional override for the default Project ID.")] = None,
     output_format: Annotated[
-        OutputFormat | None, Field(description="Output format: structured JSON (default) or 'plain'.")
-    ] = DEFAULT_OUTPUT_FORMAT,
+        OutputFormat | None, Field(description="Output format: 'plain' (default) or structured JSON.")
+    ] = "plain",
 ) -> ToolOutput:
     """Retrieve one complete TestOps result without recursively reading related results.
 
@@ -391,7 +391,7 @@ async def get_test_result(
         test_result_id: Exact TestOps result ID matching ``/api/testresult/{id}``.
             Ignore a ``treeId`` URL query parameter.
         project_id: Optional project override.
-        output_format: Structured JSON (default) or plain agent-readable detail.
+        output_format: Plain agent-readable detail (default) or structured JSON.
 
     Returns:
         Curated result detail, authenticated attachment download paths, and explicit partial-data diagnostics.

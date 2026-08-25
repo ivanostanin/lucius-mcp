@@ -499,3 +499,14 @@ GPT-5 Codex
 - [x] [Review][Patch] [P1] Replace open-ended result-detail dictionaries with strict application-owned nested output models and projections. [src/tools/output_schemas.py:361]
 - [x] [Review][Patch] [P1] Render the actual rich result data in plain output, rather than only collection counts, to preserve plain/JSON parity. [src/tools/launches.py:1022]
 - [x] [Review][Patch] [P2] Deduplicate repeated fixture attachment IDs at their owning fixture. [src/services/test_result_service.py:393]
+
+### Review Findings — Pass 1 (2026-08-25)
+
+- [x] [Review][Patch] [P1] Return plain text by default from the MCP tool, as required by the story contract. [src/tools/launches.py:386]
+- [x] [Review][Patch] [P1] Unwrap generated fixture scenario one-of step values before mapping their fields and attachments. [src/services/test_result_service.py:387]
+- [x] [Review][Patch] [P1] Preserve attachment steps that provide only `attachmentId`, so evidence remains on its owning step or fixture. [src/services/test_result_service.py:388]
+- [x] [Review][Patch] [P2] Preserve upstream `project_id=0` instead of replacing it with the configured project. [src/services/test_result_service.py:145]
+- [x] [Review][Patch] [P2] Mark contradictory or non-progressing pagination metadata as incomplete instead of silently accepting the collected subset. [src/services/test_result_service.py:283]
+- [x] [Review][Patch] [P2] Reject boolean values for Test Result IDs. [src/services/test_result_service.py:508]
+- [x] [Review][Patch] [P2] Mark a non-positive upstream launch ID as unverified context. [src/services/test_result_service.py:183]
+- [x] [Review][Patch] [P2] Do not label a test-case reference with the test-result name. [src/services/test_result_service.py:353]

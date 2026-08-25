@@ -902,7 +902,7 @@ class AllureClient:
 
     @staticmethod
     def _validate_test_result_id(test_result_id: int) -> None:
-        if not isinstance(test_result_id, int) or test_result_id <= 0:
+        if not isinstance(test_result_id, int) or isinstance(test_result_id, bool) or test_result_id <= 0:
             raise AllureValidationError("Test Result ID must be a positive integer")
 
     @staticmethod
@@ -1612,8 +1612,7 @@ class AllureClient:
         """Fetch one test result by ID."""
         api = await self._get_api("_test_result_api", error_name="test result APIs")
 
-        if not isinstance(test_result_id, int) or test_result_id <= 0:
-            raise AllureValidationError("Test Result ID must be a positive integer")
+        self._validate_test_result_id(test_result_id)
 
         return await self._call_api(api.find_one5(id=test_result_id, _request_timeout=self._timeout))
 
@@ -1626,8 +1625,7 @@ class AllureClient:
         """Patch one test result directly via the first-class test-result API."""
         api = await self._get_api("_test_result_api", error_name="test result APIs")
 
-        if not isinstance(test_result_id, int) or test_result_id <= 0:
-            raise AllureValidationError("Test Result ID must be a positive integer")
+        self._validate_test_result_id(test_result_id)
 
         return await self._call_api(
             api.patch5(
@@ -1641,15 +1639,13 @@ class AllureClient:
         """Fetch execution details for one test result."""
         api = await self._get_api("_test_result_api", error_name="test result APIs")
 
-        if not isinstance(test_result_id, int) or test_result_id <= 0:
-            raise AllureValidationError("Test Result ID must be a positive integer")
+        self._validate_test_result_id(test_result_id)
 
         return await self._call_api(api.find_execution(id=test_result_id, _request_timeout=self._timeout))
 
     async def get_test_result_execution_raw(self, test_result_id: int, *, v2: bool = False) -> dict[str, object]:
         """Fetch raw execution details for one test result without strict schema deserialization."""
-        if not isinstance(test_result_id, int) or test_result_id <= 0:
-            raise AllureValidationError("Test Result ID must be a positive integer")
+        self._validate_test_result_id(test_result_id)
 
         if v2:
             return await self._get_test_result_execution_raw_v2(test_result_id)
@@ -1771,8 +1767,7 @@ class AllureClient:
         """Resolve an existing test result in place."""
         await self._get_api("_test_result_run_api", error_name="test result run APIs")
 
-        if not isinstance(test_result_id, int) or test_result_id <= 0:
-            raise AllureValidationError("Test Result ID must be a positive integer")
+        self._validate_test_result_id(test_result_id)
 
         if self._api_client is None:
             raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
@@ -1802,8 +1797,7 @@ class AllureClient:
         """Fetch fixture results for one test result."""
         api = await self._get_api("_test_result_fixture_api", error_name="test result fixture APIs")
 
-        if not isinstance(test_result_id, int) or test_result_id <= 0:
-            raise AllureValidationError("Test Result ID must be a positive integer")
+        self._validate_test_result_id(test_result_id)
 
         return await self._call_api(api.get_fixtures(test_result_id=test_result_id, _request_timeout=self._timeout))
 
@@ -1818,8 +1812,7 @@ class AllureClient:
         """Fetch fixture attachments for one test result."""
         api = await self._get_api("_test_result_fixture_api", error_name="test result fixture APIs")
 
-        if not isinstance(test_result_id, int) or test_result_id <= 0:
-            raise AllureValidationError("Test Result ID must be a positive integer")
+        self._validate_test_result_id(test_result_id)
         if not isinstance(page, int) or page < 0:
             raise AllureValidationError("Page must be a non-negative integer")
         if not isinstance(size, int) or size <= 0 or size > 100:

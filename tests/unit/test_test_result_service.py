@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.client.exceptions import AllureAPIError
+from src.client.exceptions import AllureAPIError, AllureValidationError
 from src.services.test_result_service import TestResultService
 
 
@@ -84,6 +84,11 @@ async def test_get_test_result_uses_exact_id_preserves_falsey_values_and_v2_exec
     assert detail.core["manual"] is False
     assert detail.core["duration"] == 0
     assert detail.core["description"] == ""
+    assert detail.test_case == {
+        "id": 41,
+        "name": None,
+        "url": "https://testops.example/project/9/test-cases/41",
+    }
     assert detail.execution_steps[0].steps[0].attachments[0].download_url == (
         "https://testops.example/api/testresult/attachment/55/content?inline=false"
     )
@@ -101,6 +106,28 @@ async def test_get_test_result_reports_optional_failure_and_never_substitutes_la
     assert detail.partial is True
     assert {item.section for item in detail.unavailable_sections} == {"issues", "result_url"}
     assert client.list_test_result_attachments.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_get_test_result_preserves_zero_project_id_and_rejects_unverified_launch_id() -> None:
+    client = _client()
+    client.get_test_result.return_value.project_id = 0
+    client.get_test_result.return_value.launch_id = 0
+
+    detail = await TestResultService(client).get_test_result(1498142)
+
+    assert detail.project_id == 0
+    assert detail.test_case is not None
+    assert detail.test_case["url"] == "https://testops.example/project/0/test-cases/41"
+    assert detail.result_url is None
+    assert detail.launch_url is None
+    assert any(item.section == "result_url" for item in detail.unavailable_sections)
+
+
+@pytest.mark.asyncio
+async def test_get_test_result_rejects_boolean_id() -> None:
+    with pytest.raises(AllureValidationError, match="positive integer"):
+        await TestResultService(_client()).get_test_result(True)
 
 
 @pytest.mark.asyncio
@@ -136,6 +163,22 @@ async def test_get_test_result_preserves_collected_pages_when_a_later_page_fails
 
 
 @pytest.mark.asyncio
+async def test_get_test_result_marks_contradictory_pagination_incomplete() -> None:
+    client = _client()
+    client.list_test_result_attachments.return_value = SimpleNamespace(
+        content=[SimpleNamespace(id=1, name="result.log", entity="test_result")],
+        last=True,
+        number=0,
+        total_pages=2,
+    )
+
+    detail = await TestResultService(client).get_test_result(1498142)
+
+    assert [attachment.id for attachment in detail.result_attachments] == [1]
+    assert any(item.section == "result_attachments" for item in detail.unavailable_sections)
+
+
+@pytest.mark.asyncio
 async def test_get_test_result_omits_unverified_related_result_url() -> None:
     client = _client()
     client.get_test_result_history.return_value = SimpleNamespace(
@@ -157,8 +200,8 @@ async def test_get_test_result_reconciles_and_deduplicates_fixture_attachments()
             name="setup",
             scenario=SimpleNamespace(
                 steps=[
-                    {"attachment": {"id": 99, "name": "brief.log", "entity": "test_result"}},
-                    {"attachment": {"id": 99, "name": "brief.log", "entity": "test_result"}},
+                    SimpleNamespace(actual_instance=SimpleNamespace(type="attachment", attachment_id=99)),
+                    SimpleNamespace(actual_instance=SimpleNamespace(type="attachment", attachment_id=99)),
                 ]
             ),
             type="before",

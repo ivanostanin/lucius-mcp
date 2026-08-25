@@ -4,7 +4,7 @@ from collections.abc import Sequence
 
 
 def test_case_url(base_url: str, project_id: int, test_case_id: int) -> str:
-    return f"{base_url}/project/{project_id}/test-cases/{test_case_id}"
+    return f"{base_url.rstrip('/')}/project/{project_id}/test-cases/{test_case_id}"
 
 
 def launch_url(base_url: str, project_id: int, launch_id: int) -> str:

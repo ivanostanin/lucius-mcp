@@ -142,7 +142,8 @@ class TestResultService:
         self._validate_positive(test_result_id, "Test Result ID")
         result = await self._client.get_test_result(test_result_id)
         actual_launch_id = _int_value(result, "launch_id")
-        project_id = _int_value(result, "project_id") or self._project_id
+        upstream_project_id = _int_value(result, "project_id")
+        project_id = upstream_project_id if upstream_project_id is not None else self._project_id
 
         jobs = await asyncio.gather(
             self._optional("execution", self._client.get_test_result_execution_raw(test_result_id, v2=True)),
@@ -180,15 +181,22 @@ class TestResultService:
         )
         unavailable = [outcome.unavailable for outcome in outcomes.values() if outcome.unavailable is not None]
 
-        if actual_launch_id is None:
+        verified_launch_id = actual_launch_id if actual_launch_id is not None and actual_launch_id > 0 else None
+        if verified_launch_id is None:
             unavailable.append(
                 UnavailableSection(
-                    "result_url", "unverified_context", message="The upstream result did not provide a launch ID"
+                    "result_url",
+                    "unverified_context",
+                    message="The upstream result did not provide a verified launch ID",
                 )
             )
-        result_url = test_result_url(self._base_url, actual_launch_id, test_result_id) if actual_launch_id else None
+        result_url = (
+            test_result_url(self._base_url, verified_launch_id, test_result_id)
+            if verified_launch_id is not None
+            else None
+        )
         verified_launch_url = (
-            launch_url(self._base_url, project_id or 0, actual_launch_id) if actual_launch_id else None
+            launch_url(self._base_url, project_id or 0, verified_launch_id) if verified_launch_id is not None else None
         )
 
         execution_steps = self._map_steps(_mapping_value(outcomes["execution"].value, "steps"), fixture=False)
@@ -285,12 +293,14 @@ class TestResultService:
                 raise _IncompletePaginationError(collected, AllureAPIError("Pagination did not advance"))
             if page_number is not None:
                 seen_pages.add(page_number)
+                if page_number != requested_page:
+                    raise _IncompletePaginationError(
+                        collected, AllureAPIError("Pagination response returned an unexpected page number")
+                    )
             content = _sequence(_value(page, "content"))
             collected.extend(content)
-            if _value(page, "last") is True:
-                return collected
             total_pages = _int_value(page, "total_pages")
-            if total_pages is not None and requested_page + 1 >= total_pages:
+            if _is_terminal_page(page, requested_page, collected):
                 return collected
             if not content and total_pages is None:
                 raise _IncompletePaginationError(
@@ -350,11 +360,12 @@ class TestResultService:
             return None
         return {
             "id": test_case_id,
-            "name": _value(result, "name"),
-            "url": test_case_url(self._base_url, project_id, test_case_id) if project_id else None,
+            "name": _str_value(result, "test_case_name"),
+            "url": test_case_url(self._base_url, project_id, test_case_id) if project_id is not None else None,
         }
 
     def _attachment(self, value: object, *, fixture: bool) -> AttachmentDetail:
+        value = _unwrap_one_of(value)
         entity = _str_value(value, "entity")
         attachment_id = _int_value(value, "id")
         from_test_case = _bool_value(value, "from_test_case")
@@ -385,9 +396,17 @@ class TestResultService:
     def _map_steps(self, values: object, *, fixture: bool) -> tuple[StepDetail, ...]:
         mapped: list[StepDetail] = []
         for value in _sequence(values):
+            value = _unwrap_one_of(value)
             attachment = _value(value, "attachment")
             nested = self._map_steps(_value(value, "steps"), fixture=fixture)
-            attachments = (self._attachment(attachment, fixture=fixture),) if attachment is not None else ()
+            attachment_id = _int_value(value, "attachment_id")
+            attachments = (
+                (self._attachment(attachment, fixture=fixture),)
+                if attachment is not None
+                else (self._attachment({"id": attachment_id}, fixture=fixture),)
+                if attachment_id is not None
+                else ()
+            )
             mapped.append(
                 StepDetail(
                     _int_value(value, "id"),
@@ -506,7 +525,7 @@ class TestResultService:
 
     @staticmethod
     def _validate_positive(value: int, label: str) -> None:
-        if not isinstance(value, int) or value <= 0:
+        if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
             raise AllureValidationError(f"{label} must be a positive integer")
 
 
@@ -530,6 +549,27 @@ def _value(value: object | None, name: str) -> object | None:
     if isinstance(value, Mapping):
         return value.get(name) if name in value else value.get(_camel(name))
     return getattr(value, name, None) if value is not None else None
+
+
+def _unwrap_one_of(value: object) -> object:
+    """Extract the concrete generated-model value from a one-of envelope."""
+    actual_instance = _value(value, "actual_instance")
+    return actual_instance if actual_instance is not None else value
+
+
+def _is_terminal_page(page: object, requested_page: int, collected: list[object]) -> bool:
+    """Return whether pagination is complete, rejecting contradictory metadata."""
+    last = _value(page, "last")
+    total_pages = _int_value(page, "total_pages")
+    if last is True:
+        if total_pages is not None and total_pages != requested_page + 1:
+            raise _IncompletePaginationError(
+                collected, AllureAPIError("Pagination completion metadata is contradictory")
+            )
+        return True
+    if total_pages is not None and requested_page + 1 >= total_pages:
+        raise _IncompletePaginationError(collected, AllureAPIError("Pagination response did not establish completion"))
+    return False
 
 
 def _mapping_value(value: object | None, name: str) -> object | None:
