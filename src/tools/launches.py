@@ -1,7 +1,7 @@
 """Launch management tools."""
 
 import json
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from typing import Annotated
@@ -399,7 +399,7 @@ async def get_test_result(
     async with _launch_client_context(project_id=project_id) as client:
         result = await TestResultService(client).get_test_result(test_result_id)
 
-    payload = asdict(result)
+    payload = _normalize_result_payload(asdict(result))
     return render_output(
         plain=_format_test_result(payload),
         json_payload=payload,
@@ -1020,30 +1020,24 @@ def _format_launch_detail(launch: object, *, base_url: str, project_id: int) -> 
 
 
 def _format_test_result(payload: dict[str, object]) -> str:
-    """Render the full stable payload in a compact, agent-readable form."""
-    core = payload.get("core")
-    core_values = core if isinstance(core, dict) else {}
-    lines = ["Test run result:"]
-    lines.append(f"- Test Result ID: {payload.get('test_result_id')}")
-    lines.append(f"- Actual launch ID: {payload.get('actual_launch_id')}")
-    if payload.get("result_url") is not None:
-        lines.append(f"- Result URL: {payload['result_url']}")
-    lines.append(f"- Name: {core_values.get('name')}")
-    lines.append(f"- Status: {core_values.get('status')}")
-    lines.append(f"- Execution steps: {_count_payload_items(payload.get('execution_steps'))}")
-    lines.append(f"- Fixtures: {_count_payload_items(payload.get('fixtures'))}")
-    lines.append(f"- Result attachments: {_count_payload_items(payload.get('result_attachments'))}")
-    lines.append(f"- Related results: {_count_payload_items(payload.get('related_results'))}")
-    if payload.get("partial") is True:
-        lines.append("- Partial: yes")
-        unavailable = payload.get("unavailable_sections")
-        if isinstance(unavailable, list):
-            for section in unavailable:
-                if isinstance(section, dict):
-                    lines.append(f"  - {section.get('section')}: {section.get('reason')}")
-    else:
-        lines.append("- Partial: no")
-    return "\n".join(lines)
+    """Render every published field so plain and structured output stay equivalent."""
+    return "Test result:\n" + json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False)
+
+
+def _normalize_result_payload(value: object) -> dict[str, object]:
+    """Convert immutable service collections to JSON-shaped lists before strict output validation."""
+    normalized = _normalize_payload_value(value)
+    if not isinstance(normalized, dict):  # pragma: no cover - detail output is always an object root
+        raise TypeError("Test-result output must be an object")
+    return normalized
+
+
+def _normalize_payload_value(value: object) -> object:
+    if isinstance(value, Mapping):
+        return {str(key): _normalize_payload_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_normalize_payload_value(item) for item in value]
+    return value
 
 
 def _count_payload_items(value: object) -> int:

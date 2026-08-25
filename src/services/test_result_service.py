@@ -121,6 +121,14 @@ class _Outcome:
     unavailable: UnavailableSection | None = None
 
 
+class _IncompletePaginationError(Exception):
+    """Carry items collected before an optional paginated request became incomplete."""
+
+    def __init__(self, collected: list[object], error: AllureAPIError | None = None) -> None:
+        self.collected = collected
+        self.error = error
+
+
 class TestResultService:
     """Compose one exact result without recursively reading related results."""
 
@@ -190,12 +198,10 @@ class TestResultService:
         )
         if fixture_diagnostic is not None:
             unavailable.append(fixture_diagnostic)
-        related = self._map_related(
-            _sequence(outcomes["history"].value), _sequence(outcomes["retries"].value), actual_launch_id
-        )
+        related = self._map_related(_sequence(outcomes["history"].value), _sequence(outcomes["retries"].value))
         retried_by = _value(result, "retried_by")
         if retried_by is not None:
-            related = (*related, self._related_reference(retried_by, "retried_by", actual_launch_id))
+            related = (*related, self._related_reference(retried_by, "retried_by"))
 
         return TestRunResultDetail(
             actual_launch_id=actual_launch_id,
@@ -224,6 +230,17 @@ class TestResultService:
     async def _optional(self, section: str, awaitable: Awaitable[T]) -> _Outcome:
         try:
             return _Outcome(await awaitable)
+        except _IncompletePaginationError as exc:
+            if exc.error is not None:
+                unavailable = _unavailable(section, exc.error, items_retrieved=len(exc.collected))
+            else:
+                unavailable = UnavailableSection(
+                    section,
+                    "upstream_error",
+                    message=f"{section.replace('_', ' ').title()} are incomplete",
+                    items_retrieved=len(exc.collected),
+                )
+            return _Outcome(exc.collected, unavailable)
         except AllureAPIError as exc:
             return _Outcome(None, _unavailable(section, exc))
         except Exception:
@@ -257,10 +274,15 @@ class TestResultService:
         collected: list[object] = []
         seen_pages: set[int] = set()
         for requested_page in range(MAX_PAGES):
-            page = await fetch(requested_page)
+            try:
+                page = await fetch(requested_page)
+            except AllureAPIError as exc:
+                raise _IncompletePaginationError(collected, exc) from exc
+            except Exception as exc:
+                raise _IncompletePaginationError(collected) from exc
             page_number = _int_value(page, "number")
             if page_number is not None and page_number in seen_pages:
-                raise AllureAPIError("Pagination did not advance")
+                raise _IncompletePaginationError(collected, AllureAPIError("Pagination did not advance"))
             if page_number is not None:
                 seen_pages.add(page_number)
             content = _sequence(_value(page, "content"))
@@ -271,11 +293,13 @@ class TestResultService:
             if total_pages is not None and requested_page + 1 >= total_pages:
                 return collected
             if not content and total_pages is None:
-                raise AllureAPIError("Pagination response did not establish completion")
-        raise AllureAPIError("Pagination safety bound reached")
+                raise _IncompletePaginationError(
+                    collected, AllureAPIError("Pagination response did not establish completion")
+                )
+        raise _IncompletePaginationError(collected, AllureAPIError("Pagination safety bound reached"))
 
     def _core(self, result: object) -> dict[str, object]:
-        keys = (
+        scalar_keys = (
             "name",
             "full_name",
             "status",
@@ -306,14 +330,19 @@ class TestResultService:
             "expected_result_html",
             "message",
             "trace",
-            "category",
-            "layer",
-            "parameters",
-            "tags",
-            "links",
-            "job_run",
         )
-        return {key: _json_value(_value(result, key)) for key in keys}
+        core = {key: _json_value(_value(result, key)) for key in scalar_keys}
+        core.update(
+            {
+                "category": _project_named(_value(result, "category")),
+                "layer": _project_named(_value(result, "layer")),
+                "parameters": _parameter_dicts(_sequence(_value(result, "parameters"))),
+                "tags": tuple(_project_named(item) for item in _sequence(_value(result, "tags"))),
+                "links": tuple(_project_link(item) for item in _sequence(_value(result, "links"))),
+                "job_run": _project_job_run(_value(result, "job_run")),
+            }
+        )
+        return core
 
     def _test_case_reference(self, result: object, project_id: int | None) -> dict[str, object] | None:
         test_case_id = _int_value(result, "test_case_id")
@@ -333,6 +362,10 @@ class TestResultService:
         if attachment_id is not None:
             if from_test_case is True or (entity and "testcase" in entity.lower().replace("_", "")):
                 download_url = test_case_attachment_download_url(self._base_url, attachment_id)
+            elif entity and "testfixtureresult" in entity.lower().replace("_", "").replace("-", ""):
+                download_url = fixture_result_attachment_download_url(self._base_url, attachment_id)
+            elif entity and "testresult" in entity.lower().replace("_", "").replace("-", ""):
+                download_url = result_attachment_download_url(self._base_url, attachment_id)
             elif fixture:
                 download_url = fixture_result_attachment_download_url(self._base_url, attachment_id)
             else:
@@ -390,7 +423,8 @@ class TestResultService:
         fixtures: list[FixtureDetail] = []
         for value in values:
             steps = self._map_steps(_value(_value(value, "scenario"), "steps"), fixture=True)
-            step_attachments = _attachments_from_steps(steps)
+            steps = self._reconcile_fixture_steps(steps, aggregate_by_id)
+            step_attachments = _deduplicate_attachments(_attachments_from_steps(steps))
             for attachment in step_attachments:
                 if attachment.id is not None:
                     owned_ids.add(attachment.id)
@@ -420,16 +454,45 @@ class TestResultService:
             )
         return tuple(fixtures), diagnostic
 
-    def _map_related(
-        self, history: Sequence[object], retries: Sequence[object], actual_launch_id: int | None
-    ) -> tuple[RelatedResult, ...]:
-        references = [self._related_reference(item, "history", actual_launch_id) for item in history]
-        references.extend(self._related_reference(item, "retry", actual_launch_id) for item in retries)
+    def _reconcile_fixture_steps(
+        self, steps: Sequence[StepDetail], aggregate_by_id: Mapping[int, object]
+    ) -> tuple[StepDetail, ...]:
+        return tuple(
+            StepDetail(
+                step.id,
+                step.type,
+                step.name,
+                step.action,
+                step.body,
+                step.body_json,
+                step.expected_result,
+                step.keyword,
+                step.status,
+                step.start,
+                step.stop,
+                step.duration,
+                step.message,
+                step.trace,
+                step.parameters,
+                tuple(
+                    self._attachment(aggregate_by_id[attachment.id], fixture=True)
+                    if attachment.id is not None and attachment.id in aggregate_by_id
+                    else attachment
+                    for attachment in step.attachments
+                ),
+                self._reconcile_fixture_steps(step.steps, aggregate_by_id),
+            )
+            for step in steps
+        )
+
+    def _map_related(self, history: Sequence[object], retries: Sequence[object]) -> tuple[RelatedResult, ...]:
+        references = [self._related_reference(item, "history") for item in history]
+        references.extend(self._related_reference(item, "retry") for item in retries)
         return tuple(references)
 
-    def _related_reference(self, value: object, relation: str, actual_launch_id: int | None) -> RelatedResult:
+    def _related_reference(self, value: object, relation: str) -> RelatedResult:
         launch = _value(value, "launch")
-        launch_id = _int_value(launch, "id") or actual_launch_id
+        launch_id = _int_value(launch, "id")
         result_id = _int_value(value, "id")
         url = test_result_url(self._base_url, launch_id, result_id) if launch_id and result_id else None
         return RelatedResult(
@@ -447,7 +510,7 @@ class TestResultService:
             raise AllureValidationError(f"{label} must be a positive integer")
 
 
-def _unavailable(section: str, error: AllureAPIError) -> UnavailableSection:
+def _unavailable(section: str, error: AllureAPIError, *, items_retrieved: int = 0) -> UnavailableSection:
     status_code = error.status_code if isinstance(error.status_code, int) else None
     reason = "upstream_error"
     if status_code == 403:
@@ -455,7 +518,11 @@ def _unavailable(section: str, error: AllureAPIError) -> UnavailableSection:
     elif status_code == 404:
         reason = "unsupported"
     return UnavailableSection(
-        section, reason, status_code=status_code, message=f"{section.replace('_', ' ').title()} are unavailable"
+        section,
+        reason,
+        status_code=status_code,
+        message=f"{section.replace('_', ' ').title()} are unavailable",
+        items_retrieved=items_retrieved,
     )
 
 
@@ -522,24 +589,96 @@ def _attachments_from_steps(steps: Sequence[StepDetail]) -> tuple[AttachmentDeta
     return tuple(attachments)
 
 
+def _deduplicate_attachments(attachments: Sequence[AttachmentDetail]) -> tuple[AttachmentDetail, ...]:
+    """Keep one fixture-owned attachment per verified ID, preserving ID-less rows."""
+    seen_ids: set[int] = set()
+    deduplicated: list[AttachmentDetail] = []
+    for attachment in attachments:
+        if attachment.id is not None:
+            if attachment.id in seen_ids:
+                continue
+            seen_ids.add(attachment.id)
+        deduplicated.append(attachment)
+    return tuple(deduplicated)
+
+
 def _parameter_dicts(values: Sequence[object]) -> tuple[dict[str, object], ...]:
-    projected: list[dict[str, object]] = []
-    for value in values:
-        item = _json_value(value)
-        if isinstance(item, dict):
-            projected.append({str(key): value for key, value in item.items()})
-    return tuple(projected)
+    return tuple(
+        {
+            "name": _str_value(value, "name"),
+            "value": _str_value(value, "value"),
+            "excluded": _bool_value(value, "excluded"),
+            "hidden": _bool_value(value, "hidden"),
+        }
+        for value in values
+    )
+
+
+def _project_named(value: object | None) -> dict[str, object] | None:
+    if value is None:
+        return None
+    return {"id": _int_value(value, "id"), "name": _str_value(value, "name")}
+
+
+def _project_link(value: object) -> dict[str, object]:
+    return {
+        "name": _str_value(value, "name"),
+        "type": _str_value(value, "type"),
+        "url": _str_value(value, "url"),
+    }
+
+
+def _project_job_run(value: object | None) -> dict[str, object] | None:
+    if value is None:
+        return None
+    return {
+        "id": _int_value(value, "id"),
+        "name": _str_value(value, "name"),
+        "status": _enum_value(_value(value, "status")),
+        "stage": _enum_value(_value(value, "stage")),
+        "url": _str_value(value, "url"),
+        "error_message": _str_value(value, "error_message"),
+        "external_id": _str_value(value, "external_id"),
+        "job": _project_job(_value(value, "job")),
+    }
+
+
+def _project_job(value: object | None) -> dict[str, object] | None:
+    if value is None:
+        return None
+    return {
+        "id": _int_value(value, "id"),
+        "name": _str_value(value, "name"),
+        "type": _enum_value(_value(value, "type")),
+        "url": _str_value(value, "url"),
+    }
 
 
 def _project_custom_field(value: object) -> dict[str, object]:
-    return {"custom_field": _json_value(_value(value, "custom_field")), "values": _json_value(_value(value, "values"))}
+    custom_field = _value(value, "custom_field")
+    return {
+        "custom_field": (
+            {
+                "id": _int_value(custom_field, "id"),
+                "name": _str_value(custom_field, "name"),
+                "required": _bool_value(custom_field, "required"),
+                "single_select": _bool_value(custom_field, "single_select"),
+                "locked": _bool_value(custom_field, "locked"),
+                "archived": _bool_value(custom_field, "archived"),
+                "default_custom_field_value_id": _int_value(custom_field, "default_custom_field_value_id"),
+            }
+            if custom_field is not None
+            else None
+        ),
+        "values": tuple(_project_named(item) for item in _sequence(_value(value, "values"))),
+    }
 
 
 def _project_environment(value: object) -> dict[str, object]:
     return {
         "id": _int_value(value, "id"),
         "name": _str_value(value, "name"),
-        "variable": _json_value(_value(value, "variable")),
+        "variable": _project_named(_value(value, "variable")),
     }
 
 
@@ -547,7 +686,7 @@ def _project_member(value: object) -> dict[str, object]:
     return {
         "id": _int_value(value, "id"),
         "name": _str_value(value, "name"),
-        "role": _json_value(_value(value, "role")),
+        "role": _project_named(_value(value, "role")),
     }
 
 
@@ -562,18 +701,15 @@ def _project_test_key(value: object) -> dict[str, object]:
 
 def _project_issue(value: object) -> dict[str, object]:
     return {
-        key: _json_value(_value(value, key))
-        for key in (
-            "id",
-            "integration_id",
-            "integration_type",
-            "name",
-            "display_name",
-            "status",
-            "summary",
-            "url",
-            "closed",
-        )
+        "id": _int_value(value, "id"),
+        "integration_id": _int_value(value, "integration_id"),
+        "integration_type": _enum_value(_value(value, "integration_type")),
+        "name": _str_value(value, "name"),
+        "display_name": _str_value(value, "display_name"),
+        "status": _str_value(value, "status"),
+        "summary": _str_value(value, "summary"),
+        "url": _str_value(value, "url"),
+        "closed": _bool_value(value, "closed"),
     }
 
 
@@ -582,5 +718,5 @@ def _project_defect(value: object) -> dict[str, object]:
         "id": _int_value(value, "id"),
         "name": _str_value(value, "name"),
         "closed": _bool_value(value, "closed"),
-        "issue": _json_value(_value(value, "issue")),
+        "issue": _project_issue(_value(value, "issue")) if _value(value, "issue") is not None else None,
     }

@@ -117,3 +117,70 @@ async def test_get_test_result_reports_unverified_fixture_attachment_ownership()
 
     assert detail.fixtures[0].attachments == ()
     assert any(item.section == "fixture_attachments" for item in detail.unavailable_sections)
+
+
+@pytest.mark.asyncio
+async def test_get_test_result_preserves_collected_pages_when_a_later_page_fails() -> None:
+    client = _client()
+    first_page = SimpleNamespace(
+        content=[SimpleNamespace(id=1, name="result.log", entity="test_result")], last=False, number=0
+    )
+    client.list_test_result_attachments.side_effect = [first_page, AllureAPIError("unavailable", status_code=503)]
+
+    detail = await TestResultService(client).get_test_result(1498142)
+
+    assert [attachment.id for attachment in detail.result_attachments] == [1]
+    unavailable = next(item for item in detail.unavailable_sections if item.section == "result_attachments")
+    assert unavailable.items_retrieved == 1
+    assert unavailable.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_get_test_result_omits_unverified_related_result_url() -> None:
+    client = _client()
+    client.get_test_result_history.return_value = SimpleNamespace(
+        content=[SimpleNamespace(id=52, name="Earlier", status="passed")], last=True, number=0
+    )
+
+    detail = await TestResultService(client).get_test_result(1498142)
+
+    assert detail.related_results[0].launch_id is None
+    assert detail.related_results[0].url is None
+
+
+@pytest.mark.asyncio
+async def test_get_test_result_reconciles_and_deduplicates_fixture_attachments() -> None:
+    client = _client()
+    client.get_test_result_fixtures.return_value = [
+        SimpleNamespace(
+            id=1,
+            name="setup",
+            scenario=SimpleNamespace(
+                steps=[
+                    {"attachment": {"id": 99, "name": "brief.log", "entity": "test_result"}},
+                    {"attachment": {"id": 99, "name": "brief.log", "entity": "test_result"}},
+                ]
+            ),
+            type="before",
+        )
+    ]
+    client.get_test_result_fixture_attachments.return_value = SimpleNamespace(
+        content=[
+            SimpleNamespace(
+                id=99,
+                name="full.log",
+                entity="test_fixture_result",
+                content_type="text/plain",
+                content_length=10,
+            )
+        ],
+        last=True,
+        number=0,
+    )
+
+    detail = await TestResultService(client).get_test_result(1498142)
+
+    assert len(detail.fixtures[0].attachments) == 1
+    attachment = detail.fixtures[0].attachments[0]
+    assert attachment.name == "full.log"
+    assert attachment.download_url == "https://testops.example/api/testfixtureresult/attachment/99/content?inline=false"

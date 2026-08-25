@@ -489,3 +489,13 @@ GPT-5 Codex
 - 2026-08-25: Created Epic 12 and Story 12.1; marked the story ready for development.
 - 2026-08-25: Began implementation; regenerated required client surfaces and added the curated exact-result read. Story remains in progress pending live fixture-evidence download validation.
 - 2026-08-25: Renamed the tool to `get_test_result`, added `test-result`/`tr` CLI routing, updated documentation and generated metadata, and separated result-detail unit, integration, and E2E coverage.
+
+### Review Findings
+
+- [x] [Review][Patch] [P0] Normalize tuple-backed detail collections before strict MCP output validation; the default structured path rejects them as non-lists. [src/tools/launches.py:402]
+- [x] [Review][Patch] [P1] Preserve previously collected paginated items and report the later-page failure as incomplete instead of discarding the entire section. [src/services/test_result_service.py:256]
+- [x] [Review][Patch] [P1] Omit related-result URLs when the related item does not provide a verified launch ID. [src/services/test_result_service.py:430]
+- [x] [Review][Patch] [P1] Reconcile fixture attachment rows with their scenario-step owners and select download endpoints from the verified attachment discriminator. [src/services/test_result_service.py:328]
+- [x] [Review][Patch] [P1] Replace open-ended result-detail dictionaries with strict application-owned nested output models and projections. [src/tools/output_schemas.py:361]
+- [x] [Review][Patch] [P1] Render the actual rich result data in plain output, rather than only collection counts, to preserve plain/JSON parity. [src/tools/launches.py:1022]
+- [x] [Review][Patch] [P2] Deduplicate repeated fixture attachment IDs at their owning fixture. [src/services/test_result_service.py:393]

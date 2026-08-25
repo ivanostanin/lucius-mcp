@@ -8,6 +8,8 @@ import pytest
 
 from src.services.test_result_service import TestRunResultDetail
 from src.tools.launches import get_test_result
+from src.tools.output_schemas import TestResultDetailOutput
+from src.utils.telemetry import _apply_mcp_output_contract
 
 
 @pytest.mark.asyncio
@@ -40,8 +42,13 @@ async def test_get_test_result_forwards_exact_id_and_renders_partial_diagnostics
                 )
             )
 
-            output = await get_test_result(10, output_format="plain")
+            output = await get_test_result(10, output_format=None)
+            plain = await get_test_result(10, output_format="plain")
 
-    mock_service_cls.return_value.get_test_result.assert_awaited_once_with(10)
-    assert "Test Result ID: 10" in output
-    assert "Partial: yes" in output
+    assert mock_service_cls.return_value.get_test_result.await_count == 2
+    validated = _apply_mcp_output_contract(output, TestResultDetailOutput)
+    assert validated.structured_content["test_result_id"] == 10
+    assert validated.structured_content["custom_fields"] == []
+
+    assert '"execution_steps": []' in plain
+    assert '"partial": true' in plain
