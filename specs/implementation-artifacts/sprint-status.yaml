@@ -157,5 +157,5 @@ development_status:
 
   # Epic 12: Enhanced Launch and Test Result Management
   epic-12: in-progress
-  12-1-retrieve-complete-individual-test-result-details: in-progress
+  12-1-retrieve-complete-individual-test-result-details: done
   epic-12-retrospective: optional

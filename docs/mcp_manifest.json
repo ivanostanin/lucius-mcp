@@ -4844,8 +4844,8 @@
                 "type": "null"
               }
             ],
-            "default": "plain",
-            "description": "Output format: 'plain' (default) or structured JSON."
+            "default": null,
+            "description": "Output format: 'json' (default) or plain agent-readable detail."
           }
         },
         "required": [

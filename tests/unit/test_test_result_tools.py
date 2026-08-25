@@ -42,8 +42,8 @@ async def test_get_test_result_forwards_exact_id_and_renders_partial_diagnostics
                 )
             )
 
-            plain = await get_test_result(10)
-            output = await get_test_result(10, output_format="json")
+            output = await get_test_result(10)
+            plain = await get_test_result(10, output_format="plain")
 
     assert mock_service_cls.return_value.get_test_result.await_count == 2
     validated = _apply_mcp_output_contract(output, TestResultDetailOutput)

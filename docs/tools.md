@@ -102,9 +102,9 @@ returns the resolved canonical metadata list.
 
 ## ✅ Test Result Management
 
-| Tool | Description | Key Parameters |
-|:-----|:------------|:---------------|
-| `get_test_result` | Read one exact Test Result with curated execution evidence, stable attachment URLs, related-result links, and partial-data diagnostics. `treeId` URL query state is ignored. | `test_result_id` |
+| Tool | Description                                                                                                                             | Key Parameters |
+|:-----|:----------------------------------------------------------------------------------------------------------------------------------------|:---------------|
+| `get_test_result` | Read one exact Test Result with curated execution evidence, stable attachment URLs, related-result links, and partial-data diagnostics. | `test_result_id` |
 
 ## 📋 Test Plan Management
 

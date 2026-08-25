@@ -1,6 +1,6 @@
 # Story 12.1: Retrieve Complete Individual Test Result Details
 
-Status: in-progress
+Status: done
 
 <!-- Note: This story was validated against the create-story checklist, current source, generated client, full/filtered OpenAPI, prior launch stories, and sprint artifacts. -->
 
@@ -112,7 +112,7 @@ so that **I can diagnose failures and download or analyze evidence without navig
    - **When** MCP metadata or CLI help is inspected.
    - **Then** `get_test_result` has LLM-optimized argument documentation, read-only/idempotent annotations, and a `test-result` tag.
    - **And** the canonical CLI route is `lucius test-result get` (alias `tr`) and invokes the same tool/service behavior.
-   - **And** MCP tool output remains `plain|json` with plain as the tool default, while the CLI keeps its existing JSON default and CLI-only table/CSV rendering behavior.
+   - **And** MCP tool output remains `plain|json` with the repository-standard structured JSON default, while the CLI keeps its existing JSON default and CLI-only table/CSV rendering behavior.
    - **And** plain and JSON output expose equivalent detail and clearly report partial/unavailable sections.
    - **And** `list_launch_test_results` remains compact and backward compatible as the discovery step before this exact rich read.
    - **And** docs show how `test_result_id=1498142` is extracted from the example URL while `treeId` is ignored.
@@ -213,7 +213,7 @@ The public signature should follow existing runtime-context and output conventio
 get_test_result(
     test_result_id: int,
     project_id: int | None = None,
-    output_format: plain | json = plain,
+    output_format: plain | json = json,
 )
 ```
 
@@ -510,3 +510,13 @@ GPT-5 Codex
 - [x] [Review][Patch] [P2] Reject boolean values for Test Result IDs. [src/services/test_result_service.py:508]
 - [x] [Review][Patch] [P2] Mark a non-positive upstream launch ID as unverified context. [src/services/test_result_service.py:183]
 - [x] [Review][Patch] [P2] Do not label a test-case reference with the test-result name. [src/services/test_result_service.py:353]
+
+### Output Default Decision (2026-08-25)
+
+- User direction supersedes the earlier plain-default review decision: `get_test_result` now uses the same structured JSON default as every other MCP tool; plain output remains available explicitly.
+
+### Review Findings — Pass 2 (2026-08-25)
+
+- [ ] [Review][Patch] [P1] Exercise returned result-, step-, and fixture-level attachment download URLs with bearer auth in the sandbox E2E test, asserting bytes and available content metadata. The scenario is implemented, but fixture validation remains blocked until the sandbox returns a fixture-bearing result. [tests/e2e/test_test_result_detail.py:20]
+- [x] [Review][Patch] [P2] Cover every newly added facade wrapper's generated operation, parameters, and typed error translation, including an exact `v2=true` request assertion. [tests/integration/test_test_result_client.py:23]
+- [x] [Review][Patch] [P2] Document the example URL extraction from `/launch/89067/tree/1498142?treeId=172` to `test_result_id=1498142`, explicitly ignoring `treeId=172`. [docs/tools.md:107]

@@ -5,12 +5,13 @@ from __future__ import annotations
 import time
 from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
 from pydantic import SecretStr
 
 from src.client import AllureClient
-from src.client.generated.models.custom_field_with_values_dto import CustomFieldWithValuesDto
-from src.client.generated.models.page_test_result_history_dto import PageTestResultHistoryDto
+from src.client.exceptions import AllureNotFoundError
+from src.client.generated.exceptions import ApiException
 
 
 def _client() -> AllureClient:
@@ -24,17 +25,99 @@ def _client() -> AllureClient:
 async def test_client_exact_result_enrichment_wrappers_call_generated_controllers() -> None:
     client = _client()
     client._test_result_custom_field_api = MagicMock()
+    client._test_result_defect_api = MagicMock()
+    client._test_result_env_var_api = MagicMock()
+    client._test_result_issue_api = MagicMock()
+    client._test_result_members_api = MagicMock()
+    client._test_result_test_key_api = MagicMock()
+    client._test_fixture_result_attachment_api = MagicMock()
     client._test_result_api = MagicMock()
-    custom_fields = [CustomFieldWithValuesDto(values=[])]
-    history = PageTestResultHistoryDto(content=[], last=True, number=0)
+    custom_fields = object()
+    defects = object()
+    environment = object()
+    issues = object()
+    members = object()
+    test_keys = object()
+    history = object()
+    retries = object()
+    fixture_content = httpx.Response(200, content=b"fixture evidence")
     client._test_result_custom_field_api.get_custom_fields_with_values1 = AsyncMock(return_value=custom_fields)
+    client._test_result_defect_api.get_defects = AsyncMock(return_value=defects)
+    client._test_result_env_var_api.get_env_var_values = AsyncMock(return_value=environment)
+    client._test_result_issue_api.get_issues = AsyncMock(return_value=issues)
+    client._test_result_members_api.get_members = AsyncMock(return_value=members)
+    client._test_result_test_key_api.get_keys = AsyncMock(return_value=test_keys)
+    client._test_fixture_result_attachment_api.read_content1_without_preload_content = AsyncMock(
+        return_value=fixture_content
+    )
     client._test_result_api.find_history = AsyncMock(return_value=history)
-    client._test_result_api.find_retries = AsyncMock(return_value=history)
+    client._test_result_api.find_retries = AsyncMock(return_value=retries)
 
-    assert await client.get_test_result_custom_fields(12) == custom_fields
-    assert await client.get_test_result_history(12, page=0, size=100) == history
-    assert await client.get_test_result_retries(12, page=0, size=100) == history
+    assert await client.get_test_result_custom_fields(12) is custom_fields
+    assert await client.get_test_result_defects(12, page=2, size=50, sort=["name,ASC"]) is defects
+    assert await client.get_test_result_environment(12) is environment
+    assert await client.get_test_result_issues(12) is issues
+    assert await client.get_test_result_members(12) is members
+    assert await client.get_test_result_test_keys(12) is test_keys
+    assert await client.read_test_result_fixture_attachment_content(15) == b"fixture evidence"
+    assert await client.get_test_result_history(12, page=0, size=100) is history
+    assert await client.get_test_result_retries(12, page=0, size=100) is retries
 
-    client._test_result_custom_field_api.get_custom_fields_with_values1.assert_awaited_once()
-    client._test_result_api.find_history.assert_awaited_once()
-    client._test_result_api.find_retries.assert_awaited_once()
+    client._test_result_custom_field_api.get_custom_fields_with_values1.assert_awaited_once_with(
+        test_result_id=12, _request_timeout=client._timeout
+    )
+    client._test_result_defect_api.get_defects.assert_awaited_once_with(
+        test_result_id=12, page=2, size=50, sort=["name,ASC"], _request_timeout=client._timeout
+    )
+    client._test_result_env_var_api.get_env_var_values.assert_awaited_once_with(
+        test_result_id=12, _request_timeout=client._timeout
+    )
+    client._test_result_issue_api.get_issues.assert_awaited_once_with(
+        test_result_id=12, _request_timeout=client._timeout
+    )
+    client._test_result_members_api.get_members.assert_awaited_once_with(
+        test_result_id=12, _request_timeout=client._timeout
+    )
+    client._test_result_test_key_api.get_keys.assert_awaited_once_with(
+        test_result_id=12, _request_timeout=client._timeout
+    )
+    client._test_fixture_result_attachment_api.read_content1_without_preload_content.assert_awaited_once_with(
+        id=15, inline=False, _request_timeout=client._timeout
+    )
+    client._test_result_api.find_history.assert_awaited_once_with(
+        id=12, page=0, size=100, sort=None, _request_timeout=client._timeout
+    )
+    client._test_result_api.find_retries.assert_awaited_once_with(
+        id=12, page=0, size=100, sort=None, _request_timeout=client._timeout
+    )
+
+
+@pytest.mark.asyncio
+async def test_client_exact_result_execution_sends_v2_and_translates_errors() -> None:
+    client = _client()
+    client._api_client = MagicMock()
+    client._api_client.param_serialize.return_value = (
+        "GET",
+        "https://example.com/api/testresult/12/execution",
+        {},
+        None,
+        [],
+    )
+    client._api_client.call_api = AsyncMock(return_value=httpx.Response(200, json={"steps": []}))
+
+    assert await client.get_test_result_execution_raw(12, v2=True) == {"steps": []}
+    client._api_client.param_serialize.assert_called_once_with(
+        method="GET",
+        resource_path="/api/testresult/{id}/execution",
+        path_params={"id": 12},
+        query_params=[("v2", True)],
+        header_params={},
+        auth_settings=[],
+    )
+
+    client._test_result_issue_api = MagicMock()
+    client._test_result_issue_api.get_issues = AsyncMock(
+        side_effect=ApiException(status=404, reason="Not Found", body="{}")
+    )
+    with pytest.raises(AllureNotFoundError, match="Resource not found"):
+        await client.get_test_result_issues(12)
