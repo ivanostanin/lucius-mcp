@@ -3,7 +3,7 @@
 complete -c lucius -f
 
 # Main command tokens
-complete -c lucius -n "__fish_use_subcommand" -a "cf cfv custom-field custom-field-value custom-field-values custom-fields custom_field custom_field_value custom_field_values custom_fields defect defect-matcher defect-matchers defect_matcher defect_matchers defects df dm int integration integrations launch launches ln shared-step shared-steps shared_step shared_steps ss tc test-case test-cases test-layer test-layer-schema test-layer-schemas test-layers test-plan test-plans test-suite test-suites test_case test_cases test_layer test_layer_schema test_layer_schemas test_layers test_plan test_plans test_suite test_suites tl tls tp ts" -d "Entity"
+complete -c lucius -n "__fish_use_subcommand" -a "cf cfv custom-field custom-field-value custom-field-values custom-fields custom_field custom_field_value custom_field_values custom_fields defect defect-matcher defect-matchers defect_matcher defect_matchers defects df dm int integration integrations launch launches ln shared-step shared-steps shared_step shared_steps ss tc test-case test-cases test-layer test-layer-schema test-layer-schemas test-layers test-plan test-plans test-result test-results test-suite test-suites test_case test_cases test_layer test_layer_schema test_layer_schemas test_layers test_plan test_plans test_result test_results test_suite test_suites tl tls tp tr ts" -d "Entity"
 complete -c lucius -n "__fish_use_subcommand" -a "--help -h --version -V help version auth list install-completions" -d "Global command"
 complete -c lucius -n "__fish_seen_subcommand_from auth; and not __fish_seen_subcommand_from status" -a "status clear" -d "Auth command"
 complete -c lucius -n "__fish_seen_subcommand_from auth; and not __fish_seen_subcommand_from status" -l url -r -d "Allure TestOps base URL"
@@ -30,6 +30,7 @@ complete -c lucius -n "__fish_seen_subcommand_from tc test-case test-cases test_
 complete -c lucius -n "__fish_seen_subcommand_from test-layer test-layers test_layer test_layers tl" -a "create delete list update" -d "Action"
 complete -c lucius -n "__fish_seen_subcommand_from test-layer-schema test-layer-schemas test_layer_schema test_layer_schemas tls" -a "create delete list update" -d "Action"
 complete -c lucius -n "__fish_seen_subcommand_from test-plan test-plans test_plan test_plans tp" -a "create delete list manage-content manage_content update" -d "Action"
+complete -c lucius -n "__fish_seen_subcommand_from test-result test-results test_result test_results tr" -a "get" -d "Action"
 complete -c lucius -n "__fish_seen_subcommand_from test-suite test-suites test_suite test_suites ts" -a "assign-test-cases assign_test_cases create delete list" -d "Action"
 
 # Common action options

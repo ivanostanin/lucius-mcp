@@ -46,16 +46,23 @@ __all__ = [
     "TestCaseTestPlanBulkControllerApi",
     "TestCaseTreeBulkControllerV2Api",
     "TestCaseTreeControllerV2Api",
+    "TestFixtureResultAttachmentControllerApi",
     "TestLayerControllerApi",
     "TestLayerSchemaControllerApi",
     "TestPlanControllerApi",
     "TestResultAttachmentControllerApi",
     "TestResultBulkControllerApi",
     "TestResultControllerApi",
+    "TestResultCustomFieldControllerApi",
+    "TestResultDefectControllerApi",
+    "TestResultEnvVarControllerApi",
     "TestResultFixtureControllerApi",
     "TestResultFlatControllerApi",
+    "TestResultIssueControllerApi",
+    "TestResultMembersControllerApi",
     "TestResultRerunControllerApi",
     "TestResultRunControllerApi",
+    "TestResultTestKeyControllerApi",
     "TreeControllerV2Api",
     "UploadControllerApi",
     "UploadTestResultControllerApi",
@@ -784,16 +791,23 @@ from src.client.generated.api.test_case_tag_controller_api import TestCaseTagCon
 from src.client.generated.api.test_case_test_plan_bulk_controller_api import TestCaseTestPlanBulkControllerApi as TestCaseTestPlanBulkControllerApi
 from src.client.generated.api.test_case_tree_bulk_controller_v2_api import TestCaseTreeBulkControllerV2Api as TestCaseTreeBulkControllerV2Api
 from src.client.generated.api.test_case_tree_controller_v2_api import TestCaseTreeControllerV2Api as TestCaseTreeControllerV2Api
+from src.client.generated.api.test_fixture_result_attachment_controller_api import TestFixtureResultAttachmentControllerApi as TestFixtureResultAttachmentControllerApi
 from src.client.generated.api.test_layer_controller_api import TestLayerControllerApi as TestLayerControllerApi
 from src.client.generated.api.test_layer_schema_controller_api import TestLayerSchemaControllerApi as TestLayerSchemaControllerApi
 from src.client.generated.api.test_plan_controller_api import TestPlanControllerApi as TestPlanControllerApi
 from src.client.generated.api.test_result_attachment_controller_api import TestResultAttachmentControllerApi as TestResultAttachmentControllerApi
 from src.client.generated.api.test_result_bulk_controller_api import TestResultBulkControllerApi as TestResultBulkControllerApi
 from src.client.generated.api.test_result_controller_api import TestResultControllerApi as TestResultControllerApi
+from src.client.generated.api.test_result_custom_field_controller_api import TestResultCustomFieldControllerApi as TestResultCustomFieldControllerApi
+from src.client.generated.api.test_result_defect_controller_api import TestResultDefectControllerApi as TestResultDefectControllerApi
+from src.client.generated.api.test_result_env_var_controller_api import TestResultEnvVarControllerApi as TestResultEnvVarControllerApi
 from src.client.generated.api.test_result_fixture_controller_api import TestResultFixtureControllerApi as TestResultFixtureControllerApi
 from src.client.generated.api.test_result_flat_controller_api import TestResultFlatControllerApi as TestResultFlatControllerApi
+from src.client.generated.api.test_result_issue_controller_api import TestResultIssueControllerApi as TestResultIssueControllerApi
+from src.client.generated.api.test_result_members_controller_api import TestResultMembersControllerApi as TestResultMembersControllerApi
 from src.client.generated.api.test_result_rerun_controller_api import TestResultRerunControllerApi as TestResultRerunControllerApi
 from src.client.generated.api.test_result_run_controller_api import TestResultRunControllerApi as TestResultRunControllerApi
+from src.client.generated.api.test_result_test_key_controller_api import TestResultTestKeyControllerApi as TestResultTestKeyControllerApi
 from src.client.generated.api.tree_controller_v2_api import TreeControllerV2Api as TreeControllerV2Api
 from src.client.generated.api.upload_controller_api import UploadControllerApi as UploadControllerApi
 from src.client.generated.api.upload_test_result_controller_api import UploadTestResultControllerApi as UploadTestResultControllerApi

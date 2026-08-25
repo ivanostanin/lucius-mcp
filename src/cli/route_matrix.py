@@ -45,6 +45,9 @@ CANONICAL_ROUTE_MATRIX: dict[str, dict[str, str]] = {
     "integration": {
         "list": "list_integrations",
     },
+    "test_result": {
+        "get": "get_test_result",
+    },
     "shared_step": {
         "create": "create_shared_step",
         "list": "list_shared_steps",
@@ -102,6 +105,7 @@ ENTITY_ALIASES: dict[str, str] = {
     "cf": "custom_field",
     "cfv": "custom_field_value",
     "ln": "launch",
+    "tr": "test_result",
     "int": "integration",
     "ss": "shared_step",
     "tl": "test_layer",
@@ -112,6 +116,7 @@ ENTITY_ALIASES: dict[str, str] = {
     "dm": "defect_matcher",
     "integrations": "integration",
     "test_cases": "test_case",
+    "test_results": "test_result",
     "launches": "launch",
     "shared_steps": "shared_step",
     "test_layers": "test_layer",

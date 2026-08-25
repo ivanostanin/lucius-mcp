@@ -285,6 +285,253 @@ class LaunchDetailOutput(BaseModel):
     url: str | None = Field(default=None)
 
 
+class TestResultAttachmentOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = None
+    name: str | None = None
+    entity: str | None = None
+    content_type: str | None = None
+    content_length: int | None = None
+    missed: bool | None = None
+    from_test_case: bool | None = None
+    storage_key: str | None = None
+    download_url: str | None = None
+
+
+class TestResultStepOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = None
+    type: str | None = None
+    name: str | None = None
+    action: str | None = None
+    body: str | None = None
+    body_json: object | None = None
+    expected_result: str | None = None
+    keyword: str | None = None
+    status: str | None = None
+    start: int | None = None
+    stop: int | None = None
+    duration: int | None = None
+    message: str | None = None
+    trace: str | None = None
+    parameters: list[dict[str, object]] = Field(default_factory=list)
+    attachments: list[TestResultAttachmentOutput] = Field(default_factory=list)
+    steps: list[TestResultStepOutput] = Field(default_factory=list)
+
+
+class TestResultFixtureOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = None
+    name: str | None = None
+    type: str | None = None
+    status: str | None = None
+    start: int | None = None
+    stop: int | None = None
+    duration: int | None = None
+    message: str | None = None
+    trace: str | None = None
+    steps: list[TestResultStepOutput] = Field(default_factory=list)
+    attachments: list[TestResultAttachmentOutput] = Field(default_factory=list)
+
+
+class RelatedTestResultOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    relation: str
+    test_result_id: int | None = None
+    launch_id: int | None = None
+    name: str | None = None
+    status: str | None = None
+    url: str | None = None
+
+
+class UnavailableSectionOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    section: str
+    reason: str
+    status_code: int | None = None
+    message: str | None = None
+    items_retrieved: int = Field(ge=0)
+
+
+class TestResultNamedOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = None
+    name: str | None = None
+
+
+class TestResultReferenceOutput(TestResultNamedOutput):
+    url: str | None = None
+
+
+class TestResultParameterOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    name: str | None = None
+    value: str | None = None
+    excluded: bool | None = None
+    hidden: bool | None = None
+
+
+class TestResultLinkOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    name: str | None = None
+    type: str | None = None
+    url: str | None = None
+
+
+class TestResultJobOutput(TestResultReferenceOutput):
+    type: str | None = None
+
+
+class TestResultJobRunOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = None
+    name: str | None = None
+    status: str | None = None
+    stage: str | None = None
+    url: str | None = None
+    error_message: str | None = None
+    external_id: str | None = None
+    job: TestResultJobOutput | None = None
+
+
+class TestResultCoreOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    name: str | None = None
+    full_name: str | None = None
+    status: str | None = None
+    manual: bool | None = None
+    external: bool | None = None
+    hidden: bool | None = None
+    flaky: bool | None = None
+    muted: bool | None = None
+    known: bool | None = None
+    start: int | None = None
+    stop: int | None = None
+    duration: int | None = None
+    created_date: int | None = None
+    last_modified_date: int | None = None
+    created_by: str | None = None
+    last_modified_by: str | None = None
+    assignee: str | None = None
+    tested_by: str | None = None
+    host_id: str | None = None
+    thread_id: str | None = None
+    scenario_key: str | None = None
+    history_key: str | None = None
+    description: str | None = None
+    description_html: str | None = None
+    precondition: str | None = None
+    precondition_html: str | None = None
+    expected_result: str | None = None
+    expected_result_html: str | None = None
+    message: str | None = None
+    trace: str | None = None
+    category: TestResultNamedOutput | None = None
+    layer: TestResultNamedOutput | None = None
+    parameters: list[TestResultParameterOutput] = Field(default_factory=list)
+    tags: list[TestResultNamedOutput] = Field(default_factory=list)
+    links: list[TestResultLinkOutput] = Field(default_factory=list)
+    job_run: TestResultJobRunOutput | None = None
+
+
+class TestResultCustomFieldOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = None
+    name: str | None = None
+    required: bool | None = None
+    single_select: bool | None = None
+    locked: bool | None = None
+    archived: bool | None = None
+    default_custom_field_value_id: int | None = None
+
+
+class TestResultCustomFieldValuesOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    custom_field: TestResultCustomFieldOutput | None = None
+    values: list[TestResultNamedOutput] = Field(default_factory=list)
+
+
+class TestResultEnvironmentOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = None
+    name: str | None = None
+    variable: TestResultNamedOutput | None = None
+
+
+class TestResultMemberOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = None
+    name: str | None = None
+    role: TestResultNamedOutput | None = None
+
+
+class TestResultKeyOutput(TestResultReferenceOutput):
+    integration_id: int | None = None
+
+
+class TestResultIssueOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = None
+    integration_id: int | None = None
+    integration_type: str | None = None
+    name: str | None = None
+    display_name: str | None = None
+    status: str | None = None
+    summary: str | None = None
+    url: str | None = None
+    closed: bool | None = None
+
+
+class TestResultDefectOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = None
+    name: str | None = None
+    closed: bool | None = None
+    issue: TestResultIssueOutput | None = None
+
+
+class TestResultDetailOutput(BaseModel):
+    """Stable object-root output for one exact enriched TestOps result."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    actual_launch_id: int | None = None
+    test_result_id: int | None = None
+    project_id: int | None = None
+    result_url: str | None = None
+    launch_url: str | None = None
+    test_case: TestResultReferenceOutput | None = None
+    core: TestResultCoreOutput | None = None
+    custom_fields: list[TestResultCustomFieldValuesOutput] | None = None
+    environment: list[TestResultEnvironmentOutput] | None = None
+    members: list[TestResultMemberOutput] | None = None
+    test_keys: list[TestResultKeyOutput] | None = None
+    issues: list[TestResultIssueOutput] | None = None
+    defects: list[TestResultDefectOutput] | None = None
+    execution_steps: list[TestResultStepOutput] | None = None
+    fixtures: list[TestResultFixtureOutput] | None = None
+    result_attachments: list[TestResultAttachmentOutput] | None = None
+    related_results: list[RelatedTestResultOutput] | None = None
+    partial: bool | None = None
+    unavailable_sections: list[UnavailableSectionOutput] | None = None
+
+
 class ListLaunchesOutput(BaseModel):
     """Paginated compact launches."""
 

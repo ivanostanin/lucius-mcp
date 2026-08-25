@@ -100,6 +100,12 @@ returns the resolved canonical metadata list.
 | `add_test_result_attachment` | Upload evidence to a manual test result.                        | `test_result_id`, `attachment` |
 | `add_test_step_attachment`   | Upload evidence to a manual attachment step; fixture selectors remain as fallback. | `test_result_id`, `attachment`, `step_name` |
 
+## ✅ Test Result Management
+
+| Tool | Description                                                                                                                             | Key Parameters |
+|:-----|:----------------------------------------------------------------------------------------------------------------------------------------|:---------------|
+| `get_test_result` | Read one exact Test Result with curated execution evidence, stable attachment URLs, related-result links, and partial-data diagnostics. | `test_result_id` |
+
 ## 📋 Test Plan Management
 
 | Tool                       | Description                                         | Key Parameters                              |

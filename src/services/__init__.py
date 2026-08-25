@@ -12,6 +12,7 @@ from .telemetry_service import TelemetryService
 from .test_case_service import TestCaseService
 from .test_hierarchy_service import TestHierarchyService
 from .test_layer_service import TestLayerService
+from .test_result_service import TestResultService
 
 __all__ = [
     "AttachmentService",
@@ -26,4 +27,5 @@ __all__ = [
     "TestCaseService",
     "TestHierarchyService",
     "TestLayerService",
+    "TestResultService",
 ]
