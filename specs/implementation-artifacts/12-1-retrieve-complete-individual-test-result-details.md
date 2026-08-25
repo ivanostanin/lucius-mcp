@@ -7,29 +7,29 @@ Status: in-progress
 ## Story
 
 As an **AI Agent**,
-I want to **retrieve a complete, stable view of one launch test result using its Launch ID and Test Result ID, including execution details and authenticated direct attachment download links**,
+I want to **retrieve a complete, stable view of one test result using its Test Result ID, including execution details and authenticated direct attachment download links**,
 so that **I can diagnose failures and download or analyze evidence without navigating TestOps manually or recursively loading related runs**.
 
 ## Acceptance Criteria
 
 1. **Resolve the exact Test Result ID with launch URL context**
    - **Given** a TestOps link such as `/launch/89067/tree/1498142?treeId=172`.
-   - **When** I call `get_test_run_result(launch_id=89067, test_result_id=1498142)`.
+   - **When** I call `get_test_result(test_result_id=1498142)`.
    - **Then** Lucius treats `1498142` as the Test Result ID and ignores `treeId`.
    - **And** the public tool has no `tree_id` input and does not parse or emit the `treeId` query parameter.
    - **And** the authoritative core read uses `GET /api/testresult/{id}` for the exact Test Result ID.
-   - **And** both IDs are validated as positive integers.
+   - **And** the Test Result ID is validated as a positive integer.
    - **And** Lucius does not scan the launch or perform a separate client-side launch/result membership check.
-   - **And** the response discloses the result's actual upstream `launch_id` when available instead of claiming that the supplied pair was relationship-validated.
+   - **And** the response discloses the result's actual upstream `launch_id` when available.
    - **And** the result browser URL is `{base_url}/launch/{actual_launch_id}/tree/{test_result_id}` with no `treeId` query, using the authoritative result's upstream Launch ID.
-   - **And** `result_url` is omitted and the relevant section is marked unavailable when the upstream result does not provide a verified Launch ID; the supplied Launch ID is never substituted into a URL that claims a verified result relationship.
+   - **And** `result_url` is omitted and the relevant section is marked unavailable when the upstream result does not provide a verified Launch ID.
 
 2. **Return a stable, curated, complete Lucius result DTO**
    - **Given** the authoritative Test Result exists.
    - **When** the response is composed.
    - **Then** application-owned strict DTOs expose all available verified fields grouped into stable sections rather than leaking generated DTO dumps or raw API dictionaries.
    - **And** the contract includes, where available:
-     - identity and context: supplied/actual Launch ID, Test Result ID, Project ID, Test Case ID, result URL, launch URL, and Test Case URL;
+     - identity and context: actual Launch ID, Test Result ID, Project ID, Test Case ID, result URL, launch URL, and Test Case URL;
      - name, full name, status, manual/external/hidden/flaky/muted/known flags;
      - start, stop, duration, creation, and modification metadata;
      - assignee, tester, creator, modifier, host, thread, scenario key, and history key;
@@ -69,7 +69,7 @@ so that **I can diagnose failures and download or analyze evidence without navig
    - **When** Lucius includes them.
    - **Then** each related execution is projected to a compact typed reference containing the available relation, ID, identifying label/status, launch context, and stable URL.
    - **And** Lucius may page through history/retry indexes to discover all references.
-   - **But** it never calls `get_test_run_result` recursively and never fetches full detail/enrichment for any referenced result or run.
+   - **But** it never calls `get_test_result` recursively and never fetches full detail/enrichment for any referenced result or run.
    - **And** a URL is omitted rather than invented when the related launch/result context cannot be verified.
 
 6. **Return best-effort partial results with explicit completeness diagnostics**
@@ -110,12 +110,12 @@ so that **I can diagnose failures and download or analyze evidence without navig
 9. **Expose the workflow consistently through MCP, CLI, documentation, and tests**
    - **Given** the new read-only tool is registered.
    - **When** MCP metadata or CLI help is inspected.
-   - **Then** `get_test_run_result` has LLM-optimized argument documentation, read-only/idempotent annotations, and `launch`/`test-result` tags.
-   - **And** the canonical CLI route is `lucius launch get_test_run_result` and invokes the same tool/service behavior.
+   - **Then** `get_test_result` has LLM-optimized argument documentation, read-only/idempotent annotations, and a `test-result` tag.
+   - **And** the canonical CLI route is `lucius test-result get` (alias `tr`) and invokes the same tool/service behavior.
    - **And** MCP tool output remains `plain|json` with plain as the tool default, while the CLI keeps its existing JSON default and CLI-only table/CSV rendering behavior.
    - **And** plain and JSON output expose equivalent detail and clearly report partial/unavailable sections.
    - **And** `list_launch_test_results` remains compact and backward compatible as the discovery step before this exact rich read.
-   - **And** docs show how `launch_id=89067` and `test_result_id=1498142` are extracted from the example URL while `treeId` is ignored.
+   - **And** docs show how `test_result_id=1498142` is extracted from the example URL while `treeId` is ignored.
    - **And** unit, integration, output-schema, registry, CLI, agentic, and sandbox E2E tests cover the complete contract.
    - **And** sandbox E2E tests download representative result-, step-, and fixture-level evidence through returned URLs using the same bearer token and verify bytes/content metadata.
 
@@ -150,7 +150,7 @@ so that **I can diagnose failures and download or analyze evidence without navig
   - [ ] Preserve step/fixture hierarchy, reconcile and deduplicate fixture attachments by ID, and never guess fixture association or expose orphan fixture evidence.
   - [ ] Project history/retries/related runs to link-only references and prohibit recursive detail calls.
   - [ ] Build deterministic `partial` and `unavailable_sections` state with sanitized diagnostics.
-  - [ ] Do not compare the returned result's Launch ID to the supplied Launch ID or scan launch results for membership.
+  - [ ] Do not scan launch results for membership; use only the authoritative result's upstream Launch ID for navigation URLs.
 
 - [ ] **Task 4: Add verified URL helpers** (AC: 1, 4, 5)
   - [ ] Extend `src/utils/links.py` with a test-result browser URL helper that requires the authoritative upstream Launch ID and omits `treeId`.
@@ -160,30 +160,30 @@ so that **I can diagnose failures and download or analyze evidence without navig
 
 - [ ] **Task 5: Add the thin MCP tool and stable output schema** (AC: 2, 6, 9)
   - [ ] Add strict nested Pydantic output models in `src/tools/output_schemas.py` using `extra="forbid"` and the repository's schema conventions.
-  - [ ] Add `get_test_run_result` to `src/tools/launches.py`; limit the tool to resolving context, calling `TestResultService`, and rendering the result.
-  - [ ] Use `test_result_id` consistently in the public signature and documentation even though the user-facing tool name says “test run result.”
+  - [ ] Add `get_test_result` to `src/tools/launches.py`; limit the tool to resolving context, calling `TestResultService`, and rendering the result.
+  - [ ] Use `test_result_id` consistently in the public signature and documentation.
   - [ ] Add `@output_fields(...)` with the concrete top-level output model.
   - [ ] Implement complete JSON serialization and an LLM-readable plain renderer with explicit partial/unavailable reporting.
   - [ ] Keep try/except and endpoint choreography out of the tool.
 
 - [ ] **Task 6: Register MCP/CLI/package metadata** (AC: 9)
-  - [ ] Import, export, and register `get_test_run_result` in `src/tools/__init__.py` in the same change as its output schema.
-  - [ ] Add read-only/idempotent annotations and `launch`/`test-result` tags in `src/tools/annotations.py`.
-  - [ ] Add `"get_test_run_result": "get_test_run_result"` to the canonical `launch` route in `src/cli/route_matrix.py`.
+  - [ ] Import, export, and register `get_test_result` in `src/tools/__init__.py` in the same change as its output schema.
+  - [ ] Add read-only/idempotent annotations and the `test-result` tag in `src/tools/annotations.py`.
+  - [ ] Add `"get": "get_test_result"` to the canonical `test_result` route in `src/cli/route_matrix.py` and alias it as `tr`.
   - [ ] Regenerate `src/cli/data/tool_schemas.json`, MCP documentation/manifest metadata, MCPB manifests, and shell completions using repository scripts.
   - [ ] Do not add a second CLI business path or import FastMCP runtime wiring into CLI execution.
 
 - [ ] **Task 7: Add focused unit and integration coverage** (AC: 1-9)
   - [ ] Add `tests/unit/test_test_result_service.py` for complete mapping, all falsey values, verified-empty versus unavailable, each optional failure, later-page failure, pagination termination, hierarchy preservation, and non-recursion.
-  - [ ] Extend `tests/integration/test_launch_client.py` (or add a focused test-result client file) for every wrapper, endpoint, query, response mapping, and typed error translation, including an exact assertion that execution sends `v2=true`.
-  - [ ] Extend `tests/unit/test_launch_tools.py` for argument forwarding, JSON/plain parity, partial diagnostics, and attachment links.
+  - [ ] Add `tests/integration/test_test_result_client.py` for every wrapper, endpoint, query, response mapping, and typed error translation, including an exact assertion that execution sends `v2=true`.
+  - [ ] Add `tests/unit/test_test_result_tools.py` for argument forwarding, JSON/plain parity, partial diagnostics, and attachment links.
   - [ ] Extend link, output-schema, structured-output, annotation, registry, facade-coverage, manifest, route-matrix, and completion tests.
-  - [ ] Assert that a supplied launch/result mismatch is not locally rejected, the actual upstream Launch ID remains visible, and `result_url` uses only that authoritative ID.
+  - [ ] Assert that only `test_result_id` is forwarded, the actual upstream Launch ID remains visible, and `result_url` uses only that authoritative ID.
 
 - [ ] **Task 8: Add CLI, agentic, and sandbox E2E coverage** (AC: 1-9)
   - [ ] Extend the shared `uv run lucius` E2E suite for launch discovery, action help, route execution, default JSON, and representative plain rendering.
   - [ ] Update `tests/agentic/agentic-tool-calls-tests.md` with the example-link extraction workflow and attachment-analysis follow-up.
-  - [ ] Extend `tests/e2e/test_launch_manual_execution.py` or add a dedicated sandbox test that obtains a real result with result, step, and fixture evidence.
+  - [ ] Add `tests/e2e/test_test_result_detail.py`, separate from manual-launch execution coverage, to obtain a real result with result, step, and fixture evidence.
   - [ ] Verify rich fields, attachment placement, related link-only output, result URL without `treeId`, and no recursive result calls.
   - [ ] Download returned evidence URLs with the same bearer auth and verify status, bytes, content type, and content length where available.
   - [ ] Keep deterministic partial-failure permutations in unit/integration tests rather than inducing sandbox failures.
@@ -204,31 +204,30 @@ This is a rich exact-result read, not a replacement for compact discovery:
 | Surface | Purpose | Contract |
 |:--|:--|:--|
 | `list_launch_test_results` | Discover result IDs inside a launch | Keep existing compact paginated items unchanged |
-| `get_test_run_result` | Inspect one exact result and its evidence | New curated comprehensive DTO with partial diagnostics |
+| `get_test_result` | Inspect one exact result and its evidence | New curated comprehensive DTO with partial diagnostics |
 | Related history/retry/run references | Navigate to adjacent executions | Link-only; never recursively enrich |
 
 The public signature should follow existing runtime-context and output conventions:
 
 ```text
-get_test_run_result(
-    launch_id: int,
+get_test_result(
     test_result_id: int,
     project_id: int | None = None,
     output_format: plain | json = plain,
 )
 ```
 
-The example TestOps URL supplies two useful path IDs:
+The example TestOps URL supplies the Test Result ID and upstream navigation context:
 
 ```text
 https://noxtua.testops.cloud/launch/89067/tree/1498142?treeId=172
-                                      ^^^^^             launch_id
+                                      ^^^^^             upstream launch context only
                                                  ^^^^^^^ test_result_id
 ```
 
 `treeId=172` is UI tree state. It is intentionally ignored and is not part of the public contract.
 
-`GET /api/testresult/{id}` is not launch-scoped. Under the requested policy, Lucius must not add a launch scan or reject a mismatch itself. Therefore `launch_id` supplies navigation/link context, while the response should expose the actual upstream Launch ID when TestOps returns one. Do not state that TestOps validated the supplied pair if it did not.
+`GET /api/testresult/{id}` is not launch-scoped. Lucius therefore accepts only the Test Result ID, does not add a launch scan, and exposes the actual upstream Launch ID only when TestOps returns it. The launch path segment in a copied UI URL is navigation context, not a tool argument.
 
 ### Stable Response Contract
 
@@ -236,7 +235,7 @@ Use strict, application-owned nested models. The exact class names may follow ex
 
 ```text
 TestRunResultDetail
-├── requested_launch_id, actual_launch_id, test_result_id, project_id
+├── actual_launch_id, test_result_id, project_id
 ├── url, launch_url, test_case
 ├── core metadata/status/timing/content/source
 ├── parameters, tags, links, custom_fields, environment
@@ -354,7 +353,7 @@ Regenerate through `./scripts/generate_testops_api_client.sh`; never hand-edit `
 | Client facade | `src/client/client.py` | Add controller lifecycle and detail wrappers |
 | Result service | `src/services/test_result_service.py`, `src/services/__init__.py` | New curated DTO/orchestration service |
 | URL helpers | `src/utils/links.py` | Add verified result and attachment URL helpers |
-| Launch tool | `src/tools/launches.py` | Add thin `get_test_run_result` wrapper/renderers |
+| Test-result tool | `src/tools/launches.py` | Add thin `get_test_result` wrapper/renderers |
 | Output schemas | `src/tools/output_schemas.py` | Add strict stable nested models |
 | Tool registry/metadata | `src/tools/__init__.py`, `src/tools/annotations.py` | Register and classify the tool |
 | CLI | `src/cli/route_matrix.py`, `src/cli/data/tool_schemas.json` | Add route and regenerate metadata |
@@ -390,11 +389,11 @@ Regenerate through `./scripts/generate_testops_api_client.sh`; never hand-edit `
 - The checked-in full OpenAPI and generated client are the repository-specific sources of truth. External browsing was unavailable at story creation because the configured browser harness required Chrome remote-debugging approval.
 - The filtered client already includes the core Test Result controller; client generation is still required because seven requested read surfaces are currently filtered out.
 - Fixture attachment content has its own verified OpenAPI path and must not be routed through the result attachment endpoint.
-- The exact result API accepts only Test Result ID. The story intentionally does not add a Lucius membership scan, so implementation and docs must describe the supplied Launch ID as navigation context.
+- The exact result API accepts only Test Result ID. The story intentionally does not add a Lucius membership scan; the launch segment in a copied UI URL is navigation context only.
 
 ### References
 
-- [Source: specs/project-planning-artifacts/epics.md#Epic 12: Enhanced Launch Workflows]
+- [Source: specs/project-planning-artifacts/epics.md#Epic 12: Enhanced Launch and Test Result Management]
 - [Source: specs/project-planning-artifacts/epics.md#Epic 5: Execution Management]
 - [Source: specs/project-planning-artifacts/epics.md#Epic 10: Quality of Life and API Coverage]
 - [Source: specs/implementation-artifacts/10-2-manual-test-execution-inside-launches.md#Observed Sandbox Semantics]
@@ -437,16 +436,18 @@ GPT-5 Codex
 - External browser research was attempted but blocked by Chrome remote-debugging approval; local OpenAPI 25.4.1, generated client, current source, and completed sandbox-informed stories were used as technical authority.
 - Regenerated the filtered OpenAPI client with all seven requested read-controller tags, then ran focused lint, strict typing, registry, CLI, documentation, unit, integration, and sandbox checks.
 - Sandbox E2E verified the exact curated read and authenticated result/step evidence paths. A read-only scan found no fixture attachment sample in the accessible sandbox launch data, so fixture download remains unverified live.
+- Renamed the public tool to `get_test_result` and moved its CLI surface from launch management to `lucius test-result get` (alias `lucius tr get`), matching TestOps' `/testresult/{id}` resource.
+- Split coverage into dedicated result-service/tool unit tests, client integration tests, CLI route tests, and `test_test_result_detail.py` sandbox E2E rather than extending the manual-launch submission test.
 
 ### Completion Notes List
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
-- Created new Epic 12, **Enhanced Launch Workflows**, and Story 12.1 with the user-selected tool and story names.
-- Defined `launch_id` plus `test_result_id` extraction from TestOps result links and explicitly ignored `treeId`.
+- Created new Epic 12, **Enhanced Launch and Test Result Management**, and Story 12.1.
+- Defined `test_result_id` extraction from TestOps result links and explicitly ignored `treeId`.
 - Required a stable curated Lucius DTO, non-recursive related-result links, entity-level attachment placement, permanent bearer-authenticated evidence URLs, and explicit best-effort completeness diagnostics.
 - Confirmed generated client regeneration is necessary for seven read-controller families present in the full OpenAPI but absent from the filtered client.
 - Implemented the in-progress exact-result service, facade wrappers, URL helpers, MCP/CLI registration, generated metadata, docs, and deterministic unit coverage.
-- Validation passed: 1,050 unit/integration tests; 148 docs/CLI tests; and 4 sandbox manual-launch E2E tests.
+- Focused validation passed: Ruff formatting/linting, strict mypy, dedicated unit/integration/CLI/metadata checks, and 5 sandbox E2E tests (the separate result-detail test plus manual-launch workflow).
 - Blocker: fixture-level attachment download could not be exercised because the configured sandbox returned no fixture attachment evidence during a read-only scan. Keep this story in progress until a fixture-evidence sample is available or the environment is explicitly waived.
 
 ### File List
@@ -473,9 +474,13 @@ GPT-5 Codex
 - deployment/mcpb/manifest.python.json
 - deployment/shell-completions/
 - tests/unit/test_test_result_service.py
+- tests/unit/test_test_result_tools.py
 - tests/unit/test_launch_tools.py
 - tests/unit/test_links.py
+- tests/integration/test_test_result_client.py
 - tests/e2e/test_launch_manual_execution.py
+- tests/e2e/test_test_result_detail.py
+- tests/e2e/test_cli_entity_commands_uv_run.py
 - tests/agentic/agentic-tool-calls-tests.md
 - README.md
 
@@ -483,3 +488,4 @@ GPT-5 Codex
 
 - 2026-08-25: Created Epic 12 and Story 12.1; marked the story ready for development.
 - 2026-08-25: Began implementation; regenerated required client surfaces and added the curated exact-result read. Story remains in progress pending live fixture-evidence download validation.
+- 2026-08-25: Renamed the tool to `get_test_result`, added `test-result`/`tr` CLI routing, updated documentation and generated metadata, and separated result-detail unit, integration, and E2E coverage.

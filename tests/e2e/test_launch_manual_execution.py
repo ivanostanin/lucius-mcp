@@ -9,7 +9,6 @@ from src.client.exceptions import AllureNotFoundError
 from src.client.generated.models.test_result_create_v2_dto import TestResultCreateV2Dto
 from src.services.launch_service import LaunchService
 from src.services.test_case_service import TestCaseService
-from src.services.test_result_service import TestResultService
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 pytestmark = pytest.mark.asyncio(loop_scope="module")
@@ -297,19 +296,6 @@ async def test_manual_launch_submission_creates_complete_new_result(
 
     attachment_bytes = await allure_client.read_test_result_attachment_content(step_attachment.target_id)
     assert attachment_bytes == b"Sandbox manual step evidence"
-
-    detail = await TestResultService(allure_client).get_test_run_result(launch.id, created_result_id)
-    assert detail.actual_launch_id == launch.id
-    assert detail.result_url == f"{allure_client.get_base_url()}/launch/{launch.id}/tree/{created_result_id}"
-    assert "treeId" not in detail.result_url
-    assert any(attachment.download_url for attachment in detail.result_attachments)
-    assert any(
-        attachment.download_url
-        == f"{allure_client.get_base_url()}/api/testresult/attachment/{step_attachment.target_id}/content?inline=false"
-        for step in detail.execution_steps
-        for child in step.steps
-        for attachment in child.attachments
-    )
 
 
 async def _create_launch_with_test_case(

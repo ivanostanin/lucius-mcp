@@ -71,10 +71,10 @@ def _client() -> MagicMock:
 
 
 @pytest.mark.asyncio
-async def test_get_test_run_result_uses_exact_id_preserves_falsey_values_and_v2_execution() -> None:
+async def test_get_test_result_uses_exact_id_preserves_falsey_values_and_v2_execution() -> None:
     client = _client()
 
-    detail = await TestResultService(client).get_test_run_result(89067, 1498142)
+    detail = await TestResultService(client).get_test_result(1498142)
 
     client.get_test_result.assert_awaited_once_with(1498142)
     client.get_test_result_execution_raw.assert_awaited_once_with(1498142, v2=True)
@@ -90,12 +90,12 @@ async def test_get_test_run_result_uses_exact_id_preserves_falsey_values_and_v2_
 
 
 @pytest.mark.asyncio
-async def test_get_test_run_result_reports_optional_failure_and_never_substitutes_launch_context() -> None:
+async def test_get_test_result_reports_optional_failure_and_never_substitutes_launch_context() -> None:
     client = _client()
     client.get_test_result.return_value.launch_id = None
     client.get_test_result_issues.side_effect = AllureAPIError("unavailable", status_code=503)
 
-    detail = await TestResultService(client).get_test_run_result(89067, 1498142)
+    detail = await TestResultService(client).get_test_result(1498142)
 
     assert detail.result_url is None
     assert detail.partial is True
@@ -104,7 +104,7 @@ async def test_get_test_run_result_reports_optional_failure_and_never_substitute
 
 
 @pytest.mark.asyncio
-async def test_get_test_run_result_reports_unverified_fixture_attachment_ownership() -> None:
+async def test_get_test_result_reports_unverified_fixture_attachment_ownership() -> None:
     client = _client()
     client.get_test_result_fixtures.return_value = [
         SimpleNamespace(id=1, name="setup", scenario=SimpleNamespace(steps=[]), type="before")
@@ -113,7 +113,7 @@ async def test_get_test_run_result_reports_unverified_fixture_attachment_ownersh
         content=[SimpleNamespace(id=99, name="orphan.log", entity="test_fixture_result")], last=True, number=0
     )
 
-    detail = await TestResultService(client).get_test_run_result(89067, 1498142)
+    detail = await TestResultService(client).get_test_result(1498142)
 
     assert detail.fixtures[0].attachments == ()
     assert any(item.section == "fixture_attachments" for item in detail.unavailable_sections)

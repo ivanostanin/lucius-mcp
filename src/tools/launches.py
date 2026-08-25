@@ -25,7 +25,7 @@ from src.tools.output_schemas import (
     LaunchDetailOutput,
     LaunchMutationSummary,
     ListLaunchesOutput,
-    TestRunResultDetailOutput,
+    TestResultDetailOutput,
     output_fields,
 )
 from src.utils.auth_resolution import resolve_auth_settings
@@ -70,7 +70,6 @@ _LAUNCH_DETAIL_OUTPUT_FIELDS = (
     "url",
 )
 _TEST_RUN_RESULT_OUTPUT_FIELDS = (
-    "requested_launch_id",
     "actual_launch_id",
     "test_result_id",
     "project_id",
@@ -375,9 +374,8 @@ async def list_launch_test_results(
     )
 
 
-@output_fields(*_TEST_RUN_RESULT_OUTPUT_FIELDS, model=TestRunResultDetailOutput)
-async def get_test_run_result(
-    launch_id: Annotated[int, Field(description="Launch ID from the /launch/{launch_id}/tree/... URL path.")],
+@output_fields(*_TEST_RUN_RESULT_OUTPUT_FIELDS, model=TestResultDetailOutput)
+async def get_test_result(
     test_result_id: Annotated[
         int,
         Field(description="Exact Test Result ID from the /tree/{test_result_id} URL path; ignore treeId query state."),
@@ -390,8 +388,8 @@ async def get_test_run_result(
     """Retrieve one complete TestOps result without recursively reading related results.
 
     Args:
-        launch_id: Navigation context from the launch URL. It is not used to scan or validate result membership.
-        test_result_id: Exact result ID from the tree URL path. Ignore a ``treeId`` query parameter.
+        test_result_id: Exact TestOps result ID matching ``/api/testresult/{id}``.
+            Ignore a ``treeId`` URL query parameter.
         project_id: Optional project override.
         output_format: Structured JSON (default) or plain agent-readable detail.
 
@@ -399,11 +397,11 @@ async def get_test_run_result(
         Curated result detail, authenticated attachment download paths, and explicit partial-data diagnostics.
     """
     async with _launch_client_context(project_id=project_id) as client:
-        result = await TestResultService(client).get_test_run_result(launch_id, test_result_id)
+        result = await TestResultService(client).get_test_result(test_result_id)
 
     payload = asdict(result)
     return render_output(
-        plain=_format_test_run_result(payload),
+        plain=_format_test_result(payload),
         json_payload=payload,
         output_format=output_format,
     )
@@ -1021,13 +1019,12 @@ def _format_launch_detail(launch: object, *, base_url: str, project_id: int) -> 
     return "\n".join(lines)
 
 
-def _format_test_run_result(payload: dict[str, object]) -> str:
+def _format_test_result(payload: dict[str, object]) -> str:
     """Render the full stable payload in a compact, agent-readable form."""
     core = payload.get("core")
     core_values = core if isinstance(core, dict) else {}
     lines = ["Test run result:"]
     lines.append(f"- Test Result ID: {payload.get('test_result_id')}")
-    lines.append(f"- Requested launch ID: {payload.get('requested_launch_id')}")
     lines.append(f"- Actual launch ID: {payload.get('actual_launch_id')}")
     if payload.get("result_url") is not None:
         lines.append(f"- Result URL: {payload['result_url']}")

@@ -4809,16 +4809,12 @@
       "execution": null
     },
     {
-      "name": "get_test_run_result",
-      "title": "Get Test Run Result",
+      "name": "get_test_result",
+      "title": "Get Test Result",
       "description": "Retrieve one complete TestOps result without recursively reading related results.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
-          "launch_id": {
-            "description": "Launch ID from the /launch/{launch_id}/tree/... URL path.",
-            "type": "integer"
-          },
           "test_result_id": {
             "description": "Exact Test Result ID from the /tree/{test_result_id} URL path; ignore treeId query state.",
             "type": "integer"
@@ -4853,7 +4849,6 @@
           }
         },
         "required": [
-          "launch_id",
           "test_result_id"
         ],
         "type": "object"
@@ -5426,18 +5421,6 @@
         "additionalProperties": false,
         "description": "Stable object-root output for one exact enriched TestOps result.",
         "properties": {
-          "requested_launch_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Requested Launch Id"
-          },
           "actual_launch_id": {
             "anyOf": [
               {
@@ -5708,12 +5691,12 @@
             "title": "Unavailable Sections"
           }
         },
-        "title": "TestRunResultDetailOutput",
+        "title": "TestResultDetailOutput",
         "type": "object"
       },
       "icons": null,
       "annotations": {
-        "title": "Get Test Run Result",
+        "title": "Get Test Result",
         "readOnlyHint": true,
         "destructiveHint": false,
         "idempotentHint": true,
@@ -5722,7 +5705,6 @@
       "_meta": {
         "fastmcp": {
           "tags": [
-            "launch",
             "test-result"
           ]
         }

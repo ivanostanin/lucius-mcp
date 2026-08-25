@@ -125,6 +125,19 @@ def test_uv_run_launch_execution_flows(
         assert marker in result.stdout
 
 
+@pytest.mark.parametrize("entity", ["test-result", "test_result", "tr"])
+def test_uv_run_test_result_get_routes_to_exact_result_tool(entity: str) -> None:
+    result = run_uv_cli_with_mocked_result(
+        [entity, "get", "--args", '{"test_result_id": 10}'],
+        "get_test_result",
+        '{"test_result_id":10,"partial":false}',
+        "json",
+    )
+
+    assert_clean_cli_result(result)
+    assert '"test_result_id":10' in result.stdout
+
+
 @pytest.mark.parametrize(
     ("tz_value", "expected_time", "expected_caption"),
     [

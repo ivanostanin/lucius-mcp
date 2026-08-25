@@ -94,7 +94,6 @@ class RelatedResult:
 
 @dataclass(frozen=True)
 class TestRunResultDetail:
-    requested_launch_id: int
     actual_launch_id: int | None
     test_result_id: int
     project_id: int | None
@@ -130,9 +129,8 @@ class TestResultService:
         self._base_url = client.get_base_url()
         self._project_id = client.get_project()
 
-    async def get_test_run_result(self, launch_id: int, test_result_id: int) -> TestRunResultDetail:
+    async def get_test_result(self, test_result_id: int) -> TestRunResultDetail:
         """Return a stable exact-result view; base lookup failures remain fatal."""
-        self._validate_positive(launch_id, "Launch ID")
         self._validate_positive(test_result_id, "Test Result ID")
         result = await self._client.get_test_result(test_result_id)
         actual_launch_id = _int_value(result, "launch_id")
@@ -200,7 +198,6 @@ class TestResultService:
             related = (*related, self._related_reference(retried_by, "retried_by", actual_launch_id))
 
         return TestRunResultDetail(
-            requested_launch_id=launch_id,
             actual_launch_id=actual_launch_id,
             test_result_id=test_result_id,
             project_id=project_id,

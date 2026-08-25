@@ -9,14 +9,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from pydantic import SecretStr
 
-from src.services.test_result_service import TestRunResultDetail
 from src.tools.launches import (
     add_test_result_attachment,
     close_launch,
     create_launch,
     delete_launch,
     get_launch,
-    get_test_run_result,
     list_launch_test_results,
     list_launches,
     reopen_launch,
@@ -100,44 +98,6 @@ async def test_list_launches_empty() -> None:
             output = await list_launches(page=0, size=20, output_format="plain")
 
             assert "No launches found" in output
-
-
-@pytest.mark.asyncio
-async def test_get_test_run_result_forwards_exact_ids_and_renders_partial_diagnostics() -> None:
-    with patch("src.tools.launches.AllureClient.from_env") as mock_client_ctx:
-        mock_client = _mock_url_context()
-        mock_client_ctx.return_value.__aenter__.return_value = mock_client
-        with patch("src.tools.launches.TestResultService") as mock_service_cls:
-            mock_service_cls.return_value.get_test_run_result = AsyncMock(
-                return_value=TestRunResultDetail(
-                    requested_launch_id=8,
-                    actual_launch_id=9,
-                    test_result_id=10,
-                    project_id=1,
-                    result_url="https://example.com/launch/9/tree/10",
-                    launch_url="https://example.com/launch/9",
-                    test_case=None,
-                    core={"name": "Result", "status": "failed"},
-                    custom_fields=(),
-                    environment=(),
-                    members=(),
-                    test_keys=(),
-                    issues=(),
-                    defects=(),
-                    execution_steps=(),
-                    fixtures=(),
-                    result_attachments=(),
-                    related_results=(),
-                    partial=True,
-                    unavailable_sections=(),
-                )
-            )
-
-            output = await get_test_run_result(8, 10, output_format="plain")
-
-    mock_service_cls.return_value.get_test_run_result.assert_awaited_once_with(8, 10)
-    assert "Test Result ID: 10" in output
-    assert "Partial: yes" in output
 
 
 @pytest.mark.asyncio

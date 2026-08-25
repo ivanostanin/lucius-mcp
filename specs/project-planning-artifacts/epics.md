@@ -114,7 +114,7 @@ Enable Agents to manage high-level Test Plans and Defects, supporting full lifec
 Implement advanced security protocols (OAuth, TLS) and higher-order "Agent Skills" for autonomous repository maintenance and complex reasoning workflows.
 **FRs covered:** Derived from Phase 3 Requirements (Security, Skills)
 
-### Epic 12: Enhanced Launch Workflows
+### Epic 12: Enhanced Launch and Test Result Management
 Enable agents to inspect and act on individual launch test results through rich, stable result-centric contracts, resilient best-effort enrichment, and authenticated evidence links without bloating collection responses or recursively expanding related runs.
 **FRs covered:** Derived from post-MVP launch inspection and agent evidence-analysis requirements
 
@@ -1278,7 +1278,7 @@ so that downstream dashboards can group events consistently while keeping the sa
 **Then** docs describe the flat event taxonomy explicitly
 **And** unit, integration, and e2e tests assert the new event names without weakening payload coverage.
 
-## Epic 12: Enhanced Launch Workflows
+## Epic 12: Enhanced Launch and Test Result Management
 
 Goal: Give agents complete, stable, and evidence-ready inspection of individual launch results while preserving the existing service-first architecture and avoiding recursive expansion of related executions.
 
@@ -1291,7 +1291,7 @@ so that I can diagnose the execution and download its evidence without reconstru
 **Acceptance Criteria:**
 
 **Given** a TestOps link such as `/launch/89067/tree/1498142?treeId=172`
-**When** I call `get_test_run_result(launch_id=89067, test_result_id=1498142)`
+**When** I call `get_test_result(test_result_id=1498142)`
 **Then** Lucius treats `1498142` as the Test Result ID and ignores `treeId`
 **And** it does not scan the launch or perform a separate client-side launch-membership check
 **And** authoritative lookup and not-found behavior are left to the upstream TestOps APIs.
@@ -1337,8 +1337,8 @@ so that I can diagnose the execution and download its evidence without reconstru
 
 **Given** the new tool is exposed through MCP and CLI
 **When** schemas, help, manifests, and routes are inspected
-**Then** `get_test_run_result` publishes a concrete object-root output schema matching the curated DTO
-**And** the canonical CLI action `lucius launch get_test_run_result` routes to the same service behavior
+**Then** `get_test_result` publishes a concrete object-root output schema matching the curated DTO
+**And** the canonical CLI action `lucius test-result get` routes to the same service behavior
 **And** plain and JSON outputs expose equivalent result detail while table and CSV remain CLI-only rendering concerns
 **And** tool documentation explains how to extract `launch_id` and `test_result_id` from TestOps links and ignore `treeId`.
 

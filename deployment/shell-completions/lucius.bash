@@ -7,7 +7,7 @@ _lucius_completion() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     if [[ $COMP_CWORD -eq 1 ]]; then
-        COMPREPLY=($(compgen -W "cf cfv custom-field custom-field-value custom-field-values custom-fields custom_field custom_field_value custom_field_values custom_fields defect defect-matcher defect-matchers defect_matcher defect_matchers defects df dm int integration integrations launch launches ln shared-step shared-steps shared_step shared_steps ss tc test-case test-cases test-layer test-layer-schema test-layer-schemas test-layers test-plan test-plans test-suite test-suites test_case test_cases test_layer test_layer_schema test_layer_schemas test_layers test_plan test_plans test_suite test_suites tl tls tp ts --help -h --version -V help version auth list install-completions" -- "$cur"))
+        COMPREPLY=($(compgen -W "cf cfv custom-field custom-field-value custom-field-values custom-fields custom_field custom_field_value custom_field_values custom_fields defect defect-matcher defect-matchers defect_matcher defect_matchers defects df dm int integration integrations launch launches ln shared-step shared-steps shared_step shared_steps ss tc test-case test-cases test-layer test-layer-schema test-layer-schemas test-layers test-plan test-plans test-result test-results test-suite test-suites test_case test_cases test_layer test_layer_schema test_layer_schemas test_layers test_plan test_plans test_result test_results test_suite test_suites tl tls tp tr ts --help -h --version -V help version auth list install-completions" -- "$cur"))
         return 0
     fi
 
@@ -45,7 +45,7 @@ _lucius_completion() {
                 return 0
                 ;;
             launch|launches|ln)
-                COMPREPLY=($(compgen -W "add-test-result-attachment add-test-step-attachment add_test_result_attachment add_test_step_attachment close create delete get get-test-run-result get_test_run_result list list-test-results list_test_results reopen rerun-test-results-manually rerun_test_results_manually start-manual-test-session start_manual_test_session submit-manual-test-results submit_manual_test_results" -- "$cur"))
+                COMPREPLY=($(compgen -W "add-test-result-attachment add-test-step-attachment add_test_result_attachment add_test_step_attachment close create delete get list list-test-results list_test_results reopen rerun-test-results-manually rerun_test_results_manually start-manual-test-session start_manual_test_session submit-manual-test-results submit_manual_test_results" -- "$cur"))
                 return 0
                 ;;
             shared_step|shared_steps|ss)
@@ -66,6 +66,10 @@ _lucius_completion() {
                 ;;
             test_plan|test_plans|tp)
                 COMPREPLY=($(compgen -W "create delete list manage-content manage_content update" -- "$cur"))
+                return 0
+                ;;
+            test_result|test_results|tr)
+                COMPREPLY=($(compgen -W "get" -- "$cur"))
                 return 0
                 ;;
             test_suite|test_suites|ts)

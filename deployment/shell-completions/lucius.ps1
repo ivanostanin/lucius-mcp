@@ -3,7 +3,7 @@
 Register-ArgumentCompleter -Native -CommandName lucius -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
 
-    $entities = @("cf", "cfv", "custom-field", "custom-field-value", "custom-field-values", "custom-fields", "custom_field", "custom_field_value", "custom_field_values", "custom_fields", "defect", "defect-matcher", "defect-matchers", "defect_matcher", "defect_matchers", "defects", "df", "dm", "int", "integration", "integrations", "launch", "launches", "ln", "shared-step", "shared-steps", "shared_step", "shared_steps", "ss", "tc", "test-case", "test-cases", "test-layer", "test-layer-schema", "test-layer-schemas", "test-layers", "test-plan", "test-plans", "test-suite", "test-suites", "test_case", "test_cases", "test_layer", "test_layer_schema", "test_layer_schemas", "test_layers", "test_plan", "test_plans", "test_suite", "test_suites", "tl", "tls", "tp", "ts")
+    $entities = @("cf", "cfv", "custom-field", "custom-field-value", "custom-field-values", "custom-fields", "custom_field", "custom_field_value", "custom_field_values", "custom_fields", "defect", "defect-matcher", "defect-matchers", "defect_matcher", "defect_matchers", "defects", "df", "dm", "int", "integration", "integrations", "launch", "launches", "ln", "shared-step", "shared-steps", "shared_step", "shared_steps", "ss", "tc", "test-case", "test-cases", "test-layer", "test-layer-schema", "test-layer-schemas", "test-layers", "test-plan", "test-plans", "test-result", "test-results", "test-suite", "test-suites", "test_case", "test_cases", "test_layer", "test_layer_schema", "test_layer_schemas", "test_layers", "test_plan", "test_plans", "test_result", "test_results", "test_suite", "test_suites", "tl", "tls", "tp", "tr", "ts")
     $globalTokens = @("--help", "-h", "--version", "-V", "help", "version", "auth", "list", "install-completions")
     $formats = @("json", "table", "plain", "csv")
     $options = @("--args", "-a", "--format", "-f", "--pretty", "--help", "-h")
@@ -43,11 +43,14 @@ Register-ArgumentCompleter -Native -CommandName lucius -ScriptBlock {
         "test_layers" = "test_layer"
         "test_plan" = "test_plan"
         "test_plans" = "test_plan"
+        "test_result" = "test_result"
+        "test_results" = "test_result"
         "test_suite" = "test_suite"
         "test_suites" = "test_suite"
         "tl" = "test_layer"
         "tls" = "test_layer_schema"
         "tp" = "test_plan"
+        "tr" = "test_result"
         "ts" = "test_suite"
     }
     $actionsByEntity = @{
@@ -56,12 +59,13 @@ Register-ArgumentCompleter -Native -CommandName lucius -ScriptBlock {
         "defect" = @("create", "delete", "get", "link-test-case", "link_test_case", "list", "list-test-cases", "list_test_cases", "update")
         "defect_matcher" = @("create", "delete", "list", "update")
         "integration" = @("list")
-        "launch" = @("add-test-result-attachment", "add-test-step-attachment", "add_test_result_attachment", "add_test_step_attachment", "close", "create", "delete", "get", "get-test-run-result", "get_test_run_result", "list", "list-test-results", "list_test_results", "reopen", "rerun-test-results-manually", "rerun_test_results_manually", "start-manual-test-session", "start_manual_test_session", "submit-manual-test-results", "submit_manual_test_results")
+        "launch" = @("add-test-result-attachment", "add-test-step-attachment", "add_test_result_attachment", "add_test_step_attachment", "close", "create", "delete", "get", "list", "list-test-results", "list_test_results", "reopen", "rerun-test-results-manually", "rerun_test_results_manually", "start-manual-test-session", "start_manual_test_session", "submit-manual-test-results", "submit_manual_test_results")
         "shared_step" = @("create", "delete", "delete-archived", "delete_archived", "link-test-case", "link_test_case", "list", "unlink-test-case", "unlink_test_case", "update")
         "test_case" = @("create", "delete", "delete-archived", "delete_archived", "get", "get-custom-fields", "get_custom_fields", "list", "search", "update")
         "test_layer" = @("create", "delete", "list", "update")
         "test_layer_schema" = @("create", "delete", "list", "update")
         "test_plan" = @("create", "delete", "list", "manage-content", "manage_content", "update")
+        "test_result" = @("get")
         "test_suite" = @("assign-test-cases", "assign_test_cases", "create", "delete", "list")
     }
 

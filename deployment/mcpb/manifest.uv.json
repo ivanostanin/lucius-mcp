@@ -186,7 +186,7 @@
       "description": "List launch test results with manual execution metadata."
     },
     {
-      "name": "get_test_run_result",
+      "name": "get_test_result",
       "description": "Get curated complete details for one exact launch test result."
     },
     {

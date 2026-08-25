@@ -2,7 +2,7 @@
 
 _lucius() {
     local -a entities globals formats options authOptions authSubcommands authTokens installOptions shells
-    entities=(cf cfv custom-field custom-field-value custom-field-values custom-fields custom_field custom_field_value custom_field_values custom_fields defect defect-matcher defect-matchers defect_matcher defect_matchers defects df dm int integration integrations launch launches ln shared-step shared-steps shared_step shared_steps ss tc test-case test-cases test-layer test-layer-schema test-layer-schemas test-layers test-plan test-plans test-suite test-suites test_case test_cases test_layer test_layer_schema test_layer_schemas test_layers test_plan test_plans test_suite test_suites tl tls tp ts)
+    entities=(cf cfv custom-field custom-field-value custom-field-values custom-fields custom_field custom_field_value custom_field_values custom_fields defect defect-matcher defect-matchers defect_matcher defect_matchers defects df dm int integration integrations launch launches ln shared-step shared-steps shared_step shared_steps ss tc test-case test-cases test-layer test-layer-schema test-layer-schemas test-layers test-plan test-plans test-result test-results test-suite test-suites test_case test_cases test_layer test_layer_schema test_layer_schemas test_layers test_plan test_plans test_result test_results test_suite test_suites tl tls tp tr ts)
     globals=(--help -h --version -V help version auth list install-completions)
     formats=(json table plain csv)
     options=(--args -a --format -f --pretty --help -h)
@@ -58,7 +58,7 @@ _lucius() {
                 ;;
             launch|launches|ln)
                 local -a actions
-                actions=(add-test-result-attachment add-test-step-attachment add_test_result_attachment add_test_step_attachment close create delete get get-test-run-result get_test_run_result list list-test-results list_test_results reopen rerun-test-results-manually rerun_test_results_manually start-manual-test-session start_manual_test_session submit-manual-test-results submit_manual_test_results)
+                actions=(add-test-result-attachment add-test-step-attachment add_test_result_attachment add_test_step_attachment close create delete get list list-test-results list_test_results reopen rerun-test-results-manually rerun_test_results_manually start-manual-test-session start_manual_test_session submit-manual-test-results submit_manual_test_results)
                 _describe -t actions 'actions' actions
                 ;;
             shared_step|shared_steps|ss)
@@ -84,6 +84,11 @@ _lucius() {
             test_plan|test_plans|tp)
                 local -a actions
                 actions=(create delete list manage-content manage_content update)
+                _describe -t actions 'actions' actions
+                ;;
+            test_result|test_results|tr)
+                local -a actions
+                actions=(get)
                 _describe -t actions 'actions' actions
                 ;;
             test_suite|test_suites|ts)

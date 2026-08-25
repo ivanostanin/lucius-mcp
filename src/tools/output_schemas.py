@@ -358,12 +358,11 @@ class UnavailableSectionOutput(BaseModel):
     items_retrieved: int = Field(ge=0)
 
 
-class TestRunResultDetailOutput(BaseModel):
+class TestResultDetailOutput(BaseModel):
     """Stable object-root output for one exact enriched TestOps result."""
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    requested_launch_id: int | None = None
     actual_launch_id: int | None = None
     test_result_id: int | None = None
     project_id: int | None = None

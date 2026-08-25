@@ -155,7 +155,7 @@ development_status:
   11-1-flatten-telemetry-event-names: done
   epic-11-retrospective: optional
 
-  # Epic 12: Enhanced Launch Workflows
+  # Epic 12: Enhanced Launch and Test Result Management
   epic-12: in-progress
   12-1-retrieve-complete-individual-test-result-details: in-progress
   epic-12-retrospective: optional

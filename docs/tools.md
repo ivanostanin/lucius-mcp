@@ -94,12 +94,17 @@ returns the resolved canonical metadata list.
 | `get_launch`                 | Get one exact launch with detailed statistics, defect counts, environment, jobs, tags, issues, links, creator/modifier metadata, and manual-workflow guidance. | `launch_id`    |
 | `upload_test_results`        | Append externally produced test results to a launch concurrently. | `launch_id`, `results` |
 | `list_launch_test_results`   | List result-level launch data including manual flag, status, assignee, and tester. | `launch_id`, `manual_only`, `failed_only` |
-| `get_test_run_result`        | Read one exact Test Result with curated execution evidence, stable attachment URLs, related-result links, and partial-data diagnostics. `treeId` URL query state is ignored. | `launch_id`, `test_result_id` |
 | `rerun_test_results_manually` | Schedule manual reruns for selected failed launch results.      | `launch_id`, `result_ids`, `assignees` |
 | `start_manual_test_session`  | Create a manual execution session for a launch.                 | `launch_id`, `environment` |
 | `submit_manual_test_results` | Resolve an existing launch manual result in place or submit explicit manual result updates for a session. | `test_session_id`, `results` |
 | `add_test_result_attachment` | Upload evidence to a manual test result.                        | `test_result_id`, `attachment` |
 | `add_test_step_attachment`   | Upload evidence to a manual attachment step; fixture selectors remain as fallback. | `test_result_id`, `attachment`, `step_name` |
+
+## ✅ Test Result Management
+
+| Tool | Description | Key Parameters |
+|:-----|:------------|:---------------|
+| `get_test_result` | Read one exact Test Result with curated execution evidence, stable attachment URLs, related-result links, and partial-data diagnostics. `treeId` URL query state is ignored. | `test_result_id` |
 
 ## 📋 Test Plan Management
 
