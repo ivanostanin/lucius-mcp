@@ -129,6 +129,11 @@ so that **I can retrieve evidence files without receiving bytes/base64 in MCP ou
 - [x] [Review][Patch] Reject unusable public capability base URLs [src/services/attachment_download_service.py:417] — resolved for query/fragment URLs and IPv6 unspecified hosts.
 - [x] [Review][Patch] Make broker shutdown atomic with preparation [src/services/attachment_download_service.py:272] — resolved by rejecting stores during shutdown and deleting race-created files.
 - [x] [Review][Patch] Correct the public-base environment-variable hint [src/services/attachment_download_service.py:422] — resolved to use `ATTACHMENT_DOWNLOAD_PUBLIC_BASE_URL` consistently.
+- [x] [Review][Patch] Preserve the aggregate cache byte limit when upstream content length is misleading [src/services/attachment_download_service.py:179] — resolved by reserving the bounded worst-case file size while a stream is in progress.
+- [x] [Review][Patch] Make runtime-holder shutdown atomic with concurrent preparation [src/services/attachment_download_service.py:317] — resolved by making the holder terminal during shutdown and rejecting new initialization.
+- [x] [Review][Patch] Serialize first loopback-gateway initialization [src/services/attachment_download_gateway.py:56] — resolved with a lifecycle lock shared by start and close.
+- [x] [Review][Patch] Release claimed cache entries when a Starlette file response is interrupted [src/services/attachment_download_gateway.py:30] — resolved with response-finally cleanup.
+- [x] [Review][Patch] Reject loopback URLs configured as HTTP public capability bases [src/main.py:60] — resolved by rejecting localhost and loopback IP literals in HTTP mode.
 
 ## Dev Notes
 

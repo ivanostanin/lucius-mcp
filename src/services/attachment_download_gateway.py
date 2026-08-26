@@ -4,16 +4,46 @@ from __future__ import annotations
 
 import asyncio
 import socket
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
+from os import PathLike
 from pathlib import Path
 
-from starlette.background import BackgroundTask
 from starlette.requests import Request
 from starlette.responses import FileResponse, Response
 from starlette.routing import Route
+from starlette.types import Receive, Scope, Send
 
 from src.client.exceptions import AllureValidationError
 from src.services.attachment_download_service import AttachmentDownloadRuntimeHolder
+
+
+class _CleanupFileResponse(FileResponse):
+    """Run capability cleanup even when file streaming raises or is cancelled."""
+
+    def __init__(
+        self,
+        path: str | PathLike[str],
+        *,
+        cleanup: Callable[[], Awaitable[None]],
+        media_type: str,
+        filename: str,
+        content_disposition_type: str,
+        headers: Mapping[str, str],
+    ) -> None:
+        super().__init__(
+            path,
+            media_type=media_type,
+            filename=filename,
+            content_disposition_type=content_disposition_type,
+            headers=headers,
+        )
+        self._cleanup = cleanup
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        try:
+            await super().__call__(scope, receive, send)
+        finally:
+            await self._cleanup()
 
 
 def attachment_download_route(holder: AttachmentDownloadRuntimeHolder) -> Route:
@@ -27,13 +57,13 @@ def attachment_download_route(holder: AttachmentDownloadRuntimeHolder) -> Route:
         entry = await runtime.claim(handle)
         if entry is None:
             return Response(status_code=404)
-        return FileResponse(
+        return _CleanupFileResponse(
             entry.path,
             media_type=entry.content_type,
             filename=entry.filename,
             content_disposition_type="attachment",
             headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
-            background=BackgroundTask(runtime.complete, entry.handle),
+            cleanup=lambda: runtime.complete(entry.handle),
         )
 
     return Route("/downloads/{handle}", download, methods=["GET"])
@@ -46,6 +76,7 @@ class LoopbackAttachmentDownloadGateway:
         self._holder = holder
         self._server: asyncio.AbstractServer | None = None
         self._base_url: str | None = None
+        self._lock = asyncio.Lock()
 
     @property
     def base_url(self) -> str:
@@ -55,37 +86,40 @@ class LoopbackAttachmentDownloadGateway:
 
     async def start(self) -> str:
         """Bind one ephemeral loopback port and wait until it is accepting connections."""
-        if self._server is not None:
-            return self.base_url
-        try:
-            server = await asyncio.start_server(self._handle_connection, host="127.0.0.1", port=0)
-        except OSError as exc:
-            raise AllureValidationError(
-                "Lucius could not start its local attachment delivery gateway",
-                suggestions=["Check that loopback networking is available on this host"],
-            ) from exc
-        sockets: Sequence[socket.socket] = server.sockets or []
-        if not sockets:  # pragma: no cover - asyncio guarantees a socket after a successful bind
-            server.close()
-            await server.wait_closed()
-            raise AllureValidationError("Lucius local attachment gateway did not report a bound port")
-        address = sockets[0].getsockname()
-        if not isinstance(address, tuple) or not isinstance(address[1], int):  # pragma: no cover - IPv4 bind above
-            server.close()
-            await server.wait_closed()
-            raise AllureValidationError("Lucius local attachment gateway returned an unsupported address")
-        self._server = server
-        self._base_url = f"http://127.0.0.1:{address[1]}"
-        return self._base_url
+        async with self._lock:
+            if self._server is not None:
+                return self.base_url
+            try:
+                server = await asyncio.start_server(self._handle_connection, host="127.0.0.1", port=0)
+            except OSError as exc:
+                raise AllureValidationError(
+                    "Lucius could not start its local attachment delivery gateway",
+                    suggestions=["Check that loopback networking is available on this host"],
+                ) from exc
+            sockets: Sequence[socket.socket] = server.sockets or []
+            if not sockets:  # pragma: no cover - asyncio guarantees a socket after a successful bind
+                server.close()
+                await server.wait_closed()
+                raise AllureValidationError("Lucius local attachment gateway did not report a bound port")
+            address = sockets[0].getsockname()
+            if not isinstance(address, tuple) or not isinstance(address[1], int):  # pragma: no cover - IPv4 bind above
+                server.close()
+                await server.wait_closed()
+                raise AllureValidationError("Lucius local attachment gateway returned an unsupported address")
+            self._server = server
+            self._base_url = f"http://127.0.0.1:{address[1]}"
+            return self._base_url
 
     async def close(self) -> None:
         """Stop accepting local delivery requests; broker cleanup remains lifecycle-owned."""
-        if self._server is None:
-            return
-        self._server.close()
-        await self._server.wait_closed()
-        self._server = None
-        self._base_url = None
+        async with self._lock:
+            if self._server is None:
+                return
+            server = self._server
+            self._server = None
+            self._base_url = None
+        server.close()
+        await server.wait_closed()
 
     async def _handle_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
