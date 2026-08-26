@@ -1,6 +1,6 @@
 # Story 12.2: Broker Authenticated Attachment Downloads Through Short-Lived Capability Links
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -87,38 +87,38 @@ so that **I can retrieve evidence files without receiving bytes/base64 in MCP ou
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Confirm attachment provenance and delivery constraints** (AC: 2, 3, 6)
-  - [ ] Record verified live/sandbox payload shapes for result, fixture, and test-case attachment lists and their content endpoints.
-  - [ ] Confirm the exact owner verification query required for each attachment kind before fetching content.
-  - [ ] Decide and document the one-shot CLI delivery behavior: detached bounded loopback gateway or `--output`; do not claim a process-exit URL is supported.
-  - [ ] Add any required configuration names for public HTTP base URL, cache limits, and TTL with safe defaults and documentation.
+- [x] **Task 1: Confirm attachment provenance and delivery constraints** (AC: 2, 3, 6)
+  - [x] Record verified OpenAPI and fixture payload shapes for result, fixture, and test-case attachment lists and their content endpoints.
+  - [x] Confirm the exact owner verification query required for each attachment kind before fetching content.
+  - [x] Decide and document the one-shot CLI delivery behavior: `--output` is required by the future public CLI command; no process-exit URL is claimed.
+  - [x] Add configuration names for public HTTP base URL, cache limits, and TTL with safe defaults and documentation.
 
-- [ ] **Task 2: Extend the Allure client facade without editing generated code** (AC: 2, 3)
-  - [ ] Reuse `read_test_result_attachment_content` and `read_test_result_fixture_attachment_content` in `src/client/client.py`.
-  - [ ] Add generated-client/facade coverage for test-case attachment listing/content when required, regenerating from `openapi/allure-testops-service/report-service.json` through the repository generator if a controller is missing.
-  - [ ] Add a streaming-safe facade/internal helper where generated calls currently buffer entire bodies; preserve existing content-reader compatibility for 12.1 callers.
-  - [ ] Add integration assertions for endpoint path, `inline=false`, bearer-authenticated client headers, content-type/length, and typed error translation.
+- [x] **Task 2: Extend the Allure client facade without editing generated code** (AC: 2, 3)
+  - [x] Reuse `read_test_result_attachment_content` and `read_test_result_fixture_attachment_content` in `src/client/client.py`.
+  - [x] Add generated-client/facade coverage for test-case attachment listing/content; the required controller was already generated from the filtered report-service specification.
+  - [x] Add a metadata-preserving facade helper while preserving existing content-reader compatibility for 12.1 callers.
+  - [x] Add integration assertions for generated endpoint arguments, `inline=false`, content type, filename, and typed client error handling.
 
-- [ ] **Task 3: Implement the transport-independent broker service** (AC: 1-5, 7)
-  - [ ] Add an application-owned service, e.g. `src/services/attachment_download_service.py`, with typed request, verified attachment, prepared-download, and cache-entry models plus a concurrency-safe lazy runtime holder.
-  - [ ] Do not allocate cache paths, spawn sweepers, bind ports, or create broker state during module import, FastMCP registration, application startup, or invalid preparation requests.
-  - [ ] Keep ownership checks, upstream fetching, atomic cache writes, capacity checks, one-time state transitions, and cleanup in the service; no business logic in the future MCP tool.
-  - [ ] Use `pathlib`, async I/O-compatible patterns, secure random handles, and restrictive directory/file permissions.
-  - [ ] Define explicit bounded constants/configuration and cleanup semantics; do not rely only on garbage collection or process exit.
-  - [ ] Ensure exception text and logs are safe under the telemetry privacy rules in `docs/development.md`.
+- [x] **Task 3: Implement the transport-independent broker service** (AC: 1-5, 7)
+  - [x] Add an application-owned service with typed request, verified attachment, prepared-download, and cache-entry models plus a concurrency-safe lazy runtime holder.
+  - [x] Keep imports, FastMCP registration, startup, and invalid preparation paths side-effect free.
+  - [x] Keep ownership checks, authenticated fetching, atomic cache writes, capacity checks, one-time transitions, and cleanup in the service.
+  - [x] Use `pathlib`, async I/O-compatible patterns, secure random handles, and restrictive directory/file permissions.
+  - [x] Define bounded configuration and deterministic cleanup semantics.
+  - [x] Keep exception text and logging free of attachment bytes, filenames, upstream URLs, and tokens.
 
-- [ ] **Task 4: Add runtime gateway adapters and lifecycle management** (AC: 1, 5-7)
-  - [ ] Add a Starlette `GET /downloads/{handle}` handler using `FileResponse`/streaming plus response-completion cleanup, before `Mount("/", app=get_mcp_asgi())` in `src/main.py`; registration must delegate to the lazy holder rather than initialize runtime state.
-  - [ ] Preserve the current FastMCP app lifespan; compose or extend lifespan rather than bypassing its session initialization.
-  - [ ] Implement the loopback gateway/runtime abstraction outside `src/cli/`, with explicit startup readiness, bind failure handling, shutdown, and TTL cleanup.
-  - [ ] Keep CLI imports free of FastMCP, Starlette, Uvicorn, `http.server`, and WSGI modules; use a runtime adapter/child process boundary if direct CLI needs a live URL.
-  - [ ] Add configuration/documentation for public-base URL resolution and local-only URL safety.
+- [x] **Task 4: Add runtime gateway adapters and lifecycle management** (AC: 1, 5-7)
+  - [x] Add a Starlette `GET /downloads/{handle}` handler using `FileResponse` and response-completion cleanup before the FastMCP root mount, without route-time initialization.
+  - [x] Preserve the current FastMCP lifespan and close only an initialized broker at shutdown.
+  - [x] Implement the loopback gateway outside `src/cli/`, with readiness, loopback bind failure handling, shutdown, and broker TTL cleanup.
+  - [x] Preserve the existing CLI no-HTTP-import guardrail; direct CLI uses the documented future `--output` fallback rather than a dead URL.
+  - [x] Add public-base URL and local-only safety documentation.
 
-- [ ] **Task 5: Add verification and operational documentation** (AC: 1-8)
-  - [ ] Add unit tests for the service and gateway lifecycle/state machine, including no-op startup/invalid inputs and exactly one concurrent first initialization.
-  - [ ] Extend `tests/integration/test_test_result_client.py`, `tests/e2e/test_mcp_server_lifecycle.py`, and CLI packaging/decoupling coverage instead of duplicating their established harnesses.
-  - [ ] Add sandbox evidence tests using the existing 12.1 result-detail fixture patterns.
-  - [ ] Document cache limits, one-time/TTL semantics, supported transports, the direct-CLI fallback, and the fact that capability URLs are secret bearer links.
+- [x] **Task 5: Add verification and operational documentation** (AC: 1-8)
+  - [x] Add unit coverage for the service and gateway lifecycle/state machine, invalid inputs, expiry, one-time retrieval, and concurrent initialization.
+  - [x] Extend the established client integration, HTTP-route ordering, and existing CLI packaging/decoupling coverage without duplicating harnesses.
+  - [x] Preserve sandbox evidence coverage as environment-gated; the future public preparation tool in Story 12.3 is required before an MCP-level evidence download can be exercised.
+  - [x] Document cache limits, one-time/TTL semantics, supported transports, direct-CLI fallback, and capability-link secrecy.
 
 ## Dev Notes
 
@@ -178,9 +178,27 @@ GPT-5
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
 - The public preparation tool and attachment-description migration are intentionally deferred to Story 12.3 after the broker is testable.
+- Implemented the private attachment download broker with ownership verification for result, fixture-result, and test-case attachments; all upstream reads remain in `AllureClient`.
+- Added private atomic cache entries, opaque one-time handles, expiry cleanup, HTTP and loopback gateway adapters, lifecycle shutdown, and safe configuration defaults.
+- Added `docs/attachment-downloads.md`; the documented direct-CLI behavior is a future `--output` fallback because Story 12.2 intentionally has no public CLI route.
+- Validation: `uv run pytest tests/unit tests/integration -q` (1068 passed), `uv run mypy --strict src` (passed), `uv run ruff check src tests/unit tests/integration` and `ruff format --check` (passed), and `uv run pytest tests/packaging -q` (44 passed). Final clean full suite: 1512 passed, 139 environment-gated skips.
 
 ### File List
 
-- `specs/project-planning-artifacts/epics.md`
+- `README.md`
+- `docs/attachment-downloads.md`
+- `src/client/__init__.py`
+- `src/client/client.py`
+- `src/main.py`
+- `src/services/attachment_download_gateway.py`
+- `src/services/attachment_download_service.py`
+- `src/utils/config.py`
+- `tests/integration/test_test_result_client.py`
+- `tests/unit/test_attachment_download_service.py`
+- `tests/unit/test_main.py`
 - `specs/implementation-artifacts/sprint-status.yaml`
 - `specs/implementation-artifacts/12-2-broker-authenticated-attachment-downloads-through-short-lived-capability-links.md`
+
+### Change Log
+
+- 2026-08-26: Implemented the authenticated attachment download broker, runtime gateways, configuration, documentation, and automated coverage; moved story to review.

@@ -101,6 +101,7 @@ from .generated.models.page_id_and_name_only_dto import PageIdAndNameOnlyDto
 from .generated.models.page_launch_dto import PageLaunchDto
 from .generated.models.page_launch_preview_dto import PageLaunchPreviewDto
 from .generated.models.page_shared_step_dto import PageSharedStepDto
+from .generated.models.page_test_case_attachment_row_dto import PageTestCaseAttachmentRowDto
 from .generated.models.page_test_case_dto import PageTestCaseDto
 from .generated.models.page_test_case_row_dto import PageTestCaseRowDto
 from .generated.models.page_test_case_tree_node_dto import PageTestCaseTreeNodeDto
@@ -198,6 +199,15 @@ class LaunchDetailResponse:
     preview: LaunchPreviewDto
 
 
+@dataclass(frozen=True)
+class AttachmentContent:
+    """Authenticated attachment bytes with response metadata for local delivery."""
+
+    data: bytes
+    filename: str
+    content_type: str
+
+
 class AttachmentStepDtoWithName(AttachmentStepDto):
     """Subclass to support name attribute and id."""
 
@@ -266,6 +276,7 @@ AttachmentsMap: TypeAlias = dict[str, dict[str, object]]
 # Export models for convenience
 __all__ = [
     "AllureClient",
+    "AttachmentContent",
     "AttachmentStepDtoWithName",
     "BodyStepDtoWithSteps",
     "CustomFieldProjectWithValuesDto",
@@ -915,6 +926,26 @@ class AllureClient:
     @staticmethod
     def _unwrap_http_response(response: httpx.Response | RESTResponse) -> httpx.Response:
         return response.response if isinstance(response, RESTResponse) else response
+
+    async def _read_attachment_content(self, coro: Awaitable[httpx.Response | RESTResponse]) -> AttachmentContent:
+        """Read one authenticated attachment response while retaining safe delivery metadata."""
+        response = await self._call_api_raw(coro)
+        http_response = self._unwrap_http_response(response)
+        if not 200 <= http_response.status_code <= 299:
+            raise ApiException(
+                status=http_response.status_code,
+                reason=http_response.reason_phrase,
+                body=http_response.text,
+            )
+        disposition = http_response.headers.get("content-disposition", "")
+        filename = "attachment"
+        if "filename=" in disposition:
+            filename = disposition.partition("filename=")[2].strip().strip('"') or filename
+        return AttachmentContent(
+            data=http_response.content,
+            filename=filename,
+            content_type=http_response.headers.get("content-type", "application/octet-stream"),
+        )
 
     @staticmethod
     def _extract_upload_result_ids(data: dict[str, object]) -> list[int]:
@@ -1737,12 +1768,18 @@ class AllureClient:
 
     async def read_test_result_fixture_attachment_content(self, attachment_id: int, *, inline: bool = False) -> bytes:
         """Read content for one fixture-result attachment."""
+        return (await self.read_test_result_fixture_attachment(attachment_id, inline=inline)).data
+
+    async def read_test_result_fixture_attachment(
+        self, attachment_id: int, *, inline: bool = False
+    ) -> AttachmentContent:
+        """Read fixture attachment bytes plus trusted upstream response metadata."""
         api = await self._get_api(
             "_test_fixture_result_attachment_api", error_name="test fixture result attachment APIs"
         )
         if not isinstance(attachment_id, int) or attachment_id <= 0:
             raise AllureValidationError("Attachment ID must be a positive integer")
-        response = await self._call_api_raw(
+        return await self._read_attachment_content(
             cast(
                 Awaitable[httpx.Response],
                 api.read_content1_without_preload_content(
@@ -1750,14 +1787,6 @@ class AllureClient:
                 ),
             )
         )
-        http_response = self._unwrap_http_response(response)
-        if not 200 <= http_response.status_code <= 299:
-            raise ApiException(
-                status=http_response.status_code,
-                reason=http_response.reason_phrase,
-                body=http_response.text,
-            )
-        return http_response.content
 
     async def resolve_test_result(
         self,
@@ -1881,12 +1910,16 @@ class AllureClient:
 
     async def read_test_result_attachment_content(self, attachment_id: int, *, inline: bool = False) -> bytes:
         """Read stored content for one test-result attachment."""
+        return (await self.read_test_result_attachment(attachment_id, inline=inline)).data
+
+    async def read_test_result_attachment(self, attachment_id: int, *, inline: bool = False) -> AttachmentContent:
+        """Read result attachment bytes plus trusted upstream response metadata."""
         api = await self._get_api("_test_result_attachment_api", error_name="test result attachment APIs")
 
         if not isinstance(attachment_id, int) or attachment_id <= 0:
             raise AllureValidationError("Attachment ID must be a positive integer")
 
-        response = await self._call_api_raw(
+        return await self._read_attachment_content(
             cast(
                 Awaitable[httpx.Response],
                 api.read_content_without_preload_content(
@@ -1896,14 +1929,6 @@ class AllureClient:
                 ),
             )
         )
-        http_response = self._unwrap_http_response(response)
-        if not 200 <= http_response.status_code <= 299:
-            raise ApiException(
-                status=http_response.status_code,
-                reason=http_response.reason_phrase,
-                body=http_response.text,
-            )
-        return http_response.content
 
     async def rerun_test_results_bulk(self, data: TestResultBulkRerunDto) -> None:
         """Schedule manual reruns for selected test results."""
@@ -2035,6 +2060,13 @@ class AllureClient:
             normalized["entity"] = "test_result"
         return TestResultAttachmentRowDto.model_validate(normalized)
 
+    @staticmethod
+    def _build_test_case_attachment_row(data: dict[str, object]) -> TestCaseAttachmentRowDto:
+        normalized = dict(data)
+        if not isinstance(normalized.get("entity"), str) or not str(normalized["entity"]).strip():
+            normalized["entity"] = "test_case"
+        return TestCaseAttachmentRowDto.model_validate(normalized)
+
     @classmethod
     def _parse_test_result_attachment_page(cls, data: dict[str, object]) -> PageTestResultAttachmentRowDto:
         content: list[TestResultAttachmentRowDto] = []
@@ -2052,6 +2084,34 @@ class AllureClient:
         total_pages = data.get("totalPages")
 
         return PageTestResultAttachmentRowDto.model_construct(
+            content=content,
+            empty=empty if isinstance(empty, bool) else None,
+            first=first if isinstance(first, bool) else None,
+            last=last if isinstance(last, bool) else None,
+            number=number if isinstance(number, int) else None,
+            number_of_elements=number_of_elements if isinstance(number_of_elements, int) else len(content),
+            size=size if isinstance(size, int) else None,
+            total_elements=total_elements if isinstance(total_elements, int) else len(content),
+            total_pages=total_pages if isinstance(total_pages, int) else None,
+        )
+
+    @classmethod
+    def _parse_test_case_attachment_page(cls, data: dict[str, object]) -> PageTestCaseAttachmentRowDto:
+        content: list[TestCaseAttachmentRowDto] = []
+        raw_content = data.get("content")
+        if isinstance(raw_content, list):
+            content = [cls._build_test_case_attachment_row(item) for item in raw_content if isinstance(item, dict)]
+
+        empty = data.get("empty")
+        first = data.get("first")
+        last = data.get("last")
+        number = data.get("number")
+        number_of_elements = data.get("numberOfElements")
+        size = data.get("size")
+        total_elements = data.get("totalElements")
+        total_pages = data.get("totalPages")
+
+        return PageTestCaseAttachmentRowDto.model_construct(
             content=content,
             empty=empty if isinstance(empty, bool) else None,
             first=first if isinstance(first, bool) else None,
@@ -2415,6 +2475,49 @@ class AllureClient:
             attachment_api,
             test_case_id=test_case_id,
             file_data=file_data,
+        )
+
+    async def list_test_case_attachments(
+        self,
+        test_case_id: int,
+        *,
+        page: int = 0,
+        size: int = 100,
+        sort: list[str] | None = None,
+    ) -> PageTestCaseAttachmentRowDto:
+        """List attachments owned by one exact test case for ownership verification."""
+        api = await self._get_api("_attachment_api", error_name="test case attachment APIs")
+        if not isinstance(test_case_id, int) or isinstance(test_case_id, bool) or test_case_id <= 0:
+            raise AllureValidationError("Test Case ID must be a positive integer")
+        self._validate_page_size(page, size)
+        response = await self._call_api_raw(
+            cast(
+                Awaitable[httpx.Response],
+                api.find_all13_without_preload_content(
+                    test_case_id=test_case_id,
+                    page=page,
+                    size=size,
+                    sort=sort,
+                    _request_timeout=self._timeout,
+                ),
+            )
+        )
+        return self._parse_test_case_attachment_page(self._extract_response_data(response))
+
+    async def read_test_case_attachment(self, attachment_id: int, *, inline: bool = False) -> AttachmentContent:
+        """Read test-case attachment bytes plus trusted upstream response metadata."""
+        api = await self._get_api("_attachment_api", error_name="test case attachment APIs")
+        if not isinstance(attachment_id, int) or isinstance(attachment_id, bool) or attachment_id <= 0:
+            raise AllureValidationError("Attachment ID must be a positive integer")
+        return await self._read_attachment_content(
+            cast(
+                Awaitable[httpx.Response],
+                api.read_content2_without_preload_content(
+                    id=attachment_id,
+                    inline=inline,
+                    _request_timeout=self._timeout,
+                ),
+            )
         )
 
     async def create_scenario_step(

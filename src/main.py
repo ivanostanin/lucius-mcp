@@ -7,6 +7,8 @@ from fastmcp import FastMCP
 from starlette.applications import Starlette
 from starlette.routing import Mount
 
+from src.services.attachment_download_gateway import attachment_download_route
+from src.services.attachment_download_service import AttachmentDownloadRuntimeHolder
 from src.services.telemetry_service import TelemetryService
 from src.tools import all_tools
 from src.tools.annotations import get_tool_annotations, get_tool_tags, validate_tool_annotation_coverage
@@ -44,6 +46,7 @@ for tool in all_tools:
 
 # The ASGI app and main app are created lazily or only when needed for HTTP mode
 _mcp_asgi = None
+attachment_download_runtime_holder = AttachmentDownloadRuntimeHolder()
 
 
 def get_mcp_asgi() -> Starlette:
@@ -64,12 +67,15 @@ async def lifespan(app: Starlette) -> typing.AsyncGenerator[None, None]:
     logger.info(f"Starting Lucius MCP Server in {settings.MCP_MODE} mode")
     mcp_asgi = get_mcp_asgi()
     # Ensure MCP task group is initialized by entering its lifespan
-    if hasattr(mcp_asgi, "lifespan"):
-        async with mcp_asgi.lifespan(app):
+    try:
+        if hasattr(mcp_asgi, "lifespan"):
+            async with mcp_asgi.lifespan(app):
+                yield
+        else:
             yield
-    else:
-        yield
-    logger.info("Shutting down Lucius MCP Server")
+    finally:
+        await attachment_download_runtime_holder.close()
+        logger.info("Shutting down Lucius MCP Server")
 
 
 # Create main Starlette application lazily
@@ -80,8 +86,10 @@ def get_app() -> Starlette | None:
             lifespan=lifespan,
             exception_handlers={Exception: agent_hint_handler},
             routes=[
+                # Explicit capability route must precede FastMCP's root mount.
+                attachment_download_route(attachment_download_runtime_holder),
                 # Mount the FastMCP ASGI app under /
-                Mount("/", app=get_mcp_asgi())
+                Mount("/", app=get_mcp_asgi()),
             ],
         )
     else:

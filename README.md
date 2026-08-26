@@ -198,6 +198,7 @@ Full documentation is available in the [docs/](docs/index.md) folder:
 - [Tool Reference](docs/tools.md)
 - [Configuration & Setup](docs/setup.md)
 - [Telemetry & Privacy](docs/telemetry.md)
+- [Attachment download capability links](docs/attachment-downloads.md)
 - [Development Guide](docs/development.md)
 - [AI Agent Protocol](docs/agent-documentation-protocol.md)
 
