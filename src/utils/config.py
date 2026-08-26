@@ -31,6 +31,34 @@ class Settings(BaseSettings):
     HOST: str = Field(default="127.0.0.1", description="Host to bind the server to")
     PORT: int = Field(default=8000, description="Port to bind the server to")
     MCP_MODE: Literal["http", "stdio"] = Field(default="stdio", description="Running mode: http or stdio")
+    ATTACHMENT_DOWNLOAD_PUBLIC_BASE_URL: str | None = Field(
+        default=None,
+        description="Explicit externally reachable base URL for HTTP attachment capability links",
+    )
+    ATTACHMENT_DOWNLOAD_CACHE_DIR: Path | None = Field(
+        default=None,
+        description="Optional private parent directory for temporary attachment capability files",
+    )
+    ATTACHMENT_DOWNLOAD_MAX_FILE_BYTES: int = Field(
+        default=100 * 1024 * 1024,
+        ge=1,
+        description="Maximum size of one cached attachment capability file",
+    )
+    ATTACHMENT_DOWNLOAD_MAX_ENTRIES: int = Field(
+        default=32,
+        ge=1,
+        description="Maximum number of active attachment capability entries",
+    )
+    ATTACHMENT_DOWNLOAD_MAX_TOTAL_BYTES: int = Field(
+        default=512 * 1024 * 1024,
+        ge=1,
+        description="Maximum aggregate size of active attachment capability entries",
+    )
+    ATTACHMENT_DOWNLOAD_TTL_SECONDS: int = Field(
+        default=300,
+        ge=1,
+        description="Lifetime of an unconsumed attachment capability link",
+    )
     TELEMETRY_ENABLED: bool | None = Field(
         default=None,
         description="Optional telemetry override. When unset, TelemetryConfig.enabled is used.",

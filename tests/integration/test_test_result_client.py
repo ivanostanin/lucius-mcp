@@ -93,6 +93,38 @@ async def test_client_exact_result_enrichment_wrappers_call_generated_controller
 
 
 @pytest.mark.asyncio
+async def test_client_test_case_attachment_facade_uses_authenticated_generated_requests() -> None:
+    client = _client()
+    client._attachment_api = MagicMock()
+    list_response = httpx.Response(
+        200,
+        json={"content": [{"id": 15, "name": "evidence.txt", "contentType": "text/plain"}], "last": True},
+    )
+    content_response = httpx.Response(
+        200,
+        content=b"case evidence",
+        headers={"content-type": "text/plain", "content-disposition": 'attachment; filename="evidence.txt"'},
+    )
+    client._attachment_api.find_all13_without_preload_content = AsyncMock(return_value=list_response)
+    client._attachment_api.read_content2_without_preload_content = AsyncMock(return_value=content_response)
+
+    attachments = await client.list_test_case_attachments(12, page=0, size=100)
+    content = await client.read_test_case_attachment(15)
+
+    assert attachments.content is not None
+    assert attachments.content[0].id == 15
+    assert content.data == b"case evidence"
+    assert content.content_type == "text/plain"
+    assert content.filename == "evidence.txt"
+    client._attachment_api.find_all13_without_preload_content.assert_awaited_once_with(
+        test_case_id=12, page=0, size=100, sort=None, _request_timeout=client._timeout
+    )
+    client._attachment_api.read_content2_without_preload_content.assert_awaited_once_with(
+        id=15, inline=False, _request_timeout=client._timeout
+    )
+
+
+@pytest.mark.asyncio
 async def test_client_exact_result_execution_sends_v2_and_translates_errors() -> None:
     client = _client()
     client._api_client = MagicMock()
