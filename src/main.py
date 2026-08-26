@@ -1,7 +1,9 @@
 import asyncio
 import contextlib
+import ipaddress
 import os
 import typing
+from urllib.parse import urlsplit
 
 from fastmcp import FastMCP
 from starlette.applications import Starlette
@@ -55,7 +57,13 @@ async def get_attachment_download_public_base_url() -> str:
     """Resolve delivery only in a runtime that can keep a capability URL alive."""
     if settings.MCP_MODE == "http":
         if settings.ATTACHMENT_DOWNLOAD_PUBLIC_BASE_URL:
-            return settings.ATTACHMENT_DOWNLOAD_PUBLIC_BASE_URL
+            public_base_url = settings.ATTACHMENT_DOWNLOAD_PUBLIC_BASE_URL
+            if _is_loopback_url(public_base_url):
+                raise AllureValidationError(
+                    "HTTP attachment downloads require a non-loopback public base URL",
+                    suggestions=["Set ATTACHMENT_DOWNLOAD_PUBLIC_BASE_URL to the externally reachable server URL"],
+                )
+            return public_base_url
         raise AllureValidationError(
             "Attachment downloads require ATTACHMENT_DOWNLOAD_PUBLIC_BASE_URL in HTTP mode",
             suggestions=["Set it to the externally reachable server URL"],
@@ -66,6 +74,19 @@ async def get_attachment_download_public_base_url() -> str:
         "One-shot CLI commands cannot serve attachment capability URLs",
         suggestions=["Use the documented --output delivery mode when it is available"],
     )
+
+
+def _is_loopback_url(value: str) -> bool:
+    """Identify local-only URLs, which cannot be advertised by HTTP MCP mode."""
+    hostname = urlsplit(value).hostname
+    if hostname is None:
+        return False
+    if hostname.lower() == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(hostname).is_loopback
+    except ValueError:
+        return False
 
 
 def get_mcp_asgi() -> Starlette:

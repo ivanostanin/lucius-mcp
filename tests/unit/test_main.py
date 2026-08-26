@@ -6,6 +6,7 @@ from starlette.applications import Starlette
 from starlette.routing import Mount, Route
 from starlette.testclient import TestClient
 
+from src.client.exceptions import AllureValidationError
 from src.main import app as global_app
 from src.main import telemetry_service
 from src.utils.telemetry import set_telemetry_service, wrap_tool_with_telemetry
@@ -128,6 +129,18 @@ async def test_stdio_delivery_base_url_starts_loopback_gateway_and_shutdown_clos
     run_stdio_async.assert_awaited_once_with(show_banner=False, log_level=settings.LOG_LEVEL)
     close_gateway.assert_awaited_once()
     close_holder.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_http_delivery_base_url_rejects_loopback_addresses(mocker: MockerFixture) -> None:
+    from src.main import get_attachment_download_public_base_url
+    from src.utils.config import settings
+
+    mocker.patch.object(settings, "MCP_MODE", "http")
+    for base_url in ("http://127.0.0.1:8000", "http://localhost:8000", "http://[::1]:8000"):
+        mocker.patch.object(settings, "ATTACHMENT_DOWNLOAD_PUBLIC_BASE_URL", base_url)
+        with pytest.raises(AllureValidationError, match="non-loopback public base URL"):
+            await get_attachment_download_public_base_url()
 
 
 @pytest.mark.asyncio

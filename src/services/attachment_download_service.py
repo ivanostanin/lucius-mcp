@@ -179,7 +179,10 @@ class AttachmentDownloadRuntime:
         if content_length is not None and content_length > self._config.max_file_bytes:
             raise AllureValidationError("Attachment exceeds Lucius's configured download file limit")
 
-        reservation = content_length if content_length is not None else self._config.max_file_bytes
+        # ``Content-Length`` is upstream metadata, not a trustworthy capacity
+        # reservation.  Reserve the bounded worst case until the stream has
+        # completed so a short or misleading header cannot overcommit disk.
+        reservation = self._config.max_file_bytes
         async with self._lock:
             if self._closed:
                 raise AllureValidationError("Lucius attachment download broker is shutting down")
@@ -292,6 +295,7 @@ class AttachmentDownloadRuntimeHolder:
         self._runtime: AttachmentDownloadRuntime | None = None
         self._lock = asyncio.Lock()
         self._initialization_count = 0
+        self._closed = False
 
     @property
     def is_initialized(self) -> bool:
@@ -302,9 +306,9 @@ class AttachmentDownloadRuntimeHolder:
         return self._initialization_count
 
     async def get_or_create(self, config: AttachmentDownloadConfig) -> AttachmentDownloadRuntime:
-        if self._runtime is not None:
-            return self._runtime
         async with self._lock:
+            if self._closed:
+                raise AllureValidationError("Lucius attachment download broker is shutting down")
             if self._runtime is None:
                 runtime = await AttachmentDownloadRuntime.create(config)
                 self._runtime = runtime
@@ -312,10 +316,14 @@ class AttachmentDownloadRuntimeHolder:
             return self._runtime
 
     async def get(self) -> AttachmentDownloadRuntime | None:
-        return self._runtime
+        async with self._lock:
+            return None if self._closed else self._runtime
 
     async def close(self) -> None:
         async with self._lock:
+            if self._closed:
+                return
+            self._closed = True
             runtime = self._runtime
             self._runtime = None
         if runtime is not None:

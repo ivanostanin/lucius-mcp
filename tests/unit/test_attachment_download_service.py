@@ -10,11 +10,13 @@ from unittest.mock import AsyncMock
 import pytest
 from httpx import ASGITransport, AsyncClient
 from starlette.applications import Starlette
+from starlette.requests import Request
 
 from src.client.exceptions import AllureNotFoundError, AllureValidationError
 from src.services.attachment_download_gateway import LoopbackAttachmentDownloadGateway, attachment_download_route
 from src.services.attachment_download_service import (
     AttachmentDownloadConfig,
+    AttachmentDownloadRuntime,
     AttachmentDownloadRuntimeHolder,
     AttachmentDownloadService,
     AttachmentKind,
@@ -275,6 +277,51 @@ async def test_streaming_rejects_over_limit_content_without_a_declared_size(tmp_
     assert not list(tmp_path.rglob("*.bin"))
 
 
+@pytest.mark.asyncio
+async def test_misleading_content_length_cannot_overcommit_the_total_cache_budget(tmp_path) -> None:
+    runtime = await AttachmentDownloadRuntime.create(
+        AttachmentDownloadConfig(
+            cache_parent=tmp_path,
+            max_file_bytes=1024,
+            max_entries=2,
+            max_total_bytes=1024,
+            ttl_seconds=60,
+        )
+    )
+    first_started = asyncio.Event()
+    release_first = asyncio.Event()
+
+    async def blocked_chunks():
+        first_started.set()
+        await release_first.wait()
+        yield b"a" * 1024
+
+    async def full_chunks():
+        yield b"b" * 1024
+
+    first_store = asyncio.create_task(
+        runtime.store_stream(
+            filename="first.bin",
+            content_type="application/octet-stream",
+            content_length=1,
+            chunks=blocked_chunks(),
+        )
+    )
+    try:
+        await first_started.wait()
+        with pytest.raises(AllureValidationError, match="remaining download cache budget"):
+            await runtime.store_stream(
+                filename="second.bin",
+                content_type="application/octet-stream",
+                content_length=1,
+                chunks=full_chunks(),
+            )
+    finally:
+        release_first.set()
+        await first_store
+        await runtime.close()
+
+
 def test_public_base_url_rejects_unusable_addresses_and_suffixes() -> None:
     for base_url in ("http://[::]:8000", "https://downloads.example/base?proxy=true", "https://downloads.example/#x"):
         with pytest.raises(AllureValidationError, match="reachable public base URL"):
@@ -317,6 +364,54 @@ async def test_gateway_streams_a_claimed_entry_once_with_safe_headers(tmp_path) 
 
 
 @pytest.mark.asyncio
+async def test_interrupted_starlette_response_releases_the_claimed_entry(tmp_path) -> None:
+    client = SimpleNamespace(
+        list_test_result_attachments=AsyncMock(
+            return_value=SimpleNamespace(content=[SimpleNamespace(id=23, name="evidence.txt")])
+        ),
+        read_test_result_attachment=AsyncMock(
+            return_value=SimpleNamespace(data=b"evidence", filename="evidence.txt", content_type="text/plain")
+        ),
+    )
+    holder = AttachmentDownloadRuntimeHolder()
+    service = _service(tmp_path, client, holder)
+    prepared = await service.prepare(
+        AttachmentPreparationRequest(attachment_id=23, kind=AttachmentKind.TEST_RESULT, test_result_id=1),
+        public_base_url="https://downloads.example",
+    )
+    handle = prepared.download_url.rsplit("/", maxsplit=1)[-1]
+    route = attachment_download_route(holder)
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": f"/downloads/{handle}",
+        "raw_path": f"/downloads/{handle}".encode(),
+        "root_path": "",
+        "scheme": "http",
+        "query_string": b"",
+        "headers": [],
+        "client": ("127.0.0.1", 1234),
+        "server": ("testserver", 80),
+        "extensions": {},
+        "path_params": {"handle": handle},
+    }
+    response = await route.endpoint(Request(scope))
+
+    async def receive() -> dict[str, str]:
+        return {"type": "http.disconnect"}
+
+    async def failing_send(message: dict[str, object]) -> None:
+        if message["type"] == "http.response.body":
+            raise RuntimeError("connection dropped")
+
+    with pytest.raises(RuntimeError, match="connection dropped"):
+        await response(scope, receive, failing_send)
+
+    assert not list(tmp_path.rglob("*.bin"))
+    await holder.close()
+
+
+@pytest.mark.asyncio
 async def test_loopback_gateway_stays_live_until_the_one_time_fetch_completes(tmp_path) -> None:
     client = SimpleNamespace(
         list_test_result_attachments=AsyncMock(
@@ -348,3 +443,50 @@ async def test_loopback_gateway_stays_live_until_the_one_time_fetch_completes(tm
     assert response.status_code == 200
     assert response.content == b"evidence"
     assert replay.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_concurrent_loopback_start_uses_one_listener(mocker) -> None:
+    holder = AttachmentDownloadRuntimeHolder()
+    gateway = LoopbackAttachmentDownloadGateway(holder)
+    original_start_server = asyncio.start_server
+    first_start_entered = asyncio.Event()
+    release_start = asyncio.Event()
+    start_calls = 0
+
+    async def delayed_start_server(*args, **kwargs):
+        nonlocal start_calls
+        start_calls += 1
+        first_start_entered.set()
+        await release_start.wait()
+        return await original_start_server(*args, **kwargs)
+
+    mocker.patch("src.services.attachment_download_gateway.asyncio.start_server", side_effect=delayed_start_server)
+    first = asyncio.create_task(gateway.start())
+    await first_start_entered.wait()
+    second = asyncio.create_task(gateway.start())
+    await asyncio.sleep(0)
+    release_start.set()
+
+    try:
+        assert len(set(await asyncio.gather(first, second))) == 1
+        assert start_calls == 1
+    finally:
+        await gateway.close()
+
+
+@pytest.mark.asyncio
+async def test_holder_does_not_reinitialize_after_shutdown(tmp_path) -> None:
+    holder = AttachmentDownloadRuntimeHolder()
+    config = AttachmentDownloadConfig(
+        cache_parent=tmp_path,
+        max_file_bytes=1024,
+        max_entries=1,
+        max_total_bytes=1024,
+        ttl_seconds=60,
+    )
+    await holder.get_or_create(config)
+    await holder.close()
+
+    with pytest.raises(AllureValidationError, match="shutting down"):
+        await holder.get_or_create(config)
