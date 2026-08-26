@@ -1,6 +1,6 @@
 # Story 12.2: Broker Authenticated Attachment Downloads Through Short-Lived Capability Links
 
-Status: review
+Status: done
 
 ## Story
 
@@ -119,6 +119,16 @@ so that **I can retrieve evidence files without receiving bytes/base64 in MCP ou
   - [x] Extend the established client integration, HTTP-route ordering, and existing CLI packaging/decoupling coverage without duplicating harnesses.
   - [x] Preserve sandbox evidence coverage as environment-gated; the future public preparation tool in Story 12.3 is required before an MCP-level evidence download can be exercised.
   - [x] Document cache limits, one-time/TTL semantics, supported transports, direct-CLI fallback, and capability-link secrecy.
+
+### Review Findings
+
+- [x] [Review][Patch] Wire the loopback gateway and broker lifecycle into the production stdio runtime [src/main.py:103] — resolved with lazy loopback URL resolution and deterministic stdio shutdown cleanup.
+- [x] [Review][Patch] Enforce cache limits while streaming authenticated attachment content [src/client/client.py:930] — resolved by streaming response chunks into atomically created cache files under reserved byte budgets.
+- [x] [Review][Patch] Translate attachment-list and content HTTP failures through Lucius typed errors [src/client/client.py:930] — resolved with typed translation that does not echo response bodies.
+- [x] [Review][Patch] Retain an entry once claimed until its response cleanup finishes [src/services/attachment_download_service.py:244] — resolved by exempting claimed entries from expiry deletion.
+- [x] [Review][Patch] Reject unusable public capability base URLs [src/services/attachment_download_service.py:417] — resolved for query/fragment URLs and IPv6 unspecified hosts.
+- [x] [Review][Patch] Make broker shutdown atomic with preparation [src/services/attachment_download_service.py:272] — resolved by rejecting stores during shutdown and deleting race-created files.
+- [x] [Review][Patch] Correct the public-base environment-variable hint [src/services/attachment_download_service.py:422] — resolved to use `ATTACHMENT_DOWNLOAD_PUBLIC_BASE_URL` consistently.
 
 ## Dev Notes
 

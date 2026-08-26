@@ -10,7 +10,8 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-from collections.abc import Awaitable
+from collections.abc import AsyncIterator, Awaitable
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from dataclasses import dataclass
 from typing import Literal, TypeAlias, TypeVar, cast, overload
 
@@ -208,6 +209,20 @@ class AttachmentContent:
     content_type: str
 
 
+@dataclass(frozen=True)
+class AttachmentContentStream:
+    """Authenticated attachment response metadata and an async byte stream."""
+
+    response: httpx.Response
+    filename: str
+    content_type: str
+    content_length: int | None
+
+    def iter_bytes(self) -> AsyncIterator[bytes]:
+        """Yield the response body without materializing it in memory."""
+        return self.response.aiter_bytes()
+
+
 class AttachmentStepDtoWithName(AttachmentStepDto):
     """Subclass to support name attribute and id."""
 
@@ -277,6 +292,7 @@ AttachmentsMap: TypeAlias = dict[str, dict[str, object]]
 __all__ = [
     "AllureClient",
     "AttachmentContent",
+    "AttachmentContentStream",
     "AttachmentStepDtoWithName",
     "BodyStepDtoWithSteps",
     "CustomFieldProjectWithValuesDto",
@@ -932,10 +948,8 @@ class AllureClient:
         response = await self._call_api_raw(coro)
         http_response = self._unwrap_http_response(response)
         if not 200 <= http_response.status_code <= 299:
-            raise ApiException(
-                status=http_response.status_code,
-                reason=http_response.reason_phrase,
-                body=http_response.text,
+            self._handle_api_exception(
+                ApiException(status=http_response.status_code, reason=http_response.reason_phrase, body="")
             )
         disposition = http_response.headers.get("content-disposition", "")
         filename = "attachment"
@@ -946,6 +960,52 @@ class AllureClient:
             filename=filename,
             content_type=http_response.headers.get("content-type", "application/octet-stream"),
         )
+
+    @asynccontextmanager
+    async def _stream_attachment_content(
+        self, attachment_id: int, *, resource_path: str, inline: bool = False
+    ) -> AsyncIterator[AttachmentContentStream]:
+        """Stream one attachment through the configured authenticated HTTP client."""
+        if not isinstance(attachment_id, int) or isinstance(attachment_id, bool) or attachment_id <= 0:
+            raise AllureValidationError("Attachment ID must be a positive integer")
+        self._require_entered()
+        await self._ensure_valid_token()
+        if self._api_client is None:  # pragma: no cover - guarded by _require_entered
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+
+        method, url, headers, _, _ = self._api_client.param_serialize(
+            method="GET",
+            resource_path=resource_path,
+            path_params={"id": attachment_id},
+            query_params=[("inline", inline)],
+            header_params={"Accept": "*/*"},
+            auth_settings=[],
+        )
+        rest_client = self._api_client.rest_client
+        if rest_client.pool_manager is None:
+            rest_client.pool_manager = rest_client._create_pool_manager()
+        async with rest_client.pool_manager.stream(method, url, headers=headers, timeout=self._timeout) as response:
+            if not 200 <= response.status_code <= 299:
+                self._handle_api_exception(
+                    ApiException(status=response.status_code, reason=response.reason_phrase, body="")
+                )
+            disposition = response.headers.get("content-disposition", "")
+            filename = "attachment"
+            if "filename=" in disposition:
+                filename = disposition.partition("filename=")[2].strip().strip('"') or filename
+            content_length: int | None = None
+            raw_content_length = response.headers.get("content-length")
+            if raw_content_length is not None:
+                try:
+                    content_length = int(raw_content_length)
+                except ValueError:
+                    pass
+            yield AttachmentContentStream(
+                response=response,
+                filename=filename,
+                content_type=response.headers.get("content-type", "application/octet-stream"),
+                content_length=content_length,
+            )
 
     @staticmethod
     def _extract_upload_result_ids(data: dict[str, object]) -> list[int]:
@@ -1788,6 +1848,16 @@ class AllureClient:
             )
         )
 
+    def stream_test_result_fixture_attachment(
+        self, attachment_id: int, *, inline: bool = False
+    ) -> AbstractAsyncContextManager[AttachmentContentStream]:
+        """Stream fixture attachment content for bounded local delivery."""
+        return self._stream_attachment_content(
+            attachment_id,
+            resource_path="/api/testfixtureresult/attachment/{id}/content",
+            inline=inline,
+        )
+
     async def resolve_test_result(
         self,
         test_result_id: int,
@@ -1887,7 +1957,11 @@ class AllureClient:
                 ),
             )
         )
-        return self._parse_test_result_attachment_page(self._extract_response_data(response))
+        try:
+            return self._parse_test_result_attachment_page(self._extract_response_data(response))
+        except ApiException as exc:
+            self._handle_api_exception(exc)
+            raise
 
     async def patch_test_result_attachment(
         self,
@@ -1928,6 +2002,16 @@ class AllureClient:
                     _request_timeout=self._timeout,
                 ),
             )
+        )
+
+    def stream_test_result_attachment(
+        self, attachment_id: int, *, inline: bool = False
+    ) -> AbstractAsyncContextManager[AttachmentContentStream]:
+        """Stream result attachment content for bounded local delivery."""
+        return self._stream_attachment_content(
+            attachment_id,
+            resource_path="/api/testresult/attachment/{id}/content",
+            inline=inline,
         )
 
     async def rerun_test_results_bulk(self, data: TestResultBulkRerunDto) -> None:
@@ -2502,7 +2586,11 @@ class AllureClient:
                 ),
             )
         )
-        return self._parse_test_case_attachment_page(self._extract_response_data(response))
+        try:
+            return self._parse_test_case_attachment_page(self._extract_response_data(response))
+        except ApiException as exc:
+            self._handle_api_exception(exc)
+            raise
 
     async def read_test_case_attachment(self, attachment_id: int, *, inline: bool = False) -> AttachmentContent:
         """Read test-case attachment bytes plus trusted upstream response metadata."""
@@ -2518,6 +2606,16 @@ class AllureClient:
                     _request_timeout=self._timeout,
                 ),
             )
+        )
+
+    def stream_test_case_attachment(
+        self, attachment_id: int, *, inline: bool = False
+    ) -> AbstractAsyncContextManager[AttachmentContentStream]:
+        """Stream test-case attachment content for bounded local delivery."""
+        return self._stream_attachment_content(
+            attachment_id,
+            resource_path="/api/testcase/attachment/{id}/content",
+            inline=inline,
         )
 
     async def create_scenario_step(

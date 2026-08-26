@@ -105,6 +105,32 @@ def test_start_stdio_mode(mocker: MockerFixture) -> None:
 
 
 @pytest.mark.asyncio
+async def test_stdio_delivery_base_url_starts_loopback_gateway_and_shutdown_closes_it(mocker: MockerFixture) -> None:
+    from src.main import (
+        _run_stdio,
+        attachment_download_loopback_gateway,
+        attachment_download_runtime_holder,
+        get_attachment_download_public_base_url,
+        mcp,
+    )
+    from src.utils.config import settings
+
+    mocker.patch.object(settings, "MCP_MODE", "stdio")
+    base_url = await get_attachment_download_public_base_url()
+    assert base_url.startswith("http://127.0.0.1:")
+
+    run_stdio_async = mocker.patch.object(mcp, "run_stdio_async", new_callable=AsyncMock)
+    close_gateway = mocker.spy(attachment_download_loopback_gateway, "close")
+    close_holder = mocker.spy(attachment_download_runtime_holder, "close")
+
+    await _run_stdio()
+
+    run_stdio_async.assert_awaited_once_with(show_banner=False, log_level=settings.LOG_LEVEL)
+    close_gateway.assert_awaited_once()
+    close_holder.assert_awaited_once()
+
+
+@pytest.mark.asyncio
 async def test_wrap_tool_with_telemetry_emits_success(mocker: MockerFixture) -> None:
     async def dummy_tool(value: int) -> str:
         return str(value)
