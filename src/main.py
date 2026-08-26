@@ -7,7 +7,8 @@ from fastmcp import FastMCP
 from starlette.applications import Starlette
 from starlette.routing import Mount
 
-from src.services.attachment_download_gateway import attachment_download_route
+from src.client.exceptions import AllureValidationError
+from src.services.attachment_download_gateway import LoopbackAttachmentDownloadGateway, attachment_download_route
 from src.services.attachment_download_service import AttachmentDownloadRuntimeHolder
 from src.services.telemetry_service import TelemetryService
 from src.tools import all_tools
@@ -47,6 +48,24 @@ for tool in all_tools:
 # The ASGI app and main app are created lazily or only when needed for HTTP mode
 _mcp_asgi = None
 attachment_download_runtime_holder = AttachmentDownloadRuntimeHolder()
+attachment_download_loopback_gateway = LoopbackAttachmentDownloadGateway(attachment_download_runtime_holder)
+
+
+async def get_attachment_download_public_base_url() -> str:
+    """Resolve delivery only in a runtime that can keep a capability URL alive."""
+    if settings.MCP_MODE == "http":
+        if settings.ATTACHMENT_DOWNLOAD_PUBLIC_BASE_URL:
+            return settings.ATTACHMENT_DOWNLOAD_PUBLIC_BASE_URL
+        raise AllureValidationError(
+            "Attachment downloads require ATTACHMENT_DOWNLOAD_PUBLIC_BASE_URL in HTTP mode",
+            suggestions=["Set it to the externally reachable server URL"],
+        )
+    if settings.MCP_MODE == "stdio":
+        return await attachment_download_loopback_gateway.start()
+    raise AllureValidationError(
+        "One-shot CLI commands cannot serve attachment capability URLs",
+        suggestions=["Use the documented --output delivery mode when it is available"],
+    )
 
 
 def get_mcp_asgi() -> Starlette:
@@ -103,7 +122,11 @@ app = get_app()
 async def _run_stdio() -> None:
     telemetry_service.log_status()
     telemetry_service.emit_startup_event()
-    await mcp.run_stdio_async(show_banner=False, log_level=settings.LOG_LEVEL)
+    try:
+        await mcp.run_stdio_async(show_banner=False, log_level=settings.LOG_LEVEL)
+    finally:
+        await attachment_download_loopback_gateway.close()
+        await attachment_download_runtime_holder.close()
 
 
 def start() -> None:

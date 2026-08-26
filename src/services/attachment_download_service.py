@@ -7,7 +7,8 @@ import os
 import re
 import secrets
 import tempfile
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -114,15 +115,17 @@ class _VerifiedAttachment:
     declared_size: int | None
 
 
-class _AttachmentContent(Protocol):
-    @property
-    def data(self) -> bytes: ...
-
+class _AttachmentContentStream(Protocol):
     @property
     def filename(self) -> str: ...
 
     @property
     def content_type(self) -> str: ...
+
+    @property
+    def content_length(self) -> int | None: ...
+
+    def iter_bytes(self) -> AsyncIterator[bytes]: ...
 
 
 class _DownloadClient(Protocol):
@@ -132,13 +135,17 @@ class _DownloadClient(Protocol):
 
     async def list_test_case_attachments(self, test_case_id: int, *, page: int, size: int) -> object: ...
 
-    async def read_test_result_attachment(self, attachment_id: int, *, inline: bool = False) -> _AttachmentContent: ...
-
-    async def read_test_result_fixture_attachment(
+    def stream_test_result_attachment(
         self, attachment_id: int, *, inline: bool = False
-    ) -> _AttachmentContent: ...
+    ) -> AbstractAsyncContextManager[_AttachmentContentStream]: ...
 
-    async def read_test_case_attachment(self, attachment_id: int, *, inline: bool = False) -> _AttachmentContent: ...
+    def stream_test_result_fixture_attachment(
+        self, attachment_id: int, *, inline: bool = False
+    ) -> AbstractAsyncContextManager[_AttachmentContentStream]: ...
+
+    def stream_test_case_attachment(
+        self, attachment_id: int, *, inline: bool = False
+    ) -> AbstractAsyncContextManager[_AttachmentContentStream]: ...
 
 
 class AttachmentDownloadRuntime:
@@ -149,6 +156,8 @@ class AttachmentDownloadRuntime:
         self._cache_root = cache_root
         self._entries: dict[str, CachedAttachmentDownload] = {}
         self._claimed: set[str] = set()
+        self._reserved_bytes = 0
+        self._pending_stores = 0
         self._lock = asyncio.Lock()
         self._closed = False
         self._sweeper = asyncio.create_task(self._sweep(), name="lucius-attachment-download-expiry")
@@ -159,45 +168,62 @@ class AttachmentDownloadRuntime:
         cache_root = await asyncio.to_thread(_create_private_cache_root, config.cache_parent)
         return cls(config, cache_root)
 
-    async def store(
+    async def store_stream(
         self,
         *,
         filename: str,
         content_type: str,
-        data: bytes,
+        content_length: int | None,
+        chunks: AsyncIterator[bytes],
     ) -> CachedAttachmentDownload:
-        if len(data) > self._config.max_file_bytes:
+        if content_length is not None and content_length > self._config.max_file_bytes:
             raise AllureValidationError("Attachment exceeds Lucius's configured download file limit")
 
+        reservation = content_length if content_length is not None else self._config.max_file_bytes
         async with self._lock:
+            if self._closed:
+                raise AllureValidationError("Lucius attachment download broker is shutting down")
             await self._remove_expired_locked()
-            if len(self._entries) >= self._config.max_entries:
+            if len(self._entries) + self._pending_stores >= self._config.max_entries:
                 raise AllureValidationError("Lucius's attachment download cache is full; wait for an entry to expire")
-            if self._total_bytes() + len(data) > self._config.max_total_bytes:
+            if self._total_bytes() + self._reserved_bytes + reservation > self._config.max_total_bytes:
                 raise AllureValidationError("Attachment exceeds Lucius's remaining download cache budget")
+            self._reserved_bytes += reservation
+            self._pending_stores += 1
 
-            handle = secrets.token_urlsafe(32)
-            path = self._cache_root / f"{secrets.token_hex(24)}.bin"
-            try:
-                await asyncio.to_thread(_write_atomically, path, data)
-            except OSError as exc:
-                raise AllureValidationError("Lucius could not securely cache the verified attachment") from exc
+        handle = secrets.token_urlsafe(32)
+        path = self._cache_root / f"{secrets.token_hex(24)}.bin"
+        try:
+            byte_size = await _write_stream_atomically(path, chunks, self._config.max_file_bytes)
+        except OSError as exc:
+            raise AllureValidationError("Lucius could not securely cache the verified attachment") from exc
+        finally:
+            async with self._lock:
+                self._reserved_bytes -= reservation
+                self._pending_stores -= 1
 
-            entry = CachedAttachmentDownload(
-                handle=handle,
-                path=path,
-                filename=_sanitize_filename(filename),
-                content_type=_safe_content_type(content_type),
-                byte_size=len(data),
-                expires_at=datetime.now(timezone.utc) + timedelta(seconds=self._config.ttl_seconds),
-            )
+        entry = CachedAttachmentDownload(
+            handle=handle,
+            path=path,
+            filename=_sanitize_filename(filename),
+            content_type=_safe_content_type(content_type),
+            byte_size=byte_size,
+            expires_at=datetime.now(timezone.utc) + timedelta(seconds=self._config.ttl_seconds),
+        )
+        async with self._lock:
+            if self._closed:
+                await _remove_path(path)
+                await asyncio.to_thread(_remove_cache_root, self._cache_root)
+                raise AllureValidationError("Lucius attachment download broker is shutting down")
             self._entries[handle] = entry
-            return entry
+        return entry
 
     async def claim(self, handle: str) -> CachedAttachmentDownload | None:
         if not _HANDLE_PATTERN.fullmatch(handle):
             return None
         async with self._lock:
+            if self._closed:
+                return None
             await self._remove_expired_locked()
             if handle in self._claimed:
                 return None
@@ -217,7 +243,10 @@ class AttachmentDownloadRuntime:
     async def close(self) -> None:
         if self._closed:
             return
-        self._closed = True
+        async with self._lock:
+            if self._closed:
+                return
+            self._closed = True
         self._sweeper.cancel()
         try:
             await self._sweeper
@@ -227,6 +256,7 @@ class AttachmentDownloadRuntime:
             entries = tuple(self._entries.values())
             self._entries.clear()
             self._claimed.clear()
+            self._reserved_bytes = 0
         for entry in entries:
             await _remove_path(entry.path)
         await asyncio.to_thread(_remove_cache_root, self._cache_root)
@@ -243,7 +273,9 @@ class AttachmentDownloadRuntime:
 
     async def _remove_expired_locked(self) -> None:
         now = datetime.now(timezone.utc)
-        expired = [handle for handle, entry in self._entries.items() if entry.expires_at <= now]
+        expired = [
+            handle for handle, entry in self._entries.items() if entry.expires_at <= now and handle not in self._claimed
+        ]
         for handle in expired:
             entry = self._entries.pop(handle)
             self._claimed.discard(handle)
@@ -321,15 +353,13 @@ class AttachmentDownloadService:
         base_url = _validate_public_base_url(public_base_url)
         verified = await self._verify_ownership(request)
         runtime = await self._holder.get_or_create(self._config)
-        content = await self._read_verified_content(verified)
-        data = content.data
-        if not isinstance(data, bytes):
-            raise AllureValidationError("Authenticated attachment content had an unsupported response format")
-        entry = await runtime.store(
-            filename=content.filename or verified.filename,
-            content_type=content.content_type or verified.content_type,
-            data=data,
-        )
+        async with self._stream_verified_content(verified) as content:
+            entry = await runtime.store_stream(
+                filename=content.filename or verified.filename,
+                content_type=content.content_type or verified.content_type,
+                content_length=content.content_length,
+                chunks=content.iter_bytes(),
+            )
         return PreparedAttachmentDownload(
             download_url=f"{base_url}/downloads/{entry.handle}",
             expires_at=entry.expires_at,
@@ -387,14 +417,16 @@ class AttachmentDownloadService:
             declared_size=_int_attr(match, "content_length"),
         )
 
-    async def _read_verified_content(self, verified: _VerifiedAttachment) -> _AttachmentContent:
+    def _stream_verified_content(
+        self, verified: _VerifiedAttachment
+    ) -> AbstractAsyncContextManager[_AttachmentContentStream]:
         if verified.declared_size is not None and verified.declared_size > self._config.max_file_bytes:
             raise AllureValidationError("Attachment exceeds Lucius's configured download file limit")
         if verified.kind is AttachmentKind.TEST_RESULT:
-            return await self._client.read_test_result_attachment(verified.attachment_id)
+            return self._client.stream_test_result_attachment(verified.attachment_id)
         if verified.kind is AttachmentKind.FIXTURE_RESULT:
-            return await self._client.read_test_result_fixture_attachment(verified.attachment_id)
-        return await self._client.read_test_case_attachment(verified.attachment_id)
+            return self._client.stream_test_result_fixture_attachment(verified.attachment_id)
+        return self._client.stream_test_case_attachment(verified.attachment_id)
 
     @staticmethod
     async def _collect_pages(fetch: Callable[..., Awaitable[object]], owner_id: int) -> list[object]:
@@ -416,10 +448,16 @@ def _validate_positive(value: int | None, label: str) -> None:
 
 def _validate_public_base_url(value: str) -> str:
     parsed = urlsplit(value)
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.hostname == _UNSPECIFIED_HOST:
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.netloc
+        or parsed.hostname in {_UNSPECIFIED_HOST, "::"}
+        or parsed.query
+        or parsed.fragment
+    ):
         raise AllureValidationError(
             "Attachment downloads require an explicit reachable public base URL",
-            suggestions=["Set LUCIUS_ATTACHMENT_DOWNLOAD_PUBLIC_BASE_URL to the externally reachable server URL"],
+            suggestions=["Set ATTACHMENT_DOWNLOAD_PUBLIC_BASE_URL to the externally reachable server URL"],
         )
     return value.rstrip("/")
 
@@ -457,18 +495,33 @@ def _create_private_cache_root(parent: Path) -> Path:
     return root
 
 
-def _write_atomically(path: Path, data: bytes) -> None:
+async def _write_stream_atomically(path: Path, chunks: AsyncIterator[bytes], max_file_bytes: int) -> int:
     temporary = path.with_name(f".{path.name}.{secrets.token_hex(8)}.tmp")
+    file = None
+    byte_size = 0
+    completed = False
     try:
-        with temporary.open("xb") as file:
-            os.chmod(temporary, 0o600)
-            file.write(data)
-            file.flush()
-            os.fsync(file.fileno())
-        os.replace(temporary, path)
-        os.chmod(path, 0o600)
+        file = await asyncio.to_thread(temporary.open, "xb")
+        await asyncio.to_thread(os.chmod, temporary, 0o600)
+        async for chunk in chunks:
+            if not isinstance(chunk, bytes):
+                raise AllureValidationError("Authenticated attachment content had an unsupported response format")
+            byte_size += len(chunk)
+            if byte_size > max_file_bytes:
+                raise AllureValidationError("Attachment exceeds Lucius's configured download file limit")
+            await asyncio.to_thread(file.write, chunk)
+        await asyncio.to_thread(file.flush)
+        await asyncio.to_thread(os.fsync, file.fileno())
+        await asyncio.to_thread(os.replace, temporary, path)
+        await asyncio.to_thread(os.chmod, path, 0o600)
+        completed = True
+        return byte_size
     finally:
-        temporary.unlink(missing_ok=True)
+        if file is not None:
+            await asyncio.to_thread(file.close)
+        await asyncio.to_thread(temporary.unlink, missing_ok=True)
+        if not completed:
+            await asyncio.to_thread(path.unlink, missing_ok=True)
 
 
 async def _remove_path(path: Path) -> None:

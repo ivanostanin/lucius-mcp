@@ -125,6 +125,20 @@ async def test_client_test_case_attachment_facade_uses_authenticated_generated_r
 
 
 @pytest.mark.asyncio
+async def test_attachment_content_errors_are_translated_without_echoing_response_bodies() -> None:
+    client = _client()
+    client._test_result_attachment_api = MagicMock()
+    client._test_result_attachment_api.read_content_without_preload_content = AsyncMock(
+        return_value=httpx.Response(404, text="sensitive upstream attachment URL")
+    )
+
+    with pytest.raises(AllureNotFoundError) as error:
+        await client.read_test_result_attachment(15)
+
+    assert "sensitive upstream" not in str(error.value)
+
+
+@pytest.mark.asyncio
 async def test_client_exact_result_execution_sends_v2_and_translates_errors() -> None:
     client = _client()
     client._api_client = MagicMock()
