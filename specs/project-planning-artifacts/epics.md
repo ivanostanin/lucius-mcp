@@ -1453,3 +1453,31 @@ so that I can understand the launch, identify exact Test Result IDs, and navigat
 **When** this story is implemented
 **Then** the required controller is retained by `scripts/filter_openapi.py` and the client is regenerated with `./scripts/generate_testops_api_client.sh`
 **And** existing generated launch, flat-result, and project-tree operations are reused without hand-editing generated files.
+
+### Story 12.5: Remove Upstream Storage Keys from Test-Result Attachment Outputs
+
+As an AI Agent,
+I want test-result attachment metadata to omit upstream storage implementation identifiers,
+so that I can prepare and download evidence using the supported owner-context contract without receiving unnecessary internal storage data.
+
+**Acceptance Criteria:**
+
+**Given** `get_test_result` returns result-, execution-step-, or fixture-level attachment metadata
+**When** Lucius renders structured MCP content, JSON, or plain output
+**Then** no attachment object contains `storage_key`
+**And** attachment ID, kind, owner context, name, content type, content length, flags, hierarchy, and completeness semantics remain unchanged.
+
+**Given** TestOps returns `storageKey` on an attachment DTO
+**When** `TestResultService` maps the upstream data into Lucius's application-owned model
+**Then** the value is discarded and cannot reach a public serializer, diagnostic, or log
+**And** generated TestOps client models remain unchanged.
+
+**Given** a valid attachment preparation reference
+**When** an agent calls `prepare_attachment_download`
+**Then** the verified owner/kind workflow and short-lived capability-link behavior are unchanged
+**And** no raw URL, credential, cache path, attachment bytes, base64, or storage key is introduced.
+
+**Given** output schemas and generated agent-facing metadata are inspected
+**When** the story is complete
+**Then** `TestResultAttachmentOutput` and the generated MCP manifest omit `storage_key`
+**And** focused tests prove a non-null upstream value is absent from result, step, and fixture outputs.
