@@ -1025,10 +1025,7 @@ def _format_launch_detail(launch: object, *, base_url: str, project_id: int) -> 
 
 def _format_test_result(payload: dict[str, object]) -> str:
     """Render every published field so plain and structured output stay equivalent."""
-    return (
-        "Call prepare_attachment_download with an attachment reference, then HTTP GET the returned Lucius URL "
-        "before it expires.\n\nTest result:\n" + json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False)
-    )
+    return "Test result:\n" + json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False)
 
 
 def _normalize_result_payload(value: object) -> dict[str, object]:

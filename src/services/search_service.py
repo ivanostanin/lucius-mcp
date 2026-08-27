@@ -1,5 +1,5 @@
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from src.client import AllureClient, PageTestCaseDto, TestCaseDto, TestCaseScenarioV2Dto
 from src.client.exceptions import AllureNotFoundError, AllureValidationError, TestCaseNotFoundError
@@ -23,6 +23,7 @@ class TestCaseDetails:
 
     test_case: TestCaseDto
     scenario: TestCaseScenarioV2Dto | None
+    attachments: tuple[object, ...] = field(default_factory=tuple)
 
 
 @dataclass
@@ -86,7 +87,8 @@ class SearchService:
         try:
             test_case = await self._client.get_test_case(test_case_id)
             scenario = await self._client.get_test_case_scenario(test_case_id)
-            return TestCaseDetails(test_case=test_case, scenario=scenario)
+            attachments = await self._list_test_case_attachments(test_case_id)
+            return TestCaseDetails(test_case=test_case, scenario=scenario, attachments=attachments)
         except TestCaseNotFoundError:
             raise
         except AllureNotFoundError as e:
@@ -95,6 +97,20 @@ class SearchService:
                 status_code=e.status_code,
                 response_body=e.response_body,
             ) from e
+
+    async def _list_test_case_attachments(self, test_case_id: int) -> tuple[object, ...]:
+        """Collect the metadata rows that back attachment scenario steps."""
+
+        attachments: list[object] = []
+        for page in range(100):
+            result = await self._client.list_test_case_attachments(test_case_id, page=page, size=100)
+            content = getattr(result, "content", None)
+            if isinstance(content, list):
+                attachments.extend(content)
+            if getattr(result, "last", True) is not False:
+                return tuple(attachments)
+
+        raise AllureValidationError("Test case attachment pagination exceeded 100 pages")
 
     async def list_test_cases(
         self,

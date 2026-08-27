@@ -3,32 +3,40 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping, Sequence
-from pathlib import Path
 
 import httpx
 import pytest
 
 from src.client import AllureClient
-from src.services import attachment_download_runtime
-from src.services.attachment_download_gateway import LoopbackAttachmentDownloadGateway
-from src.services.attachment_download_service import AttachmentDownloadRuntimeHolder
 from src.services.launch_service import LaunchService
 from src.services.test_case_service import TestCaseService
 from src.services.test_result_service import AttachmentDetail, StepDetail, TestResultService
 from src.tools.attachments import prepare_attachment_download
 from src.tools.search import get_test_case_details
+from src.utils.config import settings
 from tests.e2e.helpers.cleanup import CleanupTracker
 from tests.e2e.test_launch_manual_execution import _create_launch_with_test_case
 
 pytestmark = pytest.mark.asyncio(loop_scope="module")
 
 
+@pytest.fixture
+def stdio_attachment_delivery() -> Iterator[None]:
+    """Use Lucius's real stdio-mode loopback delivery during this test."""
+
+    previous_mode = settings.MCP_MODE
+    settings.MCP_MODE = "stdio"
+    try:
+        yield
+    finally:
+        settings.MCP_MODE = previous_mode
+
+
 async def test_get_test_result_returns_exact_result_with_stable_result_url(
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,
     test_run_id: str,
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
+    stdio_attachment_delivery: None,
 ) -> None:
     """Verify result and step evidence downloads through Lucius without a bearer token."""
     launch_service = LaunchService(allure_client)
@@ -99,15 +107,11 @@ async def test_get_test_result_returns_exact_result_with_stable_result_url(
     )
     await _download_and_verify_evidence(
         result_attachment,
-        target_path=tmp_path / "result-evidence.txt",
         expected_content=b"Sandbox result detail evidence",
-        monkeypatch=monkeypatch,
     )
     await _download_and_verify_evidence(
         step_attachment,
-        target_path=tmp_path / "step-evidence.txt",
         expected_content=b"Sandbox step detail evidence",
-        monkeypatch=monkeypatch,
     )
 
 
@@ -115,8 +119,7 @@ async def test_get_test_result_downloads_fixture_evidence_when_sandbox_provides_
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,
     test_run_id: str,
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
+    stdio_attachment_delivery: None,
 ) -> None:
     """Verify fixture evidence through Lucius when the sandbox provides a fixture."""
     launch_service = LaunchService(allure_client)
@@ -170,9 +173,7 @@ async def test_get_test_result_downloads_fixture_evidence_when_sandbox_provides_
     )
     await _download_and_verify_evidence(
         fixture_attachment,
-        target_path=tmp_path / "fixture-evidence.txt",
         expected_content=b"Sandbox fixture detail evidence",
-        monkeypatch=monkeypatch,
     )
 
 
@@ -180,8 +181,7 @@ async def test_get_test_case_details_prepares_and_downloads_test_case_evidence(
     allure_client: AllureClient,
     cleanup_tracker: CleanupTracker,
     test_run_id: str,
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
+    stdio_attachment_delivery: None,
 ) -> None:
     """Verify the public read → prepare → GET workflow for test-case evidence."""
     test_case = await TestCaseService(allure_client).create_test_case(
@@ -205,9 +205,7 @@ async def test_get_test_case_details_prepares_and_downloads_test_case_evidence(
     assert isinstance(attachment, dict)
     await _download_and_verify_evidence(
         attachment,
-        target_path=tmp_path / "test-case-evidence.txt",
         expected_content=b"Sandbox test case detail evidence",
-        monkeypatch=monkeypatch,
     )
 
 
@@ -220,14 +218,8 @@ def _iter_step_attachments(steps: Sequence[StepDetail]) -> Iterator[AttachmentDe
 async def _download_and_verify_evidence(
     attachment: AttachmentDetail | Mapping[str, object],
     *,
-    target_path: Path,
     expected_content: bytes,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    holder = AttachmentDownloadRuntimeHolder()
-    gateway = LoopbackAttachmentDownloadGateway(holder)
-    monkeypatch.setattr(attachment_download_runtime, "attachment_download_runtime_holder", holder)
-    monkeypatch.setattr(attachment_download_runtime, "attachment_download_loopback_gateway", gateway)
     if isinstance(attachment, Mapping):
         attachment_id = attachment.get("attachment_id")
         attachment_kind = attachment.get("attachment_kind")
@@ -246,43 +238,33 @@ async def _download_and_verify_evidence(
     assert isinstance(attachment_id, int)
     assert isinstance(attachment_kind, str)
 
-    try:
-        prepared = await prepare_attachment_download(
-            attachment_id=attachment_id,
-            attachment_kind=attachment_kind,
-            test_result_id=test_result_id if isinstance(test_result_id, int) else None,
-            test_case_id=test_case_id if isinstance(test_case_id, int) else None,
-        )
-        payload = prepared.structured_content
-        download_url = payload["download_url"]
-        assert isinstance(download_url, str)
-        async with httpx.AsyncClient() as client:
-            response = await client.get(download_url)
-        response.raise_for_status()
-        target_path.write_bytes(response.content)
+    request = {
+        "attachment_id": attachment_id,
+        "attachment_kind": attachment_kind,
+        "test_result_id": test_result_id if isinstance(test_result_id, int) else None,
+        "test_case_id": test_case_id if isinstance(test_case_id, int) else None,
+    }
+    prepared = await prepare_attachment_download(**request)
+    payload = prepared.structured_content
+    download_url = payload["download_url"]
+    assert isinstance(download_url, str)
+    async with httpx.AsyncClient() as client:
+        response = await client.get(download_url)
+        reused = await client.get(download_url)
 
-        assert target_path.read_bytes() == expected_content
-        if isinstance(content_type, str):
-            assert response.headers["content-type"].startswith(content_type)
-        if isinstance(content_length, int):
-            assert len(response.content) == content_length
-        assert response.headers["content-disposition"] == f'attachment; filename="{payload["name"]}"'
-        async with httpx.AsyncClient() as client:
-            reused = await client.get(download_url)
-        assert reused.status_code == 404
-        refreshed = await prepare_attachment_download(
-            attachment_id=attachment_id,
-            attachment_kind=attachment_kind,
-            test_result_id=test_result_id if isinstance(test_result_id, int) else None,
-            test_case_id=test_case_id if isinstance(test_case_id, int) else None,
-        )
-        refreshed_url = refreshed.structured_content["download_url"]
-        assert isinstance(refreshed_url, str)
-        assert refreshed_url != download_url
-        async with httpx.AsyncClient() as client:
-            refreshed_response = await client.get(refreshed_url)
-        assert refreshed_response.content == expected_content
-    finally:
-        target_path.unlink(missing_ok=True)
-        await gateway.close()
-        await holder.close()
+    response.raise_for_status()
+    assert response.content == expected_content
+    if isinstance(content_type, str):
+        assert response.headers["content-type"].startswith(content_type)
+    if isinstance(content_length, int):
+        assert len(response.content) == content_length
+    assert response.headers["content-disposition"] == f'attachment; filename="{payload["name"]}"'
+    assert reused.status_code == 404
+
+    refreshed = await prepare_attachment_download(**request)
+    refreshed_url = refreshed.structured_content["download_url"]
+    assert isinstance(refreshed_url, str)
+    assert refreshed_url != download_url
+    async with httpx.AsyncClient() as client:
+        refreshed_response = await client.get(refreshed_url)
+    assert refreshed_response.content == expected_content
