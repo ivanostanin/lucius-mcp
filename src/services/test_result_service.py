@@ -42,7 +42,6 @@ class AttachmentDetail:
     content_length: int | None
     missed: bool | None
     from_test_case: bool | None
-    storage_key: str | None
 
 
 @dataclass(frozen=True)
@@ -417,7 +416,6 @@ class TestResultService:
             _int_value(value, "content_length"),
             _bool_value(value, "missed"),
             from_test_case,
-            _str_value(value, "storage_key"),
         )
 
     def _map_steps(

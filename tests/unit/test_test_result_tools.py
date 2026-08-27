@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import json
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
-from src.services.test_result_service import AttachmentDetail, TestRunResultDetail
+from src.services.test_result_service import AttachmentDetail, FixtureDetail, StepDetail, TestRunResultDetail
 from src.tools.launches import get_test_result
 from src.tools.output_schemas import TestResultDetailOutput
 from src.utils.telemetry import _apply_mcp_output_contract
@@ -40,8 +41,68 @@ async def test_get_test_result_forwards_exact_id_and_renders_partial_diagnostics
                     test_keys=(),
                     issues=(),
                     defects=(),
-                    execution_steps=(),
-                    fixtures=(),
+                    execution_steps=(
+                        StepDetail(
+                            id=3,
+                            type="attachment",
+                            name="step",
+                            action=None,
+                            body=None,
+                            body_json=None,
+                            expected_result=None,
+                            keyword=None,
+                            status=None,
+                            start=None,
+                            stop=None,
+                            duration=None,
+                            message=None,
+                            trace=None,
+                            parameters=(),
+                            attachments=(
+                                AttachmentDetail(
+                                    attachment_id=23,
+                                    attachment_kind="test_result",
+                                    test_result_id=10,
+                                    test_case_id=None,
+                                    name="step-evidence.txt",
+                                    entity="test_result",
+                                    content_type="text/plain",
+                                    content_length=9,
+                                    missed=False,
+                                    from_test_case=False,
+                                ),
+                            ),
+                            steps=(),
+                        ),
+                    ),
+                    fixtures=(
+                        FixtureDetail(
+                            id=4,
+                            name="setup",
+                            type="before",
+                            status="passed",
+                            start=None,
+                            stop=None,
+                            duration=None,
+                            message=None,
+                            trace=None,
+                            steps=(),
+                            attachments=(
+                                AttachmentDetail(
+                                    attachment_id=24,
+                                    attachment_kind="fixture_result",
+                                    test_result_id=10,
+                                    test_case_id=None,
+                                    name="fixture-evidence.txt",
+                                    entity="test_fixture_result",
+                                    content_type="text/plain",
+                                    content_length=10,
+                                    missed=False,
+                                    from_test_case=False,
+                                ),
+                            ),
+                        ),
+                    ),
                     result_attachments=(
                         AttachmentDetail(
                             attachment_id=22,
@@ -54,7 +115,6 @@ async def test_get_test_result_forwards_exact_id_and_renders_partial_diagnostics
                             content_length=8,
                             missed=False,
                             from_test_case=False,
-                            storage_key=None,
                         ),
                     ),
                     related_results=(),
@@ -84,10 +144,14 @@ async def test_get_test_result_forwards_exact_id_and_renders_partial_diagnostics
             "content_length": 8,
             "missed": False,
             "from_test_case": False,
-            "storage_key": None,
         }
     ]
 
-    assert '"execution_steps": []' in plain
+    assert validated.structured_content["execution_steps"][0]["attachments"][0]["attachment_id"] == 23
+    assert validated.structured_content["fixtures"][0]["attachments"][0]["attachment_id"] == 24
+    assert '"step-evidence.txt"' in plain
+    assert '"fixture-evidence.txt"' in plain
     assert '"partial": true' in plain
+    assert "storage_key" not in json.dumps(validated.structured_content)
+    assert "storage_key" not in plain
     assert "Call prepare_attachment_download" not in plain

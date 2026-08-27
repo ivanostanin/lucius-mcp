@@ -1,6 +1,6 @@
 # Story 12.5: Remove Upstream `storage_key` from Test-Result Attachment Outputs
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -39,25 +39,25 @@ so that **I can prepare and download evidence through Lucius's verified owner-co
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Remove the public projection field at the service boundary** (AC: 1, 2)
-  - [ ] Remove `storage_key` from `AttachmentDetail` and stop reading it in `TestResultService._attachment`.
-  - [ ] Preserve the existing typed attachment ID/kind/owner mapping, fixture reconciliation, and partial-diagnostic paths exactly.
-  - [ ] Do not modify `src/client/generated/` or either OpenAPI specification.
+- [x] **Task 1: Remove the public projection field at the service boundary** (AC: 1, 2)
+  - [x] Remove `storage_key` from `AttachmentDetail` and stop reading it in `TestResultService._attachment`.
+  - [x] Preserve the existing typed attachment ID/kind/owner mapping, fixture reconciliation, and partial-diagnostic paths exactly.
+  - [x] Do not modify `src/client/generated/` or either OpenAPI specification.
 
-- [ ] **Task 2: Tighten the public output schema and derived manifest** (AC: 1, 4)
-  - [ ] Remove `storage_key` from `TestResultAttachmentOutput`; its reuse by result, step, and fixture projections must cover all public nesting levels.
-  - [ ] Regenerate `docs/mcp_manifest.json` with `uv run fastmcp inspect src/main.py --format mcp -o docs/mcp_manifest.json`; never hand-edit the manifest.
-  - [ ] Keep `src/cli/data/tool_schemas.json`, MCPB manifests, shell completions, tool descriptions, and route metadata unchanged unless validation proves a generated public reference exists. CLI tool schemas cover inputs and currently do not contain this field.
+- [x] **Task 2: Tighten the public output schema and derived manifest** (AC: 1, 4)
+  - [x] Remove `storage_key` from `TestResultAttachmentOutput`; its reuse by result, step, and fixture projections must cover all public nesting levels.
+  - [x] Regenerate `docs/mcp_manifest.json` with `uv run fastmcp inspect src/main.py --format mcp -o docs/mcp_manifest.json`; never hand-edit the manifest.
+  - [x] Keep `src/cli/data/tool_schemas.json`, MCPB manifests, shell completions, tool descriptions, and route metadata unchanged unless validation proves a generated public reference exists. CLI tool schemas cover inputs and currently do not contain this field.
 
-- [ ] **Task 3: Add regression coverage for output redaction and contract parity** (AC: 1, 3, 4)
-  - [ ] Update `tests/unit/test_test_result_tools.py` fixtures and expected payloads for the removed model field.
-  - [ ] Add service-level coverage with a non-null upstream `storage_key` for result, step, and fixture attachment sources; assert the mapped public attachment data has no such attribute/value.
-  - [ ] Assert JSON/structured and plain outputs contain no `storage_key`, while required preparation metadata and attachment placement remain intact.
-  - [ ] Extend output-schema/manifest assertions so the removed field is rejected and absent from generated metadata.
+- [x] **Task 3: Add regression coverage for output redaction and contract parity** (AC: 1, 3, 4)
+  - [x] Update `tests/unit/test_test_result_tools.py` fixtures and expected payloads for the removed model field.
+  - [x] Add service-level coverage with a non-null upstream `storage_key` for result, step, and fixture attachment sources; assert the mapped public attachment data has no such attribute/value.
+  - [x] Assert JSON/structured and plain outputs contain no `storage_key`, while required preparation metadata and attachment placement remain intact.
+  - [x] Extend output-schema/manifest assertions so the removed field is rejected and absent from generated metadata.
 
-- [ ] **Task 4: Record the intentional public-contract tightening** (AC: 1, 4)
-  - [ ] Treat removal of `get_test_result.*.storage_key` as an intentional breaking public-output change; follow the repository release-note convention if this branch is prepared for release.
-  - [ ] Supersede only Story 12.1's historical promise of attachment storage metadata. Do not rewrite its implementation history or broaden this story to other upstream `storage_key` fields (for example export/import DTOs).
+- [x] **Task 4: Record the intentional public-contract tightening** (AC: 1, 4)
+  - [x] Treat removal of `get_test_result.*.storage_key` as an intentional breaking public-output change; follow the repository release-note convention if this branch is prepared for release.
+  - [x] Supersede only Story 12.1's historical promise of attachment storage metadata. Do not rewrite its implementation history or broaden this story to other upstream `storage_key` fields (for example export/import DTOs).
 
 ## Dev Notes
 
@@ -115,11 +115,17 @@ GPT-5
 - Deferred from the Story 12.3 adversarial review after confirming `storage_key` predates the safe preparation workflow and is not needed by it.
 - Planning research found no PRD, architecture, or UX artifact beyond Epic 12 relevant to this narrow public-contract change.
 - Source analysis confirmed the generated client and OpenAPI documents must retain the upstream field while Lucius's application-owned output discards it.
+- Added failing tests confirming upstream result, step, and fixture attachment `storage_key` values leaked through the application projection, strict schema, and generated manifest before the implementation change.
+- Regenerated `docs/mcp_manifest.json` with `uv run fastmcp inspect src/main.py --format mcp -o docs/mcp_manifest.json` after tightening the public output schema.
+- Validation passed: focused regression suite (35 passed), Ruff, strict mypy (96 source files), and non-live regression suites (1158 passed).
 
 ### Completion Notes List
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
 - Story 12.5 is independent of Story 12.4 and may be implemented in parallel; it depends on the completed 12.1/12.2/12.3 attachment contracts.
+- Removed `storage_key` from Lucius's application-owned attachment projection and strict output schema without altering generated TestOps DTOs, OpenAPI documents, or the attachment preparation workflow.
+- Added result-, step-, and fixture-level upstream-redaction coverage plus strict schema and manifest contract checks; structured and plain tool output remain derived from the same normalized payload.
+- This feature branch is not release-preparation work; the intentional breaking public-output change is recorded here and requires an Unreleased release note when included in a release.
 
 ### File List
 
@@ -127,3 +133,14 @@ GPT-5
 - `specs/implementation-artifacts/sprint-status.yaml`
 - `specs/implementation-artifacts/deferred-work.md`
 - `specs/implementation-artifacts/12-5-remove-upstream-storage-key-from-test-result-attachment-outputs.md`
+- `src/services/test_result_service.py`
+- `src/tools/output_schemas.py`
+- `docs/mcp_manifest.json`
+- `tests/unit/test_test_result_service.py`
+- `tests/unit/test_test_result_tools.py`
+- `tests/unit/test_output_schemas.py`
+- `tests/docs/test_mcp_manifest.py`
+
+## Change Log
+
+- 2026-08-27: Removed upstream attachment `storage_key` values from `get_test_result` public output and regenerated its strict MCP contract.
