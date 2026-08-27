@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
-from src.services.test_result_service import TestRunResultDetail
+from src.services.test_result_service import AttachmentDetail, TestRunResultDetail
 from src.tools.launches import get_test_result
 from src.tools.output_schemas import TestResultDetailOutput
 from src.utils.telemetry import _apply_mcp_output_contract
@@ -42,7 +42,21 @@ async def test_get_test_result_forwards_exact_id_and_renders_partial_diagnostics
                     defects=(),
                     execution_steps=(),
                     fixtures=(),
-                    result_attachments=(),
+                    result_attachments=(
+                        AttachmentDetail(
+                            attachment_id=22,
+                            attachment_kind="test_result",
+                            test_result_id=10,
+                            test_case_id=None,
+                            name="evidence.txt",
+                            entity="test_result",
+                            content_type="text/plain",
+                            content_length=8,
+                            missed=False,
+                            from_test_case=False,
+                            storage_key=None,
+                        ),
+                    ),
                     related_results=(),
                     partial=True,
                     unavailable_sections=(),
@@ -58,6 +72,21 @@ async def test_get_test_result_forwards_exact_id_and_renders_partial_diagnostics
     validated = _apply_mcp_output_contract(output, TestResultDetailOutput)
     assert validated.structured_content["test_result_id"] == 10
     assert validated.structured_content["custom_fields"] == []
+    assert validated.structured_content["result_attachments"] == [
+        {
+            "attachment_id": 22,
+            "attachment_kind": "test_result",
+            "test_result_id": 10,
+            "test_case_id": None,
+            "name": "evidence.txt",
+            "entity": "test_result",
+            "content_type": "text/plain",
+            "content_length": 8,
+            "missed": False,
+            "from_test_case": False,
+            "storage_key": None,
+        }
+    ]
 
     assert '"execution_steps": []' in plain
     assert '"partial": true' in plain

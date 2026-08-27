@@ -43,6 +43,19 @@ def test_every_registered_model_accepts_its_documented_empty_or_confirmation_bra
             payload.update({"requires_confirmation": True, "action": tool_name})
         if tool_name == "search_test_cases":
             payload.update({"page": 0, "size": 20, "total_pages": 0, "query": ""})
+        if tool_name == "prepare_attachment_download":
+            payload.update(
+                {
+                    "attachment_id": 1,
+                    "attachment_kind": "test_case",
+                    "test_case_id": 1,
+                    "download_url": "https://lucius.example/downloads/opaque",
+                    "expires_at": "2026-08-26T12:00:00Z",
+                    "name": "evidence.txt",
+                    "content_type": "text/plain",
+                    "content_length": 0,
+                }
+            )
 
         validated = model.model_validate(payload)
         assert validated.model_dump(mode="json", by_alias=True, exclude_none=True) == payload

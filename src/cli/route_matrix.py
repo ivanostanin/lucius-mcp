@@ -8,6 +8,9 @@ from collections.abc import Iterable
 
 # Canonical entity/action -> existing tool function name.
 CANONICAL_ROUTE_MATRIX: dict[str, dict[str, str]] = {
+    "attachment": {
+        "prepare_download": "prepare_attachment_download",
+    },
     "test_case": {
         "create": "create_test_case",
         "get": "get_test_case_details",

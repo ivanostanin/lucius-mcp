@@ -1,5 +1,6 @@
 from collections.abc import Awaitable, Callable
 
+from src.tools.attachments import prepare_attachment_download
 from src.tools.cleanup import delete_archived_shared_steps, delete_archived_test_cases, delete_unused_custom_fields
 from src.tools.create_custom_field_value import create_custom_field_value
 from src.tools.create_test_case import create_test_case
@@ -122,6 +123,7 @@ __all__ = [
     "list_test_plans",
     "list_test_suites",
     "manage_test_plan_content",
+    "prepare_attachment_download",
     "reopen_launch",
     "rerun_test_results_manually",
     "search_test_cases",
@@ -161,6 +163,7 @@ all_tools: list[ToolFn] = [
     create_launch,
     get_launch,
     get_test_result,
+    prepare_attachment_download,
     get_project,
     list_launches,
     list_launch_test_results,
