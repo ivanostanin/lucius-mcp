@@ -87,7 +87,10 @@ def test_format_test_case_details_handles_fields_and_steps() -> None:
     child = SimpleStep("Sub-step", "Outcome")
     parent = SimpleStep("Do X", "See Y", steps=[child])
 
-    scenario = SimpleNamespace(steps=[parent], attachments=[SimpleNamespace(id=10, name="log.txt")])
+    scenario = SimpleNamespace(
+        steps=[parent],
+        attachments=[SimpleNamespace(id=10, name="log.txt", content_type="text/plain", content_length=12)],
+    )
     tc.custom_fields = [CustomFieldValueWithCfDto(custom_field=CustomFieldDto(name="Layer"), name="UI")]
     details = TestCaseDetails(test_case=tc, scenario=scenario)
 
@@ -104,6 +107,8 @@ def test_format_test_case_details_handles_fields_and_steps() -> None:
     assert "Attachments" in text
     assert "log.txt" in text
     assert "id: 10" in text
+    assert "content type: text/plain" in text
+    assert "content length: 12" in text
 
 
 def test_format_test_case_details_handles_direct_shared_step_nodes() -> None:

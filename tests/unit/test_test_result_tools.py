@@ -90,3 +90,6 @@ async def test_get_test_result_forwards_exact_id_and_renders_partial_diagnostics
 
     assert '"execution_steps": []' in plain
     assert '"partial": true' in plain
+    assert (
+        "Call prepare_attachment_download with an attachment reference, then HTTP GET the returned Lucius URL" in plain
+    )

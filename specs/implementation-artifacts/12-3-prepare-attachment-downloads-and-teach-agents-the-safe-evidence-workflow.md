@@ -1,6 +1,6 @@
 # Story 12.3: Prepare Attachment Downloads and Teach Agents the Safe Evidence Workflow
 
-Status: review
+Status: done
 
 ## Story
 
@@ -211,3 +211,11 @@ GPT-5
 ## Change Log
 
 - 2026-08-26: Implemented safe attachment preparation and migrated attachment discovery to the prepare-then-GET workflow.
+
+### Review Findings
+
+- [x] [Review][Patch] Generated CLI schema rejects valid attachment preparation requests [scripts/build_tool_schema.py:127]
+- [x] [Review][Patch] Plain `get_test_result` output omits the prepare-then-GET instruction [src/tools/launches.py:1026]
+- [x] [Review][Patch] Plain test-case attachment output omits MIME type and available length metadata [src/tools/search.py:576]
+- [x] [Review][Patch] Attachment discovery can publish invalid preparation references and fail output validation [src/services/test_result_service.py:390]
+- [x] [Review][Patch] E2E coverage bypasses the public tool and omits required workflow scenarios [tests/e2e/test_test_result_detail.py:185]
