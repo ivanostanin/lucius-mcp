@@ -597,19 +597,11 @@ def _append_attachments(lines: list[str], attachments: list[object]) -> None:
 
 
 def _test_case_attachments(details: TestCaseDetails) -> list[object]:
-    """Return attachment metadata that is actually referenced by the scenario."""
+    """Return every deduplicated test-case attachment available to the caller."""
 
     scenario = details.scenario
     direct_attachments = list(getattr(scenario, "attachments", None) or []) if scenario else []
     listed_attachments = list(details.attachments)
-    referenced_ids = _attachment_step_ids(scenario)
-
-    if referenced_ids:
-        listed_attachments = [
-            attachment
-            for attachment in listed_attachments
-            if _get_int(attachment, ["id", "attachment_id", "attachmentId"]) in referenced_ids
-        ]
 
     attachments: list[object] = []
     seen_ids: set[int] = set()
@@ -621,27 +613,3 @@ def _test_case_attachments(details: TestCaseDetails) -> list[object]:
             seen_ids.add(attachment_id)
         attachments.append(attachment)
     return attachments
-
-
-def _attachment_step_ids(scenario: object | None) -> set[int]:
-    """Find attachment references in generated TestOps scenario step wrappers."""
-
-    if scenario is None:
-        return set()
-
-    attachment_ids: set[int] = set()
-
-    def collect(step: object) -> None:
-        actual = _get_raw(step, ["actual_instance", "actual"])
-        attachment_id = _get_int(actual, ["attachment_id", "attachmentId"])
-        if attachment_id is not None:
-            attachment_ids.add(attachment_id)
-
-        child_steps = _get_raw(actual, ["steps"]) or _get_raw(step, ["steps"])
-        if isinstance(child_steps, list):
-            for child in child_steps:
-                collect(child)
-
-    for step in getattr(scenario, "steps", None) or []:
-        collect(step)
-    return attachment_ids

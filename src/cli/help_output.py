@@ -42,6 +42,11 @@ EXAMPLE_ARG_OVERRIDES: dict[str, dict[str, typing.Any]] = {
             "content": "QQ==",
         },
     },
+    "prepare_attachment_download": {
+        "attachment_id": 123,
+        "attachment_kind": "test_result",
+        "test_result_id": 456,
+    },
     "rerun_test_results_manually": {
         "launch_id": 123,
         "result_ids": [456],
