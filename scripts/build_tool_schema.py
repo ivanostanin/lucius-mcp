@@ -125,6 +125,7 @@ def _type_to_schema(annotation: object) -> dict[str, typing.Any]:
 def _build_input_schema(function: typing.Callable[..., typing.Any]) -> dict[str, typing.Any]:
     """Build JSON schema for function signature."""
     signature = inspect.signature(function)
+    resolved_hints = typing.get_type_hints(function, include_extras=True)
     properties: dict[str, typing.Any] = {}
     required: list[str] = []
 
@@ -134,7 +135,7 @@ def _build_input_schema(function: typing.Callable[..., typing.Any]) -> dict[str,
         if param_name == "output_format":
             continue
 
-        annotation, description, constraints = _annotated_metadata(parameter.annotation)
+        annotation, description, constraints = _annotated_metadata(resolved_hints.get(param_name, parameter.annotation))
         schema = _type_to_schema(annotation)
         if description:
             schema["description"] = description
@@ -157,6 +158,22 @@ def _build_input_schema(function: typing.Callable[..., typing.Any]) -> dict[str,
     return input_schema
 
 
+def _example_value(schema: dict[str, typing.Any]) -> object:
+    """Return one valid illustrative value for a required input schema."""
+    enum_values = schema.get("enum")
+    if isinstance(enum_values, list) and enum_values:
+        return enum_values[0]
+
+    examples = {
+        "integer": 123,
+        "number": 1.23,
+        "boolean": True,
+        "array": [],
+        "object": {},
+    }
+    return examples.get(schema.get("type"), "value")
+
+
 def extract_tool_schemas() -> dict[str, dict[str, typing.Any]]:
     """Extract schemas for all canonical routes."""
     tool_schemas: dict[str, dict[str, typing.Any]] = {}
@@ -170,19 +187,7 @@ def extract_tool_schemas() -> dict[str, dict[str, typing.Any]]:
             if required_name in example_args:
                 continue
             required_schema = input_schema["properties"].get(required_name, {})
-            param_type = required_schema.get("type")
-            if param_type == "integer":
-                example_args[required_name] = 123
-            elif param_type == "number":
-                example_args[required_name] = 1.23
-            elif param_type == "boolean":
-                example_args[required_name] = True
-            elif param_type == "array":
-                example_args[required_name] = []
-            elif param_type == "object":
-                example_args[required_name] = {}
-            else:
-                example_args[required_name] = "value"
+            example_args[required_name] = _example_value(required_schema)
 
         tool_schemas[tool_name] = {
             "name": tool_name,

@@ -391,18 +391,26 @@ class TestResultService:
         from_test_case = _bool_value(value, "from_test_case")
         entity_key = entity.lower().replace("_", "").replace("-", "") if entity else ""
         is_test_case = from_test_case is True or "testcase" in entity_key
-        attachment_kind = (
+        attachment_kind: str | None = (
             "test_case"
             if is_test_case
             else "fixture_result"
             if fixture or "testfixture" in entity_key
             else "test_result"
         )
+        owner_test_result_id: int | None = None if attachment_kind == "test_case" else test_result_id
+        owner_test_case_id: int | None = test_case_id if attachment_kind == "test_case" else None
+        if attachment_id is not None and attachment_id <= 0:
+            attachment_id = None
+        if attachment_kind == "test_case" and test_case_id is None:
+            attachment_id = None
+            attachment_kind = None
+            owner_test_result_id = None
         return AttachmentDetail(
             attachment_id,
             attachment_kind,
-            None if attachment_kind == "test_case" else test_result_id,
-            test_case_id if attachment_kind == "test_case" else None,
+            owner_test_result_id,
+            owner_test_case_id,
             _str_value(value, "name"),
             entity,
             _str_value(value, "content_type"),

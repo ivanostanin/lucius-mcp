@@ -452,7 +452,7 @@ def _get_int(obj: object, names: list[str]) -> int | None:
         value = int(raw)
     except ValueError:
         return None
-    return value if value >= 0 else None
+    return value if value > 0 else None
 
 
 def _serialize_step(step: object, index: int, *, base_url: str = "", project_id: int = 0) -> dict[str, object]:
@@ -582,10 +582,16 @@ def _append_attachments(lines: list[str], scenario: object | None) -> None:
     for att in attachments:
         name = _get_text(att, ["name", "file_name", "filename", "title"]) or "attachment"
         att_id = _get_text(att, ["id", "attachment_id", "attachmentId"])
+        content_type = _get_text(att, ["content_type", "contentType", "mime_type", "mimeType"])
+        content_length = _get_int(att, ["content_length", "contentLength", "size", "length"])
+        metadata: list[str] = []
         if att_id:
-            parts.append(f"{name} (id: {att_id})")
-        else:
-            parts.append(name)
+            metadata.append(f"id: {att_id}")
+        if content_type:
+            metadata.append(f"content type: {content_type}")
+        if content_length is not None:
+            metadata.append(f"content length: {content_length}")
+        parts.append(f"{name} ({'; '.join(metadata)})" if metadata else name)
 
     if parts:
         lines.append("**Attachments:** " + ", ".join(parts))

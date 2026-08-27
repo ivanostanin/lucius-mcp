@@ -2,23 +2,21 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from pathlib import Path
 
 import httpx
 import pytest
 
 from src.client import AllureClient
+from src.services import attachment_download_runtime
 from src.services.attachment_download_gateway import LoopbackAttachmentDownloadGateway
-from src.services.attachment_download_service import (
-    AttachmentDownloadConfig,
-    AttachmentDownloadRuntimeHolder,
-    AttachmentDownloadService,
-    AttachmentKind,
-    AttachmentPreparationRequest,
-)
+from src.services.attachment_download_service import AttachmentDownloadRuntimeHolder
 from src.services.launch_service import LaunchService
+from src.services.test_case_service import TestCaseService
 from src.services.test_result_service import AttachmentDetail, StepDetail, TestResultService
+from src.tools.attachments import prepare_attachment_download
+from src.tools.search import get_test_case_details
 from tests.e2e.helpers.cleanup import CleanupTracker
 from tests.e2e.test_launch_manual_execution import _create_launch_with_test_case
 
@@ -30,6 +28,7 @@ async def test_get_test_result_returns_exact_result_with_stable_result_url(
     cleanup_tracker: CleanupTracker,
     test_run_id: str,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Verify result and step evidence downloads through Lucius without a bearer token."""
     launch_service = LaunchService(allure_client)
@@ -100,15 +99,15 @@ async def test_get_test_result_returns_exact_result_with_stable_result_url(
     )
     await _download_and_verify_evidence(
         result_attachment,
-        allure_client=allure_client,
         target_path=tmp_path / "result-evidence.txt",
         expected_content=b"Sandbox result detail evidence",
+        monkeypatch=monkeypatch,
     )
     await _download_and_verify_evidence(
         step_attachment,
-        allure_client=allure_client,
         target_path=tmp_path / "step-evidence.txt",
         expected_content=b"Sandbox step detail evidence",
+        monkeypatch=monkeypatch,
     )
 
 
@@ -117,6 +116,7 @@ async def test_get_test_result_downloads_fixture_evidence_when_sandbox_provides_
     cleanup_tracker: CleanupTracker,
     test_run_id: str,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Verify fixture evidence through Lucius when the sandbox provides a fixture."""
     launch_service = LaunchService(allure_client)
@@ -170,9 +170,44 @@ async def test_get_test_result_downloads_fixture_evidence_when_sandbox_provides_
     )
     await _download_and_verify_evidence(
         fixture_attachment,
-        allure_client=allure_client,
         target_path=tmp_path / "fixture-evidence.txt",
         expected_content=b"Sandbox fixture detail evidence",
+        monkeypatch=monkeypatch,
+    )
+
+
+async def test_get_test_case_details_prepares_and_downloads_test_case_evidence(
+    allure_client: AllureClient,
+    cleanup_tracker: CleanupTracker,
+    test_run_id: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify the public read → prepare → GET workflow for test-case evidence."""
+    test_case = await TestCaseService(allure_client).create_test_case(
+        name=f"[{test_run_id}] Test Case Evidence",
+        attachments=[
+            {
+                "name": "detail-test-case.txt",
+                "content_type": "text/plain",
+                "content": "U2FuZGJveCB0ZXN0IGNhc2UgZGV0YWlsIGV2aWRlbmNl",
+            }
+        ],
+    )
+    test_case_id = getattr(test_case, "id", None)
+    assert isinstance(test_case_id, int)
+    cleanup_tracker.track_test_case(test_case_id)
+
+    detail = await get_test_case_details(test_case_id)
+    attachments = detail.structured_content["attachments"]
+    assert isinstance(attachments, list)
+    attachment = next(item for item in attachments if item["name"] == "detail-test-case.txt")
+    assert isinstance(attachment, dict)
+    await _download_and_verify_evidence(
+        attachment,
+        target_path=tmp_path / "test-case-evidence.txt",
+        expected_content=b"Sandbox test case detail evidence",
+        monkeypatch=monkeypatch,
     )
 
 
@@ -183,47 +218,70 @@ def _iter_step_attachments(steps: Sequence[StepDetail]) -> Iterator[AttachmentDe
 
 
 async def _download_and_verify_evidence(
-    attachment: AttachmentDetail,
+    attachment: AttachmentDetail | Mapping[str, object],
     *,
-    allure_client: AllureClient,
     target_path: Path,
     expected_content: bytes,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    assert attachment.attachment_id is not None
-    assert attachment.attachment_kind is not None
     holder = AttachmentDownloadRuntimeHolder()
     gateway = LoopbackAttachmentDownloadGateway(holder)
-    service = AttachmentDownloadService(
-        allure_client,
-        holder=holder,
-        config=AttachmentDownloadConfig(cache_parent=target_path.parent),
-    )
+    monkeypatch.setattr(attachment_download_runtime, "attachment_download_runtime_holder", holder)
+    monkeypatch.setattr(attachment_download_runtime, "attachment_download_loopback_gateway", gateway)
+    if isinstance(attachment, Mapping):
+        attachment_id = attachment.get("attachment_id")
+        attachment_kind = attachment.get("attachment_kind")
+        test_result_id = attachment.get("test_result_id")
+        test_case_id = attachment.get("test_case_id")
+        content_type = attachment.get("content_type")
+        content_length = attachment.get("content_length")
+    else:
+        attachment_id = attachment.attachment_id
+        attachment_kind = attachment.attachment_kind
+        test_result_id = attachment.test_result_id
+        test_case_id = attachment.test_case_id
+        content_type = attachment.content_type
+        content_length = attachment.content_length
+
+    assert isinstance(attachment_id, int)
+    assert isinstance(attachment_kind, str)
 
     try:
-        base_url = await gateway.start()
-        prepared = await service.prepare(
-            AttachmentPreparationRequest(
-                attachment_id=attachment.attachment_id,
-                kind=AttachmentKind(attachment.attachment_kind),
-                test_result_id=attachment.test_result_id,
-                test_case_id=attachment.test_case_id,
-            ),
-            public_base_url=base_url,
+        prepared = await prepare_attachment_download(
+            attachment_id=attachment_id,
+            attachment_kind=attachment_kind,
+            test_result_id=test_result_id if isinstance(test_result_id, int) else None,
+            test_case_id=test_case_id if isinstance(test_case_id, int) else None,
         )
+        payload = prepared.structured_content
+        download_url = payload["download_url"]
+        assert isinstance(download_url, str)
         async with httpx.AsyncClient() as client:
-            response = await client.get(prepared.download_url)
+            response = await client.get(download_url)
         response.raise_for_status()
         target_path.write_bytes(response.content)
 
         assert target_path.read_bytes() == expected_content
-        if attachment.content_type is not None:
-            assert response.headers["content-type"].startswith(attachment.content_type)
-        if attachment.content_length is not None:
-            assert len(response.content) == attachment.content_length
-        assert response.headers["content-disposition"] == f'attachment; filename="{prepared.filename}"'
+        if isinstance(content_type, str):
+            assert response.headers["content-type"].startswith(content_type)
+        if isinstance(content_length, int):
+            assert len(response.content) == content_length
+        assert response.headers["content-disposition"] == f'attachment; filename="{payload["name"]}"'
         async with httpx.AsyncClient() as client:
-            reused = await client.get(prepared.download_url)
+            reused = await client.get(download_url)
         assert reused.status_code == 404
+        refreshed = await prepare_attachment_download(
+            attachment_id=attachment_id,
+            attachment_kind=attachment_kind,
+            test_result_id=test_result_id if isinstance(test_result_id, int) else None,
+            test_case_id=test_case_id if isinstance(test_case_id, int) else None,
+        )
+        refreshed_url = refreshed.structured_content["download_url"]
+        assert isinstance(refreshed_url, str)
+        assert refreshed_url != download_url
+        async with httpx.AsyncClient() as client:
+            refreshed_response = await client.get(refreshed_url)
+        assert refreshed_response.content == expected_content
     finally:
         target_path.unlink(missing_ok=True)
         await gateway.close()
