@@ -1,6 +1,6 @@
 # Story 12.5: Remove Upstream `storage_key` from Test-Result Attachment Outputs
 
-Status: review
+Status: done
 
 ## Story
 
