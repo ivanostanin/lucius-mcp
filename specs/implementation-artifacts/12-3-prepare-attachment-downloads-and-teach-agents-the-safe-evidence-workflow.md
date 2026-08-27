@@ -30,7 +30,7 @@ so that **I can download evidence safely without trying to read base64 into cont
    - **Given** `get_test_result` returns result-, step-, or fixture-level attachment metadata.
    - **When** an MCP client, CLI user, or agent inspects its tool description/help/result.
    - **Then** every attachment provides stable metadata needed to prepare it: attachment ID, name, content type, content length when available, verified kind, and required owner context.
-   - **And** the tool description, `Returns` documentation, plain renderer, JSON schema descriptions, `docs/tools.md`, generated tool schemas, and MCP manifest state: “Call `prepare_attachment_download` with the attachment reference, then HTTP GET the returned Lucius URL.”
+   - **And** the attachment-producing tool descriptions, `docs/tools.md`, generated tool schemas, and MCP manifest state: “Call `prepare_attachment_download` with the attachment reference, then HTTP GET the returned Lucius URL.” The result payload itself must remain focused on attachment data.
    - **And** it does not expose or recommend a bearer-authenticated TestOps `download_url`.
    - **Given** `get_test_case_details` returns test-case attachment IDs.
    - **When** its documentation/help/result is inspected.
@@ -78,8 +78,8 @@ so that **I can download evidence safely without trying to read base64 into cont
   - [x] Regenerate CLI schema data using `scripts/build_tool_schema.py` and validate direct CLI routing through the existing service-first command runner.
 
 - [x] **Task 3: Migrate result and test-case attachment contracts/guidance** (AC: 2-4)
-  - [x] Update `src/tools/launches.py:get_test_result` docstring, parameter/return descriptions, plain renderer, output models, and serialized attachment payloads.
-  - [x] Update `src/tools/search.py:get_test_case_details` docstring, plain renderer, output model/schema descriptions, and serialized attachment payloads.
+  - [x] Update `src/tools/launches.py:get_test_result` docstring, parameter/return descriptions, output models, and serialized attachment payloads.
+  - [x] Update `src/tools/search.py:get_test_case_details` docstring, output model/schema descriptions, and serialized attachment payloads.
   - [x] Replace each raw TestOps `download_url` with typed preparation fields (`attachment_id`, `attachment_kind`, owner ID/context) and a concise `prepare_attachment_download` instruction.
   - [x] Preserve all 12.1 attachment hierarchy/ownership rules: result attachments stay on the result, step attachments stay on steps, and fixture attachments remain on verified fixtures.
   - [x] Update `docs/tools.md` descriptions for `get_test_result`, `get_test_case_details`, and `prepare_attachment_download` so an agent sees the same workflow outside the tool call.
@@ -215,7 +215,7 @@ GPT-5
 ### Review Findings
 
 - [x] [Review][Patch] Generated CLI schema rejects valid attachment preparation requests [scripts/build_tool_schema.py:127]
-- [x] [Review][Patch] Plain `get_test_result` output omits the prepare-then-GET instruction [src/tools/launches.py:1026]
+- [x] [Review][Patch] Keep prepare-then-GET guidance in attachment-producing tool descriptions, not each result payload [src/tools/launches.py:388]
 - [x] [Review][Patch] Plain test-case attachment output omits MIME type and available length metadata [src/tools/search.py:576]
 - [x] [Review][Patch] Attachment discovery can publish invalid preparation references and fail output validation [src/services/test_result_service.py:390]
 - [x] [Review][Patch] E2E coverage bypasses the public tool and omits required workflow scenarios [tests/e2e/test_test_result_detail.py:185]
