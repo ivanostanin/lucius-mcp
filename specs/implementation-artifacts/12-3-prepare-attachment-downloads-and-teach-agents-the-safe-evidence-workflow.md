@@ -219,3 +219,10 @@ GPT-5
 - [x] [Review][Patch] Plain test-case attachment output omits MIME type and available length metadata [src/tools/search.py:576]
 - [x] [Review][Patch] Attachment discovery can publish invalid preparation references and fail output validation [src/services/test_result_service.py:390]
 - [x] [Review][Patch] E2E coverage bypasses the public tool and omits required workflow scenarios [tests/e2e/test_test_result_detail.py:185]
+
+#### Review (2026-08-27)
+
+- [x] [Review][Patch] Generated CLI example omits the required owner context [src/cli/data/tool_schemas.json:2380]
+- [x] [Review][Patch] Test-case discovery drops valid listed attachments [src/tools/search.py:607]
+- [x] [Review][Patch] Sandbox E2E fixture leaves global delivery state running [tests/e2e/test_test_result_detail.py:23]
+- [x] [Review][Defer] Result attachment payload still exposes upstream storage_key [src/services/test_result_service.py:420] — planned as Story 12.5

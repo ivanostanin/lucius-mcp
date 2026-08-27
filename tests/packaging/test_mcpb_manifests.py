@@ -33,21 +33,11 @@ def test_manifest_structure(server_type):
 
 
 def test_manifest_tools_match_code():
-    # Import mcp instance from src.main to list registered tools
-    import importlib.util
+    # Use the application's normal import path so its lazy imports are resolved
+    # through Python's module cache before inspecting the registered tools.
+    from src.main import mcp
 
-    spec = importlib.util.find_spec("src.main")
-    if spec is None or spec.loader is None:
-        pytest.skip("Could not find src.main")
-
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-
-    if not hasattr(module, "mcp"):
-        pytest.skip("mcp instance not found in src.main")
-
-    mcp_instance = module.mcp
-    tools = asyncio.run(mcp_instance.list_tools(run_middleware=False))
+    tools = asyncio.run(mcp.list_tools(run_middleware=False))
     code_tools = {tool.name for tool in tools}
 
     for server_type in ["uv", "python"]:

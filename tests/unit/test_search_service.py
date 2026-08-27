@@ -194,6 +194,19 @@ def test_serialize_test_case_details_resolves_attachment_step_metadata() -> None
     assert "evidence.txt (id: 17; content type: text/plain; content length: 8)" in plain
 
 
+def test_serialize_test_case_details_keeps_listed_attachments_not_referenced_by_steps() -> None:
+    tc = TestCaseDtoWithCF(id=1, name="Evidence", tags=[])
+    attachment_step = AttachmentStepDto(type="AttachmentStepDto", attachment_id=17)
+    scenario = TestCaseScenarioV2Dto.model_construct(steps=[SharedStepScenarioDtoStepsInner(attachment_step)])
+    referenced = TestCaseAttachmentRowDto(entity="TestCaseAttachmentRowDto", id=17, name="step.log")
+    unreferenced = TestCaseAttachmentRowDto(entity="TestCaseAttachmentRowDto", id=18, name="case.log")
+    details = TestCaseDetails(test_case=tc, scenario=scenario, attachments=(referenced, unreferenced))
+
+    payload = _serialize_test_case_details(details, base_url="", project_id=7)
+
+    assert [attachment["attachment_id"] for attachment in payload["attachments"]] == [17, 18]
+
+
 @pytest.mark.asyncio
 async def test_list_test_cases_returns_paginated_results(service: SearchService, mock_client: AllureClient) -> None:
     page = PageTestCaseDto(

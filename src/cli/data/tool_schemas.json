@@ -2377,7 +2377,7 @@
         "attachment_kind"
       ]
     },
-    "example_command": "lucius attachment prepare_download --args '{\"attachment_id\": 123, \"attachment_kind\": \"test_result\"}'"
+    "example_command": "lucius attachment prepare_download --args '{\"attachment_id\": 123, \"attachment_kind\": \"test_result\", \"test_result_id\": 456}'"
   },
   "reopen_launch": {
     "name": "reopen_launch",

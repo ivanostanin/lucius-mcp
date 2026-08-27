@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import AsyncGenerator, Iterator, Mapping, Sequence
 
 import httpx
 import pytest
+import pytest_asyncio
 
 from src.client import AllureClient
+from src.services import attachment_download_runtime
+from src.services.attachment_download_gateway import LoopbackAttachmentDownloadGateway
+from src.services.attachment_download_service import AttachmentDownloadRuntimeHolder
 from src.services.launch_service import LaunchService
 from src.services.test_case_service import TestCaseService
 from src.services.test_result_service import AttachmentDetail, StepDetail, TestResultService
@@ -20,15 +24,25 @@ from tests.e2e.test_launch_manual_execution import _create_launch_with_test_case
 pytestmark = pytest.mark.asyncio(loop_scope="module")
 
 
-@pytest.fixture
-def stdio_attachment_delivery() -> Iterator[None]:
-    """Use Lucius's real stdio-mode loopback delivery during this test."""
+@pytest_asyncio.fixture(loop_scope="module")
+async def stdio_attachment_delivery() -> AsyncGenerator[None, None]:
+    """Use a test-scoped real stdio-mode loopback delivery runtime."""
 
     previous_mode = settings.MCP_MODE
+    previous_holder = attachment_download_runtime.attachment_download_runtime_holder
+    previous_gateway = attachment_download_runtime.attachment_download_loopback_gateway
+    holder = AttachmentDownloadRuntimeHolder()
+    gateway = LoopbackAttachmentDownloadGateway(holder)
+    attachment_download_runtime.attachment_download_runtime_holder = holder
+    attachment_download_runtime.attachment_download_loopback_gateway = gateway
     settings.MCP_MODE = "stdio"
     try:
         yield
     finally:
+        await gateway.close()
+        await holder.close()
+        attachment_download_runtime.attachment_download_runtime_holder = previous_holder
+        attachment_download_runtime.attachment_download_loopback_gateway = previous_gateway
         settings.MCP_MODE = previous_mode
 
 
