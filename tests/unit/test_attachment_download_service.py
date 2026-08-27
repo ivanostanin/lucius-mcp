@@ -22,6 +22,9 @@ from src.services.attachment_download_service import (
     AttachmentKind,
     AttachmentPreparationRequest,
     _validate_public_base_url,
+    is_direct_cli_attachment_request,
+    reset_direct_cli_attachment_request,
+    set_direct_cli_attachment_request,
 )
 
 
@@ -52,6 +55,16 @@ def _install_streaming_fakes(client: object) -> None:
             )
 
         setattr(client, stream_name, stream)
+
+
+def test_direct_cli_attachment_request_context_is_scoped() -> None:
+    assert is_direct_cli_attachment_request() is False
+    token = set_direct_cli_attachment_request(True)
+    try:
+        assert is_direct_cli_attachment_request() is True
+    finally:
+        reset_direct_cli_attachment_request(token)
+    assert is_direct_cli_attachment_request() is False
 
 
 def _service(

@@ -150,8 +150,22 @@ def test_search_formatters_serialize_details_and_pagination() -> None:
         {"name": "Priority", "value": "P0"},
     ]
     assert serialized["attachments"] == [
-        {"name": "evidence.png", "id": "9"},
-        {"name": "log.txt", "id": "10"},
+        {
+            "attachment_id": 9,
+            "attachment_kind": "test_case",
+            "test_case_id": 123,
+            "name": "evidence.png",
+            "content_type": None,
+            "content_length": None,
+        },
+        {
+            "attachment_id": 10,
+            "attachment_kind": "test_case",
+            "test_case_id": 123,
+            "name": "log.txt",
+            "content_type": None,
+            "content_length": None,
+        },
     ]
     assert search_tool._format_search_results(TestCaseListResult([], 0, 0, 20, 0), "none") == (
         "No test cases found matching 'none'."

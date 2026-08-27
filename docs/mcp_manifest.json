@@ -284,7 +284,7 @@
     {
       "name": "get_test_case_details",
       "title": "Get Test Case Details",
-      "description": "Get complete details of a specific test case.\n\nRetrieves all information about a test case including its steps, tags,\ncustom fields, and attachments. Use this before updating a test case to\nunderstand its current state.",
+      "description": "Get complete details of a specific test case.\n\nRetrieves all information about a test case including its steps, tags,\ncustom fields, and attachments. For each attachment, call\nprepare_attachment_download with its attachment_id, attachment_kind, and\ntest_case_id, then HTTP GET the returned Lucius URL. Use this before\nupdating a test case to understand its current state.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -328,35 +328,6 @@
       },
       "outputSchema": {
         "$defs": {
-          "Attachment": {
-            "additionalProperties": false,
-            "description": "A lightweight attachment reference.",
-            "properties": {
-              "name": {
-                "description": "Attachment filename or display name.",
-                "title": "Name",
-                "type": "string"
-              },
-              "id": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Attachment identifier.",
-                "title": "Id"
-              }
-            },
-            "required": [
-              "name"
-            ],
-            "title": "Attachment",
-            "type": "object"
-          },
           "CustomFieldEntry": {
             "additionalProperties": false,
             "description": "A named custom-field value exposed by test-case details.",
@@ -476,6 +447,84 @@
             ],
             "title": "Step",
             "type": "object"
+          },
+          "TestCaseAttachmentOutput": {
+            "additionalProperties": false,
+            "description": "A test-case attachment reference safe to pass to the preparation tool.",
+            "properties": {
+              "attachment_id": {
+                "anyOf": [
+                  {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Attachment identifier for preparation.",
+                "title": "Attachment Id"
+              },
+              "attachment_kind": {
+                "const": "test_case",
+                "default": "test_case",
+                "description": "Verified attachment owner kind for prepare_attachment_download.",
+                "title": "Attachment Kind",
+                "type": "string"
+              },
+              "test_case_id": {
+                "anyOf": [
+                  {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Required owner context for preparation.",
+                "title": "Test Case Id"
+              },
+              "name": {
+                "description": "Attachment filename or display name.",
+                "title": "Name",
+                "type": "string"
+              },
+              "content_type": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Attachment MIME type when available.",
+                "title": "Content Type"
+              },
+              "content_length": {
+                "anyOf": [
+                  {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Attachment byte length when available.",
+                "title": "Content Length"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "title": "TestCaseAttachmentOutput",
+            "type": "object"
           }
         },
         "additionalProperties": false,
@@ -575,7 +624,7 @@
             "anyOf": [
               {
                 "items": {
-                  "$ref": "#/$defs/Attachment"
+                  "$ref": "#/$defs/TestCaseAttachmentOutput"
                 },
                 "type": "array"
               },
@@ -4811,7 +4860,7 @@
     {
       "name": "get_test_result",
       "title": "Get Test Result",
-      "description": "Retrieve one complete TestOps result without recursively reading related results.",
+      "description": "Retrieve one complete TestOps result without recursively reading related results.\n\nAttachment references identify their verified owner. Call prepare_attachment_download with an attachment's\nattachment_id, attachment_kind, and owner context, then HTTP GET the returned Lucius URL before it expires.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -4932,9 +4981,10 @@
           "TestResultAttachmentOutput": {
             "additionalProperties": false,
             "properties": {
-              "id": {
+              "attachment_id": {
                 "anyOf": [
                   {
+                    "minimum": 1,
                     "type": "integer"
                   },
                   {
@@ -4942,7 +4992,54 @@
                   }
                 ],
                 "default": null,
-                "title": "Id"
+                "description": "Attachment identifier for preparation.",
+                "title": "Attachment Id"
+              },
+              "attachment_kind": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "test_result",
+                      "fixture_result",
+                      "test_case"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Verified attachment owner kind for prepare_attachment_download.",
+                "title": "Attachment Kind"
+              },
+              "test_result_id": {
+                "anyOf": [
+                  {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Required owner context for result or fixture attachments.",
+                "title": "Test Result Id"
+              },
+              "test_case_id": {
+                "anyOf": [
+                  {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Required owner context for test-case attachments.",
+                "title": "Test Case Id"
               },
               "name": {
                 "anyOf": [
@@ -5027,18 +5124,6 @@
                 ],
                 "default": null,
                 "title": "Storage Key"
-              },
-              "download_url": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Download Url"
               }
             },
             "title": "TestResultAttachmentOutput",
@@ -6869,6 +6954,195 @@
       "_meta": {
         "fastmcp": {
           "tags": [
+            "test-result"
+          ]
+        }
+      },
+      "execution": null
+    },
+    {
+      "name": "prepare_attachment_download",
+      "title": "Prepare Attachment Download",
+      "description": "Prepare one verified attachment download, then HTTP GET its returned Lucius URL.\n\nCall this after get_test_result or get_test_case_details provides an attachment ID, kind, and owner context.\nThe returned download URL is one-time and short-lived: HTTP GET it before expires_at without an Allure bearer token.\nPrepare again if the URL expires or was already retrieved.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "attachment_id": {
+            "description": "Attachment ID discovered from a readable result or test case.",
+            "exclusiveMinimum": 0,
+            "type": "integer"
+          },
+          "attachment_kind": {
+            "description": "Verified attachment kind: test_result, fixture_result, or test_case.",
+            "enum": [
+              "test_result",
+              "fixture_result",
+              "test_case"
+            ],
+            "type": "string"
+          },
+          "test_result_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Required owner ID for test_result or fixture_result attachments."
+          },
+          "test_case_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Required owner ID for test_case attachments."
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional override for the default Project ID."
+          },
+          "output_format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "plain",
+                  "json"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Output format: 'json' (default) or 'plain'."
+          }
+        },
+        "required": [
+          "attachment_id",
+          "attachment_kind"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "additionalProperties": false,
+        "description": "Opaque one-time attachment delivery metadata returned by the public preparation tool.",
+        "properties": {
+          "attachment_id": {
+            "description": "Verified attachment identifier.",
+            "exclusiveMinimum": 0,
+            "title": "Attachment Id",
+            "type": "integer"
+          },
+          "attachment_kind": {
+            "description": "Verified attachment owner kind.",
+            "enum": [
+              "test_result",
+              "fixture_result",
+              "test_case"
+            ],
+            "title": "Attachment Kind",
+            "type": "string"
+          },
+          "test_result_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Owner context for result or fixture attachments.",
+            "title": "Test Result Id"
+          },
+          "test_case_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Owner context for test-case attachments.",
+            "title": "Test Case Id"
+          },
+          "download_url": {
+            "description": "Opaque Lucius URL to HTTP GET before expires_at; no Allure bearer token is needed.",
+            "title": "Download Url",
+            "type": "string"
+          },
+          "expires_at": {
+            "description": "UTC expiry timestamp for the one-time download URL.",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "name": {
+            "description": "Sanitized attachment filename.",
+            "title": "Name",
+            "type": "string"
+          },
+          "content_type": {
+            "description": "Attachment MIME type.",
+            "title": "Content Type",
+            "type": "string"
+          },
+          "content_length": {
+            "description": "Prepared attachment byte length.",
+            "minimum": 0,
+            "title": "Content Length",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "attachment_id",
+          "attachment_kind",
+          "download_url",
+          "expires_at",
+          "name",
+          "content_type",
+          "content_length"
+        ],
+        "title": "PreparedAttachmentDownloadOutput",
+        "type": "object"
+      },
+      "icons": null,
+      "annotations": {
+        "title": "Prepare Attachment Download",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": null
+      },
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "attachment",
+            "test-case",
             "test-result"
           ]
         }

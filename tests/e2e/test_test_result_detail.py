@@ -9,6 +9,14 @@ import httpx
 import pytest
 
 from src.client import AllureClient
+from src.services.attachment_download_gateway import LoopbackAttachmentDownloadGateway
+from src.services.attachment_download_service import (
+    AttachmentDownloadConfig,
+    AttachmentDownloadRuntimeHolder,
+    AttachmentDownloadService,
+    AttachmentKind,
+    AttachmentPreparationRequest,
+)
 from src.services.launch_service import LaunchService
 from src.services.test_result_service import AttachmentDetail, StepDetail, TestResultService
 from tests.e2e.helpers.cleanup import CleanupTracker
@@ -23,7 +31,7 @@ async def test_get_test_result_returns_exact_result_with_stable_result_url(
     test_run_id: str,
     tmp_path: Path,
 ) -> None:
-    """Verify result and step evidence URLs download with the configured bearer token."""
+    """Verify result and step evidence downloads through Lucius without a bearer token."""
     launch_service = LaunchService(allure_client)
     launch, test_case = await _create_launch_with_test_case(
         allure_client,
@@ -110,7 +118,7 @@ async def test_get_test_result_downloads_fixture_evidence_when_sandbox_provides_
     test_run_id: str,
     tmp_path: Path,
 ) -> None:
-    """Verify fixture evidence when the sandbox returns a fixture-bearing result."""
+    """Verify fixture evidence through Lucius when the sandbox provides a fixture."""
     launch_service = LaunchService(allure_client)
     launch, test_case = await _create_launch_with_test_case(
         allure_client,
@@ -181,12 +189,29 @@ async def _download_and_verify_evidence(
     target_path: Path,
     expected_content: bytes,
 ) -> None:
-    download_url = attachment.download_url
-    assert download_url is not None
+    assert attachment.attachment_id is not None
+    assert attachment.attachment_kind is not None
+    holder = AttachmentDownloadRuntimeHolder()
+    gateway = LoopbackAttachmentDownloadGateway(holder)
+    service = AttachmentDownloadService(
+        allure_client,
+        holder=holder,
+        config=AttachmentDownloadConfig(cache_parent=target_path.parent),
+    )
 
     try:
-        async with httpx.AsyncClient(headers=dict(allure_client.api_client.default_headers)) as client:
-            response = await client.get(download_url)
+        base_url = await gateway.start()
+        prepared = await service.prepare(
+            AttachmentPreparationRequest(
+                attachment_id=attachment.attachment_id,
+                kind=AttachmentKind(attachment.attachment_kind),
+                test_result_id=attachment.test_result_id,
+                test_case_id=attachment.test_case_id,
+            ),
+            public_base_url=base_url,
+        )
+        async with httpx.AsyncClient() as client:
+            response = await client.get(prepared.download_url)
         response.raise_for_status()
         target_path.write_bytes(response.content)
 
@@ -195,5 +220,11 @@ async def _download_and_verify_evidence(
             assert response.headers["content-type"].startswith(attachment.content_type)
         if attachment.content_length is not None:
             assert len(response.content) == attachment.content_length
+        assert response.headers["content-disposition"] == f'attachment; filename="{prepared.filename}"'
+        async with httpx.AsyncClient() as client:
+            reused = await client.get(prepared.download_url)
+        assert reused.status_code == 404
     finally:
         target_path.unlink(missing_ok=True)
+        await gateway.close()
+        await holder.close()

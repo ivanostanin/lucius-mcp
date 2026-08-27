@@ -16,7 +16,7 @@ route is verified.
 | `update_test_case`            | Idempotently update an existing test case.                  | `test_case_id`, `name`, `steps` |
 | `delete_test_case`            | Soft-delete (archive) a test case.                          | `test_case_id`, `confirm`       |
 | `delete_archived_test_cases`  | Permanently delete archived/deleted test cases.             | `confirm`                       |
-| `get_test_case_details`       | Retrieve complete details including steps and attachments.  | `test_case_id`                  |
+| `get_test_case_details`       | Retrieve complete details and attachment preparation references; call `prepare_attachment_download`, then HTTP GET the returned Lucius URL. | `test_case_id`                  |
 | `get_test_case_custom_fields` | Retrieve only custom field values for a test case.          | `test_case_id`                  |
 
 ## ⚙️ Automation Generation
@@ -104,7 +104,8 @@ returns the resolved canonical metadata list.
 
 | Tool | Description                                                                                                                             | Key Parameters |
 |:-----|:----------------------------------------------------------------------------------------------------------------------------------------|:---------------|
-| `get_test_result` | Read one exact Test Result with curated execution evidence, stable attachment URLs, related-result links, and partial-data diagnostics. | `test_result_id` |
+| `get_test_result` | Read one exact Test Result with curated execution evidence and typed attachment preparation references. Call `prepare_attachment_download`, then HTTP GET the returned Lucius URL. | `test_result_id` |
+| `prepare_attachment_download` | Prepare a verified attachment for a one-time, short-lived download. HTTP GET the returned Lucius URL before expiry without an Allure bearer token. | `attachment_id`, `attachment_kind`, owner ID |
 
 ## 📋 Test Plan Management
 

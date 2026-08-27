@@ -1,6 +1,6 @@
 # Story 12.3: Prepare Attachment Downloads and Teach Agents the Safe Evidence Workflow
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -63,38 +63,38 @@ so that **I can download evidence safely without trying to read base64 into cont
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Define public prepare-tool contract and typed outputs** (AC: 1, 2, 4)
-  - [ ] Add strict input validation and an application-owned result model (for example `PreparedAttachmentDownloadOutput`) in the appropriate tool output schema module.
-  - [ ] Use one public `attachment_kind` enum and owner-context contract across result, fixture, and test-case attachments; do not create separate near-duplicate public tools.
-  - [ ] Decide exact canonical route naming once, update `src/cli/route_matrix.py`, and add the matching entity/action aliases only where route-matrix conventions permit.
-  - [ ] Ensure the public result does not disclose cache keys, private paths, raw upstream URLs, credentials, or content.
-  - [ ] Ensure invalid input fails before the broker lazy initializer is requested.
+- [x] **Task 1: Define public prepare-tool contract and typed outputs** (AC: 1, 2, 4)
+  - [x] Add strict input validation and an application-owned result model (for example `PreparedAttachmentDownloadOutput`) in the appropriate tool output schema module.
+  - [x] Use one public `attachment_kind` enum and owner-context contract across result, fixture, and test-case attachments; do not create separate near-duplicate public tools.
+  - [x] Decide exact canonical route naming once, update `src/cli/route_matrix.py`, and add the matching entity/action aliases only where route-matrix conventions permit.
+  - [x] Ensure the public result does not disclose cache keys, private paths, raw upstream URLs, credentials, or content.
+  - [x] Ensure invalid input fails before the broker lazy initializer is requested.
 
-- [ ] **Task 2: Add the thin MCP/CLI façade** (AC: 1, 5)
-  - [ ] Add `prepare_attachment_download` to a feature-appropriate tool module, using the existing client context/auth-resolution helpers and the Story 12.2 broker service.
-  - [ ] Add it to `src/tools/__init__.py` imports, `__all__`, and `all_tools`; update `src/tools/annotations.py` read-only policy/tags and output-schema coverage.
-  - [ ] Keep tool errors global/typed; do not catch transport/client errors in the tool.
-  - [ ] Trigger the broker only after the tool's validation and ownership checks; do not initialize it during tool registration or adapter startup.
-  - [ ] Regenerate CLI schema data using `scripts/build_tool_schema.py` and validate direct CLI routing through the existing service-first command runner.
+- [x] **Task 2: Add the thin MCP/CLI façade** (AC: 1, 5)
+  - [x] Add `prepare_attachment_download` to a feature-appropriate tool module, using the existing client context/auth-resolution helpers and the Story 12.2 broker service.
+  - [x] Add it to `src/tools/__init__.py` imports, `__all__`, and `all_tools`; update `src/tools/annotations.py` read-only policy/tags and output-schema coverage.
+  - [x] Keep tool errors global/typed; do not catch transport/client errors in the tool.
+  - [x] Trigger the broker only after the tool's validation and ownership checks; do not initialize it during tool registration or adapter startup.
+  - [x] Regenerate CLI schema data using `scripts/build_tool_schema.py` and validate direct CLI routing through the existing service-first command runner.
 
-- [ ] **Task 3: Migrate result and test-case attachment contracts/guidance** (AC: 2-4)
-  - [ ] Update `src/tools/launches.py:get_test_result` docstring, parameter/return descriptions, plain renderer, output models, and serialized attachment payloads.
-  - [ ] Update `src/tools/search.py:get_test_case_details` docstring, plain renderer, output model/schema descriptions, and serialized attachment payloads.
-  - [ ] Replace each raw TestOps `download_url` with typed preparation fields (`attachment_id`, `attachment_kind`, owner ID/context) and a concise `prepare_attachment_download` instruction.
-  - [ ] Preserve all 12.1 attachment hierarchy/ownership rules: result attachments stay on the result, step attachments stay on steps, and fixture attachments remain on verified fixtures.
-  - [ ] Update `docs/tools.md` descriptions for `get_test_result`, `get_test_case_details`, and `prepare_attachment_download` so an agent sees the same workflow outside the tool call.
+- [x] **Task 3: Migrate result and test-case attachment contracts/guidance** (AC: 2-4)
+  - [x] Update `src/tools/launches.py:get_test_result` docstring, parameter/return descriptions, plain renderer, output models, and serialized attachment payloads.
+  - [x] Update `src/tools/search.py:get_test_case_details` docstring, plain renderer, output model/schema descriptions, and serialized attachment payloads.
+  - [x] Replace each raw TestOps `download_url` with typed preparation fields (`attachment_id`, `attachment_kind`, owner ID/context) and a concise `prepare_attachment_download` instruction.
+  - [x] Preserve all 12.1 attachment hierarchy/ownership rules: result attachments stay on the result, step attachments stay on steps, and fixture attachments remain on verified fixtures.
+  - [x] Update `docs/tools.md` descriptions for `get_test_result`, `get_test_case_details`, and `prepare_attachment_download` so an agent sees the same workflow outside the tool call.
 
-- [ ] **Task 4: Regenerate all derived metadata and package surfaces** (AC: 3, 5)
-  - [ ] Regenerate `docs/mcp_manifest.json`, CLI schemas, MCPB manifests, and shell completions using established scripts; do not hand-edit generated files.
-  - [ ] Update tool-registry, output-schema, route-matrix, completion, manifest, and package tests for the new registered tool and the changed attachment output models.
-  - [ ] Update agentic inventory/expectations in `tests/agentic/agentic-tool-calls-tests.md`.
+- [x] **Task 4: Regenerate all derived metadata and package surfaces** (AC: 3, 5)
+  - [x] Regenerate `docs/mcp_manifest.json`, CLI schemas, MCPB manifests, and shell completions using established scripts; do not hand-edit generated files.
+  - [x] Update tool-registry, output-schema, route-matrix, completion, manifest, and package tests for the new registered tool and the changed attachment output models.
+  - [x] Update agentic inventory/expectations in `tests/agentic/agentic-tool-calls-tests.md`.
 
-- [ ] **Task 5: Add focused and sandbox workflow tests** (AC: 1-6)
-  - [ ] Add unit tests for tool argument forwarding, public output redaction, plain/JSON parity, schema validation, annotations, tags, and tool registration.
-  - [ ] Update existing `tests/unit/test_test_result_service.py`, `tests/unit/test_test_result_tools.py`, and `tests/e2e/test_test_result_detail.py` expectations from raw bearer-authenticated URLs to preparation fields and broker URLs.
-  - [ ] Add/extend test-case detail coverage for typed attachment preparation references.
-  - [ ] Add CLI source/invocation tests for route discovery, help wording, default JSON, aliases, and no-FastMCP-runtime imports.
-  - [ ] In sandbox E2E and manual agentic validation, prove `read → prepare → GET → cleanup` without passing TestOps credentials to the second GET.
+- [x] **Task 5: Add focused and sandbox workflow tests** (AC: 1-6)
+  - [x] Add unit tests for tool argument forwarding, public output redaction, plain/JSON parity, schema validation, annotations, tags, and tool registration.
+  - [x] Update existing `tests/unit/test_test_result_service.py`, `tests/unit/test_test_result_tools.py`, and `tests/e2e/test_test_result_detail.py` expectations from raw bearer-authenticated URLs to preparation fields and broker URLs.
+  - [x] Add/extend test-case detail coverage for typed attachment preparation references.
+  - [x] Add CLI source/invocation tests for route discovery, help wording, default JSON, aliases, and no-FastMCP-runtime imports.
+  - [x] In sandbox E2E and manual agentic validation, prove `read → prepare → GET → cleanup` without passing TestOps credentials to the second GET.
 
 ## Dev Notes
 
@@ -164,9 +164,50 @@ GPT-5
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
 - This story deliberately makes the safe attachment workflow part of tool descriptions, schema descriptions, generated CLI help, documentation, and agentic validation.
+- Implemented one `prepare_attachment_download` MCP/CLI façade with validated typed owner references, opaque broker URLs, read-only annotations, and the canonical `lucius attachment prepare-download` route.
+- Direct one-shot CLI execution fails safely with a delivery-context hint instead of returning a capability URL that would expire as its process exits.
+- Replaced public TestOps attachment URLs with typed preparation references across result, step, fixture, and test-case output while preserving the 12.1 ownership hierarchy.
+- Regenerated MCP, CLI, MCPB, and shell-completion metadata; the MCPB synchronization script preserves canonical package ordering while deriving the registered tool inventory.
+- Validation: 1,401 local unit/integration/docs/CLI/packaging tests passed; strict mypy and full Ruff checks passed. Sandbox evidence workflow passed for result and step attachments; its fixture scenario was skipped because that sandbox did not create a fixture result.
 
 ### File List
 
 - `specs/project-planning-artifacts/epics.md`
 - `specs/implementation-artifacts/sprint-status.yaml`
 - `specs/implementation-artifacts/12-3-prepare-attachment-downloads-and-teach-agents-the-safe-evidence-workflow.md`
+- `README.md`
+- `deployment/mcpb/manifest.python.json`
+- `deployment/mcpb/manifest.uv.json`
+- `deployment/scripts/sync_mcpb_tool_manifests.py`
+- `deployment/shell-completions/lucius.bash`
+- `deployment/shell-completions/lucius.fish`
+- `deployment/shell-completions/lucius.ps1`
+- `deployment/shell-completions/lucius.zsh`
+- `docs/mcp_manifest.json`
+- `docs/tools.md`
+- `src/cli/command_runner.py`
+- `src/cli/data/tool_schemas.json`
+- `src/cli/route_matrix.py`
+- `src/main.py`
+- `src/services/attachment_download_runtime.py`
+- `src/services/attachment_download_service.py`
+- `src/services/test_result_service.py`
+- `src/tools/__init__.py`
+- `src/tools/annotations.py`
+- `src/tools/attachments.py`
+- `src/tools/launches.py`
+- `src/tools/output_schemas.py`
+- `src/tools/search.py`
+- `tests/agentic/agentic-tool-calls-tests.md`
+- `tests/cli/test_completion_installer.py`
+- `tests/e2e/test_test_result_detail.py`
+- `tests/unit/test_attachment_download_service.py`
+- `tests/unit/test_attachment_download_tools.py`
+- `tests/unit/test_output_schemas.py`
+- `tests/unit/test_test_result_service.py`
+- `tests/unit/test_test_result_tools.py`
+- `tests/unit/test_tool_wrapper_coverage.py`
+
+## Change Log
+
+- 2026-08-26: Implemented safe attachment preparation and migrated attachment discovery to the prepare-then-GET workflow.
