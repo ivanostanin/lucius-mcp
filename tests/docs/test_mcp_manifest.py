@@ -186,6 +186,19 @@ def test_manifest_output_schemas_match_the_registered_contracts() -> None:
         assert schema.get("additionalProperties") is False, f"{name}: undeclared fields must be rejected"
 
 
+def test_manifest_test_result_attachment_schema_omits_storage_key() -> None:
+    tool = next(tool for tool in _manifest_tools(_load_manifest()) if tool["name"] == "get_test_result")
+    output_schema = tool.get("outputSchema")
+    assert isinstance(output_schema, dict)
+    definitions = output_schema.get("$defs")
+    assert isinstance(definitions, dict)
+    attachment_schema = definitions.get("TestResultAttachmentOutput")
+    assert isinstance(attachment_schema, dict)
+    properties = attachment_schema.get("properties")
+    assert isinstance(properties, dict)
+    assert "storage_key" not in properties
+
+
 def test_generate_test_code_schema_publishes_selectable_targets_and_metadata() -> None:
     tool = next(tool for tool in _manifest_tools(_load_manifest()) if tool["name"] == "generate_test_code")
     input_schema = tool.get("inputSchema")

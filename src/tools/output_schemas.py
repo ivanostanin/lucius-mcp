@@ -304,7 +304,6 @@ class TestResultAttachmentOutput(BaseModel):
     content_length: int | None = None
     missed: bool | None = None
     from_test_case: bool | None = None
-    storage_key: str | None = None
 
     @model_validator(mode="after")
     def _validate_preparation_reference(self) -> TestResultAttachmentOutput:

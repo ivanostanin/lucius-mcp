@@ -5112,18 +5112,6 @@
                 ],
                 "default": null,
                 "title": "From Test Case"
-              },
-              "storage_key": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Storage Key"
               }
             },
             "title": "TestResultAttachmentOutput",

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -94,6 +95,57 @@ async def test_get_test_result_uses_exact_id_preserves_falsey_values_and_v2_exec
     assert attachment.attachment_kind == "test_result"
     assert attachment.test_result_id == 1498142
     assert attachment.test_case_id is None
+
+
+@pytest.mark.asyncio
+async def test_get_test_result_discards_upstream_storage_keys_from_every_attachment_owner() -> None:
+    client = _client()
+    client.list_test_result_attachments.return_value = SimpleNamespace(
+        content=[SimpleNamespace(id=11, name="result.log", entity="test_result", storage_key="result-private")],
+        last=True,
+        number=0,
+    )
+    client.get_test_result_execution_raw.return_value = {
+        "steps": [
+            {
+                "type": "attachment",
+                "attachment": {"id": 22, "name": "step.log", "entity": "test_result", "storage_key": "step-private"},
+            }
+        ]
+    }
+    client.get_test_result_fixtures.return_value = [
+        SimpleNamespace(
+            id=1,
+            name="setup",
+            scenario=SimpleNamespace(
+                steps=[SimpleNamespace(actual_instance=SimpleNamespace(type="attachment", attachment_id=33))]
+            ),
+            type="before",
+        )
+    ]
+    client.get_test_result_fixture_attachments.return_value = SimpleNamespace(
+        content=[
+            SimpleNamespace(
+                id=33,
+                name="fixture.log",
+                entity="test_fixture_result",
+                storage_key="fixture-private",
+            )
+        ],
+        last=True,
+        number=0,
+    )
+
+    detail = await TestResultService(client).get_test_result(1498142)
+
+    attachments = (
+        detail.result_attachments[0],
+        detail.execution_steps[0].attachments[0],
+        detail.fixtures[0].attachments[0],
+    )
+    assert [attachment.attachment_id for attachment in attachments] == [11, 22, 33]
+    assert all(not hasattr(attachment, "storage_key") for attachment in attachments)
+    assert "storage_key" not in asdict(detail)
 
 
 @pytest.mark.asyncio
