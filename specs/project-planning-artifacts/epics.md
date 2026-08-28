@@ -115,7 +115,7 @@ Implement advanced security protocols (OAuth, TLS) and higher-order "Agent Skill
 **FRs covered:** Derived from Phase 3 Requirements (Security, Skills)
 
 ### Epic 12: Enhanced Launch and Test Result Management
-Enable agents to inspect and act on individual launch test results through rich, stable result-centric contracts, resilient best-effort enrichment, and authenticated evidence links without bloating collection responses or recursively expanding related runs.
+Enable agents to inspect launch-wide execution state and act on individual launch test results through rich, stable contracts, resilient best-effort enrichment, and authenticated evidence links without bloating collection responses or recursively expanding related runs.
 **FRs covered:** Derived from post-MVP launch inspection and agent evidence-analysis requirements
 
 ## Epic 1: Foundation & Test Case Management
@@ -1280,7 +1280,7 @@ so that downstream dashboards can group events consistently while keeping the sa
 
 ## Epic 12: Enhanced Launch and Test Result Management
 
-Goal: Give agents complete, stable, and evidence-ready inspection of individual launch results while preserving the existing service-first architecture and avoiding recursive expansion of related executions.
+Goal: Give agents complete, stable, and evidence-ready inspection of launch-wide execution state and individual results while preserving the existing service-first architecture and avoiding recursive expansion of related executions.
 
 ### Story 12.1: Retrieve Complete Individual Test Result Details
 
@@ -1346,3 +1346,110 @@ so that I can diagnose the execution and download its evidence without reconstru
 **When** unit, integration, schema, CLI, agentic, and sandbox E2E tests execute
 **Then** they cover complete and partial responses, verified-empty versus unavailable sections, non-recursive related links, nested attachment placement, stable bearer-authenticated download URLs, pagination of enrichment collections, and actionable core lookup errors
 **And** sandbox E2E coverage downloads representative result, step, and fixture evidence through the returned URLs using the same bearer token and verifies the downloaded bytes.
+
+### Story 12.2: Broker Authenticated Attachment Downloads Through Short-Lived Capability Links
+
+As an AI Agent,
+I want Lucius to obtain TestOps attachment bytes with its authenticated client and serve them through a short-lived, unauthenticated capability link,
+so that I can download large evidence files without receiving attachment bytes, bearer tokens, or base64 content in MCP output.
+
+**Acceptance Criteria:**
+
+**Given** Lucius starts in HTTP, stdio, packaged-binary, source, or direct-CLI mode and no attachment-download tool has been invoked
+**When** modules import, tools/routes register, the application starts, or preparation input/ownership validation fails
+**Then** no broker cache, expiry sweeper, loopback listener, detached gateway process, or attachment-content request is created
+**And** the first valid, ownership-verified preparation request lazily creates one concurrency-safe broker instance for that runtime.
+
+**Given** a verified test-result, fixture-result, or test-case attachment reference
+**When** Lucius prepares its download
+**Then** it validates the attachment's owner and type before reading content with the authenticated Allure client
+**And** it writes the content to a private, bounded cache without logging tokens, source URLs, or file bytes
+**And** it exposes an opaque, short-lived, single-use capability URL with correct download metadata.
+
+**Given** the capability URL is fetched successfully
+**When** the response completes
+**Then** the broker streams the cached file with a download disposition
+**And** invalidates the capability and removes the cached file
+**And** an expiry sweeper removes never-fetched and abandoned entries.
+
+**Given** Lucius runs in HTTP, stdio, packaged-binary, or `uv run lucius` mode
+**When** a download is prepared
+**Then** the transport uses an appropriate persistent HTTP or loopback gateway rather than exposing a raw TestOps URL
+**And** one-shot CLI delivery has an explicit, tested lifecycle rather than returning a URL from a process that has already exited.
+
+### Story 12.3: Prepare Attachment Downloads and Teach Agents the Safe Evidence Workflow
+
+As an AI Agent,
+I want a discoverable `prepare_attachment_download` tool and clear attachment-producing tool guidance,
+so that I naturally inspect attachment metadata, prepare a safe download, and GET the returned link instead of attempting an unauthenticated TestOps URL.
+
+**Acceptance Criteria:**
+
+**Given** an attachment ID and its verified owner/type context
+**When** I call `prepare_attachment_download`
+**Then** Lucius returns only the short-lived capability URL and download metadata, never attachment bytes, base64, or Allure credentials
+**And** the same behavior is available through MCP and the canonical CLI route.
+
+**Given** `get_test_result` or `get_test_case_details` returns attachment metadata
+**When** an agent reads its MCP description, CLI help, plain output, or JSON documentation
+**Then** it is told to call `prepare_attachment_download` with the attachment reference and then perform an HTTP GET against the returned URL
+**And** it is not instructed to use a raw authenticated TestOps attachment URL.
+
+**Given** the complete agentic workflow runs
+**When** an attachment is selected from result, fixture, or test-case metadata
+**Then** the agent can prepare and GET the file successfully before expiry
+**And** the cache is no longer retrievable after use or expiry.
+
+### Story 12.4: Extend Get Launch Info with Complete Execution Results
+
+As an AI Agent,
+I want to opt into complete launch execution information through `get_launch`,
+so that I can understand the launch, identify exact Test Result IDs, and navigate to result details and evidence without reconstructing TestOps API calls.
+
+**Acceptance Criteria:**
+
+**Given** the existing exact-ID `get_launch` contract
+**When** `include_execution_results` is omitted or false
+**Then** the current launch-detail behavior remains backward compatible
+**And** `list_launches` remains compact and performs no per-launch detail expansion.
+
+**Given** a valid Launch ID
+**When** I call `get_launch(include_execution_results=true)`
+**Then** the response includes all distinct stable launch-scoped read views available in the checked-in TestOps OpenAPI, including statistics, duration, progress, environment, jobs, assignees, testers, variables, defects, member statistics, muted results, retries, unresolved results, compact flat/core test-result indexes, result timeline and defect trees, and the existing launch metadata, tags, issues, links, and defect counts
+**And** paginated sections are exhausted rather than silently returning only their first/default page.
+
+**Given** launch test results have different TestOps statuses
+**When** execution rows are returned
+**Then** `failed`, `broken`, `skipped`, `passed`, and `unknown` remain distinct according to the upstream DTO/status enum
+**And** every result reference exposes the upstream `id` that is the exact Test Result ID/run ID to pass to `get_test_result(test_result_id=...)`
+**And** Lucius does not recursively fetch full result details or attachments for collection rows.
+
+**Given** `tree_id` is supplied with execution inclusion enabled
+**When** Lucius retrieves tree data
+**Then** it returns both the launch tree statistics widget and the complete hierarchical result tree for that exact project tree.
+
+**Given** `tree_id` is omitted with execution inclusion enabled
+**When** Lucius resolves launch trees
+**Then** it exhausts the project tree catalog through the API and retrieves both tree representations for every resolved tree rather than guessing a default
+**And** hierarchy leaves retain their exact Test Result IDs for follow-up reads.
+
+**Given** the launch or any requested section is paginated or hierarchical
+**When** Lucius collects the complete response
+**Then** it follows every page and tree branch with non-progress, cycle, and malformed-pagination protection
+**And** a safety guard produces collected data plus explicit incompleteness diagnostics instead of silent truncation or an infinite request loop.
+
+**Given** the authoritative launch read succeeds but an optional execution endpoint fails, is forbidden, is unsupported, or fails after earlier pages were collected
+**When** `get_launch` returns
+**Then** it preserves every successful section, sets `partial=true`, and lists each incomplete section in `unavailable_sections` with a safe reason, optional status, and retrieved-item count
+**And** verified-empty sections remain distinguishable from unavailable sections
+**And** automated end-to-end coverage proves this partial-response behavior through a controlled upstream failure.
+
+**Given** the launch is still open or running
+**When** execution data is returned
+**Then** the response explicitly identifies it as a point-in-time mutable snapshot with a capture timestamp
+**And** an open launch is not marked partial solely because later execution changes are possible.
+
+**Given** the full TestOps OpenAPI contains the V2 result-tree controller excluded by the filtered client
+**When** this story is implemented
+**Then** the required controller is retained by `scripts/filter_openapi.py` and the client is regenerated with `./scripts/generate_testops_api_client.sh`
+**And** existing generated launch, flat-result, and project-tree operations are reused without hand-editing generated files.
