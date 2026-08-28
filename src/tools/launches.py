@@ -3,12 +3,13 @@
 import json
 from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import asynccontextmanager
-from dataclasses import asdict
+from dataclasses import asdict, is_dataclass
 from typing import Annotated
 
 from pydantic import Field
 
 from src.client import AllureClient
+from src.client.exceptions import AllureValidationError
 from src.services.launch_service import (
     AttachmentUploadResult,
     LaunchDeleteResult,
@@ -68,6 +69,24 @@ _LAUNCH_DETAIL_OUTPUT_FIELDS = (
     "links",
     "manual_execution_guidance",
     "url",
+    "duration",
+    "progress",
+    "assignees",
+    "testers",
+    "variables",
+    "defects",
+    "member_stats",
+    "muted_results",
+    "retries",
+    "unresolved_results",
+    "flat_test_results",
+    "core_test_result_index",
+    "result_timeline",
+    "result_defect_tree",
+    "trees",
+    "execution_snapshot",
+    "partial",
+    "unavailable_sections",
 )
 _TEST_RUN_RESULT_OUTPUT_FIELDS = (
     "actual_launch_id",
@@ -268,6 +287,13 @@ async def get_launch(
     output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
+    include_execution_results: Annotated[
+        bool,
+        Field(description="Opt in to complete compact execution results, project trees, and snapshot diagnostics."),
+    ] = False,
+    tree_id: Annotated[
+        int | None, Field(description="Optional project tree ID to expand; requires include_execution_results=true.")
+    ] = None,
 ) -> ToolOutput:
     """Retrieve a specific launch and summarize its details.
 
@@ -275,13 +301,19 @@ async def get_launch(
         launch_id: The unique ID of the launch.
         project_id: Optional override for the default Project ID.
         output_format: Output format: 'json' (default) or 'plain'.
+        include_execution_results: Fetch all compact launch execution sections and hierarchy views.
+        tree_id: Optional verified project tree to expand when execution results are included.
 
     Returns:
         LLM-friendly summary of the launch details.
     """
+    if tree_id is not None and not include_execution_results:
+        raise AllureValidationError("tree_id requires include_execution_results=true")
     async with _launch_client_context(project_id=project_id) as client:
         service = LaunchService(client=client)
-        launch = await service.get_launch(launch_id)
+        launch = await service.get_launch(
+            launch_id, include_execution_results=include_execution_results, tree_id=tree_id
+        )
         base_url = client.get_base_url()
         resolved_project_id = client.get_project()
 
@@ -851,6 +883,31 @@ def _launch_detail_payload(launch: object, *, base_url: str, project_id: int) ->
             "manual_execution_guidance": _MANUAL_EXECUTION_GUIDANCE,
         }
     )
+    # Execution keys are opt-in only.  Omitting them preserves the historical
+    # output contract exactly when callers use the default path.
+    if getattr(launch, "execution_snapshot", None) is not None:
+        for name in (
+            "duration",
+            "progress",
+            "assignees",
+            "testers",
+            "variables",
+            "defects",
+            "member_stats",
+            "muted_results",
+            "retries",
+            "unresolved_results",
+            "flat_test_results",
+            "core_test_result_index",
+            "result_timeline",
+            "result_defect_tree",
+            "trees",
+            "execution_snapshot",
+            "partial",
+            "unavailable_sections",
+        ):
+            value = getattr(launch, name, None)
+            payload[name] = _normalize_payload_value(value)
     return payload
 
 
@@ -1013,6 +1070,49 @@ def _format_launch_detail(launch: object, *, base_url: str, project_id: int) -> 
     _append_metadata_lines(lines, launch)
     _append_statistic_lines(lines, launch)
     _append_rich_detail_lines(lines, launch)
+    if getattr(launch, "execution_snapshot", None) is not None:
+        execution_payload = _launch_detail_payload(launch, base_url=base_url, project_id=project_id)
+        lines.append("- Execution snapshot: " + json.dumps(execution_payload.get("execution_snapshot"), sort_keys=True))
+        lines.append(f"- Execution partial: {execution_payload.get('partial')}")
+        flat_rows = execution_payload.get("flat_test_results")
+        for row in flat_rows if isinstance(flat_rows, list) else []:
+            if isinstance(row, dict):
+                lines.append(f"- Test Result #{row.get('id')}: status={row.get('status')}")
+        if execution_payload.get("unavailable_sections"):
+            lines.append(
+                "- Unavailable execution sections: "
+                + json.dumps(execution_payload["unavailable_sections"], sort_keys=True)
+            )
+        lines.append(
+            "- Complete execution data: "
+            + json.dumps(
+                {
+                    key: execution_payload[key]
+                    for key in (
+                        "duration",
+                        "progress",
+                        "assignees",
+                        "testers",
+                        "variables",
+                        "defects",
+                        "member_stats",
+                        "muted_results",
+                        "retries",
+                        "unresolved_results",
+                        "flat_test_results",
+                        "core_test_result_index",
+                        "result_timeline",
+                        "result_defect_tree",
+                        "trees",
+                        "execution_snapshot",
+                        "partial",
+                        "unavailable_sections",
+                    )
+                    if key in execution_payload
+                },
+                sort_keys=True,
+            )
+        )
     lines.append(
         "- Manual execution: use list_launch_test_results for result discovery, "
         "then submit_manual_test_results with result_id to resolve the existing launch result in place. "
@@ -1037,6 +1137,11 @@ def _normalize_result_payload(value: object) -> dict[str, object]:
 
 
 def _normalize_payload_value(value: object) -> object:
+    if is_dataclass(value) and not isinstance(value, type):
+        return _normalize_payload_value(asdict(value))
+    enum_value = getattr(value, "value", None)
+    if isinstance(enum_value, (str, int, float, bool)):
+        return enum_value
     if isinstance(value, Mapping):
         return {str(key): _normalize_payload_value(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):

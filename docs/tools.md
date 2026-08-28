@@ -91,7 +91,7 @@ returns the resolved canonical metadata list.
 |:-----------------------------|:----------------------------------------------------------------|:---------------|
 | `create_launch`              | Create a new test execution launch.                             | `name`, `tags` |
 | `list_launches`              | View compact launch discovery metadata; items intentionally omit statistics, defect counts, environments, jobs, and manual-workflow guidance. | `page`, `size` |
-| `get_launch`                 | Get one exact launch with detailed statistics, defect counts, environment, jobs, tags, issues, links, creator/modifier metadata, and manual-workflow guidance. | `launch_id`    |
+| `get_launch`                 | Get one exact launch. Set `include_execution_results=true` for complete compact result views, all active project trees, snapshot state, and safe partial-read diagnostics. | `launch_id`, `include_execution_results`, `tree_id` |
 | `upload_test_results`        | Append externally produced test results to a launch concurrently. | `launch_id`, `results` |
 | `list_launch_test_results`   | List result-level launch data including manual flag, status, assignee, and tester. | `launch_id`, `manual_only`, `failed_only` |
 | `rerun_test_results_manually` | Schedule manual reruns for selected failed launch results.      | `launch_id`, `result_ids`, `assignees` |
@@ -99,6 +99,12 @@ returns the resolved canonical metadata list.
 | `submit_manual_test_results` | Resolve an existing launch manual result in place or submit explicit manual result updates for a session. | `test_session_id`, `results` |
 | `add_test_result_attachment` | Upload evidence to a manual test result.                        | `test_result_id`, `attachment` |
 | `add_test_step_attachment`   | Upload evidence to a manual attachment step; fixture selectors remain as fallback. | `test_result_id`, `attachment`, `step_name` |
+
+When execution results are included, each compact result row's `id` is the exact Test Result ID: follow it with
+`get_test_result(test_result_id=<row.id>)` for details and the separate attachment/evidence workflow. The expanded
+launch response is intentionally a point-in-time snapshot for open launches; it exhausts supported pages without
+caller page controls. Omit `tree_id` to resolve all active project trees, or provide one verified tree ID to limit the
+expansion.
 
 ## ✅ Test Result Management
 

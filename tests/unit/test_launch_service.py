@@ -1,5 +1,6 @@
 """Unit tests for LaunchService."""
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import httpx
@@ -42,6 +43,10 @@ def mock_client() -> MagicMock:
     client.search_launches_aql = AsyncMock()
     client.validate_launch_query = AsyncMock(return_value=(True, 0))
     client.get_launch = AsyncMock()
+    client.get_launch_core = AsyncMock()
+    client.get_launch_execution_section = AsyncMock()
+    client.get_launch_result_view = AsyncMock()
+    client.get_launch_result_tree_page = AsyncMock()
     client.get_launch_base = AsyncMock()
     client.delete_launch = AsyncMock()
     client.close_launch = AsyncMock()
@@ -288,6 +293,82 @@ async def test_get_launch_not_found_maps_error(service: LaunchService, mock_clie
 
     with pytest.raises(LaunchNotFoundError, match="Launch ID 99 not found"):
         await service.get_launch(99)
+
+
+@pytest.mark.asyncio
+async def test_get_launch_execution_snapshot_is_opt_in_and_does_not_fetch_result_details(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    page = SimpleNamespace(content=[], last=True, total_pages=1)
+    mock_client.get_launch_core.return_value = LaunchDetailResponse(
+        base=LaunchDto(id=12, name="Launch", project_id=1, closed=False), preview=LaunchPreviewDto()
+    )
+    mock_client.get_launch_execution_section.return_value = page
+    mock_client.get_launch_result_view.return_value = {"groups": [], "leafs": []}
+    mock_client.list_launch_test_results.return_value = page
+    mock_client.list_trees.return_value = page
+
+    result = await service.get_launch(12, include_execution_results=True)
+
+    assert result.execution_snapshot is not None
+    assert result.partial is False
+    assert result.flat_test_results == ()
+    assert result.trees == ()
+    mock_client.get_launch.assert_not_awaited()
+    mock_client.get_test_result.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_get_launch_execution_keeps_base_when_optional_section_fails(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    page = SimpleNamespace(content=[], last=True, total_pages=1)
+    mock_client.get_launch_core.return_value = LaunchDetailResponse(
+        base=LaunchDto(id=12, name="Launch", project_id=1, closed=True), preview=LaunchPreviewDto()
+    )
+
+    async def execution_section(section: str, *_args: object, **_kwargs: object) -> object:
+        if section == "duration":
+            raise AllureAPIError("duration unavailable", status_code=503)
+        return page
+
+    mock_client.get_launch_execution_section.side_effect = execution_section
+    mock_client.get_launch_result_view.return_value = {"groups": [], "leafs": []}
+    mock_client.list_launch_test_results.return_value = page
+    mock_client.list_trees.return_value = page
+
+    result = await service.get_launch(12, include_execution_results=True)
+
+    assert result.id == 12
+    assert result.partial is True
+    assert result.unavailable_sections is not None
+    assert result.unavailable_sections[0].section == "duration"
+
+
+@pytest.mark.asyncio
+async def test_get_launch_rejects_tree_selection_without_execution_results(service: LaunchService) -> None:
+    with pytest.raises(AllureValidationError, match="tree_id requires include_execution_results=true"):
+        await service.get_launch(12, tree_id=5)
+
+
+@pytest.mark.asyncio
+async def test_launch_hierarchy_recurses_through_group_paths(service: LaunchService, mock_client: MagicMock) -> None:
+    root = {"content": [{"id": 41, "name": "Suite", "type": "GROUP"}], "last": True}
+    child = {"content": [{"id": 99, "name": "Result", "status": "broken", "type": "LEAF"}], "last": True}
+    mock_client.get_launch_result_tree_page.side_effect = [root, child]
+
+    nodes, issue = await service._collect_launch_hierarchy(12, 7, (), set(), 0, [0])
+
+    assert issue is None
+    assert nodes == (
+        {
+            "id": 41,
+            "name": "Suite",
+            "type": "GROUP",
+            "children": ({"id": 99, "name": "Result", "status": "broken", "type": "LEAF"},),
+        },
+    )
+    assert mock_client.get_launch_result_tree_page.await_args_list[1].kwargs["path"] == [41]
 
 
 @pytest.mark.asyncio

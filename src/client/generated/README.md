@@ -360,6 +360,7 @@ Class | Method | HTTP request | Description
 *TestResultRunControllerApi* | [**resolve1**](src/client/generated/docs/TestResultRunControllerApi.md#resolve1) | **POST** /api/testresult/{id}/resolve | Resolve test result
 *TestResultTestKeyControllerApi* | [**get_keys**](src/client/generated/docs/TestResultTestKeyControllerApi.md#get_keys) | **GET** /api/testresult/{testResultId}/testkey | Find test keys for test result
 *TestResultTestKeyControllerApi* | [**set_keys**](src/client/generated/docs/TestResultTestKeyControllerApi.md#set_keys) | **POST** /api/testresult/{testResultId}/testkey | Set test keys to test result
+*TestResultTreeControllerV2Api* | [**get_tree_entities**](src/client/generated/docs/TestResultTreeControllerV2Api.md#get_tree_entities) | **GET** /api/v2/launch/{launchId}/test-result/tree/entity | Get test results as a tree structure
 *TreeControllerV2Api* | [**find_all48**](src/client/generated/docs/TreeControllerV2Api.md#find_all48) | **GET** /api/v2/tree | 
 *TreeControllerV2Api* | [**find_one38**](src/client/generated/docs/TreeControllerV2Api.md#find_one38) | **GET** /api/v2/tree/{id} | 
 *UploadControllerApi* | [**get_job_run_by_uid**](src/client/generated/docs/UploadControllerApi.md#get_job_run_by_uid) | **GET** /api/upload/jobrun | Get information about job run by id

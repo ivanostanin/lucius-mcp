@@ -160,6 +160,6 @@ development_status:
   12-1-retrieve-complete-individual-test-result-details: done
   12-2-broker-authenticated-attachment-downloads-through-short-lived-capability-links: done
   12-3-prepare-attachment-downloads-and-teach-agents-the-safe-evidence-workflow: done
-  12-4-extend-get-launch-info-with-complete-execution-results: ready-for-dev
+  12-4-extend-get-launch-info-with-complete-execution-results: in-progress
   12-5-remove-upstream-storage-key-from-test-result-attachment-outputs: done
   epic-12-retrospective: optional

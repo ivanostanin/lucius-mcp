@@ -193,6 +193,31 @@ async def test_search_launch_and_custom_field_delegation(facade_client: AllureCl
 
 
 @pytest.mark.asyncio
+async def test_launch_execution_facades_use_generated_apis_and_raw_tree_discrimination(
+    facade_client: AllureClient,
+) -> None:
+    launch_api = RecordingApi([{"duration": 0}])
+    result_api = RecordingApi({"groups": [], "leafs": []})
+    tree_api = MagicMock()
+    tree_api.get_tree_entities_without_preload_content = AsyncMock(
+        return_value=httpx.Response(200, json={"content": [{"id": 9, "type": "LEAF"}], "last": True})
+    )
+    facade_client._launch_api = launch_api  # type: ignore[assignment]
+    facade_client._test_result_api = result_api  # type: ignore[assignment]
+    facade_client._test_result_tree_api = tree_api  # type: ignore[assignment]
+
+    assert await facade_client.get_launch_execution_section("duration", 3) == [{"duration": 0}]
+    assert await facade_client.get_launch_result_view("result_timeline", 3) == {"groups": [], "leafs": []}
+    assert await facade_client.get_launch_result_tree_page(3, 7, path=[4], page=0, size=100) == {
+        "content": [{"id": 9, "type": "LEAF"}],
+        "last": True,
+    }
+    assert launch_api.calls[0][0] == "get_duration"
+    assert result_api.calls[0][0] == "timeline"
+    assert tree_api.get_tree_entities_without_preload_content.await_args.kwargs["path"] == [4]
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("operation", "message"),
     [
