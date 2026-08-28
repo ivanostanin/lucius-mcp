@@ -346,6 +346,40 @@ async def test_get_launch_execution_keeps_base_when_optional_section_fails(
 
 
 @pytest.mark.asyncio
+async def test_get_launch_execution_keeps_base_when_selected_tree_read_fails(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    page = SimpleNamespace(content=[], last=True, total_pages=1)
+    mock_client.get_launch_core.return_value = LaunchDetailResponse(
+        base=LaunchDto(id=12, name="Launch", project_id=1, closed=True), preview=LaunchPreviewDto()
+    )
+    mock_client.get_launch_execution_section.return_value = page
+    mock_client.get_launch_result_view.return_value = {"groups": [], "leafs": []}
+    mock_client.list_launch_test_results.return_value = page
+    mock_client.get_tree = AsyncMock(side_effect=AllureAPIError("tree unavailable", status_code=503))
+
+    result = await service.get_launch(12, include_execution_results=True, tree_id=7)
+
+    assert result.id == 12
+    assert result.trees == ()
+    assert result.partial is True
+    assert result.unavailable_sections is not None
+    assert result.unavailable_sections[-1].section == "trees"
+
+
+@pytest.mark.asyncio
+async def test_launch_execution_reports_malformed_page_metadata(service: LaunchService, mock_client: MagicMock) -> None:
+    mock_client.list_launch_test_results.return_value = SimpleNamespace(content=[{"id": 1}], last=False, total_pages=0)
+
+    items, issue = await service._collect_launch_execution_pages("flat_test_results", 12)
+
+    assert items == ({"id": 1},)
+    assert issue is not None
+    assert issue.reason == "malformed_pagination"
+    assert issue.items_retrieved == 1
+
+
+@pytest.mark.asyncio
 async def test_get_launch_rejects_tree_selection_without_execution_results(service: LaunchService) -> None:
     with pytest.raises(AllureValidationError, match="tree_id requires include_execution_results=true"):
         await service.get_launch(12, tree_id=5)
@@ -359,7 +393,7 @@ async def test_launch_hierarchy_recurses_through_group_paths(service: LaunchServ
 
     nodes, issue = await service._collect_launch_hierarchy(12, 7, (), set(), 0, [0])
 
-    assert issue is None
+    assert issue == []
     assert nodes == (
         {
             "id": 41,
@@ -369,6 +403,37 @@ async def test_launch_hierarchy_recurses_through_group_paths(service: LaunchServ
         },
     )
     assert mock_client.get_launch_result_tree_page.await_args_list[1].kwargs["path"] == [41]
+
+
+@pytest.mark.asyncio
+async def test_launch_hierarchy_continues_after_a_failed_sibling_branch(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    root = {
+        "content": [
+            {"id": 41, "name": "Unavailable suite", "type": "GROUP"},
+            {"id": 42, "name": "Available suite", "type": "GROUP"},
+        ],
+        "last": True,
+    }
+    second_child = {"content": [{"id": 99, "status": "broken", "type": "LEAF"}], "last": True}
+
+    async def hierarchy_page(*_args: object, **kwargs: object) -> object:
+        path = kwargs["path"]
+        if path is None:
+            return root
+        if path == [41]:
+            raise AllureAPIError("branch unavailable", status_code=503)
+        assert path == [42]
+        return second_child
+
+    mock_client.get_launch_result_tree_page.side_effect = hierarchy_page
+
+    nodes, issues = await service._collect_launch_hierarchy(12, 7, (), set(), 0, [0])
+
+    assert nodes[1]["children"] == ({"id": 99, "status": "broken", "type": "LEAF"},)
+    assert issues[0].section == "trees.7.hierarchy.41"
+    assert issues[0].items_retrieved == 1
 
 
 @pytest.mark.asyncio

@@ -218,6 +218,18 @@ async def test_launch_execution_facades_use_generated_apis_and_raw_tree_discrimi
 
 
 @pytest.mark.asyncio
+async def test_launch_result_tree_rejects_unknown_node_types(facade_client: AllureClient) -> None:
+    tree_api = MagicMock()
+    tree_api.get_tree_entities_without_preload_content = AsyncMock(
+        return_value=httpx.Response(200, json={"content": [{"id": 9, "type": "UNKNOWN"}], "last": True})
+    )
+    facade_client._test_result_tree_api = tree_api  # type: ignore[assignment]
+
+    with pytest.raises(AllureValidationError, match="node type"):
+        await facade_client.get_launch_result_tree_page(3, 7, path=None, page=0, size=100)
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("operation", "message"),
     [
