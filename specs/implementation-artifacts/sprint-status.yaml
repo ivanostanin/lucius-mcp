@@ -158,7 +158,7 @@ development_status:
   # Epic 12: Enhanced Launch and Test Result Management
   epic-12: in-progress
   12-1-retrieve-complete-individual-test-result-details: done
-  12-2-broker-authenticated-attachment-downloads-through-short-lived-capability-links: ready-for-dev
+  12-2-broker-authenticated-attachment-downloads-through-short-lived-capability-links: done
   12-3-prepare-attachment-downloads-and-teach-agents-the-safe-evidence-workflow: ready-for-dev
   12-4-extend-get-launch-info-with-complete-execution-results: ready-for-dev
   epic-12-retrospective: optional

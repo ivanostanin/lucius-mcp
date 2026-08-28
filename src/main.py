@@ -1,12 +1,17 @@
 import asyncio
 import contextlib
+import ipaddress
 import os
 import typing
+from urllib.parse import urlsplit
 
 from fastmcp import FastMCP
 from starlette.applications import Starlette
 from starlette.routing import Mount
 
+from src.client.exceptions import AllureValidationError
+from src.services.attachment_download_gateway import LoopbackAttachmentDownloadGateway, attachment_download_route
+from src.services.attachment_download_service import AttachmentDownloadRuntimeHolder
 from src.services.telemetry_service import TelemetryService
 from src.tools import all_tools
 from src.tools.annotations import get_tool_annotations, get_tool_tags, validate_tool_annotation_coverage
@@ -44,6 +49,44 @@ for tool in all_tools:
 
 # The ASGI app and main app are created lazily or only when needed for HTTP mode
 _mcp_asgi = None
+attachment_download_runtime_holder = AttachmentDownloadRuntimeHolder()
+attachment_download_loopback_gateway = LoopbackAttachmentDownloadGateway(attachment_download_runtime_holder)
+
+
+async def get_attachment_download_public_base_url() -> str:
+    """Resolve delivery only in a runtime that can keep a capability URL alive."""
+    if settings.MCP_MODE == "http":
+        if settings.ATTACHMENT_DOWNLOAD_PUBLIC_BASE_URL:
+            public_base_url = settings.ATTACHMENT_DOWNLOAD_PUBLIC_BASE_URL
+            if _is_loopback_url(public_base_url):
+                raise AllureValidationError(
+                    "HTTP attachment downloads require a non-loopback public base URL",
+                    suggestions=["Set ATTACHMENT_DOWNLOAD_PUBLIC_BASE_URL to the externally reachable server URL"],
+                )
+            return public_base_url
+        raise AllureValidationError(
+            "Attachment downloads require ATTACHMENT_DOWNLOAD_PUBLIC_BASE_URL in HTTP mode",
+            suggestions=["Set it to the externally reachable server URL"],
+        )
+    if settings.MCP_MODE == "stdio":
+        return await attachment_download_loopback_gateway.start()
+    raise AllureValidationError(
+        "One-shot CLI commands cannot serve attachment capability URLs",
+        suggestions=["Use the documented --output delivery mode when it is available"],
+    )
+
+
+def _is_loopback_url(value: str) -> bool:
+    """Identify local-only URLs, which cannot be advertised by HTTP MCP mode."""
+    hostname = urlsplit(value).hostname
+    if hostname is None:
+        return False
+    if hostname.lower() == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(hostname).is_loopback
+    except ValueError:
+        return False
 
 
 def get_mcp_asgi() -> Starlette:
@@ -64,12 +107,15 @@ async def lifespan(app: Starlette) -> typing.AsyncGenerator[None, None]:
     logger.info(f"Starting Lucius MCP Server in {settings.MCP_MODE} mode")
     mcp_asgi = get_mcp_asgi()
     # Ensure MCP task group is initialized by entering its lifespan
-    if hasattr(mcp_asgi, "lifespan"):
-        async with mcp_asgi.lifespan(app):
+    try:
+        if hasattr(mcp_asgi, "lifespan"):
+            async with mcp_asgi.lifespan(app):
+                yield
+        else:
             yield
-    else:
-        yield
-    logger.info("Shutting down Lucius MCP Server")
+    finally:
+        await attachment_download_runtime_holder.close()
+        logger.info("Shutting down Lucius MCP Server")
 
 
 # Create main Starlette application lazily
@@ -80,8 +126,10 @@ def get_app() -> Starlette | None:
             lifespan=lifespan,
             exception_handlers={Exception: agent_hint_handler},
             routes=[
+                # Explicit capability route must precede FastMCP's root mount.
+                attachment_download_route(attachment_download_runtime_holder),
                 # Mount the FastMCP ASGI app under /
-                Mount("/", app=get_mcp_asgi())
+                Mount("/", app=get_mcp_asgi()),
             ],
         )
     else:
@@ -95,7 +143,11 @@ app = get_app()
 async def _run_stdio() -> None:
     telemetry_service.log_status()
     telemetry_service.emit_startup_event()
-    await mcp.run_stdio_async(show_banner=False, log_level=settings.LOG_LEVEL)
+    try:
+        await mcp.run_stdio_async(show_banner=False, log_level=settings.LOG_LEVEL)
+    finally:
+        await attachment_download_loopback_gateway.close()
+        await attachment_download_runtime_holder.close()
 
 
 def start() -> None:

@@ -2,6 +2,8 @@
 
 from .client import (
     AllureClient,
+    AttachmentContent,
+    AttachmentContentStream,
     AttachmentStepDtoWithName,
     BodyStepDtoWithSteps,
     FindAll29200Response,
@@ -47,6 +49,8 @@ __all__ = [
     "AllureNotFoundError",
     "AllureRateLimitError",
     "AllureValidationError",
+    "AttachmentContent",
+    "AttachmentContentStream",
     "AttachmentStepDtoWithName",
     "BodyStepDtoWithSteps",
     "FindAll29200Response",
