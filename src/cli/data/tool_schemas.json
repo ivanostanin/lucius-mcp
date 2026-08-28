@@ -1451,7 +1451,7 @@
     "name": "get_test_case_details",
     "entity": "test_case",
     "action": "get",
-    "description": "Get complete details of a specific test case.\n\nRetrieves all information about a test case including its steps, tags,\ncustom fields, and attachments. Use this before updating a test case to\nunderstand its current state.\n\nArgs:\n    test_case_id: The unique ID of the test case to retrieve.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Formatted test case details including all metadata.\n\nRaises:\n    AuthenticationError: If no API token available from environment or arguments.",
+    "description": "Get complete details of a specific test case.\n\nRetrieves all information about a test case including its steps, tags,\ncustom fields, and attachments. For each attachment, call\nprepare_attachment_download with its attachment_id, attachment_kind, and\ntest_case_id, then HTTP GET the returned Lucius URL. Use this before\nupdating a test case to understand its current state.\n\nArgs:\n    test_case_id: The unique ID of the test case to retrieve.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Formatted test case details including attachment preparation references.\n    Call prepare_attachment_download, then HTTP GET the returned Lucius URL.\n\nRaises:\n    AuthenticationError: If no API token available from environment or arguments.",
     "input_schema": {
       "type": "object",
       "additionalProperties": false,
@@ -1483,7 +1483,7 @@
     "name": "get_test_result",
     "entity": "test_result",
     "action": "get",
-    "description": "Retrieve one complete TestOps result without recursively reading related results.\n\nArgs:\n    test_result_id: Exact TestOps result ID matching ``/api/testresult/{id}``.\n        Ignore a ``treeId`` URL query parameter.\n    project_id: Optional project override.\n    output_format: Structured JSON (default) or plain agent-readable detail.\n\nReturns:\n    Curated result detail, authenticated attachment download paths, and explicit partial-data diagnostics.",
+    "description": "Retrieve one complete TestOps result without recursively reading related results.\n\nAttachment references identify their verified owner. Call prepare_attachment_download with an attachment's\nattachment_id, attachment_kind, and owner context, then HTTP GET the returned Lucius URL before it expires.\n\nArgs:\n    test_result_id: Exact TestOps result ID matching ``/api/testresult/{id}``.\n        Ignore a ``treeId`` URL query parameter.\n    project_id: Optional project override.\n    output_format: Structured JSON (default) or plain agent-readable detail.\n\nReturns:\n    Curated result detail, typed attachment preparation references, and explicit partial-data diagnostics.\n    Call prepare_attachment_download, then HTTP GET the returned Lucius URL without an Allure bearer token.",
     "input_schema": {
       "type": "object",
       "additionalProperties": false,
@@ -2312,6 +2312,72 @@
       ]
     },
     "example_command": "lucius test_plan manage_content --args '{\"plan_id\": 123}'"
+  },
+  "prepare_attachment_download": {
+    "name": "prepare_attachment_download",
+    "entity": "attachment",
+    "action": "prepare_download",
+    "description": "Prepare one verified attachment download, then HTTP GET its returned Lucius URL.\n\nCall this after get_test_result or get_test_case_details provides an attachment ID, kind, and owner context.\nThe returned download URL is one-time and short-lived: HTTP GET it before expires_at without an Allure bearer token.\nPrepare again if the URL expires or was already retrieved.\n\nArgs:\n    attachment_id: Attachment ID discovered from a readable result or test case.\n    attachment_kind: Verified attachment kind: test_result, fixture_result, or test_case.\n    test_result_id: Required owner ID for test_result or fixture_result attachments.\n    test_case_id: Required owner ID for test_case attachments.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Attachment metadata and an opaque Lucius download_url. HTTP GET it before expires_at without an Allure bearer\n    token.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "attachment_id": {
+          "type": "integer",
+          "description": "Attachment ID discovered from a readable result or test case."
+        },
+        "attachment_kind": {
+          "enum": [
+            "test_result",
+            "fixture_result",
+            "test_case"
+          ],
+          "type": "string",
+          "description": "Verified attachment kind: test_result, fixture_result, or test_case."
+        },
+        "test_result_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Required owner ID for test_result or fixture_result attachments.",
+          "default": null
+        },
+        "test_case_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Required owner ID for test_case attachments.",
+          "default": null
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional override for the default Project ID.",
+          "default": null
+        }
+      },
+      "required": [
+        "attachment_id",
+        "attachment_kind"
+      ]
+    },
+    "example_command": "lucius attachment prepare_download --args '{\"attachment_id\": 123, \"attachment_kind\": \"test_result\", \"test_result_id\": 456}'"
   },
   "reopen_launch": {
     "name": "reopen_launch",

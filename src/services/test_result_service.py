@@ -11,10 +11,7 @@ from typing import TypeVar
 from src.client import AllureClient
 from src.client.exceptions import AllureAPIError, AllureValidationError
 from src.utils.links import (
-    fixture_result_attachment_download_url,
     launch_url,
-    result_attachment_download_url,
-    test_case_attachment_download_url,
     test_case_url,
     test_result_url,
 )
@@ -35,7 +32,10 @@ class UnavailableSection:
 
 @dataclass(frozen=True)
 class AttachmentDetail:
-    id: int | None
+    attachment_id: int | None
+    attachment_kind: str | None
+    test_result_id: int | None
+    test_case_id: int | None
     name: str | None
     entity: str | None
     content_type: str | None
@@ -43,7 +43,6 @@ class AttachmentDetail:
     missed: bool | None
     from_test_case: bool | None
     storage_key: str | None
-    download_url: str | None
 
 
 @dataclass(frozen=True)
@@ -142,6 +141,7 @@ class TestResultService:
         self._validate_positive(test_result_id, "Test Result ID")
         result = await self._client.get_test_result(test_result_id)
         actual_launch_id = _int_value(result, "launch_id")
+        result_test_case_id = _int_value(result, "test_case_id")
         upstream_project_id = _int_value(result, "project_id")
         project_id = upstream_project_id if upstream_project_id is not None else self._project_id
 
@@ -199,10 +199,17 @@ class TestResultService:
             launch_url(self._base_url, project_id or 0, verified_launch_id) if verified_launch_id is not None else None
         )
 
-        execution_steps = self._map_steps(_mapping_value(outcomes["execution"].value, "steps"), fixture=False)
+        execution_steps = self._map_steps(
+            _mapping_value(outcomes["execution"].value, "steps"),
+            fixture=False,
+            test_result_id=test_result_id,
+            test_case_id=result_test_case_id,
+        )
         fixtures, fixture_diagnostic = self._map_fixtures(
             _sequence(outcomes["fixtures"].value),
             _sequence(outcomes["fixture_attachments"].value),
+            test_result_id=test_result_id,
+            test_case_id=result_test_case_id,
         )
         if fixture_diagnostic is not None:
             unavailable.append(fixture_diagnostic)
@@ -228,7 +235,13 @@ class TestResultService:
             execution_steps=execution_steps,
             fixtures=fixtures,
             result_attachments=tuple(
-                self._attachment(item, fixture=False) for item in _sequence(outcomes["result_attachments"].value)
+                self._attachment(
+                    item,
+                    fixture=False,
+                    test_result_id=test_result_id,
+                    test_case_id=result_test_case_id,
+                )
+                for item in _sequence(outcomes["result_attachments"].value)
             ),
             related_results=related,
             partial=bool(unavailable),
@@ -364,25 +377,40 @@ class TestResultService:
             "url": test_case_url(self._base_url, project_id, test_case_id) if project_id is not None else None,
         }
 
-    def _attachment(self, value: object, *, fixture: bool) -> AttachmentDetail:
+    def _attachment(
+        self,
+        value: object,
+        *,
+        fixture: bool,
+        test_result_id: int,
+        test_case_id: int | None,
+    ) -> AttachmentDetail:
         value = _unwrap_one_of(value)
         entity = _str_value(value, "entity")
         attachment_id = _int_value(value, "id")
         from_test_case = _bool_value(value, "from_test_case")
-        download_url: str | None = None
-        if attachment_id is not None:
-            if from_test_case is True or (entity and "testcase" in entity.lower().replace("_", "")):
-                download_url = test_case_attachment_download_url(self._base_url, attachment_id)
-            elif entity and "testfixtureresult" in entity.lower().replace("_", "").replace("-", ""):
-                download_url = fixture_result_attachment_download_url(self._base_url, attachment_id)
-            elif entity and "testresult" in entity.lower().replace("_", "").replace("-", ""):
-                download_url = result_attachment_download_url(self._base_url, attachment_id)
-            elif fixture:
-                download_url = fixture_result_attachment_download_url(self._base_url, attachment_id)
-            else:
-                download_url = result_attachment_download_url(self._base_url, attachment_id)
+        entity_key = entity.lower().replace("_", "").replace("-", "") if entity else ""
+        is_test_case = from_test_case is True or "testcase" in entity_key
+        attachment_kind: str | None = (
+            "test_case"
+            if is_test_case
+            else "fixture_result"
+            if fixture or "testfixture" in entity_key
+            else "test_result"
+        )
+        owner_test_result_id: int | None = None if attachment_kind == "test_case" else test_result_id
+        owner_test_case_id: int | None = test_case_id if attachment_kind == "test_case" else None
+        if attachment_id is not None and attachment_id <= 0:
+            attachment_id = None
+        if attachment_kind == "test_case" and test_case_id is None:
+            attachment_id = None
+            attachment_kind = None
+            owner_test_result_id = None
         return AttachmentDetail(
             attachment_id,
+            attachment_kind,
+            owner_test_result_id,
+            owner_test_case_id,
             _str_value(value, "name"),
             entity,
             _str_value(value, "content_type"),
@@ -390,20 +418,45 @@ class TestResultService:
             _bool_value(value, "missed"),
             from_test_case,
             _str_value(value, "storage_key"),
-            download_url,
         )
 
-    def _map_steps(self, values: object, *, fixture: bool) -> tuple[StepDetail, ...]:
+    def _map_steps(
+        self,
+        values: object,
+        *,
+        fixture: bool,
+        test_result_id: int,
+        test_case_id: int | None,
+    ) -> tuple[StepDetail, ...]:
         mapped: list[StepDetail] = []
         for value in _sequence(values):
             value = _unwrap_one_of(value)
             attachment = _value(value, "attachment")
-            nested = self._map_steps(_value(value, "steps"), fixture=fixture)
+            nested = self._map_steps(
+                _value(value, "steps"),
+                fixture=fixture,
+                test_result_id=test_result_id,
+                test_case_id=test_case_id,
+            )
             attachment_id = _int_value(value, "attachment_id")
             attachments = (
-                (self._attachment(attachment, fixture=fixture),)
+                (
+                    self._attachment(
+                        attachment,
+                        fixture=fixture,
+                        test_result_id=test_result_id,
+                        test_case_id=test_case_id,
+                    ),
+                )
                 if attachment is not None
-                else (self._attachment({"id": attachment_id}, fixture=fixture),)
+                else (
+                    self._attachment(
+                        {"id": attachment_id},
+                        fixture=fixture,
+                        test_result_id=test_result_id,
+                        test_case_id=test_case_id,
+                    ),
+                )
                 if attachment_id is not None
                 else ()
             )
@@ -431,7 +484,12 @@ class TestResultService:
         return tuple(mapped)
 
     def _map_fixtures(
-        self, values: Sequence[object], aggregate_attachments: Sequence[object]
+        self,
+        values: Sequence[object],
+        aggregate_attachments: Sequence[object],
+        *,
+        test_result_id: int,
+        test_case_id: int | None,
     ) -> tuple[tuple[FixtureDetail, ...], UnavailableSection | None]:
         aggregate_by_id = {
             attachment_id: item
@@ -441,12 +499,22 @@ class TestResultService:
         owned_ids: set[int] = set()
         fixtures: list[FixtureDetail] = []
         for value in values:
-            steps = self._map_steps(_value(_value(value, "scenario"), "steps"), fixture=True)
-            steps = self._reconcile_fixture_steps(steps, aggregate_by_id)
+            steps = self._map_steps(
+                _value(_value(value, "scenario"), "steps"),
+                fixture=True,
+                test_result_id=test_result_id,
+                test_case_id=test_case_id,
+            )
+            steps = self._reconcile_fixture_steps(
+                steps,
+                aggregate_by_id,
+                test_result_id=test_result_id,
+                test_case_id=test_case_id,
+            )
             step_attachments = _deduplicate_attachments(_attachments_from_steps(steps))
             for attachment in step_attachments:
-                if attachment.id is not None:
-                    owned_ids.add(attachment.id)
+                if attachment.attachment_id is not None:
+                    owned_ids.add(attachment.attachment_id)
             fixtures.append(
                 FixtureDetail(
                     _int_value(value, "id"),
@@ -474,7 +542,12 @@ class TestResultService:
         return tuple(fixtures), diagnostic
 
     def _reconcile_fixture_steps(
-        self, steps: Sequence[StepDetail], aggregate_by_id: Mapping[int, object]
+        self,
+        steps: Sequence[StepDetail],
+        aggregate_by_id: Mapping[int, object],
+        *,
+        test_result_id: int,
+        test_case_id: int | None,
     ) -> tuple[StepDetail, ...]:
         return tuple(
             StepDetail(
@@ -494,12 +567,22 @@ class TestResultService:
                 step.trace,
                 step.parameters,
                 tuple(
-                    self._attachment(aggregate_by_id[attachment.id], fixture=True)
-                    if attachment.id is not None and attachment.id in aggregate_by_id
+                    self._attachment(
+                        aggregate_by_id[attachment.attachment_id],
+                        fixture=True,
+                        test_result_id=test_result_id,
+                        test_case_id=test_case_id,
+                    )
+                    if attachment.attachment_id is not None and attachment.attachment_id in aggregate_by_id
                     else attachment
                     for attachment in step.attachments
                 ),
-                self._reconcile_fixture_steps(step.steps, aggregate_by_id),
+                self._reconcile_fixture_steps(
+                    step.steps,
+                    aggregate_by_id,
+                    test_result_id=test_result_id,
+                    test_case_id=test_case_id,
+                ),
             )
             for step in steps
         )
@@ -634,10 +717,10 @@ def _deduplicate_attachments(attachments: Sequence[AttachmentDetail]) -> tuple[A
     seen_ids: set[int] = set()
     deduplicated: list[AttachmentDetail] = []
     for attachment in attachments:
-        if attachment.id is not None:
-            if attachment.id in seen_ids:
+        if attachment.attachment_id is not None:
+            if attachment.attachment_id in seen_ids:
                 continue
-            seen_ids.add(attachment.id)
+            seen_ids.add(attachment.attachment_id)
         deduplicated.append(attachment)
     return tuple(deduplicated)
 

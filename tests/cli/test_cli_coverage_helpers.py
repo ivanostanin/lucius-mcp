@@ -464,6 +464,14 @@ class TestCLICoverageHelpers:
         assert "example_command" in schemas["get_test_case_details"]
         assert "output_format" not in schemas["get_test_case_details"]["input_schema"]["properties"]
 
+    def test_attachment_preparation_example_includes_the_required_owner_context(self) -> None:
+        schemas = load_tool_schemas(cli_entry.TOOL_SCHEMAS_PATH, Path(cli_entry.__file__))
+
+        assert schemas["prepare_attachment_download"]["example_command"] == (
+            "lucius attachment prepare_download --args "
+            '\'{"attachment_id": 123, "attachment_kind": "test_result", "test_result_id": 456}\''
+        )
+
     def test_every_route_tool_signature_supports_output_format(self) -> None:
         for tool_name in all_route_tool_names():
             fn = load_tool_function(tool_name)

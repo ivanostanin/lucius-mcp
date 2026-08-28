@@ -233,7 +233,18 @@ def run_cli_command(
     if prepared is None:
         return
 
-    result: typing.Any = asyncio.run(call_tool_function(prepared.spec.tool_name, prepared.tool_args))
+    # The CLI process exits immediately after rendering. Mark this execution so
+    # a capability-link tool returns an actionable error instead of a dead URL.
+    from src.services.attachment_download_service import (
+        reset_direct_cli_attachment_request,
+        set_direct_cli_attachment_request,
+    )
+
+    token = set_direct_cli_attachment_request(True)
+    try:
+        result: typing.Any = asyncio.run(call_tool_function(prepared.spec.tool_name, prepared.tool_args))
+    finally:
+        reset_direct_cli_attachment_request(token)
     render_tool_result(
         prepared,
         result,

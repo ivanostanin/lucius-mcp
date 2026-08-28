@@ -9,9 +9,9 @@ models evolve.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, TypeVar, cast
+from typing import Any, Literal, TypeVar, cast
 
-from pydantic import BaseModel, ConfigDict, Field, create_model
+from pydantic import BaseModel, ConfigDict, Field, create_model, model_validator
 
 ToolFnT = TypeVar("ToolFnT", bound=Callable[..., Any])
 ToolFn = Callable[..., Any]
@@ -288,7 +288,16 @@ class LaunchDetailOutput(BaseModel):
 class TestResultAttachmentOutput(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    id: int | None = None
+    attachment_id: int | None = Field(default=None, ge=1, description="Attachment identifier for preparation.")
+    attachment_kind: Literal["test_result", "fixture_result", "test_case"] | None = Field(
+        default=None, description="Verified attachment owner kind for prepare_attachment_download."
+    )
+    test_result_id: int | None = Field(
+        default=None, ge=1, description="Required owner context for result or fixture attachments."
+    )
+    test_case_id: int | None = Field(
+        default=None, ge=1, description="Required owner context for test-case attachments."
+    )
     name: str | None = None
     entity: str | None = None
     content_type: str | None = None
@@ -296,7 +305,72 @@ class TestResultAttachmentOutput(BaseModel):
     missed: bool | None = None
     from_test_case: bool | None = None
     storage_key: str | None = None
-    download_url: str | None = None
+
+    @model_validator(mode="after")
+    def _validate_preparation_reference(self) -> TestResultAttachmentOutput:
+        if self.attachment_id is None:
+            return self
+        if self.attachment_kind in {"test_result", "fixture_result"}:
+            if self.test_result_id is None or self.test_case_id is not None:
+                raise ValueError("result and fixture attachments require only test_result_id")
+        elif self.attachment_kind == "test_case":
+            if self.test_case_id is None or self.test_result_id is not None:
+                raise ValueError("test-case attachments require only test_case_id")
+        else:
+            raise ValueError("attachment references require a supported attachment_kind")
+        return self
+
+
+class TestCaseAttachmentOutput(BaseModel):
+    """A test-case attachment reference safe to pass to the preparation tool."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    attachment_id: int | None = Field(default=None, ge=1, description="Attachment identifier for preparation.")
+    attachment_kind: Literal["test_case"] = Field(
+        default="test_case", description="Verified attachment owner kind for prepare_attachment_download."
+    )
+    test_case_id: int | None = Field(default=None, ge=1, description="Required owner context for preparation.")
+    name: str = Field(description="Attachment filename or display name.")
+    content_type: str | None = Field(default=None, description="Attachment MIME type when available.")
+    content_length: int | None = Field(default=None, ge=0, description="Attachment byte length when available.")
+
+    @model_validator(mode="after")
+    def _validate_preparation_reference(self) -> TestCaseAttachmentOutput:
+        if self.attachment_id is not None and self.test_case_id is None:
+            raise ValueError("test-case attachment references require test_case_id")
+        return self
+
+
+class PreparedAttachmentDownloadOutput(BaseModel):
+    """Opaque one-time attachment delivery metadata returned by the public preparation tool."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    attachment_id: int = Field(gt=0, description="Verified attachment identifier.")
+    attachment_kind: Literal["test_result", "fixture_result", "test_case"] = Field(
+        description="Verified attachment owner kind."
+    )
+    test_result_id: int | None = Field(
+        default=None, gt=0, description="Owner context for result or fixture attachments."
+    )
+    test_case_id: int | None = Field(default=None, gt=0, description="Owner context for test-case attachments.")
+    download_url: str = Field(
+        description="Opaque Lucius URL to HTTP GET before expires_at; no Allure bearer token is needed."
+    )
+    expires_at: str = Field(description="UTC expiry timestamp for the one-time download URL.")
+    name: str = Field(description="Sanitized attachment filename.")
+    content_type: str = Field(description="Attachment MIME type.")
+    content_length: int = Field(ge=0, description="Prepared attachment byte length.")
+
+    @model_validator(mode="after")
+    def _validate_owner_context(self) -> PreparedAttachmentDownloadOutput:
+        if self.attachment_kind in {"test_result", "fixture_result"}:
+            if self.test_result_id is None or self.test_case_id is not None:
+                raise ValueError("result and fixture attachments require only test_result_id")
+        elif self.test_case_id is None or self.test_result_id is not None:
+            raise ValueError("test-case attachments require only test_case_id")
+        return self
 
 
 class TestResultStepOutput(BaseModel):
@@ -599,7 +673,7 @@ class TestCaseDetailsOutput(BaseModel):
     precondition: str | None = Field(default=None)
     tags: list[str] | None = Field(default=None)
     custom_fields: list[CustomFieldEntry] | None = Field(default=None)
-    attachments: list[Attachment] | None = Field(default=None)
+    attachments: list[TestCaseAttachmentOutput] | None = Field(default=None)
     steps: list[Step] | None = Field(default=None)
     url: str | None = Field(default=None)
 

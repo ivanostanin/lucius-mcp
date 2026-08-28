@@ -2,10 +2,20 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.client import AllureClient, PageTestCaseDto, TestCaseDto, TestCaseDtoWithCF, TestCaseScenarioV2Dto
+from src.client import (
+    AllureClient,
+    PageTestCaseDto,
+    TestCaseAttachmentRowDto,
+    TestCaseDto,
+    TestCaseDtoWithCF,
+    TestCaseScenarioV2Dto,
+)
 from src.client.exceptions import AllureNotFoundError, AllureValidationError, TestCaseNotFoundError
+from src.client.generated.models.attachment_step_dto import AttachmentStepDto
 from src.client.generated.models.custom_field_dto import CustomFieldDto
 from src.client.generated.models.custom_field_value_with_cf_dto import CustomFieldValueWithCfDto
+from src.client.generated.models.page_test_case_attachment_row_dto import PageTestCaseAttachmentRowDto
+from src.client.generated.models.shared_step_scenario_dto_steps_inner import SharedStepScenarioDtoStepsInner
 from src.client.generated.models.shared_step_step_dto import SharedStepStepDto
 from src.client.generated.models.test_tag_dto import TestTagDto
 from src.services.search_service import SearchQueryParser, SearchService, TestCaseDetails
@@ -24,6 +34,7 @@ def mock_client() -> AllureClient:
     client.list_test_cases = AsyncMock()
     client.get_test_case = AsyncMock()
     client.get_test_case_scenario = AsyncMock()
+    client.list_test_case_attachments = AsyncMock(return_value=PageTestCaseAttachmentRowDto(content=[], last=True))
     client.get_project.return_value = 123
     return client
 
@@ -41,14 +52,20 @@ async def test_get_test_case_details_returns_case_and_scenario(
     scenario = TestCaseScenarioV2Dto(steps=[])
     mock_client.get_test_case = AsyncMock(return_value=test_case)
     mock_client.get_test_case_scenario = AsyncMock(return_value=scenario)
+    attachment = TestCaseAttachmentRowDto(entity="TestCaseAttachmentRowDto", id=15, name="evidence.txt")
+    mock_client.list_test_case_attachments = AsyncMock(
+        return_value=PageTestCaseAttachmentRowDto(content=[attachment], last=True)
+    )
 
     details = await service.get_test_case_details(123)
 
     assert isinstance(details, TestCaseDetails)
     assert details.test_case.id == 123
     assert details.scenario is scenario
+    assert details.attachments == (attachment,)
     mock_client.get_test_case.assert_awaited_once_with(123)
     mock_client.get_test_case_scenario.assert_awaited_once_with(123)
+    mock_client.list_test_case_attachments.assert_awaited_once_with(123, page=0, size=100)
 
 
 @pytest.mark.asyncio
@@ -87,7 +104,10 @@ def test_format_test_case_details_handles_fields_and_steps() -> None:
     child = SimpleStep("Sub-step", "Outcome")
     parent = SimpleStep("Do X", "See Y", steps=[child])
 
-    scenario = SimpleNamespace(steps=[parent], attachments=[SimpleNamespace(id=10, name="log.txt")])
+    scenario = SimpleNamespace(
+        steps=[parent],
+        attachments=[SimpleNamespace(id=10, name="log.txt", content_type="text/plain", content_length=12)],
+    )
     tc.custom_fields = [CustomFieldValueWithCfDto(custom_field=CustomFieldDto(name="Layer"), name="UI")]
     details = TestCaseDetails(test_case=tc, scenario=scenario)
 
@@ -104,6 +124,9 @@ def test_format_test_case_details_handles_fields_and_steps() -> None:
     assert "Attachments" in text
     assert "log.txt" in text
     assert "id: 10" in text
+    assert "content type: text/plain" in text
+    assert "content length: 12" in text
+    assert "Call prepare_attachment_download" not in text
 
 
 def test_format_test_case_details_handles_direct_shared_step_nodes() -> None:
@@ -140,6 +163,48 @@ def test_serialize_test_case_details_uses_consistent_shared_step_payloads() -> N
             "shared_step_id": 42,
         },
     ]
+
+
+def test_serialize_test_case_details_resolves_attachment_step_metadata() -> None:
+    tc = TestCaseDtoWithCF(id=1, name="Evidence", tags=[])
+    attachment_step = AttachmentStepDto(type="AttachmentStepDto", attachment_id=17)
+    scenario = TestCaseScenarioV2Dto.model_construct(steps=[SharedStepScenarioDtoStepsInner(attachment_step)])
+    attachment = TestCaseAttachmentRowDto(
+        entity="TestCaseAttachmentRowDto",
+        id=17,
+        name="evidence.txt",
+        content_type="text/plain",
+        content_length=8,
+    )
+    details = TestCaseDetails(test_case=tc, scenario=scenario, attachments=(attachment,))
+
+    payload = _serialize_test_case_details(details, base_url="", project_id=7)
+    plain = _format_test_case_details(details)
+
+    assert payload["attachments"] == [
+        {
+            "attachment_id": 17,
+            "attachment_kind": "test_case",
+            "test_case_id": 1,
+            "name": "evidence.txt",
+            "content_type": "text/plain",
+            "content_length": 8,
+        }
+    ]
+    assert "evidence.txt (id: 17; content type: text/plain; content length: 8)" in plain
+
+
+def test_serialize_test_case_details_keeps_listed_attachments_not_referenced_by_steps() -> None:
+    tc = TestCaseDtoWithCF(id=1, name="Evidence", tags=[])
+    attachment_step = AttachmentStepDto(type="AttachmentStepDto", attachment_id=17)
+    scenario = TestCaseScenarioV2Dto.model_construct(steps=[SharedStepScenarioDtoStepsInner(attachment_step)])
+    referenced = TestCaseAttachmentRowDto(entity="TestCaseAttachmentRowDto", id=17, name="step.log")
+    unreferenced = TestCaseAttachmentRowDto(entity="TestCaseAttachmentRowDto", id=18, name="case.log")
+    details = TestCaseDetails(test_case=tc, scenario=scenario, attachments=(referenced, unreferenced))
+
+    payload = _serialize_test_case_details(details, base_url="", project_id=7)
+
+    assert [attachment["attachment_id"] for attachment in payload["attachments"]] == [17, 18]
 
 
 @pytest.mark.asyncio

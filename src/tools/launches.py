@@ -387,6 +387,9 @@ async def get_test_result(
 ) -> ToolOutput:
     """Retrieve one complete TestOps result without recursively reading related results.
 
+    Attachment references identify their verified owner. Call prepare_attachment_download with an attachment's
+    attachment_id, attachment_kind, and owner context, then HTTP GET the returned Lucius URL before it expires.
+
     Args:
         test_result_id: Exact TestOps result ID matching ``/api/testresult/{id}``.
             Ignore a ``treeId`` URL query parameter.
@@ -394,7 +397,8 @@ async def get_test_result(
         output_format: Structured JSON (default) or plain agent-readable detail.
 
     Returns:
-        Curated result detail, authenticated attachment download paths, and explicit partial-data diagnostics.
+        Curated result detail, typed attachment preparation references, and explicit partial-data diagnostics.
+        Call prepare_attachment_download, then HTTP GET the returned Lucius URL without an Allure bearer token.
     """
     async with _launch_client_context(project_id=project_id) as client:
         result = await TestResultService(client).get_test_result(test_result_id)

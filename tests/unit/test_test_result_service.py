@@ -89,9 +89,11 @@ async def test_get_test_result_uses_exact_id_preserves_falsey_values_and_v2_exec
         "name": None,
         "url": "https://testops.example/project/9/test-cases/41",
     }
-    assert detail.execution_steps[0].steps[0].attachments[0].download_url == (
-        "https://testops.example/api/testresult/attachment/55/content?inline=false"
-    )
+    attachment = detail.execution_steps[0].steps[0].attachments[0]
+    assert attachment.attachment_id == 55
+    assert attachment.attachment_kind == "test_result"
+    assert attachment.test_result_id == 1498142
+    assert attachment.test_case_id is None
 
 
 @pytest.mark.asyncio
@@ -131,6 +133,32 @@ async def test_get_test_result_rejects_boolean_id() -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_test_result_omits_unusable_attachment_preparation_reference() -> None:
+    client = _client()
+    client.get_test_result.return_value.test_case_id = None
+    client.list_test_result_attachments.return_value = SimpleNamespace(
+        content=[SimpleNamespace(id=0, name="invalid-result.log", entity="test_result")], last=True, number=0
+    )
+    client.get_test_result_execution_raw.return_value = {
+        "steps": [
+            {
+                "type": "attachment",
+                "attachment": {"id": 55, "name": "case.log", "from_test_case": True},
+            }
+        ]
+    }
+
+    detail = await TestResultService(client).get_test_result(1498142)
+
+    assert detail.result_attachments[0].attachment_id is None
+    attachment = detail.execution_steps[0].attachments[0]
+    assert attachment.attachment_id is None
+    assert attachment.attachment_kind is None
+    assert attachment.test_result_id is None
+    assert attachment.test_case_id is None
+
+
+@pytest.mark.asyncio
 async def test_get_test_result_reports_unverified_fixture_attachment_ownership() -> None:
     client = _client()
     client.get_test_result_fixtures.return_value = [
@@ -156,7 +184,7 @@ async def test_get_test_result_preserves_collected_pages_when_a_later_page_fails
 
     detail = await TestResultService(client).get_test_result(1498142)
 
-    assert [attachment.id for attachment in detail.result_attachments] == [1]
+    assert [attachment.attachment_id for attachment in detail.result_attachments] == [1]
     unavailable = next(item for item in detail.unavailable_sections if item.section == "result_attachments")
     assert unavailable.items_retrieved == 1
     assert unavailable.status_code == 503
@@ -174,7 +202,7 @@ async def test_get_test_result_marks_contradictory_pagination_incomplete() -> No
 
     detail = await TestResultService(client).get_test_result(1498142)
 
-    assert [attachment.id for attachment in detail.result_attachments] == [1]
+    assert [attachment.attachment_id for attachment in detail.result_attachments] == [1]
     assert any(item.section == "result_attachments" for item in detail.unavailable_sections)
 
 
@@ -226,4 +254,6 @@ async def test_get_test_result_reconciles_and_deduplicates_fixture_attachments()
     assert len(detail.fixtures[0].attachments) == 1
     attachment = detail.fixtures[0].attachments[0]
     assert attachment.name == "full.log"
-    assert attachment.download_url == "https://testops.example/api/testfixtureresult/attachment/99/content?inline=false"
+    assert attachment.attachment_id == 99
+    assert attachment.attachment_kind == "fixture_result"
+    assert attachment.test_result_id == 1498142

@@ -211,8 +211,10 @@ async def get_test_case_details(
     """Get complete details of a specific test case.
 
     Retrieves all information about a test case including its steps, tags,
-    custom fields, and attachments. Use this before updating a test case to
-    understand its current state.
+    custom fields, and attachments. For each attachment, call
+    prepare_attachment_download with its attachment_id, attachment_kind, and
+    test_case_id, then HTTP GET the returned Lucius URL. Use this before
+    updating a test case to understand its current state.
 
     Args:
         test_case_id: The unique ID of the test case to retrieve.
@@ -220,7 +222,8 @@ async def get_test_case_details(
         output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
-        Formatted test case details including all metadata.
+        Formatted test case details including attachment preparation references.
+        Call prepare_attachment_download, then HTTP GET the returned Lucius URL.
 
     Raises:
         AuthenticationError: If no API token available from environment or arguments.
@@ -236,7 +239,12 @@ async def get_test_case_details(
 
     return render_output(
         plain=_format_test_case_details(details, base_url=base_url, project_id=resolved_project_id),
-        json_payload=_serialize_test_case_details(details, base_url=base_url, project_id=resolved_project_id),
+        json_payload=_serialize_test_case_details(
+            details,
+            base_url=base_url,
+            project_id=resolved_project_id,
+            owner_test_case_id=test_case_id,
+        ),
         output_format=output_format,
     )
 
@@ -323,12 +331,18 @@ def _format_test_case_details(details: TestCaseDetails, *, base_url: str = "", p
 
     _append_tags(lines, tc)
     _append_custom_fields(lines, tc)
-    _append_attachments(lines, scenario)
+    _append_attachments(lines, _test_case_attachments(details))
 
     return "\n".join(lines)
 
 
-def _serialize_test_case_details(details: TestCaseDetails, *, base_url: str, project_id: int) -> dict[str, object]:
+def _serialize_test_case_details(
+    details: TestCaseDetails,
+    *,
+    base_url: str,
+    project_id: int,
+    owner_test_case_id: int | None = None,
+) -> dict[str, object]:
     tc = details.test_case
     scenario = details.scenario
 
@@ -344,20 +358,31 @@ def _serialize_test_case_details(details: TestCaseDetails, *, base_url: str, pro
         if key and value:
             custom_fields.append({"name": key, "value": value})
 
-    attachments: list[dict[str, str]] = []
-    for att in getattr(scenario, "attachments", None) or []:
+    attachments: list[dict[str, object]] = []
+    test_case_id = getattr(tc, "id", None)
+    verified_test_case_id = (
+        owner_test_case_id
+        if isinstance(owner_test_case_id, int) and owner_test_case_id > 0
+        else test_case_id
+        if isinstance(test_case_id, int) and test_case_id > 0
+        else None
+    )
+    for att in _test_case_attachments(details):
         name = _get_text(att, ["name", "file_name", "filename", "title"]) or "attachment"
-        attachment_id = _get_text(att, ["id", "attachment_id", "attachmentId"])
-        attachment_payload: dict[str, str] = {"name": name}
-        if attachment_id:
-            attachment_payload["id"] = attachment_id
+        attachment_payload: dict[str, object] = {
+            "attachment_id": _get_int(att, ["id", "attachment_id", "attachmentId"]),
+            "attachment_kind": "test_case",
+            "test_case_id": verified_test_case_id,
+            "name": name,
+            "content_type": _get_text(att, ["content_type", "contentType", "mime_type", "mimeType"]),
+            "content_length": _get_int(att, ["content_length", "contentLength", "size", "length"]),
+        }
         attachments.append(attachment_payload)
 
     status_obj = getattr(tc, "status", None)
     status_name = getattr(status_obj, "name", None) if status_obj is not None else None
     tags = [t.name for t in getattr(tc, "tags", []) or [] if getattr(t, "name", None)]
 
-    test_case_id = getattr(tc, "id", None)
     details_payload: dict[str, object] = {
         "id": test_case_id,
         "name": getattr(tc, "name", None),
@@ -417,6 +442,17 @@ def _get_text(obj: object, names: list[str]) -> str | None:
         if isinstance(obj, dict) and name in obj and obj[name] is not None:
             return str(obj[name])
     return None
+
+
+def _get_int(obj: object, names: list[str]) -> int | None:
+    raw = _get_text(obj, names)
+    if raw is None:
+        return None
+    try:
+        value = int(raw)
+    except ValueError:
+        return None
+    return value if value > 0 else None
 
 
 def _serialize_step(step: object, index: int, *, base_url: str = "", project_id: int = 0) -> dict[str, object]:
@@ -537,8 +573,7 @@ def _append_custom_fields(lines: list[str], tc: object) -> None:
         lines.append(f"**Custom Fields:** {', '.join(formatted)}")
 
 
-def _append_attachments(lines: list[str], scenario: object | None) -> None:
-    attachments = getattr(scenario, "attachments", None) if scenario else None
+def _append_attachments(lines: list[str], attachments: list[object]) -> None:
     if not attachments:
         return
 
@@ -546,10 +581,35 @@ def _append_attachments(lines: list[str], scenario: object | None) -> None:
     for att in attachments:
         name = _get_text(att, ["name", "file_name", "filename", "title"]) or "attachment"
         att_id = _get_text(att, ["id", "attachment_id", "attachmentId"])
+        content_type = _get_text(att, ["content_type", "contentType", "mime_type", "mimeType"])
+        content_length = _get_int(att, ["content_length", "contentLength", "size", "length"])
+        metadata: list[str] = []
         if att_id:
-            parts.append(f"{name} (id: {att_id})")
-        else:
-            parts.append(name)
+            metadata.append(f"id: {att_id}")
+        if content_type:
+            metadata.append(f"content type: {content_type}")
+        if content_length is not None:
+            metadata.append(f"content length: {content_length}")
+        parts.append(f"{name} ({'; '.join(metadata)})" if metadata else name)
 
     if parts:
         lines.append("**Attachments:** " + ", ".join(parts))
+
+
+def _test_case_attachments(details: TestCaseDetails) -> list[object]:
+    """Return every deduplicated test-case attachment available to the caller."""
+
+    scenario = details.scenario
+    direct_attachments = list(getattr(scenario, "attachments", None) or []) if scenario else []
+    listed_attachments = list(details.attachments)
+
+    attachments: list[object] = []
+    seen_ids: set[int] = set()
+    for attachment in [*direct_attachments, *listed_attachments]:
+        attachment_id = _get_int(attachment, ["id", "attachment_id", "attachmentId"])
+        if attachment_id is not None:
+            if attachment_id in seen_ids:
+                continue
+            seen_ids.add(attachment_id)
+        attachments.append(attachment)
+    return attachments
