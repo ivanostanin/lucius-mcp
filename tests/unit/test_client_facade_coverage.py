@@ -15,6 +15,7 @@ from src.client import (
     AllureAPIError,
     AllureClient,
     AllureValidationError,
+    LaunchResultTreePage,
 )
 from src.client.client import AttachmentStepDtoWithName, SharedStepStepDtoWithId, StepWithExpected
 from src.client.generated.api.shared_step_attachment_controller_api import SharedStepAttachmentControllerApi
@@ -208,10 +209,11 @@ async def test_launch_execution_facades_use_generated_apis_and_raw_tree_discrimi
 
     assert await facade_client.get_launch_execution_section("duration", 3) == [{"duration": 0}]
     assert await facade_client.get_launch_result_view("result_timeline", 3) == {"groups": [], "leafs": []}
-    assert await facade_client.get_launch_result_tree_page(3, 7, path=[4], page=0, size=100) == {
-        "content": [{"id": 9, "type": "LEAF"}],
-        "last": True,
-    }
+    page = await facade_client.get_launch_result_tree_page(3, 7, path=[4], page=0, size=100)
+    assert isinstance(page, LaunchResultTreePage)
+    assert page.last is True
+    assert page.content[0].id == 9
+    assert page.content[0].type == "LEAF"
     assert launch_api.calls[0][0] == "get_duration"
     assert result_api.calls[0][0] == "timeline"
     assert tree_api.get_tree_entities_without_preload_content.await_args.kwargs["path"] == [4]
