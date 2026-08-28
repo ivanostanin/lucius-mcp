@@ -202,6 +202,45 @@ class LaunchDetailResponse:
 
 
 @dataclass(frozen=True)
+class LaunchResultTreeNode:
+    """Client-owned projection of one V2 launch result-tree node.
+
+    The generated oneOf model is ambiguous.  Keeping the raw-response parsing
+    and its discriminator handling here prevents raw upstream dictionaries
+    from crossing the client boundary.
+    """
+
+    id: int | None
+    name: str | None
+    type: Literal["GROUP", "LEAF"]
+    custom_field_id: int | None = None
+    statistic: tuple[object, ...] | None = None
+    assignee: str | None = None
+    created_date: int | None = None
+    duration: int | None = None
+    flaky: bool | None = None
+    hidden: bool | None = None
+    last_modified_date: int | None = None
+    layer_name: str | None = None
+    manual: bool | None = None
+    start: int | None = None
+    status: str | None = None
+    stop: int | None = None
+    test_case_id: int | None = None
+    tested_by: str | None = None
+
+
+@dataclass(frozen=True)
+class LaunchResultTreePage:
+    """Typed V2 hierarchy page with only pagination metadata used by collectors."""
+
+    content: tuple[LaunchResultTreeNode, ...]
+    last: bool | None = None
+    number: int | None = None
+    total_pages: int | None = None
+
+
+@dataclass(frozen=True)
 class AttachmentContent:
     """Authenticated attachment bytes with response metadata for local delivery."""
 
@@ -302,6 +341,8 @@ __all__ = [
     "FindAll29200Response",
     "LaunchCreateDto",
     "LaunchDto",
+    "LaunchResultTreeNode",
+    "LaunchResultTreePage",
     "LaunchUploadResponseDto",
     "PageLaunchDto",
     "PageLaunchPreviewDto",
@@ -1641,7 +1682,7 @@ class AllureClient:
 
     async def get_launch_result_tree_page(
         self, launch_id: int, tree_id: int, *, path: list[int] | None, page: int, size: int
-    ) -> dict[str, object]:
+    ) -> LaunchResultTreePage:
         """Read a hierarchy page and discriminate its ambiguous oneOf nodes by ``type``.
 
         The generated oneOf has no discriminator mapping, so using the raw response
@@ -1661,11 +1702,61 @@ class AllureClient:
         content = payload.get("content") if isinstance(payload, dict) else None
         if not isinstance(payload, dict) or not isinstance(content, list):
             raise AllureValidationError("Unexpected launch result tree response from API")
-        if not all(
-            isinstance(node, dict) and node.get("type") in {"group", "GROUP", "leaf", "LEAF"} for node in content
-        ):
-            raise AllureValidationError("Unexpected launch result tree node type from API")
-        return payload
+        nodes: list[LaunchResultTreeNode] = []
+        for node in content:
+            if not isinstance(node, dict) or node.get("type") not in {"group", "GROUP", "leaf", "LEAF"}:
+                raise AllureValidationError("Unexpected launch result tree node type from API")
+            nodes.append(self._project_launch_result_tree_node(node))
+        last = payload.get("last")
+        number = payload.get("number")
+        total_pages = payload.get("totalPages")
+        return LaunchResultTreePage(
+            content=tuple(nodes),
+            last=last if isinstance(last, bool) else None,
+            number=number if isinstance(number, int) else None,
+            total_pages=total_pages if isinstance(total_pages, int) else None,
+        )
+
+    @staticmethod
+    def _project_launch_result_tree_node(payload: dict[str, object]) -> LaunchResultTreeNode:
+        """Map the raw oneOf payload into a stable client-owned hierarchy node."""
+
+        node_type = payload["type"]
+        normalized_type: Literal["GROUP", "LEAF"] = "GROUP" if node_type in {"group", "GROUP"} else "LEAF"
+
+        def integer(name: str) -> int | None:
+            value = payload.get(name)
+            return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+        def text(name: str) -> str | None:
+            value = payload.get(name)
+            return value if isinstance(value, str) else None
+
+        def boolean(name: str) -> bool | None:
+            value = payload.get(name)
+            return value if isinstance(value, bool) else None
+
+        statistic = payload.get("statistic")
+        return LaunchResultTreeNode(
+            id=integer("id"),
+            name=text("name"),
+            type=normalized_type,
+            custom_field_id=integer("customFieldId"),
+            statistic=tuple(statistic) if isinstance(statistic, list) else None,
+            assignee=text("assignee"),
+            created_date=integer("createdDate"),
+            duration=integer("duration"),
+            flaky=boolean("flaky"),
+            hidden=boolean("hidden"),
+            last_modified_date=integer("lastModifiedDate"),
+            layer_name=text("layerName"),
+            manual=boolean("manual"),
+            start=integer("start"),
+            status=text("status"),
+            stop=integer("stop"),
+            test_case_id=integer("testCaseId"),
+            tested_by=text("testedBy"),
+        )
 
     async def get_launch_base(self, launch_id: int) -> LaunchDto:
         """Retrieve sparse authoritative launch metadata for lifecycle checks."""

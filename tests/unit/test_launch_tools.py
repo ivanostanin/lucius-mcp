@@ -7,10 +7,11 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
 
 from src.services.launch_service import LaunchUnavailableSection
 from src.tools.launches import (
+    _launch_detail_payload,
     add_test_result_attachment,
     close_launch,
     create_launch,
@@ -22,6 +23,7 @@ from src.tools.launches import (
     start_manual_test_session,
     submit_manual_test_results,
 )
+from src.tools.output_schemas import LaunchDetailOutput
 
 
 def _resolved_auth(*, endpoint: str = "https://example.com", token: str = "token", project_id: int = 1) -> object:
@@ -179,6 +181,8 @@ async def test_get_launch_forwards_execution_options_and_omits_them_by_default()
 
                 default = await get_launch(launch_id=7, output_format="json")
                 assert "execution_snapshot" not in default.structured_content
+                assert default.structured_content["created_by"] is None
+                assert default.structured_content["statistic"] is None
                 service.get_launch.assert_awaited_with(7, include_execution_results=False, tree_id=None)
 
                 await get_launch(launch_id=7, include_execution_results=True, tree_id=11)
@@ -222,9 +226,51 @@ async def test_get_launch_execution_output_normalizes_partial_diagnostics() -> N
 
                 output = await get_launch(launch_id=7, include_execution_results=True, output_format="json")
 
-                assert output.structured_content["flat_test_results"] == [{"id": 99, "status": "broken"}]
+                row = output.structured_content["flat_test_results"][0]
+                assert row["id"] == 99
+                assert row["status"] == "broken"
                 assert output.structured_content["partial"] is True
                 assert output.structured_content["unavailable_sections"][0]["section"] == "variables"
+
+
+def test_launch_execution_output_schema_rejects_unprojected_upstream_fields() -> None:
+    with pytest.raises(ValidationError, match="extra_forbidden"):
+        LaunchDetailOutput.model_validate(
+            {"flat_test_results": [{"id": 99, "status": "broken", "raw_upstream_payload": "must not leak"}]}
+        )
+
+
+def test_launch_execution_projection_preserves_widget_statistics_and_job_run_identity() -> None:
+    launch = type(
+        "LaunchDetail",
+        (),
+        {
+            "id": 7,
+            "name": "Launch",
+            "closed": False,
+            "execution_snapshot": {"captured_at": "2026-08-27T00:00:00+00:00", "mutable": True, "message": "x"},
+            "partial": False,
+            "unavailable_sections": (),
+            "core_test_result_index": ({"id": 12, "job_run": {"id": 88, "name": "CI", "status": "passed"}},),
+            "trees": (
+                {
+                    "metadata": {"id": 3, "name": "Suite", "project_id": 1},
+                    "statistic_widget": (
+                        {"name": "Status", "uid": "status", "statistic": [{"status": "passed", "count": 2}]},
+                    ),
+                    "hierarchy": (),
+                },
+            ),
+        },
+    )
+
+    payload = _launch_detail_payload(launch, base_url="https://example.com", project_id=1)
+
+    assert payload["core_test_result_index"][0]["id"] == 12
+    assert payload["core_test_result_index"][0]["job_run"]["id"] == 88
+    assert payload["trees"][0]["statistic_widget"] == [
+        {"name": "Status", "uid": "status", "statistic": [{"status": "passed", "count": 2}]}
+    ]
 
 
 @pytest.mark.asyncio

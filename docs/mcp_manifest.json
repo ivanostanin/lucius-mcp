@@ -4187,6 +4187,1601 @@
         "type": "object"
       },
       "outputSchema": {
+        "$defs": {
+          "LaunchDefectOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Id"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Name"
+              },
+              "closed": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Closed"
+              },
+              "count": {
+                "anyOf": [
+                  {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Count"
+              },
+              "issue": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/LaunchIssue"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              }
+            },
+            "title": "LaunchDefectOutput",
+            "type": "object"
+          },
+          "LaunchDurationOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "count": {
+                "anyOf": [
+                  {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Count"
+              },
+              "duration": {
+                "anyOf": [
+                  {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Duration"
+              }
+            },
+            "title": "LaunchDurationOutput",
+            "type": "object"
+          },
+          "LaunchEnvironmentValue": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Id"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Name"
+              },
+              "variable": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/LaunchEnvironmentVariable"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              }
+            },
+            "title": "LaunchEnvironmentValue",
+            "type": "object"
+          },
+          "LaunchEnvironmentVariable": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Id"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Name"
+              }
+            },
+            "title": "LaunchEnvironmentVariable",
+            "type": "object"
+          },
+          "LaunchExecutionResultOutput": {
+            "additionalProperties": false,
+            "description": "Curated, non-recursive launch-result row shared by result-bearing sections.",
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Exact Test Result ID for get_test_result.",
+                "title": "Id"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Name"
+              },
+              "status": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Status"
+              },
+              "test_case_id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Test Case Id"
+              },
+              "assignee": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Assignee"
+              },
+              "tested_by": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Tested By"
+              },
+              "duration": {
+                "anyOf": [
+                  {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Duration"
+              },
+              "created_date": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Created Date"
+              },
+              "last_modified_date": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Last Modified Date"
+              },
+              "layer_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Layer Name"
+              },
+              "manual": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Manual"
+              },
+              "flaky": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Flaky"
+              },
+              "hidden": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Hidden"
+              },
+              "start": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Start"
+              },
+              "stop": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Stop"
+              },
+              "total_retries": {
+                "anyOf": [
+                  {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Total Retries"
+              },
+              "previous_retry": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/LaunchResultReferenceOutput"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "job_run": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/LaunchJobRun"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Job-run metadata. Its id is a job-run ID, not a Test Result ID."
+              }
+            },
+            "title": "LaunchExecutionResultOutput",
+            "type": "object"
+          },
+          "LaunchExecutionSnapshotOutput": {
+            "additionalProperties": false,
+            "description": "Point-in-time state for the opt-in execution aggregate.",
+            "properties": {
+              "captured_at": {
+                "title": "Captured At",
+                "type": "string"
+              },
+              "closed": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Closed"
+              },
+              "mutable": {
+                "title": "Mutable",
+                "type": "boolean"
+              },
+              "message": {
+                "title": "Message",
+                "type": "string"
+              }
+            },
+            "required": [
+              "captured_at",
+              "mutable",
+              "message"
+            ],
+            "title": "LaunchExecutionSnapshotOutput",
+            "type": "object"
+          },
+          "LaunchIssue": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Id"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Name"
+              },
+              "display_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Display Name"
+              },
+              "status": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Status"
+              },
+              "summary": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Summary"
+              },
+              "url": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Url"
+              },
+              "closed": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Closed"
+              }
+            },
+            "title": "LaunchIssue",
+            "type": "object"
+          },
+          "LaunchJob": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Id"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Name"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Type"
+              },
+              "url": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Url"
+              }
+            },
+            "title": "LaunchJob",
+            "type": "object"
+          },
+          "LaunchJobRun": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Id"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Name"
+              },
+              "status": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Status"
+              },
+              "stage": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Stage"
+              },
+              "url": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Url"
+              },
+              "error_message": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Error Message"
+              },
+              "external_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "External Id"
+              },
+              "job": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/LaunchJob"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              }
+            },
+            "title": "LaunchJobRun",
+            "type": "object"
+          },
+          "LaunchLink": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Name"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Type"
+              },
+              "url": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Url"
+              }
+            },
+            "title": "LaunchLink",
+            "type": "object"
+          },
+          "LaunchMemberStatsOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "assignee": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Assignee"
+              },
+              "first_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "First Name"
+              },
+              "last_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Last Name"
+              },
+              "defects_count": {
+                "anyOf": [
+                  {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Defects Count"
+              },
+              "duration_sum": {
+                "anyOf": [
+                  {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Duration Sum"
+              },
+              "muted_count": {
+                "anyOf": [
+                  {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Muted Count"
+              },
+              "retried_count": {
+                "anyOf": [
+                  {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Retried Count"
+              },
+              "statistic": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/LaunchStatisticItem"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Statistic"
+              }
+            },
+            "title": "LaunchMemberStatsOutput",
+            "type": "object"
+          },
+          "LaunchProgressOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "ready": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Ready"
+              }
+            },
+            "title": "LaunchProgressOutput",
+            "type": "object"
+          },
+          "LaunchResultReferenceOutput": {
+            "additionalProperties": false,
+            "description": "Compact result reference; ``id`` is the exact Test Result ID for ``get_test_result``.",
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Exact Test Result ID for get_test_result.",
+                "title": "Id"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Name"
+              },
+              "status": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Status"
+              }
+            },
+            "title": "LaunchResultReferenceOutput",
+            "type": "object"
+          },
+          "LaunchResultTreeGroupOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Name"
+              },
+              "uid": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Uid"
+              },
+              "context_key": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Context Key"
+              },
+              "context_value": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Context Value"
+              },
+              "leafs": {
+                "items": {
+                  "$ref": "#/$defs/LaunchExecutionResultOutput"
+                },
+                "title": "Leafs",
+                "type": "array"
+              }
+            },
+            "title": "LaunchResultTreeGroupOutput",
+            "type": "object"
+          },
+          "LaunchResultTreeViewOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Name"
+              },
+              "uid": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Uid"
+              },
+              "shown": {
+                "anyOf": [
+                  {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Shown"
+              },
+              "total": {
+                "anyOf": [
+                  {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Total"
+              },
+              "context_key": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Context Key"
+              },
+              "context_value": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Context Value"
+              },
+              "groups": {
+                "items": {
+                  "$ref": "#/$defs/LaunchResultTreeGroupOutput"
+                },
+                "title": "Groups",
+                "type": "array"
+              },
+              "leafs": {
+                "items": {
+                  "$ref": "#/$defs/LaunchExecutionResultOutput"
+                },
+                "title": "Leafs",
+                "type": "array"
+              }
+            },
+            "title": "LaunchResultTreeViewOutput",
+            "type": "object"
+          },
+          "LaunchStatisticItem": {
+            "additionalProperties": false,
+            "properties": {
+              "status": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Status"
+              },
+              "count": {
+                "anyOf": [
+                  {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Count"
+              }
+            },
+            "title": "LaunchStatisticItem",
+            "type": "object"
+          },
+          "LaunchTag": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Id"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Name"
+              }
+            },
+            "title": "LaunchTag",
+            "type": "object"
+          },
+          "LaunchTreeMetadataOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Id"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Name"
+              },
+              "project_id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Project Id"
+              }
+            },
+            "title": "LaunchTreeMetadataOutput",
+            "type": "object"
+          },
+          "LaunchTreeNodeOutput": {
+            "additionalProperties": false,
+            "description": "Recursive tree node; group IDs are hierarchy IDs and leaf IDs are result IDs.",
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Exact Test Result ID for get_test_result.",
+                "title": "Id"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Name"
+              },
+              "status": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Status"
+              },
+              "test_case_id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Test Case Id"
+              },
+              "assignee": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Assignee"
+              },
+              "tested_by": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Tested By"
+              },
+              "duration": {
+                "anyOf": [
+                  {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Duration"
+              },
+              "created_date": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Created Date"
+              },
+              "last_modified_date": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Last Modified Date"
+              },
+              "layer_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Layer Name"
+              },
+              "manual": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Manual"
+              },
+              "flaky": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Flaky"
+              },
+              "hidden": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Hidden"
+              },
+              "start": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Start"
+              },
+              "stop": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Stop"
+              },
+              "total_retries": {
+                "anyOf": [
+                  {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Total Retries"
+              },
+              "previous_retry": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/LaunchResultReferenceOutput"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "job_run": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/LaunchJobRun"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Job-run metadata. Its id is a job-run ID, not a Test Result ID."
+              },
+              "type": {
+                "enum": [
+                  "GROUP",
+                  "LEAF"
+                ],
+                "title": "Type",
+                "type": "string"
+              },
+              "custom_field_id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Custom Field Id"
+              },
+              "statistic": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/LaunchStatisticItem"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Statistic"
+              },
+              "children": {
+                "items": {
+                  "$ref": "#/$defs/LaunchTreeNodeOutput"
+                },
+                "title": "Children",
+                "type": "array"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "LaunchTreeNodeOutput",
+            "type": "object"
+          },
+          "LaunchTreeOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "metadata": {
+                "$ref": "#/$defs/LaunchTreeMetadataOutput"
+              },
+              "statistic_widget": {
+                "items": {
+                  "$ref": "#/$defs/LaunchTreeStatisticWidgetOutput"
+                },
+                "title": "Statistic Widget",
+                "type": "array"
+              },
+              "hierarchy": {
+                "items": {
+                  "$ref": "#/$defs/LaunchTreeNodeOutput"
+                },
+                "title": "Hierarchy",
+                "type": "array"
+              }
+            },
+            "required": [
+              "metadata"
+            ],
+            "title": "LaunchTreeOutput",
+            "type": "object"
+          },
+          "LaunchTreeStatisticWidgetOutput": {
+            "additionalProperties": false,
+            "description": "One tree-statistics widget row, distinct from a Test Result row.",
+            "properties": {
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Name"
+              },
+              "uid": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Uid"
+              },
+              "statistic": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/LaunchStatisticItem"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Statistic"
+              }
+            },
+            "title": "LaunchTreeStatisticWidgetOutput",
+            "type": "object"
+          },
+          "LaunchUnavailableSectionOutput": {
+            "additionalProperties": false,
+            "description": "Sanitized optional-read completeness diagnostic.",
+            "properties": {
+              "section": {
+                "title": "Section",
+                "type": "string"
+              },
+              "reason": {
+                "title": "Reason",
+                "type": "string"
+              },
+              "status_code": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Status Code"
+              },
+              "message": {
+                "title": "Message",
+                "type": "string"
+              },
+              "items_retrieved": {
+                "anyOf": [
+                  {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Items Retrieved"
+              }
+            },
+            "required": [
+              "section",
+              "reason",
+              "message"
+            ],
+            "title": "LaunchUnavailableSectionOutput",
+            "type": "object"
+          },
+          "LaunchVariableOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "key": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Key"
+              },
+              "values": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Values"
+              }
+            },
+            "title": "LaunchVariableOutput",
+            "type": "object"
+          }
+        },
         "additionalProperties": false,
         "description": "Rich exact-ID launch fields, with explicit stable nested projections.",
         "properties": {
@@ -4314,36 +5909,7 @@
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "status": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Status"
-                    },
-                    "count": {
-                      "anyOf": [
-                        {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Count"
-                    }
-                  },
-                  "title": "LaunchStatisticItem",
-                  "type": "object"
+                  "$ref": "#/$defs/LaunchStatisticItem"
                 },
                 "type": "array"
               },
@@ -4384,74 +5950,7 @@
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "id": {
-                      "anyOf": [
-                        {
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Id"
-                    },
-                    "name": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Name"
-                    },
-                    "variable": {
-                      "anyOf": [
-                        {
-                          "additionalProperties": false,
-                          "properties": {
-                            "id": {
-                              "anyOf": [
-                                {
-                                  "type": "integer"
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ],
-                              "default": null,
-                              "title": "Id"
-                            },
-                            "name": {
-                              "anyOf": [
-                                {
-                                  "type": "string"
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ],
-                              "default": null,
-                              "title": "Name"
-                            }
-                          },
-                          "title": "LaunchEnvironmentVariable",
-                          "type": "object"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null
-                    }
-                  },
-                  "title": "LaunchEnvironmentValue",
-                  "type": "object"
+                  "$ref": "#/$defs/LaunchEnvironmentValue"
                 },
                 "type": "array"
               },
@@ -4466,158 +5965,7 @@
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "id": {
-                      "anyOf": [
-                        {
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Id"
-                    },
-                    "name": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Name"
-                    },
-                    "status": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Status"
-                    },
-                    "stage": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Stage"
-                    },
-                    "url": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Url"
-                    },
-                    "error_message": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Error Message"
-                    },
-                    "external_id": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "External Id"
-                    },
-                    "job": {
-                      "anyOf": [
-                        {
-                          "additionalProperties": false,
-                          "properties": {
-                            "id": {
-                              "anyOf": [
-                                {
-                                  "type": "integer"
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ],
-                              "default": null,
-                              "title": "Id"
-                            },
-                            "name": {
-                              "anyOf": [
-                                {
-                                  "type": "string"
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ],
-                              "default": null,
-                              "title": "Name"
-                            },
-                            "type": {
-                              "anyOf": [
-                                {
-                                  "type": "string"
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ],
-                              "default": null,
-                              "title": "Type"
-                            },
-                            "url": {
-                              "anyOf": [
-                                {
-                                  "type": "string"
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ],
-                              "default": null,
-                              "title": "Url"
-                            }
-                          },
-                          "title": "LaunchJob",
-                          "type": "object"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null
-                    }
-                  },
-                  "title": "LaunchJobRun",
-                  "type": "object"
+                  "$ref": "#/$defs/LaunchJobRun"
                 },
                 "type": "array"
               },
@@ -4632,35 +5980,7 @@
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "id": {
-                      "anyOf": [
-                        {
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Id"
-                    },
-                    "name": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Name"
-                    }
-                  },
-                  "title": "LaunchTag",
-                  "type": "object"
+                  "$ref": "#/$defs/LaunchTag"
                 },
                 "type": "array"
               },
@@ -4675,95 +5995,7 @@
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "id": {
-                      "anyOf": [
-                        {
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Id"
-                    },
-                    "name": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Name"
-                    },
-                    "display_name": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Display Name"
-                    },
-                    "status": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Status"
-                    },
-                    "summary": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Summary"
-                    },
-                    "url": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Url"
-                    },
-                    "closed": {
-                      "anyOf": [
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Closed"
-                    }
-                  },
-                  "title": "LaunchIssue",
-                  "type": "object"
+                  "$ref": "#/$defs/LaunchIssue"
                 },
                 "type": "array"
               },
@@ -4778,47 +6010,7 @@
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "name": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Name"
-                    },
-                    "type": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Type"
-                    },
-                    "url": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Url"
-                    }
-                  },
-                  "title": "LaunchLink",
-                  "type": "object"
+                  "$ref": "#/$defs/LaunchLink"
                 },
                 "type": "array"
               },
@@ -4856,7 +6048,9 @@
           "duration": {
             "anyOf": [
               {
-                "items": {},
+                "items": {
+                  "$ref": "#/$defs/LaunchDurationOutput"
+                },
                 "type": "array"
               },
               {
@@ -4868,18 +6062,21 @@
           },
           "progress": {
             "anyOf": [
-              {},
+              {
+                "$ref": "#/$defs/LaunchProgressOutput"
+              },
               {
                 "type": "null"
               }
             ],
-            "default": null,
-            "title": "Progress"
+            "default": null
           },
           "assignees": {
             "anyOf": [
               {
-                "items": {},
+                "items": {
+                  "type": "string"
+                },
                 "type": "array"
               },
               {
@@ -4892,7 +6089,9 @@
           "testers": {
             "anyOf": [
               {
-                "items": {},
+                "items": {
+                  "type": "string"
+                },
                 "type": "array"
               },
               {
@@ -4905,7 +6104,9 @@
           "variables": {
             "anyOf": [
               {
-                "items": {},
+                "items": {
+                  "$ref": "#/$defs/LaunchVariableOutput"
+                },
                 "type": "array"
               },
               {
@@ -4918,7 +6119,9 @@
           "defects": {
             "anyOf": [
               {
-                "items": {},
+                "items": {
+                  "$ref": "#/$defs/LaunchDefectOutput"
+                },
                 "type": "array"
               },
               {
@@ -4931,7 +6134,9 @@
           "member_stats": {
             "anyOf": [
               {
-                "items": {},
+                "items": {
+                  "$ref": "#/$defs/LaunchMemberStatsOutput"
+                },
                 "type": "array"
               },
               {
@@ -4944,7 +6149,9 @@
           "muted_results": {
             "anyOf": [
               {
-                "items": {},
+                "items": {
+                  "$ref": "#/$defs/LaunchExecutionResultOutput"
+                },
                 "type": "array"
               },
               {
@@ -4957,7 +6164,9 @@
           "retries": {
             "anyOf": [
               {
-                "items": {},
+                "items": {
+                  "$ref": "#/$defs/LaunchExecutionResultOutput"
+                },
                 "type": "array"
               },
               {
@@ -4970,7 +6179,9 @@
           "unresolved_results": {
             "anyOf": [
               {
-                "items": {},
+                "items": {
+                  "$ref": "#/$defs/LaunchExecutionResultOutput"
+                },
                 "type": "array"
               },
               {
@@ -4983,7 +6194,9 @@
           "flat_test_results": {
             "anyOf": [
               {
-                "items": {},
+                "items": {
+                  "$ref": "#/$defs/LaunchExecutionResultOutput"
+                },
                 "type": "array"
               },
               {
@@ -4997,7 +6210,9 @@
           "core_test_result_index": {
             "anyOf": [
               {
-                "items": {},
+                "items": {
+                  "$ref": "#/$defs/LaunchExecutionResultOutput"
+                },
                 "type": "array"
               },
               {
@@ -5009,28 +6224,32 @@
           },
           "result_timeline": {
             "anyOf": [
-              {},
+              {
+                "$ref": "#/$defs/LaunchResultTreeViewOutput"
+              },
               {
                 "type": "null"
               }
             ],
-            "default": null,
-            "title": "Result Timeline"
+            "default": null
           },
           "result_defect_tree": {
             "anyOf": [
-              {},
+              {
+                "$ref": "#/$defs/LaunchResultTreeViewOutput"
+              },
               {
                 "type": "null"
               }
             ],
-            "default": null,
-            "title": "Result Defect Tree"
+            "default": null
           },
           "trees": {
             "anyOf": [
               {
-                "items": {},
+                "items": {
+                  "$ref": "#/$defs/LaunchTreeOutput"
+                },
                 "type": "array"
               },
               {
@@ -5043,41 +6262,7 @@
           "execution_snapshot": {
             "anyOf": [
               {
-                "additionalProperties": false,
-                "description": "Point-in-time state for the opt-in execution aggregate.",
-                "properties": {
-                  "captured_at": {
-                    "title": "Captured At",
-                    "type": "string"
-                  },
-                  "closed": {
-                    "anyOf": [
-                      {
-                        "type": "boolean"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Closed"
-                  },
-                  "mutable": {
-                    "title": "Mutable",
-                    "type": "boolean"
-                  },
-                  "message": {
-                    "title": "Message",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "captured_at",
-                  "mutable",
-                  "message"
-                ],
-                "title": "LaunchExecutionSnapshotOutput",
-                "type": "object"
+                "$ref": "#/$defs/LaunchExecutionSnapshotOutput"
               },
               {
                 "type": "null"
@@ -5101,54 +6286,7 @@
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": false,
-                  "description": "Sanitized optional-read completeness diagnostic.",
-                  "properties": {
-                    "section": {
-                      "title": "Section",
-                      "type": "string"
-                    },
-                    "reason": {
-                      "title": "Reason",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "anyOf": [
-                        {
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Status Code"
-                    },
-                    "message": {
-                      "title": "Message",
-                      "type": "string"
-                    },
-                    "items_retrieved": {
-                      "anyOf": [
-                        {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Items Retrieved"
-                    }
-                  },
-                  "required": [
-                    "section",
-                    "reason",
-                    "message"
-                  ],
-                  "title": "LaunchUnavailableSectionOutput",
-                  "type": "object"
+                  "$ref": "#/$defs/LaunchUnavailableSectionOutput"
                 },
                 "type": "array"
               },

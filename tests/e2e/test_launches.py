@@ -1,13 +1,22 @@
 """E2E tests for launch lifecycle operations."""
 
 import json
+import threading
 import time
 import uuid
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from unittest.mock import patch
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
+from pydantic import SecretStr
 
+from src.client import AllureClient
 from src.client.generated.models.launch_upload_response_dto import LaunchUploadResponseDto
 from src.services.launch_service import LaunchService
+from src.tools.launches import get_launch as get_launch_tool
 
 
 @pytest.mark.asyncio
@@ -69,6 +78,124 @@ async def test_get_launch_execution_snapshot_is_opt_in(allure_client, test_run_i
     assert detail.partial is False or detail.unavailable_sections is not None
     assert detail.flat_test_results is not None
     assert detail.trees is not None
+
+
+@pytest.mark.asyncio
+async def test_get_launch_execution_controlled_later_page_failure_returns_serialized_partial_response() -> None:  # noqa: C901
+    """Exercise the public tool through its real service/client stack and local HTTP upstream."""
+
+    class StubTestOpsHandler(BaseHTTPRequestHandler):
+        def do_POST(self) -> None:
+            if self.path != "/api/uaa/oauth/token":
+                self.send_error(404)
+                return
+            encoded = b'{"access_token":"controlled-jwt","expires_in":3600}'
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(encoded)))
+            self.end_headers()
+            self.wfile.write(encoded)
+
+        def do_GET(self) -> None:
+            request = urlsplit(self.path)
+            query = parse_qs(request.query)
+            page_payload = {
+                "content": [],
+                "empty": True,
+                "first": True,
+                "last": True,
+                "number": 0,
+                "numberOfElements": 0,
+                "size": 100,
+                "totalElements": 0,
+                "totalPages": 1,
+            }
+            status = 200
+            if request.path == "/api/launch/12":
+                payload: object = {"id": 12, "name": "Controlled partial", "projectId": 1, "closed": False}
+            elif request.path == "/api/launch/12/variables" and query.get("page") == ["0"]:
+                payload = {
+                    **page_payload,
+                    "content": [{"key": "build", "values": ["42"]}],
+                    "empty": False,
+                    "numberOfElements": 1,
+                    "last": False,
+                    "totalElements": 2,
+                    "totalPages": 2,
+                }
+            elif request.path == "/api/launch/12/variables" and query.get("page") == ["1"]:
+                # Deliberately include unsafe-looking data: diagnostics must not echo it.
+                status = 503
+                payload = {"message": "Bearer secret-token at https://private.example/result"}
+            elif request.path in {
+                "/api/launch/12/duration",
+                "/api/launch/12/assignees",
+                "/api/launch/12/tester",
+                "/api/launch/12/statistic",
+                "/api/launch/12/env",
+                "/api/launch/12/job",
+            }:
+                payload = []
+            elif request.path == "/api/launch/12/progress":
+                payload = {"ready": False}
+            elif request.path in {"/api/testresult/timeline", "/api/testresult/defects"}:
+                payload = {"groups": [], "leafs": []}
+            elif request.path in {
+                "/api/launch/12/defect",
+                "/api/launch/12/memberstats",
+                "/api/launch/12/muted",
+                "/api/launch/12/retries",
+                "/api/launch/12/unresolved",
+                "/api/testresult",
+                "/api/v2/launch/12/test-result/flat",
+                "/api/v2/tree",
+            }:
+                payload = page_payload
+            else:
+                status = 404
+                payload = {"message": "not found"}
+            encoded = json.dumps(payload).encode()
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(encoded)))
+            self.end_headers()
+            self.wfile.write(encoded)
+
+        def log_message(self, *_args: object) -> None:
+            return
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), StubTestOpsHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+
+    @asynccontextmanager
+    async def local_client_context(
+        *, project_id: int | None = None, api_token: str | None = None
+    ) -> AsyncIterator[AllureClient]:
+        del project_id, api_token
+        async with AllureClient(
+            base_url=f"http://127.0.0.1:{server.server_port}", token=SecretStr("test-token"), project=1
+        ) as client:
+            yield client
+
+    try:
+        with patch("src.tools.launches._launch_client_context", local_client_context):
+            output = await get_launch_tool(launch_id=12, include_execution_results=True, output_format="json")
+        payload = output.structured_content
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+        server.server_close()
+
+    assert payload["id"] == 12
+    assert payload["variables"] == [{"key": "build", "values": ["42"]}]
+    assert payload["partial"] is True
+    diagnostic = next(item for item in payload["unavailable_sections"] if item["section"] == "variables")
+    assert diagnostic["items_retrieved"] == 1
+    assert diagnostic["reason"] == "upstream_error"
+    serialized = json.dumps(payload)
+    assert "secret-token" not in serialized
+    assert "private.example" not in serialized
 
 
 # todo: revise this once launch_upload_controller is in

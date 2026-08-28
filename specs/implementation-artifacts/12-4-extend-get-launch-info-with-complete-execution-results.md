@@ -1,6 +1,11 @@
+---
+status: done
+baseline_commit: f496cdf
+---
+
 # Story 12.4: Extend Get Launch Info with Complete Execution Results
 
-Status: in-progress
+Status: done
 
 <!-- Note: This story was validated against the create-story checklist, current source, generated client, full/filtered OpenAPI, Stories 10.3 and 12.1-12.3, and the user's clarified execution-result contract. -->
 
@@ -221,8 +226,11 @@ so that **I can understand the launch, identify exact Test Result IDs, and navig
 - [x] [Review][Patch] Discriminate hierarchy node types explicitly at the client boundary [src/client/client.py:1642]
 - [x] [Review][Patch] Continue sibling hierarchy traversal after a branch failure [src/services/launch_service.py:713]
 - [x] [Review][Patch] Detect malformed or non-progressing pagination metadata [src/services/launch_service.py:116]
-- [ ] [Review][Patch] Replace open execution-result output shapes with strict projections [src/tools/output_schemas.py:309]
-- [ ] [Review][Patch] Add the controlled partial-response end-to-end scenario [tests/e2e/test_launches.py:57]
+- [x] [Review][Patch] Replace open execution-result output shapes with strict projections and preserve the typed client boundary [src/tools/output_schemas.py:309]
+- [x] [Review][Patch] Add the controlled partial-response end-to-end scenario [tests/e2e/test_launches.py:57]
+- [x] [Review][Patch] Detect repeated or non-progressing execution pages before publishing duplicate rows [src/services/launch_service.py:614]
+- [x] [Review][Patch] Continue hierarchy sibling traversal after a malformed group node [src/services/launch_service.py:743]
+- [x] [Review][Patch] Report malformed project-tree metadata instead of silently omitting the tree [src/services/launch_service.py:670]
 
 ## Dev Notes
 
@@ -470,3 +478,33 @@ GPT-5 Codex
 ### Change Log
 
 - 2026-08-27: Added the opt-in launch execution aggregate, V2 result-tree client surface, CLI/MCP schemas, and focused regression coverage; story remains in progress pending the remaining exhaustive contract/E2E work.
+- 2026-08-28: Resolved review findings for strict execution projections, typed hierarchy client mapping, pagination progress protection, malformed tree diagnostics, and controlled partial-response E2E coverage.
+
+## Suggested Review Order
+
+**Public contract and serialization**
+
+- Strict, curated projections preserve stable agent-facing execution data.
+  [`launches.py:869`](../../src/tools/launches.py#L869)
+
+- Concrete output models distinguish result IDs from job-run IDs.
+  [`output_schemas.py:284`](../../src/tools/output_schemas.py#L284)
+
+**Typed client and resilient collection**
+
+- Raw hierarchy ambiguity is contained behind a typed client boundary.
+  [`client.py:1682`](../../src/client/client.py#L1682)
+
+- Page fingerprints prevent duplicate expansion while retaining partial data.
+  [`launch_service.py:627`](../../src/services/launch_service.py#L627)
+
+- Tree catalog, widgets, and hierarchy report malformed or repeated data safely.
+  [`launch_service.py:661`](../../src/services/launch_service.py#L661)
+
+**Verification**
+
+- Local HTTP upstream proves preserved partial output and sanitized diagnostics.
+  [`test_launches.py:84`](../../tests/e2e/test_launches.py#L84)
+
+- Unit coverage locks in strict projections and traversal safeguards.
+  [`test_launch_service.py:389`](../../tests/unit/test_launch_service.py#L389)
