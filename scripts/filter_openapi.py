@@ -52,6 +52,7 @@ KEEP_TAGS = {
     "test-result-run-controller",
     "test-result-rerun-controller",
     "test-result-flat-controller",
+    "test-result-tree-controller-v-2",
     "test-result-attachment-controller",
     "test-result-custom-field-controller",
     "test-result-defect-controller",

@@ -230,6 +230,10 @@ From `src/tools/__init__.py:24-79`:
   3. **Get Details**: `get_launch(launch_id=LAUNCH_ID)`
      - Expectation: Output contains `id`, `name`, `status`, `created_date`, plus available rich detail fields: `statistic`, defect counts, environment, jobs, tags, issues, links, creator/modifier metadata, and manual-execution guidance.
      - Verification: `id` matches `LAUNCH_ID`.
+  3a. **Inspect Complete Execution Snapshot**: `get_launch(launch_id=LAUNCH_ID, include_execution_results=true)`
+     - Expectation: Includes compact result rows, active project-tree views, `execution_snapshot`, and exact Test Result IDs as row `id` values. An open launch's mutable snapshot is not partial by itself.
+     - Follow-up: Select a failed, broken, or skipped row without conflating statuses, then call `get_test_result(test_result_id=ROW_ID)`. Attachments and rich execution steps remain outside this aggregate.
+     - Tree selection: Omit `tree_id` for all active trees; provide one only with `include_execution_results=true` to restrict expansion.
   4. **Create Upload Case**: `create_test_case(name="[Agent] Launch Upload Case")`
      - Expectation: Output contains `Created Test Case ID`.
      - Action: Capture `id` as `TC_UPLOAD_ID`.

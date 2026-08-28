@@ -4,9 +4,11 @@ import asyncio
 import base64
 import binascii
 import ipaddress
+import json
 import uuid
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, is_dataclass
+from datetime import datetime, timezone
 from typing import Any, Literal, TypeAlias, cast
 from urllib.parse import urlsplit
 
@@ -72,10 +74,98 @@ MAX_NAME_LENGTH = 255
 MAX_TAG_LENGTH = 255
 MAX_LAUNCH_RESULT_UPLOAD_BATCH_SIZE = 1000
 MAX_LAUNCH_RESULT_UPLOAD_CONCURRENCY = 20
+MAX_LAUNCH_EXECUTION_PAGES = 100
+MAX_LAUNCH_TREE_DEPTH = 50
+MAX_LAUNCH_TREE_NODES = 10000
 ATTACHMENT_DOWNLOAD_TIMEOUT_SECONDS = 10.0
 ALLOWED_ATTACHMENT_URL_SCHEMES = frozenset({"http", "https"})
 BLOCKED_ATTACHMENT_HOSTNAMES = frozenset({"localhost"})
 BLOCKED_ATTACHMENT_HOST_SUFFIXES = (".localhost", ".local")
+
+
+def _launch_value(value: object, name: str) -> object | None:
+    if isinstance(value, dict):
+        return value.get(name)
+    return getattr(value, name, None)
+
+
+def _launch_json(value: object) -> object:
+    """Project generated DTOs into JSON-shaped application values, preserving falsey values."""
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if is_dataclass(value) and not isinstance(value, type):
+        return _launch_json(asdict(value))
+    enum_value = getattr(value, "value", None)
+    if isinstance(enum_value, (str, int, float, bool)):
+        return enum_value
+    if isinstance(value, dict):
+        return {str(key): _launch_json(item) for key, item in value.items()}
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        return [_launch_json(item) for item in value]
+    dump = getattr(value, "model_dump", None)
+    if callable(dump):
+        return _launch_json(dump(by_alias=False))
+    to_dict = getattr(value, "to_dict", None)
+    if callable(to_dict):
+        return _launch_json(to_dict())
+    return str(value)
+
+
+def _launch_page_content(page: object) -> Sequence[object]:
+    content = _launch_value(page, "content")
+    return content if isinstance(content, Sequence) and not isinstance(content, (str, bytes, bytearray)) else ()
+
+
+def _launch_page_issue(page: object, requested_page: int) -> str | None:
+    """Return a safe diagnostic reason for inconsistent pagination metadata."""
+    content = _launch_page_content(page)
+    total_pages = _launch_value(page, "total_pages")
+    page_number = _launch_value(page, "number")
+    if isinstance(total_pages, int) and not isinstance(total_pages, bool):
+        if total_pages <= 0 and content:
+            return "malformed_pagination"
+        if total_pages > 0 and requested_page >= total_pages:
+            return "malformed_pagination"
+        if _launch_value(page, "last") is True and requested_page + 1 < total_pages:
+            return "malformed_pagination"
+    if isinstance(page_number, int) and not isinstance(page_number, bool) and page_number != requested_page:
+        return "pagination_non_progress"
+    if not content and _launch_value(page, "last") is False and not isinstance(total_pages, int):
+        return "pagination_non_progress"
+    return None
+
+
+def _launch_page_terminal(page: object, requested_page: int) -> bool:
+    if _launch_value(page, "last") is True:
+        return True
+    total_pages = _launch_value(page, "total_pages")
+    if isinstance(total_pages, int) and not isinstance(total_pages, bool):
+        return requested_page + 1 >= total_pages
+    return not _launch_page_content(page)
+
+
+def _launch_page_fingerprint(page: object) -> str | None:
+    """Return a stable fingerprint for a non-empty page without exposing its data."""
+    content = _launch_page_content(page)
+    if not content:
+        return None
+    # Generated DTOs and the client-owned hierarchy nodes are deliberately
+    # projected before hashing; neither raw upstream dictionaries nor payload
+    # data appears in caller-facing diagnostics.
+    return json.dumps(_launch_json(content), sort_keys=True, separators=(",", ":"), default=str)
+
+
+def _sequence_or_none(value: object | None) -> Sequence[object] | None:
+    return value if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)) else None
+
+
+def _launch_unavailable(
+    section: str, exc: AllureAPIError | AllureValidationError, items_retrieved: int | None = None
+) -> "LaunchUnavailableSection":
+    status = exc.status_code if isinstance(exc.status_code, int) else None
+    reason = "forbidden" if status == 403 else "unsupported_or_not_found" if status == 404 else "upstream_error"
+    return LaunchUnavailableSection(section, reason, status, items_retrieved=items_retrieved)
+
 
 LaunchListItem: TypeAlias = LaunchDto
 
@@ -114,6 +204,35 @@ class LaunchDetail:
     issues: Sequence[object] | None = None
     links: Sequence[object] | None = None
     close_report_generation: str | None = None
+    duration: Sequence[object] | None = None
+    progress: object | None = None
+    assignees: Sequence[object] | None = None
+    testers: Sequence[object] | None = None
+    variables: Sequence[object] | None = None
+    defects: Sequence[object] | None = None
+    member_stats: Sequence[object] | None = None
+    muted_results: Sequence[object] | None = None
+    retries: Sequence[object] | None = None
+    unresolved_results: Sequence[object] | None = None
+    flat_test_results: Sequence[object] | None = None
+    core_test_result_index: Sequence[object] | None = None
+    result_timeline: object | None = None
+    result_defect_tree: object | None = None
+    trees: Sequence[object] | None = None
+    execution_snapshot: object | None = None
+    partial: bool | None = None
+    unavailable_sections: Sequence[object] | None = None
+
+
+@dataclass(frozen=True)
+class LaunchUnavailableSection:
+    """Safe completeness diagnostic for one optional launch execution section."""
+
+    section: str
+    reason: str
+    status_code: int | None = None
+    message: str = "Optional launch execution data is unavailable"
+    items_retrieved: int | None = None
 
 
 @dataclass
@@ -377,7 +496,9 @@ class LaunchService:
             total_pages=response.total_pages or 1,
         )
 
-    async def get_launch(self, launch_id: int) -> LaunchDetail:
+    async def get_launch(
+        self, launch_id: int, *, include_execution_results: bool = False, tree_id: int | None = None
+    ) -> LaunchDetail:
         """Retrieve a specific launch by its ID.
 
         Args:
@@ -388,6 +509,13 @@ class LaunchService:
         """
         self._validate_project_id(self._project_id)
         self._validate_launch_id(launch_id)
+        if tree_id is not None and not include_execution_results:
+            raise AllureValidationError("tree_id requires include_execution_results=true")
+        if tree_id is not None:
+            self._validate_positive_id(tree_id, "Tree ID")
+
+        if include_execution_results:
+            return await self._get_launch_with_execution_results(launch_id, tree_id=tree_id)
 
         try:
             response = await self._client.get_launch(launch_id)
@@ -403,6 +531,295 @@ class LaunchService:
                 status_code=exc.status_code,
                 response_body=exc.response_body,
             ) from exc
+
+    async def _get_launch_with_execution_results(self, launch_id: int, *, tree_id: int | None) -> LaunchDetail:
+        """Compose the opt-in, non-recursive execution snapshot after a fatal base read."""
+        try:
+            response = await self._client.get_launch_core(launch_id)
+        except AllureNotFoundError as exc:
+            raise LaunchNotFoundError(
+                launch_id=launch_id, status_code=exc.status_code, response_body=exc.response_body
+            ) from exc
+        detail = self._launch_detail(response.base, response.preview)
+        unavailable: list[LaunchUnavailableSection] = []
+        values: dict[str, object] = {}
+        simple = (
+            "statistic",
+            "environment",
+            "jobs",
+            "duration",
+            "progress",
+            "assignees",
+            "testers",
+            "result_timeline",
+            "result_defect_tree",
+        )
+        paged = (
+            "variables",
+            "defects",
+            "member_stats",
+            "muted_results",
+            "retries",
+            "unresolved_results",
+            "flat_test_results",
+            "core_test_result_index",
+        )
+
+        async def collect_simple(section: str) -> None:
+            try:
+                if section in {"result_timeline", "result_defect_tree"}:
+                    values[section] = _launch_json(await self._client.get_launch_result_view(section, launch_id))
+                else:
+                    values[section] = _launch_json(await self._client.get_launch_execution_section(section, launch_id))
+            except (AllureAPIError, AllureValidationError) as exc:
+                unavailable.append(_launch_unavailable(section, exc))
+
+        await asyncio.gather(*(collect_simple(section) for section in simple))
+        for section in paged:
+            items, issue = await self._collect_launch_execution_pages(section, launch_id)
+            values[section] = items
+            if issue is not None:
+                unavailable.append(issue)
+
+        trees, tree_issues = await self._collect_launch_trees(launch_id, detail.project_id, tree_id)
+        values["trees"] = trees
+        unavailable.extend(tree_issues)
+        # Preserve successful exact-response fields when optional duplicate reads failed.
+        for name in ("statistic", "environment", "jobs"):
+            if name not in values and getattr(detail, name) is not None:
+                values[name] = getattr(detail, name)
+        detail.statistic = _sequence_or_none(values.get("statistic"))
+        detail.environment = _sequence_or_none(values.get("environment"))
+        detail.jobs = _sequence_or_none(values.get("jobs"))
+        for name in (
+            "duration",
+            "assignees",
+            "testers",
+            "variables",
+            "defects",
+            "member_stats",
+            "muted_results",
+            "retries",
+            "unresolved_results",
+            "flat_test_results",
+            "core_test_result_index",
+            "trees",
+        ):
+            setattr(detail, name, _sequence_or_none(values.get(name)) or ())
+        detail.progress = values.get("progress")
+        detail.result_timeline = values.get("result_timeline")
+        detail.result_defect_tree = values.get("result_defect_tree")
+        detail.execution_snapshot = {
+            "captured_at": datetime.now(timezone.utc).isoformat(),
+            "closed": detail.closed,
+            "mutable": detail.closed is not True,
+            "message": "This is a point-in-time mutable snapshot while the launch is open."
+            if detail.closed is not True
+            else "This launch was closed when the execution snapshot was captured.",
+        }
+        detail.partial = bool(unavailable)
+        detail.unavailable_sections = tuple(sorted(unavailable, key=lambda item: item.section))
+        return detail
+
+    async def _collect_launch_execution_pages(
+        self, section: str, launch_id: int
+    ) -> tuple[tuple[object, ...], LaunchUnavailableSection | None]:
+        """Exhaust compact result/list pages, retaining earlier pages after a failure."""
+        items: list[object] = []
+        seen_pages: set[int] = set()
+        seen_content: set[str] = set()
+        for page in range(MAX_LAUNCH_EXECUTION_PAGES):
+            if page in seen_pages:
+                return tuple(items), LaunchUnavailableSection(section, "pagination_cycle", items_retrieved=len(items))
+            seen_pages.add(page)
+            try:
+                response: object
+                if section == "flat_test_results":
+                    response = await self._client.list_launch_test_results(launch_id, page=page, size=100)
+                elif section == "core_test_result_index":
+                    response = await self._client.get_launch_result_view(section, launch_id, page=page, size=100)
+                else:
+                    response = await self._client.get_launch_execution_section(section, launch_id, page=page, size=100)
+            except (AllureAPIError, AllureValidationError) as exc:
+                return tuple(items), _launch_unavailable(section, exc, len(items))
+            content = _launch_page_content(response)
+            fingerprint = _launch_page_fingerprint(response)
+            if fingerprint is not None and fingerprint in seen_content:
+                return tuple(items), LaunchUnavailableSection(
+                    section, "pagination_non_progress", items_retrieved=len(items)
+                )
+            if fingerprint is not None:
+                seen_content.add(fingerprint)
+            items.extend(_launch_json(item) for item in content)
+            page_issue = _launch_page_issue(response, page)
+            if page_issue is not None:
+                return tuple(items), LaunchUnavailableSection(section, page_issue, items_retrieved=len(items))
+            if _launch_page_terminal(response, page):
+                return tuple(items), None
+        return tuple(items), LaunchUnavailableSection(section, "safety_guard", items_retrieved=len(items))
+
+    async def _collect_launch_trees(  # noqa: C901
+        self, launch_id: int, project_id: int | None, tree_id: int | None
+    ) -> tuple[tuple[object, ...], list[LaunchUnavailableSection]]:
+        if not isinstance(project_id, int) or project_id <= 0:
+            return (), [LaunchUnavailableSection("trees", "missing_project")]
+        issues: list[LaunchUnavailableSection] = []
+        trees: list[object] = []
+        if tree_id is not None:
+            try:
+                selected_tree = await self._client.get_tree(tree_id, with_archived=True)
+            except (AllureAPIError, AllureValidationError) as exc:
+                issues.append(_launch_unavailable("trees", exc, len(trees)))
+            else:
+                if selected_tree.project_id != project_id:
+                    raise AllureValidationError("tree_id must belong to the launch project")
+                trees = [selected_tree]
+        else:
+            seen_content: set[str] = set()
+            for page in range(MAX_LAUNCH_EXECUTION_PAGES):
+                try:
+                    response = await self._client.list_trees(project_id, with_archived=False, page=page, size=100)
+                except (AllureAPIError, AllureValidationError) as exc:
+                    issues.append(_launch_unavailable("trees", exc, len(trees)))
+                    break
+                fingerprint = _launch_page_fingerprint(response)
+                if fingerprint is not None and fingerprint in seen_content:
+                    issues.append(
+                        LaunchUnavailableSection("trees", "pagination_non_progress", items_retrieved=len(trees))
+                    )
+                    break
+                if fingerprint is not None:
+                    seen_content.add(fingerprint)
+                trees.extend(response.content or [])
+                page_issue = _launch_page_issue(response, page)
+                if page_issue is not None:
+                    issues.append(LaunchUnavailableSection("trees", page_issue, items_retrieved=len(trees)))
+                    break
+                if _launch_page_terminal(response, page):
+                    break
+            else:
+                issues.append(LaunchUnavailableSection("trees", "safety_guard", items_retrieved=len(trees)))
+        result: list[object] = []
+        for tree in trees:
+            resolved_id = getattr(tree, "id", None)
+            if not isinstance(resolved_id, int):
+                issues.append(
+                    LaunchUnavailableSection("trees.metadata", "malformed_tree_metadata", items_retrieved=len(result))
+                )
+                continue
+            entry: dict[str, object] = {"metadata": _launch_json(tree)}
+            widget, issue = await self._collect_launch_widget(launch_id, resolved_id)
+            entry["statistic_widget"] = widget
+            if issue:
+                issues.append(issue)
+            hierarchy, hierarchy_issues = await self._collect_launch_hierarchy(
+                launch_id, resolved_id, (), set(), 0, [0]
+            )
+            entry["hierarchy"] = hierarchy
+            issues.extend(hierarchy_issues)
+            result.append(entry)
+        return tuple(result), issues
+
+    async def _collect_launch_widget(
+        self, launch_id: int, tree_id: int
+    ) -> tuple[tuple[object, ...], LaunchUnavailableSection | None]:
+        items: list[object] = []
+        seen_content: set[str] = set()
+        for page in range(MAX_LAUNCH_EXECUTION_PAGES):
+            try:
+                response = await self._client.get_launch_execution_section(
+                    "tree_widget", launch_id, tree_id=tree_id, page=page, size=100
+                )
+            except (AllureAPIError, AllureValidationError) as exc:
+                return tuple(items), _launch_unavailable(f"trees.{tree_id}.statistic_widget", exc, len(items))
+            fingerprint = _launch_page_fingerprint(response)
+            if fingerprint is not None and fingerprint in seen_content:
+                return tuple(items), LaunchUnavailableSection(
+                    f"trees.{tree_id}.statistic_widget", "pagination_non_progress", items_retrieved=len(items)
+                )
+            if fingerprint is not None:
+                seen_content.add(fingerprint)
+            items.extend(_launch_json(item) for item in _launch_page_content(response))
+            page_issue = _launch_page_issue(response, page)
+            if page_issue is not None:
+                return tuple(items), LaunchUnavailableSection(
+                    f"trees.{tree_id}.statistic_widget", page_issue, items_retrieved=len(items)
+                )
+            if _launch_page_terminal(response, page):
+                return tuple(items), None
+        return tuple(items), LaunchUnavailableSection(
+            f"trees.{tree_id}.statistic_widget", "safety_guard", items_retrieved=len(items)
+        )
+
+    async def _collect_launch_hierarchy(  # noqa: C901
+        self,
+        launch_id: int,
+        tree_id: int,
+        path: tuple[int, ...],
+        visited_paths: set[tuple[int, ...]],
+        depth: int,
+        node_count: list[int],
+    ) -> tuple[tuple[object, ...], list[LaunchUnavailableSection]]:
+        """Collect every hierarchy page/branch without recursive result-detail reads."""
+        section = f"trees.{tree_id}.hierarchy"
+        if depth > MAX_LAUNCH_TREE_DEPTH or path in visited_paths:
+            return (), [LaunchUnavailableSection(section, "tree_cycle_or_depth_guard", items_retrieved=node_count[0])]
+        visited_paths.add(path)
+        nodes: list[object] = []
+        issues: list[LaunchUnavailableSection] = []
+        seen_content: set[str] = set()
+        branch = "root" if not path else ".".join(str(part) for part in path)
+        for page_number in range(MAX_LAUNCH_EXECUTION_PAGES):
+            try:
+                result = await self._client.get_launch_result_tree_page(
+                    launch_id, tree_id, path=list(path) or None, page=page_number, size=100
+                )
+            except (AllureAPIError, AllureValidationError) as exc:
+                return tuple(nodes), [_launch_unavailable(f"{section}.{branch}", exc, node_count[0])]
+            fingerprint = _launch_page_fingerprint(result)
+            if fingerprint is not None and fingerprint in seen_content:
+                return tuple(nodes), [
+                    *issues,
+                    LaunchUnavailableSection(
+                        f"{section}.{branch}", "pagination_non_progress", items_retrieved=node_count[0]
+                    ),
+                ]
+            if fingerprint is not None:
+                seen_content.add(fingerprint)
+            for raw in _launch_page_content(result):
+                node_count[0] += 1
+                if node_count[0] > MAX_LAUNCH_TREE_NODES:
+                    return tuple(nodes), [
+                        LaunchUnavailableSection(section, "tree_node_guard", items_retrieved=node_count[0])
+                    ]
+                node = _launch_json(raw)
+                if isinstance(node, dict) and node.get("type") in {"group", "GROUP"}:
+                    group_id = node.get("id")
+                    if not isinstance(group_id, int):
+                        issues.append(
+                            LaunchUnavailableSection(section, "malformed_group_node", items_retrieved=node_count[0])
+                        )
+                        continue
+                    children, child_issues = await self._collect_launch_hierarchy(
+                        launch_id, tree_id, (*path, group_id), visited_paths, depth + 1, node_count
+                    )
+                    node["children"] = children
+                    nodes.append(node)
+                    issues.extend(child_issues)
+                    continue
+                nodes.append(node)
+            page_issue = _launch_page_issue(result, page_number)
+            if page_issue is not None:
+                return tuple(nodes), [
+                    *issues,
+                    LaunchUnavailableSection(section, page_issue, items_retrieved=node_count[0]),
+                ]
+            if _launch_page_terminal(result, page_number):
+                return tuple(nodes), issues
+        return tuple(nodes), [
+            *issues,
+            LaunchUnavailableSection(section, "pagination_guard", items_retrieved=node_count[0]),
+        ]
 
     async def _get_launch_base(self, launch_id: int) -> LaunchDto:
         """Read authoritative sparse metadata for lifecycle and existence checks."""

@@ -15,6 +15,7 @@ from src.client import (
     AllureAPIError,
     AllureClient,
     AllureValidationError,
+    LaunchResultTreePage,
 )
 from src.client.client import AttachmentStepDtoWithName, SharedStepStepDtoWithId, StepWithExpected
 from src.client.generated.api.shared_step_attachment_controller_api import SharedStepAttachmentControllerApi
@@ -190,6 +191,44 @@ async def test_search_launch_and_custom_field_delegation(facade_client: AllureCl
     assert [call[0] for call in launch_search_api.calls] == ["search2", "validate_query2"]
     assert [call[0] for call in search_api.calls] == ["search1", "validate_query1"]
     assert [call[0] for call in custom_field_values_api.calls] == ["find_all22", "patch23", "delete47"]
+
+
+@pytest.mark.asyncio
+async def test_launch_execution_facades_use_generated_apis_and_raw_tree_discrimination(
+    facade_client: AllureClient,
+) -> None:
+    launch_api = RecordingApi([{"duration": 0}])
+    result_api = RecordingApi({"groups": [], "leafs": []})
+    tree_api = MagicMock()
+    tree_api.get_tree_entities_without_preload_content = AsyncMock(
+        return_value=httpx.Response(200, json={"content": [{"id": 9, "type": "LEAF"}], "last": True})
+    )
+    facade_client._launch_api = launch_api  # type: ignore[assignment]
+    facade_client._test_result_api = result_api  # type: ignore[assignment]
+    facade_client._test_result_tree_api = tree_api  # type: ignore[assignment]
+
+    assert await facade_client.get_launch_execution_section("duration", 3) == [{"duration": 0}]
+    assert await facade_client.get_launch_result_view("result_timeline", 3) == {"groups": [], "leafs": []}
+    page = await facade_client.get_launch_result_tree_page(3, 7, path=[4], page=0, size=100)
+    assert isinstance(page, LaunchResultTreePage)
+    assert page.last is True
+    assert page.content[0].id == 9
+    assert page.content[0].type == "LEAF"
+    assert launch_api.calls[0][0] == "get_duration"
+    assert result_api.calls[0][0] == "timeline"
+    assert tree_api.get_tree_entities_without_preload_content.await_args.kwargs["path"] == [4]
+
+
+@pytest.mark.asyncio
+async def test_launch_result_tree_rejects_unknown_node_types(facade_client: AllureClient) -> None:
+    tree_api = MagicMock()
+    tree_api.get_tree_entities_without_preload_content = AsyncMock(
+        return_value=httpx.Response(200, json={"content": [{"id": 9, "type": "UNKNOWN"}], "last": True})
+    )
+    facade_client._test_result_tree_api = tree_api  # type: ignore[assignment]
+
+    with pytest.raises(AllureValidationError, match="node type"):
+        await facade_client.get_launch_result_tree_page(3, 7, path=None, page=0, size=100)
 
 
 @pytest.mark.asyncio

@@ -1,11 +1,18 @@
 """Unit tests for LaunchService."""
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
 
-from src.client import AllureClient, LaunchDetailResponse, LaunchUploadResponseDto
+from src.client import (
+    AllureClient,
+    LaunchDetailResponse,
+    LaunchResultTreeNode,
+    LaunchResultTreePage,
+    LaunchUploadResponseDto,
+)
 from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError, LaunchNotFoundError
 from src.client.generated.models.aql_validate_response_dto import AqlValidateResponseDto
 from src.client.generated.models.body_step_dto import BodyStepDto
@@ -42,6 +49,10 @@ def mock_client() -> MagicMock:
     client.search_launches_aql = AsyncMock()
     client.validate_launch_query = AsyncMock(return_value=(True, 0))
     client.get_launch = AsyncMock()
+    client.get_launch_core = AsyncMock()
+    client.get_launch_execution_section = AsyncMock()
+    client.get_launch_result_view = AsyncMock()
+    client.get_launch_result_tree_page = AsyncMock()
     client.get_launch_base = AsyncMock()
     client.delete_launch = AsyncMock()
     client.close_launch = AsyncMock()
@@ -288,6 +299,272 @@ async def test_get_launch_not_found_maps_error(service: LaunchService, mock_clie
 
     with pytest.raises(LaunchNotFoundError, match="Launch ID 99 not found"):
         await service.get_launch(99)
+
+
+@pytest.mark.asyncio
+async def test_get_launch_execution_snapshot_is_opt_in_and_does_not_fetch_result_details(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    page = SimpleNamespace(content=[], last=True, total_pages=1)
+    mock_client.get_launch_core.return_value = LaunchDetailResponse(
+        base=LaunchDto(id=12, name="Launch", project_id=1, closed=False), preview=LaunchPreviewDto()
+    )
+    mock_client.get_launch_execution_section.return_value = page
+    mock_client.get_launch_result_view.return_value = {"groups": [], "leafs": []}
+    mock_client.list_launch_test_results.return_value = page
+    mock_client.list_trees.return_value = page
+
+    result = await service.get_launch(12, include_execution_results=True)
+
+    assert result.execution_snapshot is not None
+    assert result.partial is False
+    assert result.flat_test_results == ()
+    assert result.trees == ()
+    mock_client.get_launch.assert_not_awaited()
+    mock_client.get_test_result.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_get_launch_execution_keeps_base_when_optional_section_fails(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    page = SimpleNamespace(content=[], last=True, total_pages=1)
+    mock_client.get_launch_core.return_value = LaunchDetailResponse(
+        base=LaunchDto(id=12, name="Launch", project_id=1, closed=True), preview=LaunchPreviewDto()
+    )
+
+    async def execution_section(section: str, *_args: object, **_kwargs: object) -> object:
+        if section == "duration":
+            raise AllureAPIError("duration unavailable", status_code=503)
+        return page
+
+    mock_client.get_launch_execution_section.side_effect = execution_section
+    mock_client.get_launch_result_view.return_value = {"groups": [], "leafs": []}
+    mock_client.list_launch_test_results.return_value = page
+    mock_client.list_trees.return_value = page
+
+    result = await service.get_launch(12, include_execution_results=True)
+
+    assert result.id == 12
+    assert result.partial is True
+    assert result.unavailable_sections is not None
+    assert result.unavailable_sections[0].section == "duration"
+
+
+@pytest.mark.asyncio
+async def test_get_launch_execution_keeps_base_when_selected_tree_read_fails(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    page = SimpleNamespace(content=[], last=True, total_pages=1)
+    mock_client.get_launch_core.return_value = LaunchDetailResponse(
+        base=LaunchDto(id=12, name="Launch", project_id=1, closed=True), preview=LaunchPreviewDto()
+    )
+    mock_client.get_launch_execution_section.return_value = page
+    mock_client.get_launch_result_view.return_value = {"groups": [], "leafs": []}
+    mock_client.list_launch_test_results.return_value = page
+    mock_client.get_tree = AsyncMock(side_effect=AllureAPIError("tree unavailable", status_code=503))
+
+    result = await service.get_launch(12, include_execution_results=True, tree_id=7)
+
+    assert result.id == 12
+    assert result.trees == ()
+    assert result.partial is True
+    assert result.unavailable_sections is not None
+    assert result.unavailable_sections[-1].section == "trees"
+
+
+@pytest.mark.asyncio
+async def test_launch_execution_reports_malformed_page_metadata(service: LaunchService, mock_client: MagicMock) -> None:
+    mock_client.list_launch_test_results.return_value = SimpleNamespace(content=[{"id": 1}], last=False, total_pages=0)
+
+    items, issue = await service._collect_launch_execution_pages("flat_test_results", 12)
+
+    assert items == ({"id": 1},)
+    assert issue is not None
+    assert issue.reason == "malformed_pagination"
+    assert issue.items_retrieved == 1
+
+
+@pytest.mark.asyncio
+async def test_launch_execution_does_not_publish_a_repeated_page(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    first = SimpleNamespace(content=[{"id": 1, "status": "passed"}], last=False, number=0, total_pages=2)
+    repeated = SimpleNamespace(content=[{"id": 1, "status": "passed"}], last=True, number=1, total_pages=2)
+    mock_client.list_launch_test_results.side_effect = [first, repeated]
+
+    items, issue = await service._collect_launch_execution_pages("flat_test_results", 12)
+
+    assert items == ({"id": 1, "status": "passed"},)
+    assert issue is not None
+    assert issue.reason == "pagination_non_progress"
+    assert issue.items_retrieved == 1
+
+
+@pytest.mark.asyncio
+async def test_launch_execution_reports_nonterminal_empty_page_without_totals(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    mock_client.list_launch_test_results.return_value = SimpleNamespace(content=[], last=False)
+
+    items, issue = await service._collect_launch_execution_pages("flat_test_results", 12)
+
+    assert items == ()
+    assert issue is not None
+    assert issue.reason == "pagination_non_progress"
+    assert issue.items_retrieved == 0
+
+
+@pytest.mark.asyncio
+async def test_get_launch_rejects_tree_selection_without_execution_results(service: LaunchService) -> None:
+    with pytest.raises(AllureValidationError, match="tree_id requires include_execution_results=true"):
+        await service.get_launch(12, tree_id=5)
+
+
+@pytest.mark.asyncio
+async def test_launch_hierarchy_recurses_through_group_paths(service: LaunchService, mock_client: MagicMock) -> None:
+    root = {"content": [{"id": 41, "name": "Suite", "type": "GROUP"}], "last": True}
+    child = {"content": [{"id": 99, "name": "Result", "status": "broken", "type": "LEAF"}], "last": True}
+    mock_client.get_launch_result_tree_page.side_effect = [root, child]
+
+    nodes, issue = await service._collect_launch_hierarchy(12, 7, (), set(), 0, [0])
+
+    assert issue == []
+    assert nodes == (
+        {
+            "id": 41,
+            "name": "Suite",
+            "type": "GROUP",
+            "children": ({"id": 99, "name": "Result", "status": "broken", "type": "LEAF"},),
+        },
+    )
+    assert mock_client.get_launch_result_tree_page.await_args_list[1].kwargs["path"] == [41]
+
+
+@pytest.mark.asyncio
+async def test_launch_hierarchy_accepts_client_owned_tree_nodes(service: LaunchService, mock_client: MagicMock) -> None:
+    root = LaunchResultTreePage(content=(LaunchResultTreeNode(id=41, name="Suite", type="GROUP"),), last=True)
+    child = LaunchResultTreePage(
+        content=(LaunchResultTreeNode(id=99, name="Result", status="broken", type="LEAF"),), last=True
+    )
+    mock_client.get_launch_result_tree_page.side_effect = [root, child]
+
+    nodes, issues = await service._collect_launch_hierarchy(12, 7, (), set(), 0, [0])
+
+    assert issues == []
+    assert nodes[0]["children"][0]["id"] == 99
+
+
+@pytest.mark.asyncio
+async def test_launch_hierarchy_continues_after_a_failed_sibling_branch(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    root = {
+        "content": [
+            {"id": 41, "name": "Unavailable suite", "type": "GROUP"},
+            {"id": 42, "name": "Available suite", "type": "GROUP"},
+        ],
+        "last": True,
+    }
+    second_child = {"content": [{"id": 99, "status": "broken", "type": "LEAF"}], "last": True}
+
+    async def hierarchy_page(*_args: object, **kwargs: object) -> object:
+        path = kwargs["path"]
+        if path is None:
+            return root
+        if path == [41]:
+            raise AllureAPIError("branch unavailable", status_code=503)
+        assert path == [42]
+        return second_child
+
+    mock_client.get_launch_result_tree_page.side_effect = hierarchy_page
+
+    nodes, issues = await service._collect_launch_hierarchy(12, 7, (), set(), 0, [0])
+
+    assert nodes[1]["children"] == ({"id": 99, "status": "broken", "type": "LEAF"},)
+    assert issues[0].section == "trees.7.hierarchy.41"
+    assert issues[0].items_retrieved == 1
+
+
+@pytest.mark.asyncio
+async def test_launch_hierarchy_continues_after_a_malformed_group_node(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    root = {
+        "content": [
+            {"id": "not-an-id", "name": "Malformed suite", "type": "GROUP"},
+            {"id": 99, "name": "Result", "status": "broken", "type": "LEAF"},
+        ],
+        "last": True,
+    }
+    mock_client.get_launch_result_tree_page.return_value = root
+
+    nodes, issues = await service._collect_launch_hierarchy(12, 7, (), set(), 0, [0])
+
+    assert nodes[0]["id"] == 99
+    assert issues[0].reason == "malformed_group_node"
+
+
+@pytest.mark.asyncio
+async def test_launch_widget_stops_before_publishing_a_repeated_page(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    first = SimpleNamespace(content=[{"uid": "status", "statistic": []}], last=False, number=0, total_pages=2)
+    repeated = SimpleNamespace(content=[{"uid": "status", "statistic": []}], last=True, number=1, total_pages=2)
+    mock_client.get_launch_execution_section.side_effect = [first, repeated]
+
+    items, issue = await service._collect_launch_widget(12, 7)
+
+    assert items == ({"uid": "status", "statistic": []},)
+    assert issue is not None
+    assert issue.reason == "pagination_non_progress"
+
+
+@pytest.mark.asyncio
+async def test_launch_hierarchy_stops_before_publishing_a_repeated_page(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    first = {"content": [{"id": 99, "type": "LEAF"}], "last": False, "number": 0, "total_pages": 2}
+    repeated = {"content": [{"id": 99, "type": "LEAF"}], "last": True, "number": 1, "total_pages": 2}
+    mock_client.get_launch_result_tree_page.side_effect = [first, repeated]
+
+    nodes, issues = await service._collect_launch_hierarchy(12, 7, (), set(), 0, [0])
+
+    assert nodes == ({"id": 99, "type": "LEAF"},)
+    assert issues[0].reason == "pagination_non_progress"
+
+
+@pytest.mark.asyncio
+async def test_launch_tree_catalog_stops_before_expanding_a_repeated_page(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    tree = SimpleNamespace(id=5, name="Suite", project_id=1)
+    first = SimpleNamespace(content=[tree], last=False, number=0, total_pages=2)
+    repeated = SimpleNamespace(content=[tree], last=True, number=1, total_pages=2)
+    empty_page = SimpleNamespace(content=[], last=True, total_pages=1)
+    mock_client.list_trees.side_effect = [first, repeated]
+    mock_client.get_launch_execution_section.return_value = empty_page
+    mock_client.get_launch_result_tree_page.return_value = empty_page
+
+    trees, issues = await service._collect_launch_trees(12, 1, None)
+
+    assert len(trees) == 1
+    assert any(issue.section == "trees" and issue.reason == "pagination_non_progress" for issue in issues)
+
+
+@pytest.mark.asyncio
+async def test_launch_tree_collection_reports_malformed_catalog_metadata(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    mock_client.list_trees = AsyncMock(
+        return_value=SimpleNamespace(content=[SimpleNamespace(id="not-an-id")], last=True, total_pages=1)
+    )
+
+    trees, issues = await service._collect_launch_trees(12, 1, None)
+
+    assert trees == ()
+    assert issues[0].section == "trees.metadata"
+    assert issues[0].reason == "malformed_tree_metadata"
 
 
 @pytest.mark.asyncio

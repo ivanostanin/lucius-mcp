@@ -103,6 +103,18 @@ def test_uv_run_test_case_plain_output_normalizes_escaped_newlines_through_conso
             ("Launch 10: Nightly",),
         ),
         (
+            [
+                "launch",
+                "get",
+                "--args",
+                '{"launch_id": 10, "include_execution_results": true, "tree_id": 3}',
+            ],
+            "get_launch",
+            '{"id":10,"flat_test_results":[{"id":99,"status":"broken"}],"partial":false}',
+            "json",
+            ('"flat_test_results"', '"status":"broken"'),
+        ),
+        (
             ["launch", "close", "--args", '{"launch_id": 10}'],
             "close_launch",
             '{"id":10,"status":"closed"}',

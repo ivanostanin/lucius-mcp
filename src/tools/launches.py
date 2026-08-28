@@ -3,12 +3,13 @@
 import json
 from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import asynccontextmanager
-from dataclasses import asdict
+from dataclasses import asdict, is_dataclass
 from typing import Annotated
 
 from pydantic import Field
 
 from src.client import AllureClient
+from src.client.exceptions import AllureValidationError
 from src.services.launch_service import (
     AttachmentUploadResult,
     LaunchDeleteResult,
@@ -68,6 +69,24 @@ _LAUNCH_DETAIL_OUTPUT_FIELDS = (
     "links",
     "manual_execution_guidance",
     "url",
+    "duration",
+    "progress",
+    "assignees",
+    "testers",
+    "variables",
+    "defects",
+    "member_stats",
+    "muted_results",
+    "retries",
+    "unresolved_results",
+    "flat_test_results",
+    "core_test_result_index",
+    "result_timeline",
+    "result_defect_tree",
+    "trees",
+    "execution_snapshot",
+    "partial",
+    "unavailable_sections",
 )
 _TEST_RUN_RESULT_OUTPUT_FIELDS = (
     "actual_launch_id",
@@ -268,6 +287,13 @@ async def get_launch(
     output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
+    include_execution_results: Annotated[
+        bool,
+        Field(description="Opt in to complete compact execution results, project trees, and snapshot diagnostics."),
+    ] = False,
+    tree_id: Annotated[
+        int | None, Field(description="Optional project tree ID to expand; requires include_execution_results=true.")
+    ] = None,
 ) -> ToolOutput:
     """Retrieve a specific launch and summarize its details.
 
@@ -275,13 +301,19 @@ async def get_launch(
         launch_id: The unique ID of the launch.
         project_id: Optional override for the default Project ID.
         output_format: Output format: 'json' (default) or 'plain'.
+        include_execution_results: Fetch all compact launch execution sections and hierarchy views.
+        tree_id: Optional verified project tree to expand when execution results are included.
 
     Returns:
         LLM-friendly summary of the launch details.
     """
+    if tree_id is not None and not include_execution_results:
+        raise AllureValidationError("tree_id requires include_execution_results=true")
     async with _launch_client_context(project_id=project_id) as client:
         service = LaunchService(client=client)
-        launch = await service.get_launch(launch_id)
+        launch = await service.get_launch(
+            launch_id, include_execution_results=include_execution_results, tree_id=tree_id
+        )
         base_url = client.get_base_url()
         resolved_project_id = client.get_project()
 
@@ -851,7 +883,258 @@ def _launch_detail_payload(launch: object, *, base_url: str, project_id: int) ->
             "manual_execution_guidance": _MANUAL_EXECUTION_GUIDANCE,
         }
     )
+    # Execution keys are opt-in only.  Omitting them preserves the historical
+    # output contract exactly when callers use the default path.
+    if getattr(launch, "execution_snapshot", None) is not None:
+        for name in (
+            "duration",
+            "progress",
+            "assignees",
+            "testers",
+            "variables",
+            "defects",
+            "member_stats",
+            "muted_results",
+            "retries",
+            "unresolved_results",
+            "flat_test_results",
+            "core_test_result_index",
+            "result_timeline",
+            "result_defect_tree",
+            "trees",
+            "execution_snapshot",
+            "partial",
+            "unavailable_sections",
+        ):
+            value = getattr(launch, name, None)
+            payload[name] = _launch_execution_payload(name, value)
+    # Validate the final public value, not only the generated schema metadata.
+    # This makes accidental upstream-field leakage fail close to the tool
+    # boundary and keeps MCP, CLI JSON, and plain rendering on one contract.
+    validated = LaunchDetailOutput.model_validate(payload).model_dump()
+    if getattr(launch, "execution_snapshot", None) is None:
+        for name in (
+            "duration",
+            "progress",
+            "assignees",
+            "testers",
+            "variables",
+            "defects",
+            "member_stats",
+            "muted_results",
+            "retries",
+            "unresolved_results",
+            "flat_test_results",
+            "core_test_result_index",
+            "result_timeline",
+            "result_defect_tree",
+            "trees",
+            "execution_snapshot",
+            "partial",
+            "unavailable_sections",
+        ):
+            validated.pop(name, None)
+    return validated
+
+
+def _execution_mapping(value: object) -> dict[str, object]:
+    normalized = _normalize_payload_value(value)
+    return normalized if isinstance(normalized, dict) else {}
+
+
+def _execution_value(value: object, snake_case: str, camel_case: str | None = None) -> object | None:
+    mapping = _execution_mapping(value)
+    if snake_case in mapping:
+        return mapping[snake_case]
+    if camel_case is not None:
+        return mapping.get(camel_case)
+    return None
+
+
+def _execution_sequence(value: object | None) -> Sequence[object]:
+    return value if isinstance(value, (list, tuple)) else ()
+
+
+def _execution_result_payload(value: object) -> dict[str, object]:
+    fields = (
+        ("id", None),
+        ("name", None),
+        ("status", None),
+        ("test_case_id", "testCaseId"),
+        ("assignee", None),
+        ("tested_by", "testedBy"),
+        ("duration", None),
+        ("created_date", "createdDate"),
+        ("last_modified_date", "lastModifiedDate"),
+        ("layer_name", "layerName"),
+        ("manual", None),
+        ("flaky", None),
+        ("hidden", None),
+        ("start", None),
+        ("stop", None),
+        ("total_retries", "totalRetries"),
+    )
+    payload = {name: _execution_value(value, name, alias) for name, alias in fields}
+    previous_retry = _execution_value(value, "previous_retry", "previousRetry")
+    payload["previous_retry"] = (
+        {
+            "id": _execution_value(previous_retry, "id"),
+            "name": _execution_value(previous_retry, "name"),
+            "status": _execution_value(previous_retry, "status"),
+        }
+        if previous_retry is not None
+        else None
+    )
+    job_run = _execution_value(value, "job_run", "jobRun")
+    payload["job_run"] = _execution_job_run_payload(job_run) if job_run is not None else None
     return payload
+
+
+def _execution_job_run_payload(value: object) -> dict[str, object]:
+    job = _execution_value(value, "job")
+    return {
+        "id": _execution_value(value, "id"),
+        "name": _execution_value(value, "name"),
+        "status": _execution_value(value, "status"),
+        "stage": _execution_value(value, "stage"),
+        "url": _execution_value(value, "url"),
+        "error_message": _execution_value(value, "error_message", "errorMessage"),
+        "external_id": _execution_value(value, "external_id", "externalId"),
+        "job": (
+            {
+                "id": _execution_value(job, "id"),
+                "name": _execution_value(job, "name"),
+                "type": _execution_value(job, "type"),
+                "url": _execution_value(job, "url"),
+            }
+            if job is not None
+            else None
+        ),
+    }
+
+
+def _execution_tree_node_payload(value: object) -> dict[str, object]:
+    payload = _execution_result_payload(value)
+    node_type = _execution_value(value, "type")
+    payload.update(
+        {
+            "type": node_type.upper() if isinstance(node_type, str) else "LEAF",
+            "custom_field_id": _execution_value(value, "custom_field_id", "customFieldId"),
+            "statistic": _statistic_payload(_execution_sequence(_execution_value(value, "statistic"))),
+            "children": [
+                _execution_tree_node_payload(item) for item in _execution_sequence(_execution_value(value, "children"))
+            ],
+        }
+    )
+    return payload
+
+
+def _execution_tree_view_payload(value: object) -> dict[str, object]:
+    context = _execution_value(value, "context")
+    groups = _execution_sequence(_execution_value(value, "groups"))
+    return {
+        "name": _execution_value(value, "name"),
+        "uid": _execution_value(value, "uid"),
+        "shown": _execution_value(value, "shown"),
+        "total": _execution_value(value, "total"),
+        "context_key": _execution_value(context, "key"),
+        "context_value": _execution_value(context, "value"),
+        "groups": [
+            {
+                "name": _execution_value(group, "name"),
+                "uid": _execution_value(group, "uid"),
+                "context_key": _execution_value(_execution_value(group, "context"), "key"),
+                "context_value": _execution_value(_execution_value(group, "context"), "value"),
+                "leafs": [
+                    _execution_result_payload(item) for item in _execution_sequence(_execution_value(group, "leafs"))
+                ],
+            }
+            for group in groups
+        ],
+        "leafs": [_execution_result_payload(item) for item in _execution_sequence(_execution_value(value, "leafs"))],
+    }
+
+
+def _launch_execution_payload(section: str, value: object) -> object:
+    """Project every opt-in execution section onto a strict Lucius-owned shape."""
+    items = value if isinstance(value, (list, tuple)) else ()
+    if section == "duration":
+        return [
+            {"count": _execution_value(item, "count"), "duration": _execution_value(item, "duration")} for item in items
+        ]
+    if section == "progress":
+        return {"ready": _execution_value(value, "ready")} if value is not None else None
+    if section in {"assignees", "testers"}:
+        return [item for item in items if isinstance(item, str)]
+    if section == "variables":
+        return [{"key": _execution_value(item, "key"), "values": _execution_value(item, "values")} for item in items]
+    if section == "defects":
+        return [
+            {
+                "id": _execution_value(item, "id"),
+                "name": _execution_value(item, "name"),
+                "closed": _execution_value(item, "closed"),
+                "count": _execution_value(item, "count"),
+                "issue": _issue_payload(_execution_value(item, "issue")),
+            }
+            for item in items
+        ]
+    if section == "member_stats":
+        return [
+            {
+                "assignee": _execution_value(item, "assignee"),
+                "first_name": _execution_value(item, "first_name", "firstName"),
+                "last_name": _execution_value(item, "last_name", "lastName"),
+                "defects_count": _execution_value(item, "defects_count", "defectsCount"),
+                "duration_sum": _execution_value(item, "duration_sum", "durationSum"),
+                "muted_count": _execution_value(item, "muted_count", "mutedCount"),
+                "retried_count": _execution_value(item, "retried_count", "retriedCount"),
+                "statistic": _statistic_payload(_execution_sequence(_execution_value(item, "statistic"))),
+            }
+            for item in items
+        ]
+    if section in {"muted_results", "retries", "unresolved_results", "flat_test_results", "core_test_result_index"}:
+        return [_execution_result_payload(item) for item in items]
+    if section in {"result_timeline", "result_defect_tree"}:
+        return _execution_tree_view_payload(value) if value is not None else None
+    if section == "trees":
+        return [
+            {
+                "metadata": {
+                    "id": _execution_value(_execution_value(tree, "metadata"), "id"),
+                    "name": _execution_value(_execution_value(tree, "metadata"), "name"),
+                    "project_id": _execution_value(_execution_value(tree, "metadata"), "project_id", "projectId"),
+                },
+                "statistic_widget": [
+                    {
+                        "name": _execution_value(item, "name"),
+                        "uid": _execution_value(item, "uid"),
+                        "statistic": _statistic_payload(_execution_sequence(_execution_value(item, "statistic"))),
+                    }
+                    for item in _execution_sequence(_execution_value(tree, "statistic_widget"))
+                ],
+                "hierarchy": [
+                    _execution_tree_node_payload(item)
+                    for item in _execution_sequence(_execution_value(tree, "hierarchy"))
+                ],
+            }
+            for tree in items
+        ]
+    return _normalize_payload_value(value)
+
+
+def _issue_payload(value: object | None) -> dict[str, object] | None:
+    if value is None:
+        return None
+    return {
+        "id": _execution_value(value, "id"),
+        "name": _execution_value(value, "name"),
+        "display_name": _execution_value(value, "display_name", "displayName"),
+        "status": _execution_value(value, "status"),
+        "summary": _execution_value(value, "summary"),
+        "url": _execution_value(value, "url"),
+        "closed": _execution_value(value, "closed"),
+    }
 
 
 def _as_text(value: object | None) -> str | None:
@@ -865,7 +1148,13 @@ def _statistic_payload(items: Sequence[object] | None) -> list[dict[str, object]
     if items is None:
         return None
     return [
-        {"status": _as_text(getattr(item, "status", None)), "count": getattr(item, "count", None)} for item in items
+        {
+            "status": _as_text(
+                _execution_value(item, "status") if isinstance(item, dict) else getattr(item, "status", None)
+            ),
+            "count": _execution_value(item, "count") if isinstance(item, dict) else getattr(item, "count", None),
+        }
+        for item in items
     ]
 
 
@@ -1013,6 +1302,49 @@ def _format_launch_detail(launch: object, *, base_url: str, project_id: int) -> 
     _append_metadata_lines(lines, launch)
     _append_statistic_lines(lines, launch)
     _append_rich_detail_lines(lines, launch)
+    if getattr(launch, "execution_snapshot", None) is not None:
+        execution_payload = _launch_detail_payload(launch, base_url=base_url, project_id=project_id)
+        lines.append("- Execution snapshot: " + json.dumps(execution_payload.get("execution_snapshot"), sort_keys=True))
+        lines.append(f"- Execution partial: {execution_payload.get('partial')}")
+        flat_rows = execution_payload.get("flat_test_results")
+        for row in flat_rows if isinstance(flat_rows, list) else []:
+            if isinstance(row, dict):
+                lines.append(f"- Test Result #{row.get('id')}: status={row.get('status')}")
+        if execution_payload.get("unavailable_sections"):
+            lines.append(
+                "- Unavailable execution sections: "
+                + json.dumps(execution_payload["unavailable_sections"], sort_keys=True)
+            )
+        lines.append(
+            "- Complete execution data: "
+            + json.dumps(
+                {
+                    key: execution_payload[key]
+                    for key in (
+                        "duration",
+                        "progress",
+                        "assignees",
+                        "testers",
+                        "variables",
+                        "defects",
+                        "member_stats",
+                        "muted_results",
+                        "retries",
+                        "unresolved_results",
+                        "flat_test_results",
+                        "core_test_result_index",
+                        "result_timeline",
+                        "result_defect_tree",
+                        "trees",
+                        "execution_snapshot",
+                        "partial",
+                        "unavailable_sections",
+                    )
+                    if key in execution_payload
+                },
+                sort_keys=True,
+            )
+        )
     lines.append(
         "- Manual execution: use list_launch_test_results for result discovery, "
         "then submit_manual_test_results with result_id to resolve the existing launch result in place. "
@@ -1037,6 +1369,11 @@ def _normalize_result_payload(value: object) -> dict[str, object]:
 
 
 def _normalize_payload_value(value: object) -> object:
+    if is_dataclass(value) and not isinstance(value, type):
+        return _normalize_payload_value(asdict(value))
+    enum_value = getattr(value, "value", None)
+    if isinstance(enum_value, (str, int, float, bool)):
+        return enum_value
     if isinstance(value, Mapping):
         return {str(key): _normalize_payload_value(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
@@ -1118,7 +1455,7 @@ def _append_rich_detail_lines(lines: list[str], launch: object) -> None:
         "links": "Links",
     }
     for field, label in labels.items():
-        value = payload[field]
+        value = payload.get(field)
         if value is not None:
             lines.append(f"- {label}: {json.dumps(value, sort_keys=True)}")
 

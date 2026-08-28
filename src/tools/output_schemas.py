@@ -258,6 +258,168 @@ class LaunchLink(BaseModel):
     url: str | None = Field(default=None)
 
 
+class LaunchExecutionSnapshotOutput(BaseModel):
+    """Point-in-time state for the opt-in execution aggregate."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    captured_at: str
+    closed: bool | None = Field(default=None)
+    mutable: bool
+    message: str
+
+
+class LaunchUnavailableSectionOutput(BaseModel):
+    """Sanitized optional-read completeness diagnostic."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    section: str
+    reason: str
+    status_code: int | None = Field(default=None)
+    message: str
+    items_retrieved: int | None = Field(default=None, ge=0)
+
+
+class LaunchDurationOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    count: int | None = Field(default=None, ge=0)
+    duration: int | None = Field(default=None, ge=0)
+
+
+class LaunchProgressOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    ready: bool | None = Field(default=None)
+
+
+class LaunchVariableOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    key: str | None = Field(default=None)
+    values: list[str] | None = Field(default=None)
+
+
+class LaunchResultReferenceOutput(BaseModel):
+    """Compact result reference; ``id`` is the exact Test Result ID for ``get_test_result``."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = Field(default=None, description="Exact Test Result ID for get_test_result.")
+    name: str | None = Field(default=None)
+    status: str | None = Field(default=None)
+
+
+class LaunchExecutionResultOutput(BaseModel):
+    """Curated, non-recursive launch-result row shared by result-bearing sections."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = Field(default=None, description="Exact Test Result ID for get_test_result.")
+    name: str | None = Field(default=None)
+    status: str | None = Field(default=None)
+    test_case_id: int | None = Field(default=None)
+    assignee: str | None = Field(default=None)
+    tested_by: str | None = Field(default=None)
+    duration: int | None = Field(default=None, ge=0)
+    created_date: int | None = Field(default=None)
+    last_modified_date: int | None = Field(default=None)
+    layer_name: str | None = Field(default=None)
+    manual: bool | None = Field(default=None)
+    flaky: bool | None = Field(default=None)
+    hidden: bool | None = Field(default=None)
+    start: int | None = Field(default=None)
+    stop: int | None = Field(default=None)
+    total_retries: int | None = Field(default=None, ge=0)
+    previous_retry: LaunchResultReferenceOutput | None = Field(default=None)
+    job_run: LaunchJobRun | None = Field(
+        default=None,
+        description="Job-run metadata. Its id is a job-run ID, not a Test Result ID.",
+    )
+
+
+class LaunchDefectOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = Field(default=None)
+    name: str | None = Field(default=None)
+    closed: bool | None = Field(default=None)
+    count: int | None = Field(default=None, ge=0)
+    issue: LaunchIssue | None = Field(default=None)
+
+
+class LaunchMemberStatsOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    assignee: str | None = Field(default=None)
+    first_name: str | None = Field(default=None)
+    last_name: str | None = Field(default=None)
+    defects_count: int | None = Field(default=None, ge=0)
+    duration_sum: int | None = Field(default=None, ge=0)
+    muted_count: int | None = Field(default=None, ge=0)
+    retried_count: int | None = Field(default=None, ge=0)
+    statistic: list[LaunchStatisticItem] | None = Field(default=None)
+
+
+class LaunchTreeStatisticWidgetOutput(BaseModel):
+    """One tree-statistics widget row, distinct from a Test Result row."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    name: str | None = Field(default=None)
+    uid: str | None = Field(default=None)
+    statistic: list[LaunchStatisticItem] | None = Field(default=None)
+
+
+class LaunchTreeNodeOutput(LaunchExecutionResultOutput):
+    """Recursive tree node; group IDs are hierarchy IDs and leaf IDs are result IDs."""
+
+    type: Literal["GROUP", "LEAF"]
+    custom_field_id: int | None = Field(default=None)
+    statistic: list[LaunchStatisticItem] | None = Field(default=None)
+    children: list[LaunchTreeNodeOutput] = Field(default_factory=list)
+
+
+class LaunchResultTreeGroupOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    name: str | None = Field(default=None)
+    uid: str | None = Field(default=None)
+    context_key: str | None = Field(default=None)
+    context_value: str | None = Field(default=None)
+    leafs: list[LaunchExecutionResultOutput] = Field(default_factory=list)
+
+
+class LaunchResultTreeViewOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    name: str | None = Field(default=None)
+    uid: str | None = Field(default=None)
+    shown: int | None = Field(default=None, ge=0)
+    total: int | None = Field(default=None, ge=0)
+    context_key: str | None = Field(default=None)
+    context_value: str | None = Field(default=None)
+    groups: list[LaunchResultTreeGroupOutput] = Field(default_factory=list)
+    leafs: list[LaunchExecutionResultOutput] = Field(default_factory=list)
+
+
+class LaunchTreeMetadataOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int | None = Field(default=None)
+    name: str | None = Field(default=None)
+    project_id: int | None = Field(default=None)
+
+
+class LaunchTreeOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    metadata: LaunchTreeMetadataOutput
+    statistic_widget: list[LaunchTreeStatisticWidgetOutput] = Field(default_factory=list)
+    hierarchy: list[LaunchTreeNodeOutput] = Field(default_factory=list)
+
+
 class LaunchDetailOutput(BaseModel):
     """Rich exact-ID launch fields, with explicit stable nested projections."""
 
@@ -283,6 +445,26 @@ class LaunchDetailOutput(BaseModel):
     links: list[LaunchLink] | None = Field(default=None)
     manual_execution_guidance: str | None = Field(default=None)
     url: str | None = Field(default=None)
+    duration: list[LaunchDurationOutput] | None = Field(default=None)
+    progress: LaunchProgressOutput | None = Field(default=None)
+    assignees: list[str] | None = Field(default=None)
+    testers: list[str] | None = Field(default=None)
+    variables: list[LaunchVariableOutput] | None = Field(default=None)
+    defects: list[LaunchDefectOutput] | None = Field(default=None)
+    member_stats: list[LaunchMemberStatsOutput] | None = Field(default=None)
+    muted_results: list[LaunchExecutionResultOutput] | None = Field(default=None)
+    retries: list[LaunchExecutionResultOutput] | None = Field(default=None)
+    unresolved_results: list[LaunchExecutionResultOutput] | None = Field(default=None)
+    flat_test_results: list[LaunchExecutionResultOutput] | None = Field(
+        default=None, description="Compact rows; each row id is the Test Result ID for get_test_result."
+    )
+    core_test_result_index: list[LaunchExecutionResultOutput] | None = Field(default=None)
+    result_timeline: LaunchResultTreeViewOutput | None = Field(default=None)
+    result_defect_tree: LaunchResultTreeViewOutput | None = Field(default=None)
+    trees: list[LaunchTreeOutput] | None = Field(default=None)
+    execution_snapshot: LaunchExecutionSnapshotOutput | None = Field(default=None)
+    partial: bool | None = Field(default=None)
+    unavailable_sections: list[LaunchUnavailableSectionOutput] | None = Field(default=None)
 
 
 class TestResultAttachmentOutput(BaseModel):

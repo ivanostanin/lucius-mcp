@@ -1387,7 +1387,7 @@
     "name": "get_launch",
     "entity": "launch",
     "action": "get",
-    "description": "Retrieve a specific launch and summarize its details.\n\nArgs:\n    launch_id: The unique ID of the launch.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    LLM-friendly summary of the launch details.",
+    "description": "Retrieve a specific launch and summarize its details.\n\nArgs:\n    launch_id: The unique ID of the launch.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n    include_execution_results: Fetch all compact launch execution sections and hierarchy views.\n    tree_id: Optional verified project tree to expand when execution results are included.\n\nReturns:\n    LLM-friendly summary of the launch details.",
     "input_schema": {
       "type": "object",
       "additionalProperties": false,
@@ -1406,6 +1406,23 @@
             }
           ],
           "description": "Optional override for the default Project ID.",
+          "default": null
+        },
+        "include_execution_results": {
+          "type": "boolean",
+          "description": "Opt in to complete compact execution results, project trees, and snapshot diagnostics.",
+          "default": false
+        },
+        "tree_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional project tree ID to expand; requires include_execution_results=true.",
           "default": null
         }
       },
