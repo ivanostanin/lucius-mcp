@@ -64,6 +64,7 @@ from .generated.api.test_result_members_controller_api import TestResultMembersC
 from .generated.api.test_result_rerun_controller_api import TestResultRerunControllerApi
 from .generated.api.test_result_run_controller_api import TestResultRunControllerApi
 from .generated.api.test_result_test_key_controller_api import TestResultTestKeyControllerApi
+from .generated.api.test_result_tree_controller_v2_api import TestResultTreeControllerV2Api
 from .generated.api.tree_controller_v2_api import TreeControllerV2Api
 from .generated.api.upload_controller_api import UploadControllerApi
 from .generated.api.upload_test_result_controller_api import UploadTestResultControllerApi
@@ -267,6 +268,7 @@ ApiType: TypeAlias = (
     | TestResultBulkControllerApi
     | TestResultFixtureControllerApi
     | TestResultFlatControllerApi
+    | TestResultTreeControllerV2Api
     | TestResultIssueControllerApi
     | TestResultMembersControllerApi
     | TestResultRerunControllerApi
@@ -409,6 +411,7 @@ class AllureClient:
         self._test_result_bulk_api: TestResultBulkControllerApi | None = None
         self._test_result_fixture_api: TestResultFixtureControllerApi | None = None
         self._test_result_flat_api: TestResultFlatControllerApi | None = None
+        self._test_result_tree_api: TestResultTreeControllerV2Api | None = None
         self._test_result_issue_api: TestResultIssueControllerApi | None = None
         self._test_result_members_api: TestResultMembersControllerApi | None = None
         self._test_result_rerun_api: TestResultRerunControllerApi | None = None
@@ -586,6 +589,7 @@ class AllureClient:
             self._test_result_bulk_api = TestResultBulkControllerApi(self._api_client)
             self._test_result_fixture_api = TestResultFixtureControllerApi(self._api_client)
             self._test_result_flat_api = TestResultFlatControllerApi(self._api_client)
+            self._test_result_tree_api = TestResultTreeControllerV2Api(self._api_client)
             self._test_result_issue_api = TestResultIssueControllerApi(self._api_client)
             self._test_result_members_api = TestResultMembersControllerApi(self._api_client)
             self._test_result_rerun_api = TestResultRerunControllerApi(self._api_client)
@@ -826,6 +830,11 @@ class AllureClient:
     async def _get_api(
         self, attr_name: Literal["_test_result_flat_api"], *, error_name: str | None = None
     ) -> TestResultFlatControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_test_result_tree_api"], *, error_name: str | None = None
+    ) -> TestResultTreeControllerV2Api: ...
 
     @overload
     async def _get_api(
@@ -1546,6 +1555,112 @@ class AllureClient:
 
         await self._enrich_sparse_launch_preview(api=api, launch_id=launch_id, raw_data=data, preview=preview)
         return LaunchDetailResponse(base=base, preview=preview)
+
+    async def get_launch_core(self, launch_id: int) -> LaunchDetailResponse:
+        """Read the authoritative exact launch response without optional enrichment.
+
+        This is intentionally separate from :meth:`get_launch`: callers that need a
+        best-effort aggregate must retain a successful base response if a later
+        optional endpoint fails.
+        """
+        api = await self._get_api("_launch_api", error_name="launch APIs")
+        if not isinstance(launch_id, int) or launch_id <= 0:
+            raise AllureValidationError("Launch ID must be a positive integer")
+        raw_response = await self._call_api_raw(
+            api.find_one23_without_preload_content(id=launch_id, _request_timeout=self._timeout)
+        )
+        try:
+            data = self._extract_response_data(raw_response)
+        except ApiException as exc:
+            self._handle_api_exception(exc)
+            raise
+        base = LaunchDto.from_dict(data)
+        preview = LaunchPreviewDto.from_dict(data)
+        if base is None or preview is None:
+            raise AllureValidationError("Unexpected launch detail response from API")
+        return LaunchDetailResponse(base=base, preview=preview)
+
+    async def get_launch_execution_section(
+        self,
+        section: str,
+        launch_id: int,
+        *,
+        page: int | None = None,
+        size: int | None = None,
+        tree_id: int | None = None,
+    ) -> object:
+        """Read one documented launch execution surface through the generated client."""
+        api = await self._get_api("_launch_api", error_name="launch APIs")
+        methods = {
+            "duration": "get_duration",
+            "progress": "get_progress",
+            "assignees": "get_assignees",
+            "testers": "get_testers",
+            "variables": "get_variables",
+            "defects": "get_defects2",
+            "member_stats": "get_member_stats",
+            "muted_results": "get_muted_test_results",
+            "retries": "get_retries",
+            "unresolved_results": "get_unresolved_test_results",
+            "tree_widget": "get_widget_tree",
+            "statistic": "get_statistic",
+            "environment": "get_environment",
+            "jobs": "get_jobs1",
+        }
+        method_name = methods.get(section)
+        if method_name is None:
+            raise AllureValidationError(f"Unknown launch execution section: {section}")
+        kwargs: dict[str, object] = {"id": launch_id, "_request_timeout": self._timeout}
+        if page is not None:
+            kwargs["page"] = page
+        if size is not None:
+            kwargs["size"] = size
+        if tree_id is not None:
+            kwargs["tree_id"] = tree_id
+        return await self._call_api(getattr(api, method_name)(**kwargs))
+
+    async def get_launch_result_view(
+        self, section: str, launch_id: int, *, page: int | None = None, size: int | None = None
+    ) -> object:
+        """Read a compact launch-scoped result view without fetching result details."""
+        api = await self._get_api("_test_result_api", error_name="test result APIs")
+        methods = {
+            "core_test_result_index": "find_all4",
+            "result_defect_tree": "defects",
+            "result_timeline": "timeline",
+        }
+        method_name = methods.get(section)
+        if method_name is None:
+            raise AllureValidationError(f"Unknown launch result view: {section}")
+        kwargs: dict[str, object] = {"launch_id": launch_id, "_request_timeout": self._timeout}
+        if page is not None:
+            kwargs["page"] = page
+        if size is not None:
+            kwargs["size"] = size
+        return await self._call_api(getattr(api, method_name)(**kwargs))
+
+    async def get_launch_result_tree_page(
+        self, launch_id: int, tree_id: int, *, path: list[int] | None, page: int, size: int
+    ) -> dict[str, object]:
+        """Read a hierarchy page and discriminate its ambiguous oneOf nodes by ``type``.
+
+        The generated oneOf has no discriminator mapping, so using the raw response
+        here prevents that generator ambiguity from leaking into services.
+        """
+        api = await self._get_api("_test_result_tree_api", error_name="test result tree APIs")
+        response = await self._call_api_raw(
+            api.get_tree_entities_without_preload_content(
+                launch_id=launch_id, tree_id=tree_id, path=path, page=page, size=size, _request_timeout=self._timeout
+            )
+        )
+        try:
+            payload = self._extract_response_data(response)
+        except ApiException as exc:
+            self._handle_api_exception(exc)
+            raise
+        if not isinstance(payload, dict) or not isinstance(payload.get("content", []), list):
+            raise AllureValidationError("Unexpected launch result tree response from API")
+        return payload
 
     async def get_launch_base(self, launch_id: int) -> LaunchDto:
         """Retrieve sparse authoritative launch metadata for lifecycle checks."""

@@ -54,6 +54,23 @@ async def test_create_close_reopen_launch_lifecycle(allure_client, project_id, t
             await cleanup_tracker.delete_launch_strict(created_id)
 
 
+@pytest.mark.asyncio
+async def test_get_launch_execution_snapshot_is_opt_in(allure_client, test_run_id, cleanup_tracker) -> None:
+    """Exercise the real tool/service/client aggregate against a sandbox launch."""
+    service = LaunchService(client=allure_client)
+    created = await service.create_launch(name=f"[{test_run_id}] E2E execution snapshot")
+    assert created.id is not None
+    cleanup_tracker.track_launch(created.id)
+
+    detail = await service.get_launch(created.id, include_execution_results=True)
+
+    assert detail.id == created.id
+    assert detail.execution_snapshot is not None
+    assert detail.partial is False or detail.unavailable_sections is not None
+    assert detail.flat_test_results is not None
+    assert detail.trees is not None
+
+
 # todo: revise this once launch_upload_controller is in
 @pytest.mark.asyncio
 async def test_reopened_launch_accepts_upload_if_supported(

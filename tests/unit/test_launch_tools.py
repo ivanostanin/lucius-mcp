@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from pydantic import SecretStr
 
+from src.services.launch_service import LaunchUnavailableSection
 from src.tools.launches import (
     add_test_result_attachment,
     close_launch,
@@ -162,6 +163,68 @@ async def test_get_launch_output_format() -> None:
                 assert "Known defects: 2" in output
                 assert "New defects: 1" in output
                 assert "Summary: passed=7, failed=1" in output
+
+
+@pytest.mark.asyncio
+async def test_get_launch_forwards_execution_options_and_omits_them_by_default() -> None:
+    with patch("src.tools.launches.resolve_auth_settings", return_value=_resolved_auth()):
+        with patch("src.tools.launches.AllureClient") as mock_client_cls:
+            mock_client = _mock_url_context()
+            mock_client_cls.return_value.__aenter__.return_value = mock_client
+            with patch("src.tools.launches.LaunchService") as mock_service_cls:
+                service = mock_service_cls.return_value
+                service.get_launch = AsyncMock(
+                    return_value=type("LaunchDetail", (), {"id": 7, "name": "Launch", "closed": False})
+                )
+
+                default = await get_launch(launch_id=7, output_format="json")
+                assert "execution_snapshot" not in default.structured_content
+                service.get_launch.assert_awaited_with(7, include_execution_results=False, tree_id=None)
+
+                await get_launch(launch_id=7, include_execution_results=True, tree_id=11)
+                service.get_launch.assert_awaited_with(7, include_execution_results=True, tree_id=11)
+
+
+@pytest.mark.asyncio
+async def test_get_launch_rejects_tree_id_without_execution_results() -> None:
+    with pytest.raises(Exception, match="tree_id requires include_execution_results=true"):
+        await get_launch(launch_id=7, tree_id=11)
+
+
+@pytest.mark.asyncio
+async def test_get_launch_execution_output_normalizes_partial_diagnostics() -> None:
+    with patch("src.tools.launches.resolve_auth_settings", return_value=_resolved_auth()):
+        with patch("src.tools.launches.AllureClient") as mock_client_cls:
+            mock_client = _mock_url_context()
+            mock_client_cls.return_value.__aenter__.return_value = mock_client
+            with patch("src.tools.launches.LaunchService") as mock_service_cls:
+                service = mock_service_cls.return_value
+                service.get_launch = AsyncMock(
+                    return_value=type(
+                        "LaunchDetail",
+                        (),
+                        {
+                            "id": 7,
+                            "name": "Launch",
+                            "closed": False,
+                            "flat_test_results": ({"id": 99, "status": "broken"},),
+                            "execution_snapshot": {
+                                "captured_at": "2026-08-27T00:00:00+00:00",
+                                "closed": False,
+                                "mutable": True,
+                                "message": "Mutable snapshot",
+                            },
+                            "partial": True,
+                            "unavailable_sections": (LaunchUnavailableSection("variables", "forbidden"),),
+                        },
+                    )
+                )
+
+                output = await get_launch(launch_id=7, include_execution_results=True, output_format="json")
+
+                assert output.structured_content["flat_test_results"] == [{"id": 99, "status": "broken"}]
+                assert output.structured_content["partial"] is True
+                assert output.structured_content["unavailable_sections"][0]["section"] == "variables"
 
 
 @pytest.mark.asyncio

@@ -63,6 +63,7 @@ __all__ = [
     "TestResultRerunControllerApi",
     "TestResultRunControllerApi",
     "TestResultTestKeyControllerApi",
+    "TestResultTreeControllerV2Api",
     "TreeControllerV2Api",
     "UploadControllerApi",
     "UploadTestResultControllerApi",
@@ -808,6 +809,7 @@ from src.client.generated.api.test_result_members_controller_api import TestResu
 from src.client.generated.api.test_result_rerun_controller_api import TestResultRerunControllerApi as TestResultRerunControllerApi
 from src.client.generated.api.test_result_run_controller_api import TestResultRunControllerApi as TestResultRunControllerApi
 from src.client.generated.api.test_result_test_key_controller_api import TestResultTestKeyControllerApi as TestResultTestKeyControllerApi
+from src.client.generated.api.test_result_tree_controller_v2_api import TestResultTreeControllerV2Api as TestResultTreeControllerV2Api
 from src.client.generated.api.tree_controller_v2_api import TreeControllerV2Api as TreeControllerV2Api
 from src.client.generated.api.upload_controller_api import UploadControllerApi as UploadControllerApi
 from src.client.generated.api.upload_test_result_controller_api import UploadTestResultControllerApi as UploadTestResultControllerApi

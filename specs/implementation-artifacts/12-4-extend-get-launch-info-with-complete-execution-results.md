@@ -1,6 +1,6 @@
 # Story 12.4: Extend Get Launch Info with Complete Execution Results
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Note: This story was validated against the create-story checklist, current source, generated client, full/filtered OpenAPI, Stories 10.3 and 12.1-12.3, and the user's clarified execution-result contract. -->
 
@@ -424,6 +424,9 @@ GPT-5 Codex
 
 - Story-context analysis only; no implementation or runtime tests were executed.
 - Read-only analysis verified the full/filtered OpenAPI, current generated client, launch/result services and tools, output schemas, adjacent stories, tests, and git history.
+- Regenerated the client from the checked-in OpenAPI after retaining `test-result-tree-controller-v-2`; inspected the resulting controller and generated diff.
+- Read-only sandbox verification used launch `90358` and confirmed compact result IDs, active-tree metadata/hierarchy views, status fidelity, and an open-launch snapshot. No credentials or raw upstream response bodies were recorded.
+- Focused launch/client/CLI tests pass (184 tests); project-wide Ruff and strict mypy checks pass. The combined unit/integration/docs suite exceeded this environment's 30-second command window and was not treated as passing.
 
 ### Completion Notes List
 
@@ -435,6 +438,25 @@ GPT-5 Codex
 
 ### File List
 
+- `docs/mcp_manifest.json`
+- `docs/tools.md`
+- `openapi/allure-testops-service/filtered-report-service.json`
+- `scripts/filter_openapi.py`
+- `src/cli/data/tool_schemas.json`
+- `src/client/client.py`
+- `src/client/generated/README.md`
+- `src/client/generated/__init__.py`
+- `src/client/generated/api/__init__.py`
+- `src/client/generated/api/test_result_tree_controller_v2_api.py`
+- `src/client/generated/docs/TestResultTreeControllerV2Api.md`
+- `src/services/launch_service.py`
+- `src/tools/launches.py`
+- `src/tools/output_schemas.py`
+- `tests/unit/test_launch_tools.py`
 - `specs/project-planning-artifacts/epics.md`
 - `specs/implementation-artifacts/sprint-status.yaml`
 - `specs/implementation-artifacts/12-4-extend-get-launch-info-with-complete-execution-results.md`
+
+### Change Log
+
+- 2026-08-27: Added the opt-in launch execution aggregate, V2 result-tree client surface, CLI/MCP schemas, and focused regression coverage; story remains in progress pending the remaining exhaustive contract/E2E work.

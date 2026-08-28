@@ -4162,6 +4162,23 @@
             ],
             "default": null,
             "description": "Output format: 'json' (default) or 'plain'."
+          },
+          "include_execution_results": {
+            "default": false,
+            "description": "Opt in to complete compact execution results, project trees, and snapshot diagnostics.",
+            "type": "boolean"
+          },
+          "tree_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional project tree ID to expand; requires include_execution_results=true."
           }
         },
         "required": [
@@ -4835,6 +4852,312 @@
             ],
             "default": null,
             "title": "Url"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Duration"
+          },
+          "progress": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Progress"
+          },
+          "assignees": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Assignees"
+          },
+          "testers": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Testers"
+          },
+          "variables": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Variables"
+          },
+          "defects": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Defects"
+          },
+          "member_stats": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Member Stats"
+          },
+          "muted_results": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Muted Results"
+          },
+          "retries": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Retries"
+          },
+          "unresolved_results": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Unresolved Results"
+          },
+          "flat_test_results": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Compact rows; each row id is the Test Result ID for get_test_result.",
+            "title": "Flat Test Results"
+          },
+          "core_test_result_index": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Core Test Result Index"
+          },
+          "result_timeline": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Result Timeline"
+          },
+          "result_defect_tree": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Result Defect Tree"
+          },
+          "trees": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Trees"
+          },
+          "execution_snapshot": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "description": "Point-in-time state for the opt-in execution aggregate.",
+                "properties": {
+                  "captured_at": {
+                    "title": "Captured At",
+                    "type": "string"
+                  },
+                  "closed": {
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Closed"
+                  },
+                  "mutable": {
+                    "title": "Mutable",
+                    "type": "boolean"
+                  },
+                  "message": {
+                    "title": "Message",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "captured_at",
+                  "mutable",
+                  "message"
+                ],
+                "title": "LaunchExecutionSnapshotOutput",
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "partial": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Partial"
+          },
+          "unavailable_sections": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": false,
+                  "description": "Sanitized optional-read completeness diagnostic.",
+                  "properties": {
+                    "section": {
+                      "title": "Section",
+                      "type": "string"
+                    },
+                    "reason": {
+                      "title": "Reason",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Status Code"
+                    },
+                    "message": {
+                      "title": "Message",
+                      "type": "string"
+                    },
+                    "items_retrieved": {
+                      "anyOf": [
+                        {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Items Retrieved"
+                    }
+                  },
+                  "required": [
+                    "section",
+                    "reason",
+                    "message"
+                  ],
+                  "title": "LaunchUnavailableSectionOutput",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Unavailable Sections"
           }
         },
         "title": "LaunchDetailOutput",

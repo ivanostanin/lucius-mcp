@@ -258,6 +258,29 @@ class LaunchLink(BaseModel):
     url: str | None = Field(default=None)
 
 
+class LaunchExecutionSnapshotOutput(BaseModel):
+    """Point-in-time state for the opt-in execution aggregate."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    captured_at: str
+    closed: bool | None = Field(default=None)
+    mutable: bool
+    message: str
+
+
+class LaunchUnavailableSectionOutput(BaseModel):
+    """Sanitized optional-read completeness diagnostic."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    section: str
+    reason: str
+    status_code: int | None = Field(default=None)
+    message: str
+    items_retrieved: int | None = Field(default=None, ge=0)
+
+
 class LaunchDetailOutput(BaseModel):
     """Rich exact-ID launch fields, with explicit stable nested projections."""
 
@@ -283,6 +306,26 @@ class LaunchDetailOutput(BaseModel):
     links: list[LaunchLink] | None = Field(default=None)
     manual_execution_guidance: str | None = Field(default=None)
     url: str | None = Field(default=None)
+    duration: list[object] | None = Field(default=None)
+    progress: object | None = Field(default=None)
+    assignees: list[object] | None = Field(default=None)
+    testers: list[object] | None = Field(default=None)
+    variables: list[object] | None = Field(default=None)
+    defects: list[object] | None = Field(default=None)
+    member_stats: list[object] | None = Field(default=None)
+    muted_results: list[object] | None = Field(default=None)
+    retries: list[object] | None = Field(default=None)
+    unresolved_results: list[object] | None = Field(default=None)
+    flat_test_results: list[object] | None = Field(
+        default=None, description="Compact rows; each row id is the Test Result ID for get_test_result."
+    )
+    core_test_result_index: list[object] | None = Field(default=None)
+    result_timeline: object | None = Field(default=None)
+    result_defect_tree: object | None = Field(default=None)
+    trees: list[object] | None = Field(default=None)
+    execution_snapshot: LaunchExecutionSnapshotOutput | None = Field(default=None)
+    partial: bool | None = Field(default=None)
+    unavailable_sections: list[LaunchUnavailableSectionOutput] | None = Field(default=None)
 
 
 class TestResultAttachmentOutput(BaseModel):
