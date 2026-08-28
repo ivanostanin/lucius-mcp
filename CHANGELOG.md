@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.15.0] - 2026-08-28
+
+### Added
+- Added `get_test_result` to retrieve complete TestOps result details, including execution evidence, fixtures, custom fields, environment, members, test keys, issues, retries, history, defects, and attachment references (#353).
+- Added `prepare_attachment_download` to securely prepare one-time, short-lived, bearer-token-free attachment download URLs (#356, #357).
+
+### Changed
+- Added opt-in complete execution results, project trees, and snapshot diagnostics to `get_launch` responses (#359).
+
+### Fixed
+- Removed upstream storage keys from test-result attachment outputs so attachments use the verified download workflow (#358).
+
 ## [v0.14.4] - 2026-08-24
 
 ### Changed
@@ -348,7 +360,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.14.4...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.0...HEAD
+[v0.15.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.14.4...v0.15.0
 [v0.14.4]: https://github.com/ivanostanin/lucius-mcp/compare/v0.14.3...v0.14.4
 [v0.14.3]: https://github.com/ivanostanin/lucius-mcp/compare/v0.14.2...v0.14.3
 [v0.14.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.14.1...v0.14.2
