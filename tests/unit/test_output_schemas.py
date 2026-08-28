@@ -2,7 +2,13 @@ import pytest
 from pydantic import ValidationError
 
 from src.tools import all_tools
-from src.tools.output_schemas import OUTPUT_MODELS, output_model_for, output_schema_for, validate_registry_coverage
+from src.tools.output_schemas import (
+    OUTPUT_MODELS,
+    TestResultAttachmentOutput,
+    output_model_for,
+    output_schema_for,
+    validate_registry_coverage,
+)
 
 
 def test_output_schema_registry_covers_registered_tools_exactly() -> None:
@@ -121,6 +127,18 @@ def test_list_launches_schema_rejects_removed_detail_and_mutation_fields() -> No
                         "operation": "created",
                     }
                 ],
+            }
+        )
+
+
+def test_test_result_attachment_schema_rejects_removed_storage_key() -> None:
+    with pytest.raises(ValidationError):
+        TestResultAttachmentOutput.model_validate(
+            {
+                "attachment_id": 1,
+                "attachment_kind": "test_result",
+                "test_result_id": 2,
+                "storage_key": "upstream-private",
             }
         )
 
