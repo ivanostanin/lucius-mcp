@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
@@ -19,7 +19,7 @@ async def test_prepare_attachment_download_validates_then_delegates_and_redacts_
 
     prepared = PreparedAttachmentDownload(
         download_url="http://127.0.0.1:43210/downloads/opaque-capability",
-        expires_at=datetime(2026, 8, 26, 12, 0, tzinfo=UTC),
+        expires_at=datetime(2026, 8, 26, 12, 0, tzinfo=timezone.utc),
         filename="evidence.txt",
         content_type="text/plain",
         byte_size=8,
