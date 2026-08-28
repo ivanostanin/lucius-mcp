@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2025-12-27 18:46
-last_updated: 2026-08-27
+last_updated: 2026-08-28
 project: lucius-mcp
 project_key: lucius-mcp
 tracking_system: file-system

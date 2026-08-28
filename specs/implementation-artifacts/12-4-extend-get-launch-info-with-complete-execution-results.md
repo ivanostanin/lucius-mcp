@@ -214,6 +214,16 @@ so that **I can understand the launch, identify exact Test Result IDs, and navig
   - [ ] Run documentation, MCP manifest, MCPB manifest, generated-client/facade, tool registry, route, completion, and packaging consistency tests affected by regenerated artifacts.
   - [ ] Do not mark implementation complete if any section silently truncates, statuses are conflated, result IDs cannot drive `get_test_result`, or optional failures erase otherwise valid launch data.
 
+### Review Findings
+
+- [x] [Review][Patch] Preserve partial results when project-tree discovery fails [src/services/launch_service.py:625]
+- [x] [Review][Patch] Convert malformed optional tree reads into completeness diagnostics [src/services/launch_service.py:638]
+- [x] [Review][Patch] Discriminate hierarchy node types explicitly at the client boundary [src/client/client.py:1642]
+- [x] [Review][Patch] Continue sibling hierarchy traversal after a branch failure [src/services/launch_service.py:713]
+- [x] [Review][Patch] Detect malformed or non-progressing pagination metadata [src/services/launch_service.py:116]
+- [ ] [Review][Patch] Replace open execution-result output shapes with strict projections [src/tools/output_schemas.py:309]
+- [ ] [Review][Patch] Add the controlled partial-response end-to-end scenario [tests/e2e/test_launches.py:57]
+
 ## Dev Notes
 
 ### Confirmed public contract

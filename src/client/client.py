@@ -1658,8 +1658,13 @@ class AllureClient:
         except ApiException as exc:
             self._handle_api_exception(exc)
             raise
-        if not isinstance(payload, dict) or not isinstance(payload.get("content", []), list):
+        content = payload.get("content") if isinstance(payload, dict) else None
+        if not isinstance(payload, dict) or not isinstance(content, list):
             raise AllureValidationError("Unexpected launch result tree response from API")
+        if not all(
+            isinstance(node, dict) and node.get("type") in {"group", "GROUP", "leaf", "LEAF"} for node in content
+        ):
+            raise AllureValidationError("Unexpected launch result tree node type from API")
         return payload
 
     async def get_launch_base(self, launch_id: int) -> LaunchDto:
