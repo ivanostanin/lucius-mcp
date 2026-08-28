@@ -2,7 +2,14 @@ name: Pull Request Quality Gate
 
 on:
   pull_request:
-    branches: [main]
+    branches:
+      - main
+      - feat/**
+      - feature/**
+      - specs/**
+      - fix/**
+      - chore/**
+      - docs/**
 
 permissions:
   contents: read
