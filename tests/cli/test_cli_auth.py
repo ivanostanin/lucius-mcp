@@ -529,7 +529,22 @@ class TestCLIAuthCommandProcess:
         assert payload["allure_project_id"] == 123
 
     def test_process_auth_status_never_displays_token(self, tmp_path: Path) -> None:
-        env = _subprocess_env(tmp_path)
+        sitecustomize = _sitecustomize_dir(
+            tmp_path,
+            """
+            import builtins
+
+            _original_import = builtins.__import__
+
+            def _guard(name, globals=None, locals=None, fromlist=(), level=0):
+                if name == "src.client" or name.startswith("src.client."):
+                    raise AssertionError(f"unexpected client import: {name}")
+                return _original_import(name, globals, locals, fromlist, level)
+
+            builtins.__import__ = _guard
+            """,
+        )
+        env = _subprocess_env(tmp_path, sitecustomize=sitecustomize)
         _write_saved_config(
             _subprocess_config_root(env),
             url="https://example.testops.cloud",
