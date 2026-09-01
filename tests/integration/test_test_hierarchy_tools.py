@@ -131,4 +131,4 @@ async def test_delete_test_suite_output_confirmed() -> None:
             output = await delete_test_suite(suite_id=555, confirm=True, project_id=7, output_format="plain")
 
             assert output == "✅ Test suite 555 deleted successfully (idempotent)."
-            mock_service.delete_suite.assert_called_once_with(suite_id=555)
+            mock_service.delete_suite.assert_called_once_with(suite_id=555, tree_id=None)

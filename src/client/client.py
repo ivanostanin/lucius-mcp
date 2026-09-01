@@ -3639,8 +3639,10 @@ class AllureClient:
             raise
 
         root = TestCaseFullTreeNodeDto(
+            custom_field_value_id=payload.get("customFieldValueId"),
             id=payload.get("id"),
             name=payload.get("name"),
+            parent_node_id=payload.get("parentNodeId"),
             type=payload.get("type"),
             children=self._parse_tree_children(payload.get("children")),
         )

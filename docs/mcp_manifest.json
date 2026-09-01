@@ -15561,6 +15561,18 @@
             "default": null,
             "description": "Optional Allure TestOps project ID override."
           },
+          "tree_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional hierarchy tree ID. Use when the suite belongs to a non-default tree."
+          },
           "output_format": {
             "anyOf": [
               {

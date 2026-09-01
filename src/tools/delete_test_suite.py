@@ -18,6 +18,10 @@ async def delete_test_suite(
         Field(description="Must be set to True to proceed with deletion. Safety measure."),
     ] = False,
     project_id: Annotated[int | None, Field(description="Optional Allure TestOps project ID override.")] = None,
+    tree_id: Annotated[
+        int | None,
+        Field(description="Optional hierarchy tree ID. Use when the suite belongs to a non-default tree."),
+    ] = None,
     output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
         DEFAULT_OUTPUT_FORMAT
     ),
@@ -30,6 +34,7 @@ async def delete_test_suite(
 
     Args:
         suite_id: Existing suite (tree node) ID to delete.
+        tree_id: Optional hierarchy tree containing the suite.
         confirm: Must be set to True to proceed.
             This safety flag prevents accidental destructive actions.
         project_id: Optional Allure TestOps project override.
@@ -55,7 +60,7 @@ async def delete_test_suite(
 
     async with AllureClient.from_env(project=project_id) as client:
         service = TestHierarchyService(client)
-        await service.delete_suite(suite_id=suite_id)
+        await service.delete_suite(suite_id=suite_id, tree_id=tree_id)
 
     return render_output(
         plain=f"✅ Test suite {suite_id} deleted successfully (idempotent).",

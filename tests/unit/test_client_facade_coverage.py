@@ -290,8 +290,10 @@ async def test_tree_facade_delegation_and_validation(facade_client: AllureClient
 @pytest.mark.asyncio
 async def test_raw_tree_node_and_scenario_fetching(facade_client: AllureClient) -> None:
     tree_payload = {
+        "customFieldValueId": 44,
         "id": 1,
         "name": "Root",
+        "parentNodeId": 9,
         "type": "GROUP",
         "children": {"content": [{"id": 2, "name": "Leaf", "type": "LEAF"}], "totalElements": 1},
     }
@@ -310,7 +312,9 @@ async def test_raw_tree_node_and_scenario_fetching(facade_client: AllureClient) 
     facade_client._scenario_api = scenario_api  # type: ignore[assignment]
 
     node = await facade_client.get_tree_node(7, 3, parent_node_id=1, filter_id=2, page=0, size=10)
+    assert node.custom_field_value_id == 44
     assert node.name == "Root"
+    assert node.parent_node_id == 9
     assert node.children is not None
 
     scenario = await facade_client.get_test_case_scenario(99)
