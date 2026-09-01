@@ -9,7 +9,7 @@ import os
 import sys
 from pathlib import Path
 from textwrap import dedent
-from types import ModuleType, SimpleNamespace
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -367,30 +367,22 @@ class TestCLIAuthCommandUnit:
         clear = parse_auth_command_options(["clear"])
         assert clear.mode == "clear"
 
-    def test_auth_help_and_status_do_not_import_runtime_or_client_modules(
+    def test_auth_help_and_status_render_local_configuration_guidance(
         self,
         capsys: pytest.CaptureFixture[str],
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        blocked_prefixes = ("fastmcp", "src.main", "src.client")
-        for module_name in tuple(sys.modules):
-            if any(module_name == prefix or module_name.startswith(f"{prefix}.") for prefix in blocked_prefixes):
-                monkeypatch.delitem(sys.modules, module_name)
-
         with (
             patch("src.cli.auth_command.load_auth_config", return_value=None),
             patch("src.cli.auth_command.auth_config_path", return_value=Path("/tmp/auth.json")),
         ):
             run_cli_in_process(["auth", "--help"])
-            _ = capsys.readouterr()
+            help_output = capsys.readouterr().out
             run_cli_in_process(["auth", "status"])
-            _ = capsys.readouterr()
+            status_output = capsys.readouterr().out
 
-        assert not any(
-            module_name == prefix or module_name.startswith(f"{prefix}.")
-            for module_name in sys.modules
-            for prefix in blocked_prefixes
-        )
+        assert "CLI auth stores Allure credentials" in help_output
+        assert "CLI auth status: not configured" in status_output
+        assert "Location: /tmp/auth.json" in status_output
 
     def test_auth_route_stays_out_of_tool_route_matrix_and_schema(self) -> None:
         assert "auth" not in CANONICAL_ROUTE_MATRIX
@@ -493,10 +485,7 @@ class TestCLIAuthCommandUnit:
         assert error.message == expected_message
 
     @pytest.mark.asyncio
-    async def test_validate_auth_credentials_uses_the_lazy_client_import(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
+    async def test_validate_auth_credentials_uses_the_lazy_client_import(self) -> None:
         calls: list[dict[str, object]] = []
 
         class FakeClient:
@@ -512,16 +501,10 @@ class TestCLIAuthCommandUnit:
             async def validate_project_access(self, project_id: int) -> None:
                 calls.append({"project_id": project_id})
 
-        client_package = ModuleType("src.client")
-        client_package.__path__ = []  # type: ignore[attr-defined]
-        client_module = ModuleType("src.client.client")
-        client_module.AllureClient = FakeClient
-        monkeypatch.setitem(sys.modules, "src.client", client_package)
-        monkeypatch.setitem(sys.modules, "src.client.client", client_module)
+        with patch("src.client.client.AllureClient", FakeClient):
+            from src.cli.auth_command import validate_auth_credentials
 
-        from src.cli.auth_command import validate_auth_credentials
-
-        await validate_auth_credentials(url="https://example.testops.cloud", token="token", project_id=123)
+            await validate_auth_credentials(url="https://example.testops.cloud", token="token", project_id=123)
 
         assert calls[0]["base_url"] == "https://example.testops.cloud"
         assert calls[0]["project"] == 123

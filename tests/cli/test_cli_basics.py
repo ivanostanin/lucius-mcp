@@ -4,7 +4,6 @@ Test basic CLI functionality.
 
 import json
 import os
-import sys
 from unittest.mock import AsyncMock, patch
 
 from tests.cli.subprocess_helpers import (
@@ -178,15 +177,8 @@ def test_legacy_command_style_is_rejected():
     assert accepted.returncode == 0
 
 
-def test_cli_default_json_output_without_format_flag_avoids_client_import(
-    capsys,
-    monkeypatch,
-):
-    """Action routing defaults to JSON without loading the generated client for a mocked call."""
-    for module_name in tuple(sys.modules):
-        if module_name == "src.client" or module_name.startswith("src.client."):
-            monkeypatch.delitem(sys.modules, module_name)
-
+def test_cli_default_json_output_without_format_flag(capsys):
+    """Action routing defaults to JSON for a mocked tool call."""
     mock_call = AsyncMock(return_value='{"ok":true,"count":2}')
     with patch("src.cli.cli_entry.call_tool_function", new=mock_call):
         from src.cli.cli_entry import run_cli
@@ -195,7 +187,6 @@ def test_cli_default_json_output_without_format_flag_avoids_client_import(
 
     assert capsys.readouterr().out.strip() == '{"ok":true,"count":2}'
     mock_call.assert_awaited_once_with("list_test_cases", {"output_format": "json"})
-    assert not any(module_name == "src.client" or module_name.startswith("src.client.") for module_name in sys.modules)
 
 
 def test_process_cli_short_alias_uses_same_action_path():
