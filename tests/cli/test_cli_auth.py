@@ -33,6 +33,7 @@ from src.cli.schema_loader import load_tool_schemas
 from src.utils.auth import get_auth_context
 from src.utils.auth_resolution import resolve_auth_settings
 from src.utils.error import AuthenticationError, ResourceNotFoundError, ValidationError
+from tests.cli.import_guard import reject_imports
 from tests.cli.subprocess_helpers import run_cli, run_uv_cli
 
 
@@ -367,13 +368,14 @@ class TestCLIAuthCommandUnit:
         clear = parse_auth_command_options(["clear"])
         assert clear.mode == "clear"
 
-    def test_auth_help_and_status_render_local_configuration_guidance(
+    def test_auth_help_and_status_do_not_import_fastmcp_or_src_main(
         self,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         with (
             patch("src.cli.auth_command.load_auth_config", return_value=None),
             patch("src.cli.auth_command.auth_config_path", return_value=Path("/tmp/auth.json")),
+            reject_imports("fastmcp", "src.main"),
         ):
             run_cli_in_process(["auth", "--help"])
             help_output = capsys.readouterr().out
