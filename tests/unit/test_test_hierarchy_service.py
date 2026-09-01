@@ -12,7 +12,6 @@ from src.client.generated.models.id_and_name_only_dto import IdAndNameOnlyDto
 from src.client.generated.models.node_type import NodeType
 from src.client.generated.models.page_id_and_name_only_dto import PageIdAndNameOnlyDto
 from src.client.generated.models.page_test_case_tree_node_dto import PageTestCaseTreeNodeDto
-from src.client.generated.models.page_test_case_tree_node_dto_content_inner import PageTestCaseTreeNodeDtoContentInner
 from src.client.generated.models.page_tree_dto_v2 import PageTreeDtoV2
 from src.client.generated.models.test_case_full_tree_node_dto import TestCaseFullTreeNodeDto
 from src.client.generated.models.test_case_light_tree_node_dto import TestCaseLightTreeNodeDto
@@ -51,12 +50,12 @@ def _root_with_suites() -> TestCaseFullTreeNodeDto:
         id=11,
         name="UI",
         type=NodeType.GROUP,
-        children=PageTestCaseTreeNodeDto(content=[PageTestCaseTreeNodeDtoContentInner(actual_instance=child_suite)]),
+        children=PageTestCaseTreeNodeDto(content=[child_suite]),
     )
     return TestCaseFullTreeNodeDto(
         id=10,
         name="Root",
-        children=PageTestCaseTreeNodeDto(content=[PageTestCaseTreeNodeDtoContentInner(actual_instance=parent_suite)]),
+        children=PageTestCaseTreeNodeDto(content=[parent_suite]),
     )
 
 
@@ -127,13 +126,11 @@ async def test_list_test_suites_returns_hierarchy(service: TestHierarchyService,
             name="UI",
             children=PageTestCaseTreeNodeDto(
                 content=[
-                    PageTestCaseTreeNodeDtoContentInner(
-                        actual_instance=TestCaseLightTreeNodeDto(
-                            id=12,
-                            name="Auth",
-                            type=NodeType.GROUP,
-                            parent_node_id=11,
-                        )
+                    TestCaseLightTreeNodeDto(
+                        id=12,
+                        name="Auth",
+                        type=NodeType.GROUP,
+                        parent_node_id=11,
                     )
                 ]
             ),
@@ -175,8 +172,8 @@ async def test_get_test_case_ids_in_suite_reads_all_direct_child_pages(
             name="Suite",
             children=PageTestCaseTreeNodeDto(
                 content=[
-                    PageTestCaseTreeNodeDtoContentInner(actual_instance=first_leaf),
-                    PageTestCaseTreeNodeDtoContentInner(actual_instance=nested_group),
+                    first_leaf,
+                    nested_group,
                 ],
                 total_pages=2,
             ),
@@ -185,7 +182,7 @@ async def test_get_test_case_ids_in_suite_reads_all_direct_child_pages(
             id=11,
             name="Suite",
             children=PageTestCaseTreeNodeDto(
-                content=[PageTestCaseTreeNodeDtoContentInner(actual_instance=second_leaf)],
+                content=[second_leaf],
                 total_pages=2,
             ),
         ),
@@ -195,6 +192,25 @@ async def test_get_test_case_ids_in_suite_reads_all_direct_child_pages(
 
     assert test_case_ids == [1001, 1002]
     assert [call.kwargs["page"] for call in mock_client.get_tree_node.call_args_list] == [0, 1]
+
+
+@pytest.mark.asyncio
+async def test_get_test_case_ids_in_suite_uses_leaf_id_when_test_case_id_is_omitted(
+    service: TestHierarchyService, mock_client: MagicMock
+) -> None:
+    """TestOps leaves without testCaseId retain the legacy node-ID fallback."""
+    mock_client.get_tree.return_value = TreeDtoV2(id=333, name="Tree A", project_id=1, custom_fields_project=[])
+    mock_client.get_tree_node.return_value = TestCaseFullTreeNodeDto(
+        id=11,
+        name="Suite",
+        children=PageTestCaseTreeNodeDto(
+            content=[TestCaseTreeLeafDtoV2(id=1001, name="Case 1001", type=NodeType.LEAF)]
+        ),
+    )
+
+    test_case_ids = await service.get_test_case_ids_in_suite(suite_id=11, tree_id=333)
+
+    assert test_case_ids == [1001]
 
 
 @pytest.mark.asyncio
@@ -271,13 +287,13 @@ async def test_list_test_suites_reads_all_group_child_pages(
         TestCaseFullTreeNodeDto(
             id=10,
             name="Root",
-            children=PageTestCaseTreeNodeDto(content=[PageTestCaseTreeNodeDtoContentInner(actual_instance=root_group)]),
+            children=PageTestCaseTreeNodeDto(content=[root_group]),
         ),
         TestCaseFullTreeNodeDto(
             id=11,
             name="UI",
             children=PageTestCaseTreeNodeDto(
-                content=[PageTestCaseTreeNodeDtoContentInner(actual_instance=first_child)],
+                content=[first_child],
                 total_pages=2,
             ),
         ),
@@ -285,7 +301,7 @@ async def test_list_test_suites_reads_all_group_child_pages(
             id=11,
             name="UI",
             children=PageTestCaseTreeNodeDto(
-                content=[PageTestCaseTreeNodeDtoContentInner(actual_instance=second_child)],
+                content=[second_child],
                 total_pages=2,
             ),
         ),
@@ -351,9 +367,7 @@ async def test_list_test_suites_bounds_parallel_tree_node_reads(
             return TestCaseFullTreeNodeDto(
                 id=10,
                 name="Root",
-                children=PageTestCaseTreeNodeDto(
-                    content=[PageTestCaseTreeNodeDtoContentInner(actual_instance=suite) for suite in suites]
-                ),
+                children=PageTestCaseTreeNodeDto(content=suites),
             )
         active_reads += 1
         peak_reads = max(peak_reads, active_reads)
@@ -384,21 +398,17 @@ async def test_assign_test_cases_to_suite_success(service: TestHierarchyService,
         name="Root",
         children=PageTestCaseTreeNodeDto(
             content=[
-                PageTestCaseTreeNodeDtoContentInner(
-                    actual_instance=TestCaseTreeLeafDtoV2(
-                        id=9001,
-                        name="Case 1001",
-                        test_case_id=1001,
-                        type=NodeType.LEAF,
-                    )
+                TestCaseTreeLeafDtoV2(
+                    id=9001,
+                    name="Case 1001",
+                    test_case_id=1001,
+                    type=NodeType.LEAF,
                 ),
-                PageTestCaseTreeNodeDtoContentInner(
-                    actual_instance=TestCaseTreeLeafDtoV2(
-                        id=9002,
-                        name="Case 1002",
-                        test_case_id=1002,
-                        type=NodeType.LEAF,
-                    )
+                TestCaseTreeLeafDtoV2(
+                    id=9002,
+                    name="Case 1002",
+                    test_case_id=1002,
+                    type=NodeType.LEAF,
                 ),
             ]
         ),
@@ -460,13 +470,11 @@ async def test_assign_test_cases_to_suite_missing_leaf_raises(
         name="Root",
         children=PageTestCaseTreeNodeDto(
             content=[
-                PageTestCaseTreeNodeDtoContentInner(
-                    actual_instance=TestCaseTreeLeafDtoV2(
-                        id=9000,
-                        name="Case 1000",
-                        test_case_id=1000,
-                        type=NodeType.LEAF,
-                    )
+                TestCaseTreeLeafDtoV2(
+                    id=9000,
+                    name="Case 1000",
+                    test_case_id=1000,
+                    type=NodeType.LEAF,
                 )
             ]
         ),

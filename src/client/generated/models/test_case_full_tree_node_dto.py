@@ -19,6 +19,7 @@ import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
+from src.client.generated.models.node_type import NodeType
 from src.client.generated.models.page_test_case_tree_node_dto import PageTestCaseTreeNodeDto
 from typing import Optional, Set
 from typing_extensions import Self
@@ -33,7 +34,8 @@ class TestCaseFullTreeNodeDto(BaseModel):
     id: Optional[StrictInt] = None
     name: Optional[StrictStr] = None
     parent_node_id: Optional[StrictInt] = Field(default=None, alias="parentNodeId")
-    __properties: ClassVar[List[str]] = ["children", "customFieldValueId", "id", "name", "parentNodeId"]
+    type: Optional[NodeType] = None
+    __properties: ClassVar[List[str]] = ["children", "customFieldValueId", "id", "name", "parentNodeId", "type"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -93,7 +95,8 @@ class TestCaseFullTreeNodeDto(BaseModel):
             "customFieldValueId": obj.get("customFieldValueId"),
             "id": obj.get("id"),
             "name": obj.get("name"),
-            "parentNodeId": obj.get("parentNodeId")
+            "parentNodeId": obj.get("parentNodeId"),
+            "type": obj.get("type")
         })
         return _obj
 

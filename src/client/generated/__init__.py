@@ -412,7 +412,6 @@ __all__ = [
     "PageTestCaseTreeGroupDto",
     "PageTestCaseTreeLeafDto",
     "PageTestCaseTreeNodeDto",
-    "PageTestCaseTreeNodeDtoContentInner",
     "PageTestFixtureResultAttachmentRowDto",
     "PageTestKeySchemaDto",
     "PageTestLayerDto",
@@ -1162,7 +1161,6 @@ from src.client.generated.models.page_test_case_row_dto import PageTestCaseRowDt
 from src.client.generated.models.page_test_case_tree_group_dto import PageTestCaseTreeGroupDto as PageTestCaseTreeGroupDto
 from src.client.generated.models.page_test_case_tree_leaf_dto import PageTestCaseTreeLeafDto as PageTestCaseTreeLeafDto
 from src.client.generated.models.page_test_case_tree_node_dto import PageTestCaseTreeNodeDto as PageTestCaseTreeNodeDto
-from src.client.generated.models.page_test_case_tree_node_dto_content_inner import PageTestCaseTreeNodeDtoContentInner as PageTestCaseTreeNodeDtoContentInner
 from src.client.generated.models.page_test_fixture_result_attachment_row_dto import PageTestFixtureResultAttachmentRowDto as PageTestFixtureResultAttachmentRowDto
 from src.client.generated.models.page_test_key_schema_dto import PageTestKeySchemaDto as PageTestKeySchemaDto
 from src.client.generated.models.page_test_layer_dto import PageTestLayerDto as PageTestLayerDto

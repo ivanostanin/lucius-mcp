@@ -20,8 +20,8 @@ import json
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt
 from typing import Any, ClassVar, Dict, List, Optional
 from src.client.generated.models.page_access_group_dto_sort import PageAccessGroupDtoSort
-from src.client.generated.models.page_test_case_tree_node_dto_content_inner import PageTestCaseTreeNodeDtoContentInner
 from src.client.generated.models.pageable import Pageable
+from src.client.generated.models.test_case_tree_node_dto import TestCaseTreeNodeDto
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
@@ -30,7 +30,7 @@ class PageTestCaseTreeNodeDto(BaseModel):
     """
     PageTestCaseTreeNodeDto
     """ # noqa: E501
-    content: Optional[List[PageTestCaseTreeNodeDtoContentInner]] = None
+    content: Optional[List[TestCaseTreeNodeDto]] = None
     empty: Optional[StrictBool] = None
     first: Optional[StrictBool] = None
     last: Optional[StrictBool] = None
@@ -107,7 +107,7 @@ class PageTestCaseTreeNodeDto(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "content": [PageTestCaseTreeNodeDtoContentInner.from_dict(_item) for _item in obj["content"]] if obj.get("content") is not None else None,
+            "content": [TestCaseTreeNodeDto.from_dict(_item) for _item in obj["content"]] if obj.get("content") is not None else None,
             "empty": obj.get("empty"),
             "first": obj.get("first"),
             "last": obj.get("last"),

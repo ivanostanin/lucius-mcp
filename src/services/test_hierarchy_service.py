@@ -270,10 +270,10 @@ class TestHierarchyService:
 
         children = node.children.content if node.children and node.children.content else []
         test_case_ids = [
-            actual.test_case_id
+            test_case_id
             for item in children
-            if isinstance((actual := item.actual_instance), TestCaseTreeLeafDtoV2)
-            and isinstance(actual.test_case_id, int)
+            if isinstance(item, TestCaseTreeLeafDtoV2)
+            and isinstance((test_case_id := self._leaf_test_case_id(item)), int)
         ]
         return SuiteContents(
             suite_id=target_suite_id,
@@ -375,9 +375,10 @@ class TestHierarchyService:
 
         leaf_ids_by_test_case: dict[int, int] = {}
         for item in root.children.content:
-            actual = item.actual_instance
-            if isinstance(actual, TestCaseTreeLeafDtoV2) and actual.test_case_id is not None and actual.id is not None:
-                leaf_ids_by_test_case[actual.test_case_id] = actual.id
+            if isinstance(item, TestCaseTreeLeafDtoV2) and item.id is not None:
+                test_case_id = self._leaf_test_case_id(item)
+                if test_case_id is not None:
+                    leaf_ids_by_test_case[test_case_id] = item.id
 
         leaf_node_ids: list[int] = []
         for test_case_id in test_case_ids:
@@ -458,9 +459,9 @@ class TestHierarchyService:
         seen_ids = set(visited_nodes)
         roots: list[SuiteNode] = []
         frontier: list[tuple[TestCaseLightTreeNodeDto, SuiteNode | None, int]] = [
-            (actual, None, parent_suite_id)
+            (item, None, parent_suite_id)
             for item in root.children.content
-            if isinstance((actual := item.actual_instance), TestCaseLightTreeNodeDto)
+            if isinstance(item, TestCaseLightTreeNodeDto)
         ]
 
         while frontier:
@@ -497,9 +498,9 @@ class TestHierarchyService:
                         child_root.children.content if child_root.children and child_root.children.content else []
                     )
                     next_frontier.extend(
-                        (child_actual, suite, suite.id)
+                        (child_item, suite, suite.id)
                         for child_item in child_items
-                        if isinstance((child_actual := child_item.actual_instance), TestCaseLightTreeNodeDto)
+                        if isinstance(child_item, TestCaseLightTreeNodeDto)
                     )
             frontier = next_frontier
 
@@ -533,6 +534,13 @@ class TestHierarchyService:
                 normalized.append(valid_id)
 
         return normalized
+
+    @staticmethod
+    def _leaf_test_case_id(leaf: TestCaseTreeLeafDtoV2) -> int | None:
+        """Return a leaf's test-case ID, preserving TestOps's legacy fallback."""
+        if isinstance(leaf.test_case_id, int):
+            return leaf.test_case_id
+        return leaf.id if isinstance(leaf.id, int) else None
 
     def _validate_suite_name(self, name: str) -> None:
         """Validate suite name value."""

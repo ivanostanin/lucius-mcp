@@ -715,7 +715,6 @@ Class | Method | HTTP request | Description
  - [PageTestCaseTreeGroupDto](src/client/generated/docs/PageTestCaseTreeGroupDto.md)
  - [PageTestCaseTreeLeafDto](src/client/generated/docs/PageTestCaseTreeLeafDto.md)
  - [PageTestCaseTreeNodeDto](src/client/generated/docs/PageTestCaseTreeNodeDto.md)
- - [PageTestCaseTreeNodeDtoContentInner](src/client/generated/docs/PageTestCaseTreeNodeDtoContentInner.md)
  - [PageTestFixtureResultAttachmentRowDto](src/client/generated/docs/PageTestFixtureResultAttachmentRowDto.md)
  - [PageTestKeySchemaDto](src/client/generated/docs/PageTestKeySchemaDto.md)
  - [PageTestLayerDto](src/client/generated/docs/PageTestLayerDto.md)

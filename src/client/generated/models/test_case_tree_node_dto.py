@@ -52,7 +52,7 @@ class TestCaseTreeNodeDto(BaseModel):
 
     # discriminator mappings
     __discriminator_value_class_map: ClassVar[Dict[str, str]] = {
-        'TestCaseLightTreeNodeDto': 'TestCaseLightTreeNodeDto','TestCaseTreeLeafDtoV2': 'TestCaseTreeLeafDtoV2'
+        'GROUP': 'TestCaseLightTreeNodeDto','LEAF': 'TestCaseTreeLeafDtoV2'
     }
 
     @classmethod
