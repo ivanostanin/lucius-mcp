@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -13,7 +12,9 @@ from pydantic import SecretStr
 
 from src.client import (
     AllureAPIError,
+    AllureAuthError,
     AllureClient,
+    AllureNotFoundError,
     AllureValidationError,
     LaunchResultTreePage,
 )
@@ -46,14 +47,6 @@ class RecordingApi:
             return result()
 
         return call
-
-
-class RawTreeResponse:
-    def __init__(self, payload: dict[str, object]) -> None:
-        self._payload = payload
-
-    def read(self) -> bytes:
-        return json.dumps(self._payload).encode("utf-8")
 
 
 @pytest.fixture
@@ -303,8 +296,8 @@ async def test_raw_tree_node_and_scenario_fetching(facade_client: AllureClient) 
         "children": {"content": [{"id": 2, "name": "Leaf", "type": "LEAF"}], "totalElements": 1},
     }
 
-    async def get_tree_node_without_preload_content(**_kwargs: object) -> RawTreeResponse:
-        return RawTreeResponse(tree_payload)
+    async def get_tree_node_without_preload_content(**_kwargs: object) -> httpx.Response:
+        return httpx.Response(200, json=tree_payload)
 
     tree_api = SimpleNamespace(get_tree_node_without_preload_content=get_tree_node_without_preload_content)
     scenario_payload = {
@@ -323,6 +316,28 @@ async def test_raw_tree_node_and_scenario_fetching(facade_client: AllureClient) 
     scenario = await facade_client.get_test_case_scenario(99)
     assert len(scenario.steps or []) == 1
     assert scenario_api.calls[-1][0] == "get_normalized_scenario_without_preload_content"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("status_code", "expected_exception"),
+    [
+        (401, AllureAuthError),
+        (404, AllureNotFoundError),
+        (500, AllureAPIError),
+    ],
+)
+async def test_raw_tree_node_maps_non_success_responses(
+    facade_client: AllureClient, status_code: int, expected_exception: type[Exception]
+) -> None:
+    tree_api = MagicMock()
+    tree_api.get_tree_node_without_preload_content = AsyncMock(
+        return_value=httpx.Response(status_code, text="tree request failed")
+    )
+    facade_client._test_case_tree_api = tree_api  # type: ignore[assignment]
+
+    with pytest.raises(expected_exception):
+        await facade_client.get_tree_node(7, 3)
 
 
 @pytest.mark.asyncio

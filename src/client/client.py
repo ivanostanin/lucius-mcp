@@ -3617,22 +3617,26 @@ class AllureClient:
         if size is not None and (not isinstance(size, int) or size <= 0):
             raise AllureValidationError("Size must be a positive integer")
 
-        response = await tree_api.get_tree_node_without_preload_content(
-            project_id=project_id,
-            tree_id=tree_id,
-            parent_node_id=parent_node_id,
-            search=search,
-            filter_id=filter_id,
-            page=page,
-            size=size,
-            sort=sort,
-            query=query,
-            base_aql=base_aql,
-            _request_timeout=self._timeout,
+        response = await self._call_api_raw(
+            tree_api.get_tree_node_without_preload_content(
+                project_id=project_id,
+                tree_id=tree_id,
+                parent_node_id=parent_node_id,
+                search=search,
+                filter_id=filter_id,
+                page=page,
+                size=size,
+                sort=sort,
+                query=query,
+                base_aql=base_aql,
+                _request_timeout=self._timeout,
+            )
         )
-
-        response_text = response.read().decode("utf-8")
-        payload = json.loads(response_text)
+        try:
+            payload = self._extract_response_data(response)
+        except ApiException as exc:
+            self._handle_api_exception(exc)
+            raise
 
         root = TestCaseFullTreeNodeDto(
             id=payload.get("id"),

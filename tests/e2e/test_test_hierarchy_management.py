@@ -4,7 +4,10 @@ import asyncio
 import re
 from uuid import uuid4
 
+import httpx
+
 from src.client import AllureClient
+from src.client.exceptions import AllureAPIError
 from src.client.generated.models.test_case_tree_leaf_dto_v2 import TestCaseTreeLeafDtoV2
 from src.services.test_hierarchy_service import TestHierarchyService
 from src.tools.assign_test_cases_to_suite import assign_test_cases_to_suite
@@ -16,25 +19,34 @@ from src.tools.list_test_suites import list_test_suites
 from tests.e2e.helpers.cleanup import CleanupTracker
 
 
-def _collect_suite_ids(nodes: list) -> list[int]:
-    ids: list[int] = []
-    for node in nodes:
-        ids.append(node.id)
-        ids.extend(_collect_suite_ids(node.children))
-    return ids
-
-
 async def _wait_for_suite_absence(
-    service: TestHierarchyService,
+    allure_client: AllureClient,
+    project_id: int,
+    tree_id: int,
     suite_id: int,
+    suite_name: str,
     *,
     retries: int = 120,
     delay_seconds: float = 1.0,
 ) -> bool:
     for _ in range(retries):
-        _tree, suites = await service.list_test_suites(include_empty=True)
-        if suite_id not in _collect_suite_ids(suites):
-            return True
+        try:
+            suggestions = await allure_client.suggest_tree_groups(
+                project_id=project_id,
+                query=suite_name,
+                tree_id=tree_id,
+                page=0,
+                size=100,
+            )
+        except AllureAPIError as exc:
+            if exc.status_code is None or exc.status_code < 500:
+                raise
+        except httpx.TransportError:
+            pass
+        else:
+            matches_target = any(item.id == suite_id and item.name == suite_name for item in suggestions.content or [])
+            if not matches_target:
+                return True
         await asyncio.sleep(delay_seconds)
     return False
 
@@ -249,7 +261,10 @@ async def test_e2e_hierarchy_delete_suite_lifecycle(
     )
     assert third_delete_output == delete_output
 
-    assert await _wait_for_suite_absence(service, nested_suite.id), (
+    tree = await service._resolve_tree(None)
+    assert tree.id is not None
+
+    assert await _wait_for_suite_absence(allure_client, project_id, tree.id, nested_suite.id, nested_name), (
         f"Suite {nested_suite.id} is still present after delete lifecycle retries"
     )
 
@@ -302,9 +317,12 @@ async def test_e2e_hierarchy_delete_parent_suite_with_children(
     )
     assert delete_parent_output == f"✅ Test suite {root_suite.id} deleted successfully (idempotent)."
 
-    assert await _wait_for_suite_absence(service, root_suite.id), (
+    tree = await service._resolve_tree(None)
+    assert tree.id is not None
+
+    assert await _wait_for_suite_absence(allure_client, project_id, tree.id, root_suite.id, root_name), (
         f"Parent suite {root_suite.id} is still present after deletion retries"
     )
-    assert await _wait_for_suite_absence(service, nested_suite.id), (
+    assert await _wait_for_suite_absence(allure_client, project_id, tree.id, nested_suite.id, nested_name), (
         f"Nested suite {nested_suite.id} is still present after parent deletion retries"
     )
