@@ -372,9 +372,10 @@ class TestCLIAuthCommandUnit:
         self,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
+        config_path = Path("/tmp/auth.json")
         with (
             patch("src.cli.auth_command.load_auth_config", return_value=None),
-            patch("src.cli.auth_command.auth_config_path", return_value=Path("/tmp/auth.json")),
+            patch("src.cli.auth_command.auth_config_path", return_value=config_path),
             reject_imports("fastmcp", "src.main"),
         ):
             run_cli_in_process(["auth", "--help"])
@@ -384,7 +385,7 @@ class TestCLIAuthCommandUnit:
 
         assert "CLI auth stores Allure credentials" in help_output
         assert "CLI auth status: not configured" in status_output
-        assert "Location: /tmp/auth.json" in status_output
+        assert f"Location: {config_path}" in status_output
 
     def test_auth_route_stays_out_of_tool_route_matrix_and_schema(self) -> None:
         assert "auth" not in CANONICAL_ROUTE_MATRIX
