@@ -18,8 +18,7 @@ from src.cli.local_commands import (
     auth_usage_lines,
 )
 from src.cli.models import CLIContext, CLIError
-from src.client.client import AllureClient
-from src.client.exceptions import AllureAPIError, AllureAuthError, AllureNotFoundError, AllureValidationError
+from src.utils.error import AllureAPIError, AuthenticationError, ResourceNotFoundError, ValidationError
 
 
 @dataclass(frozen=True)
@@ -175,19 +174,19 @@ def _map_auth_validation_error(error: Exception, *, project_id: int) -> CLIError
             hint="Use a full base URL that starts with http:// or https://.",
             exit_code=1,
         )
-    if isinstance(error, AllureAuthError):
+    if isinstance(error, AuthenticationError):
         return CLIError(
             "Authentication failed for the provided Allure token.",
             hint="Verify the API token and confirm it has access to the requested project.",
             exit_code=1,
         )
-    if isinstance(error, AllureNotFoundError):
+    if isinstance(error, ResourceNotFoundError):
         return CLIError(
             f"Project {project_id} was not found or is not accessible.",
             hint="Verify the project ID and confirm the token can access that project.",
             exit_code=1,
         )
-    if isinstance(error, AllureValidationError):
+    if isinstance(error, ValidationError):
         return CLIError(
             f"Unable to validate project {project_id}.",
             hint="Verify the Allure URL and project ID, then try again.",
@@ -215,6 +214,8 @@ def _map_auth_validation_error(error: Exception, *, project_id: int) -> CLIError
 
 async def validate_auth_credentials(*, url: str, token: str, project_id: int) -> None:
     """Validate auth credentials with a live Allure token exchange and project probe."""
+    from src.client.client import AllureClient
+
     try:
         async with AllureClient(base_url=url, token=SecretStr(token), project=project_id) as client:
             await client.validate_project_access(project_id)

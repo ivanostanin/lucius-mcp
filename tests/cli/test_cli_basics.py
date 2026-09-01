@@ -4,6 +4,7 @@ Test basic CLI functionality.
 
 import json
 import os
+from unittest.mock import AsyncMock, patch
 
 from tests.cli.subprocess_helpers import (
     run_cli,
@@ -176,14 +177,16 @@ def test_legacy_command_style_is_rejected():
     assert accepted.returncode == 0
 
 
-def test_process_cli_default_json_output_without_format_flag():
-    """Process-level check: action output defaults to JSON when --format is omitted."""
-    result = run_cli_with_mocked_result(
-        ["test_case", "list", "--args", "{}"],
-        '{"ok":true,"count":2}',
-    )
-    assert result.returncode == 0
-    assert result.stdout.strip() == '{"ok":true,"count":2}'
+def test_cli_default_json_output_without_format_flag(capsys):
+    """Action routing defaults to JSON for a mocked tool call."""
+    mock_call = AsyncMock(return_value='{"ok":true,"count":2}')
+    with patch("src.cli.cli_entry.call_tool_function", new=mock_call):
+        from src.cli.cli_entry import run_cli
+
+        run_cli(["test_case", "list", "--args", "{}"])
+
+    assert capsys.readouterr().out.strip() == '{"ok":true,"count":2}'
+    mock_call.assert_awaited_once_with("list_test_cases", {"output_format": "json"})
 
 
 def test_process_cli_short_alias_uses_same_action_path():

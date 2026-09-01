@@ -32,6 +32,8 @@ from src.cli.route_matrix import CANONICAL_ROUTE_MATRIX
 from src.cli.schema_loader import load_tool_schemas
 from src.utils.auth import get_auth_context
 from src.utils.auth_resolution import resolve_auth_settings
+from src.utils.error import AuthenticationError, ResourceNotFoundError, ValidationError
+from tests.cli.import_guard import reject_imports
 from tests.cli.subprocess_helpers import run_cli, run_uv_cli
 
 
@@ -366,27 +368,23 @@ class TestCLIAuthCommandUnit:
         clear = parse_auth_command_options(["clear"])
         assert clear.mode == "clear"
 
-    def test_auth_help_and_status_do_not_import_fastmcp_or_src_main(self, capsys: pytest.CaptureFixture[str]) -> None:
-        original_fastmcp = sys.modules.get("fastmcp")
-        original_src_main = sys.modules.get("src.main")
-        sys.modules.pop("fastmcp", None)
-        sys.modules.pop("src.main", None)
-        try:
+    def test_auth_help_and_status_do_not_import_fastmcp_or_src_main(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        with (
+            patch("src.cli.auth_command.load_auth_config", return_value=None),
+            patch("src.cli.auth_command.auth_config_path", return_value=Path("/tmp/auth.json")),
+            reject_imports("fastmcp", "src.main"),
+        ):
             run_cli_in_process(["auth", "--help"])
-            _ = capsys.readouterr()
+            help_output = capsys.readouterr().out
             run_cli_in_process(["auth", "status"])
-            _ = capsys.readouterr()
-            assert "fastmcp" not in sys.modules
-            assert "src.main" not in sys.modules
-        finally:
-            if original_fastmcp is not None:
-                sys.modules["fastmcp"] = original_fastmcp
-            else:
-                sys.modules.pop("fastmcp", None)
-            if original_src_main is not None:
-                sys.modules["src.main"] = original_src_main
-            else:
-                sys.modules.pop("src.main", None)
+            status_output = capsys.readouterr().out
+
+        assert "CLI auth stores Allure credentials" in help_output
+        assert "CLI auth status: not configured" in status_output
+        assert "Location: /tmp/auth.json" in status_output
 
     def test_auth_route_stays_out_of_tool_route_matrix_and_schema(self) -> None:
         assert "auth" not in CANONICAL_ROUTE_MATRIX
@@ -470,10 +468,49 @@ class TestCLIAuthCommandUnit:
         )
         mock_save.assert_called_once()
 
-    def test_validation_error_mapping_redacts_exception_text_with_patch(self) -> None:
-        error = _map_auth_validation_error(RuntimeError("secret-token leaked"), project_id=7)
+    @pytest.mark.parametrize(
+        ("source_error", "expected_message"),
+        [
+            (AuthenticationError("invalid token"), "Authentication failed for the provided Allure token."),
+            (ResourceNotFoundError("missing project"), "Project 7 was not found or is not accessible."),
+            (ValidationError("invalid project"), "Unable to validate project 7."),
+            (RuntimeError("secret-token leaked"), "Unexpected auth validation error."),
+        ],
+    )
+    def test_validation_error_mapping_redacts_exception_text(
+        self,
+        source_error: Exception,
+        expected_message: str,
+    ) -> None:
+        error = _map_auth_validation_error(source_error, project_id=7)
         assert "secret-token" not in error.message
-        assert error.message == "Unexpected auth validation error."
+        assert error.message == expected_message
+
+    @pytest.mark.asyncio
+    async def test_validate_auth_credentials_uses_the_lazy_client_import(self) -> None:
+        calls: list[dict[str, object]] = []
+
+        class FakeClient:
+            def __init__(self, **kwargs: object) -> None:
+                calls.append(kwargs)
+
+            async def __aenter__(self) -> FakeClient:
+                return self
+
+            async def __aexit__(self, exc_type: object, exc: object, traceback: object) -> bool:
+                return False
+
+            async def validate_project_access(self, project_id: int) -> None:
+                calls.append({"project_id": project_id})
+
+        with patch("src.client.client.AllureClient", FakeClient):
+            from src.cli.auth_command import validate_auth_credentials
+
+            await validate_auth_credentials(url="https://example.testops.cloud", token="token", project_id=123)
+
+        assert calls[0]["base_url"] == "https://example.testops.cloud"
+        assert calls[0]["project"] == 123
+        assert calls[1] == {"project_id": 123}
 
     def test_get_auth_context_reads_live_environment_without_settings_mutation(
         self,

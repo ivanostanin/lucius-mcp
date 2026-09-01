@@ -9,7 +9,6 @@ import secrets
 import tempfile
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import AbstractAsyncContextManager
-from contextvars import ContextVar, Token
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -28,22 +27,6 @@ DEFAULT_TTL_SECONDS = 300
 _HANDLE_PATTERN = re.compile(r"^[A-Za-z0-9_-]{32,}$")
 _CONTENT_TYPE_PATTERN = re.compile(r"^[A-Za-z0-9!#$&^_.+-]+/[A-Za-z0-9!#$&^_.+-]+$")
 _UNSPECIFIED_HOST = ".".join(("0",) * 4)
-_DIRECT_CLI_REQUEST: ContextVar[bool] = ContextVar("lucius_direct_cli_attachment_request", default=False)
-
-
-def set_direct_cli_attachment_request(value: bool) -> Token[bool]:
-    """Mark a one-shot CLI invocation without coupling the CLI to HTTP gateway code."""
-    return _DIRECT_CLI_REQUEST.set(value)
-
-
-def reset_direct_cli_attachment_request(token: Token[bool]) -> None:
-    """Restore the caller's attachment delivery context."""
-    _DIRECT_CLI_REQUEST.reset(token)
-
-
-def is_direct_cli_attachment_request() -> bool:
-    """Return whether preparation is running in a process that exits after rendering."""
-    return _DIRECT_CLI_REQUEST.get()
 
 
 class AttachmentKind(str, Enum):

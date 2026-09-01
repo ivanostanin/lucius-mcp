@@ -7,8 +7,9 @@ from urllib.parse import urlsplit
 
 from src.client.exceptions import AllureValidationError
 from src.services.attachment_download_gateway import LoopbackAttachmentDownloadGateway
-from src.services.attachment_download_service import AttachmentDownloadRuntimeHolder, is_direct_cli_attachment_request
+from src.services.attachment_download_service import AttachmentDownloadRuntimeHolder
 from src.utils.config import settings
+from src.utils.direct_cli_context import is_direct_cli_attachment_request
 
 attachment_download_runtime_holder = AttachmentDownloadRuntimeHolder()
 attachment_download_loopback_gateway = LoopbackAttachmentDownloadGateway(attachment_download_runtime_holder)
