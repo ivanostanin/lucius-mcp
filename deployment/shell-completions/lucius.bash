@@ -77,7 +77,7 @@ _lucius_completion() {
                 return 0
                 ;;
             test_suite|test_suites|ts)
-                COMPREPLY=($(compgen -W "assign-test-cases assign_test_cases create delete list" -- "$cur"))
+                COMPREPLY=($(compgen -W "assign-test-cases assign_test_cases create delete get-contents get_contents list" -- "$cur"))
                 return 0
                 ;;
             *)

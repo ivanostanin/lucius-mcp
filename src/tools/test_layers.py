@@ -7,6 +7,7 @@ from src.tools.create_test_suite import create_test_suite
 from src.tools.delete_test_layer import delete_test_layer
 from src.tools.delete_test_layer_schema import delete_test_layer_schema
 from src.tools.delete_test_suite import delete_test_suite
+from src.tools.get_test_suite_contents import get_test_suite_contents
 from src.tools.list_test_layer_schemas import list_test_layer_schemas
 from src.tools.list_test_layers import list_test_layers
 from src.tools.list_test_suites import list_test_suites
@@ -21,6 +22,7 @@ __all__ = [
     "delete_test_layer",
     "delete_test_layer_schema",
     "delete_test_suite",
+    "get_test_suite_contents",
     "list_test_layer_schemas",
     "list_test_layers",
     "list_test_suites",

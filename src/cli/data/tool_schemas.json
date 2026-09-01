@@ -1263,7 +1263,7 @@
     "name": "delete_test_suite",
     "entity": "test_suite",
     "action": "delete",
-    "description": "Delete a test suite node from hierarchy.\n\u26a0\ufe0f CAUTION: Destructive.\n\nThis operation removes a hierarchy suite/group node. Allure TestOps handles\nnested entities according to its API behavior for tree groups.\n\nArgs:\n    suite_id: Existing suite (tree node) ID to delete.\n    confirm: Must be set to True to proceed.\n        This safety flag prevents accidental destructive actions.\n    project_id: Optional Allure TestOps project override.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    A confirmation or safety warning message.\n\nExample:\n    delete_test_suite(suite_id=12345, confirm=True)\n    -> \"\u2705 Test suite 12345 deleted successfully (idempotent).\"",
+    "description": "Delete a test suite node from hierarchy.\n\u26a0\ufe0f CAUTION: Destructive.\n\nThis operation removes a hierarchy suite/group node. Allure TestOps handles\nnested entities according to its API behavior for tree groups.\n\nArgs:\n    suite_id: Existing suite (tree node) ID to delete.\n    tree_id: Optional hierarchy tree containing the suite.\n    confirm: Must be set to True to proceed.\n        This safety flag prevents accidental destructive actions.\n    project_id: Optional Allure TestOps project override.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    A confirmation or safety warning message.\n\nExample:\n    delete_test_suite(suite_id=12345, confirm=True)\n    -> \"\u2705 Test suite 12345 deleted successfully (idempotent).\"",
     "input_schema": {
       "type": "object",
       "additionalProperties": false,
@@ -1287,6 +1287,18 @@
             }
           ],
           "description": "Optional Allure TestOps project ID override.",
+          "default": null
+        },
+        "tree_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional hierarchy tree ID. Use when the suite belongs to a non-default tree.",
           "default": null
         }
       },
@@ -1527,6 +1539,62 @@
       ]
     },
     "example_command": "lucius test_result get --args '{\"test_result_id\": 123}'"
+  },
+  "get_test_suite_contents": {
+    "name": "get_test_suite_contents",
+    "entity": "test_suite",
+    "action": "get_contents",
+    "description": "Get test cases directly assigned to one test suite.\n\nThis is a targeted hierarchy read. It does not enumerate unrelated suites\nor recursively traverse the project tree.\n\nArgs:\n    suite_id: Existing suite/group node ID to inspect.\n    project_id: Optional Allure TestOps project override.\n    tree_id: Optional hierarchy tree containing the suite.\n    expected_suite_name: Optional exact name of the target suite. Supply it when available to avoid reading a\n        missing node after an asynchronous deletion.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    The suite ID, tree context, and directly assigned test-case IDs.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "suite_id": {
+          "type": "integer",
+          "description": "Suite/group node ID to inspect in hierarchy."
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional Allure TestOps project ID override.",
+          "default": null
+        },
+        "tree_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional hierarchy tree ID. If omitted, the default project tree is used.",
+          "default": null
+        },
+        "expected_suite_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional exact suite name used to confirm the target before reading its contents.",
+          "default": null
+        }
+      },
+      "required": [
+        "suite_id"
+      ]
+    },
+    "example_command": "lucius test_suite get_contents --args '{\"suite_id\": 123}'"
   },
   "link_defect_to_test_case": {
     "name": "link_defect_to_test_case",

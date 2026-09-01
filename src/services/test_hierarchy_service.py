@@ -9,7 +9,7 @@ from dataclasses import dataclass
 import httpx
 
 from src.client import AllureClient
-from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError
+from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError, SuiteNotFoundError
 from src.client.generated.models.id_and_name_only_dto import IdAndNameOnlyDto
 from src.client.generated.models.page_tree_dto_v2 import PageTreeDtoV2
 from src.client.generated.models.test_case_full_tree_node_dto import TestCaseFullTreeNodeDto
@@ -18,7 +18,7 @@ from src.client.generated.models.test_case_tree_leaf_dto_v2 import TestCaseTreeL
 from src.client.generated.models.tree_dto_v2 import TreeDtoV2
 
 MAX_NAME_LENGTH = 255
-MAX_CONCURRENT_TREE_NODE_REQUESTS = 8
+MAX_CONCURRENT_TREE_NODE_REQUESTS = 16
 TREE_SNAPSHOT_ATTEMPTS = 3
 logger = logging.getLogger(__name__)
 
@@ -30,6 +30,15 @@ class SuiteNode:
     id: int
     name: str
     children: list[SuiteNode]
+
+
+@dataclass(frozen=True)
+class SuiteContents:
+    """Targeted suite contents and the resolved hierarchy-tree context."""
+
+    suite_id: int
+    tree_id: int
+    test_case_ids: list[int]
 
 
 class TestHierarchyService:
@@ -156,6 +165,13 @@ class TestHierarchyService:
                 return False
             raise exc
 
+        # TestOps can acknowledge deletion of a group while retaining its backing
+        # custom-field value and therefore the visible hierarchy node.  Remove
+        # that value through a targeted node lookup; never walk the shared tree.
+        cleanup_deleted = await self._delete_suite_via_custom_field_value(target_suite_id, tree_id=tree_id)
+        if cleanup_deleted is True:
+            logger.info("Deleted test suite %s via backing custom-field cleanup", target_suite_id)
+
         logger.info("Deleted test suite %s", target_suite_id)
         return True
 
@@ -207,7 +223,22 @@ class TestHierarchyService:
         self,
         suite_id: int,
         tree_id: int | None = None,
+        expected_suite_name: str | None = None,
     ) -> list[int]:
+        """Return only IDs of test cases directly assigned to a suite."""
+        contents = await self.get_suite_contents(
+            suite_id=suite_id,
+            tree_id=tree_id,
+            expected_suite_name=expected_suite_name,
+        )
+        return contents.test_case_ids
+
+    async def get_suite_contents(
+        self,
+        suite_id: int,
+        tree_id: int | None = None,
+        expected_suite_name: str | None = None,
+    ) -> SuiteContents:
         """Return test-case IDs directly assigned to a suite.
 
         This performs a targeted suite-node read, rather than traversing the
@@ -215,19 +246,40 @@ class TestHierarchyService:
         shared project.
         """
         target_suite_id = self._require_positive_id(suite_id, "Suite ID")
+        if expected_suite_name is not None:
+            resolved_suite = await self.resolve_suite_id_by_name(
+                name=expected_suite_name,
+                tree_id=tree_id,
+            )
+            if resolved_suite is None:
+                raise SuiteNotFoundError(
+                    message=f"Suite ID {target_suite_id} was not found in the requested hierarchy tree"
+                )
         target_tree = await self._resolve_tree(tree_id)
         target_tree_id = self._require_positive_id(target_tree.id, "Tree ID")
-        node = await self._fetch_tree_node(tree_id=target_tree_id, parent_suite_id=target_suite_id)
+        try:
+            node = await self._fetch_tree_node(tree_id=target_tree_id, parent_suite_id=target_suite_id)
+        except AllureNotFoundError as exc:
+            if expected_suite_name is not None:
+                raise SuiteNotFoundError(
+                    message=f"Suite ID {target_suite_id} was not found in tree {target_tree_id}"
+                ) from exc
+            raise
         if node.id != target_suite_id:
-            raise AllureNotFoundError(message=f"Suite ID {target_suite_id} was not found in tree {target_tree_id}")
+            raise SuiteNotFoundError(message=f"Suite ID {target_suite_id} was not found in tree {target_tree_id}")
 
         children = node.children.content if node.children and node.children.content else []
-        return [
+        test_case_ids = [
             actual.test_case_id
             for item in children
             if isinstance((actual := item.actual_instance), TestCaseTreeLeafDtoV2)
             and isinstance(actual.test_case_id, int)
         ]
+        return SuiteContents(
+            suite_id=target_suite_id,
+            tree_id=target_tree_id,
+            test_case_ids=test_case_ids,
+        )
 
     async def _resolve_tree(self, tree_id: int | None) -> TreeDtoV2:
         """Resolve tree by explicit ID or choose default project tree."""

@@ -98,7 +98,7 @@ _lucius() {
                 ;;
             test_suite|test_suites|ts)
                 local -a actions
-                actions=(assign-test-cases assign_test_cases create delete list)
+                actions=(assign-test-cases assign_test_cases create delete get-contents get_contents list)
                 _describe -t actions 'actions' actions
                 ;;
             *)

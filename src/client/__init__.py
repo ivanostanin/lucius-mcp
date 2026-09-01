@@ -41,6 +41,7 @@ from .exceptions import (
     AllureRateLimitError,
     AllureValidationError,
     LaunchNotFoundError,
+    SuiteNotFoundError,
     TestCaseNotFoundError,
 )
 
@@ -75,6 +76,7 @@ __all__ = [
     "SharedStepDto",
     "SharedStepPatchDto",
     "StepWithExpected",
+    "SuiteNotFoundError",
     "TestCaseAttachmentRowDto",
     "TestCaseCreateV2Dto",
     "TestCaseDto",

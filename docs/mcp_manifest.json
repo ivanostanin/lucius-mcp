@@ -15393,6 +15393,150 @@
       "execution": null
     },
     {
+      "name": "get_test_suite_contents",
+      "title": "Get Test Suite Contents",
+      "description": "Get test cases directly assigned to one test suite.\n\nThis is a targeted hierarchy read. It does not enumerate unrelated suites\nor recursively traverse the project tree.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "suite_id": {
+            "description": "Suite/group node ID to inspect in hierarchy.",
+            "type": "integer"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional Allure TestOps project ID override."
+          },
+          "tree_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional hierarchy tree ID. If omitted, the default project tree is used."
+          },
+          "expected_suite_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional exact suite name used to confirm the target before reading its contents."
+          },
+          "output_format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "plain",
+                  "json"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Output format: 'json' (default) or 'plain'."
+          }
+        },
+        "required": [
+          "suite_id"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "suite_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Suite Id"
+          },
+          "tree_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tree Id"
+          },
+          "test_case_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Test Case Ids"
+          },
+          "assigned_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Assigned Count"
+          }
+        },
+        "title": "GetTestSuiteContentsOutput",
+        "type": "object"
+      },
+      "icons": null,
+      "annotations": {
+        "title": "Get Test Suite Contents",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": null
+      },
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "test-suite"
+          ]
+        }
+      },
+      "execution": null
+    },
+    {
       "name": "assign_test_cases_to_suite",
       "title": "Assign Test Cases To Suite",
       "description": "Assign test cases to a suite path in hierarchy.\n\n⚠️ CAUTION: Destructive.\nReassigning test cases changes their hierarchy location.",

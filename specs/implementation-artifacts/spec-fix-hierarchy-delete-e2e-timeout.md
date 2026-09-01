@@ -40,7 +40,7 @@ context:
 
 ## Code Map
 
-- `tests/e2e/test_test_hierarchy_management.py` -- verifies deletion through the public hierarchy service.
+- `tests/e2e/test_test_hierarchy_management.py` -- verifies hierarchy workflows through registered public tools.
 - `src/services/test_hierarchy_service.py` -- contains targeted deletion fallback and bounded, page-complete hierarchy traversal.
 - `src/client/client.py` -- preserves tree-node metadata and translates raw non-success responses into typed client exceptions.
 - `tests/unit/test_client_facade_coverage.py` -- covers tree-node response parsing and typed non-success mappings.
@@ -64,7 +64,7 @@ context:
 
 ## Design Notes
 
-The full list tool must read every hierarchy group to render a complete tree, but it now limits concurrent child requests and preserves result order. Deletion must not initiate that scan after success. The E2E uses the public service's exact-name resolver with run-unique names, while separate coverage validates complete hierarchy listing.
+The full list tool must read every hierarchy group to render a complete tree, but it now limits concurrent child requests and preserves result order. Deletion must not initiate that scan after success. Tool-only E2E verification reads the created suite by ID through a targeted public tool, while separate coverage validates complete hierarchy listing.
 
 ## Verification
 
@@ -77,6 +77,7 @@ The full list tool must read every hierarchy group to render a complete tree, bu
 ## Spec Change Log
 
 - 2026-09-01: User rejected direct-client E2E polling. Replaced every direct-client E2E read with public service behavior and corrected the production deletion/listing paths that caused the timeout.
+- 2026-09-01: User required tool-only E2E assertions. Targeted suite-content reads are now exposed as a registered public tool, retaining focused coverage without direct client or service calls in E2E code.
 
 ## Suggested Review Order
 
