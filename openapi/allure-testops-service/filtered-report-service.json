@@ -23403,14 +23403,7 @@
           "content": {
             "type": "array",
             "items": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/TestCaseLightTreeNodeDto"
-                },
-                {
-                  "$ref": "#/components/schemas/TestCaseTreeLeafDtoV2"
-                }
-              ]
+              "$ref": "#/components/schemas/TestCaseTreeNodeDto"
             }
           },
           "empty": {
@@ -27715,6 +27708,9 @@
           "parentNodeId": {
             "type": "integer",
             "format": "int64"
+          },
+          "type": {
+            "$ref": "#/components/schemas/NodeType"
           }
         }
       },
@@ -28892,7 +28888,11 @@
       "TestCaseTreeNodeDto": {
         "type": "object",
         "discriminator": {
-          "propertyName": "type"
+          "propertyName": "type",
+          "mapping": {
+            "GROUP": "#/components/schemas/TestCaseLightTreeNodeDto",
+            "LEAF": "#/components/schemas/TestCaseTreeLeafDtoV2"
+          }
         },
         "properties": {
           "id": {

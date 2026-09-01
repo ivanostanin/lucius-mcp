@@ -61,6 +61,7 @@ from src.tools.test_layers import (
     delete_test_layer,
     delete_test_layer_schema,
     delete_test_suite,
+    get_test_suite_contents,
     list_test_layer_schemas,
     list_test_layers,
     list_test_suites,
@@ -107,6 +108,7 @@ __all__ = [
     "get_test_case_custom_fields",
     "get_test_case_details",
     "get_test_result",
+    "get_test_suite_contents",
     "link_defect_to_test_case",
     "link_shared_step",
     "list_custom_field_values",
@@ -197,6 +199,7 @@ all_tools: list[ToolFn] = [
     # Test Hierarchy Tools
     create_test_suite,
     list_test_suites,
+    get_test_suite_contents,
     assign_test_cases_to_suite,
     delete_test_suite,
     # Test Plan Tools

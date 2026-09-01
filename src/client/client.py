@@ -106,8 +106,6 @@ from .generated.models.page_shared_step_dto import PageSharedStepDto
 from .generated.models.page_test_case_attachment_row_dto import PageTestCaseAttachmentRowDto
 from .generated.models.page_test_case_dto import PageTestCaseDto
 from .generated.models.page_test_case_row_dto import PageTestCaseRowDto
-from .generated.models.page_test_case_tree_node_dto import PageTestCaseTreeNodeDto
-from .generated.models.page_test_case_tree_node_dto_content_inner import PageTestCaseTreeNodeDtoContentInner
 from .generated.models.page_test_fixture_result_attachment_row_dto import PageTestFixtureResultAttachmentRowDto
 from .generated.models.page_test_result_attachment_row_dto import PageTestResultAttachmentRowDto
 from .generated.models.page_test_result_flat_dto import PageTestResultFlatDto
@@ -3617,79 +3615,20 @@ class AllureClient:
         if size is not None and (not isinstance(size, int) or size <= 0):
             raise AllureValidationError("Size must be a positive integer")
 
-        response = await tree_api.get_tree_node_without_preload_content(
-            project_id=project_id,
-            tree_id=tree_id,
-            parent_node_id=parent_node_id,
-            search=search,
-            filter_id=filter_id,
-            page=page,
-            size=size,
-            sort=sort,
-            query=query,
-            base_aql=base_aql,
-            _request_timeout=self._timeout,
-        )
-
-        response_text = response.read().decode("utf-8")
-        payload = json.loads(response_text)
-
-        root = TestCaseFullTreeNodeDto(
-            id=payload.get("id"),
-            name=payload.get("name"),
-            type=payload.get("type"),
-            children=self._parse_tree_children(payload.get("children")),
-        )
-        return root
-
-    def _parse_tree_children(self, children_payload: object) -> PageTestCaseTreeNodeDto | None:
-        """Parse raw tree node children payload into generated DTOs safely."""
-        if not isinstance(children_payload, dict):
-            return None
-
-        content_payload = children_payload.get("content")
-        if not isinstance(content_payload, list):
-            return PageTestCaseTreeNodeDto(
-                content=[],
-                total_elements=children_payload.get("totalElements"),
-                total_pages=children_payload.get("totalPages"),
-                size=children_payload.get("size"),
-                number=children_payload.get("number"),
+        return await self._call_api(
+            tree_api.get_tree_node(
+                project_id=project_id,
+                tree_id=tree_id,
+                parent_node_id=parent_node_id,
+                search=search,
+                filter_id=filter_id,
+                page=page,
+                size=size,
+                sort=sort,
+                query=query,
+                base_aql=base_aql,
+                _request_timeout=self._timeout,
             )
-
-        content: list[PageTestCaseTreeNodeDtoContentInner] = []
-        for item in content_payload:
-            if not isinstance(item, dict):
-                continue
-
-            item_type = item.get("type")
-            if item_type == "GROUP":
-                group_node = TestCaseLightTreeNodeDto(
-                    id=item.get("id"),
-                    name=item.get("name"),
-                    type=item_type,
-                    count=item.get("count"),
-                    custom_field_id=item.get("customFieldId"),
-                    custom_field_value_id=item.get("customFieldValueId"),
-                    parent_node_id=item.get("parentNodeId"),
-                )
-                content.append(PageTestCaseTreeNodeDtoContentInner(actual_instance=group_node))
-                continue
-
-            if item_type == "LEAF":
-                leaf_payload = dict(item)
-                if "testCaseId" not in leaf_payload and isinstance(leaf_payload.get("id"), int):
-                    leaf_payload["testCaseId"] = leaf_payload["id"]
-                leaf_node = TestCaseTreeLeafDtoV2.from_dict(leaf_payload)
-                if leaf_node is not None:
-                    content.append(PageTestCaseTreeNodeDtoContentInner(actual_instance=leaf_node))
-
-        return PageTestCaseTreeNodeDto(
-            content=content,
-            total_elements=children_payload.get("totalElements"),
-            total_pages=children_payload.get("totalPages"),
-            size=children_payload.get("size"),
-            number=children_payload.get("number"),
         )
 
     async def assign_test_cases_to_tree_node(

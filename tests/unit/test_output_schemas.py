@@ -177,6 +177,15 @@ def test_test_result_attachment_schema_rejects_removed_storage_key() -> None:
             },
         ),
         (
+            "get_test_suite_contents",
+            {
+                "suite_id": 2,
+                "tree_id": 1,
+                "test_case_ids": [6, 7],
+                "assigned_count": 2,
+            },
+        ),
+        (
             "list_defect_matchers",
             {
                 "defect_id": 4,

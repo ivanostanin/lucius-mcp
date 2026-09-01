@@ -16,6 +16,10 @@ class AllureNotFoundError(ResourceNotFoundError):
     """Resource not found (404)."""
 
 
+class SuiteNotFoundError(AllureNotFoundError):
+    """The requested hierarchy suite is absent from an otherwise valid tree."""
+
+
 class AllureValidationError(ValidationError):
     """Validation failed (400)."""
 
@@ -80,5 +84,6 @@ __all__ = [
     "AllureRateLimitError",
     "AllureValidationError",
     "LaunchNotFoundError",
+    "SuiteNotFoundError",
     "TestCaseNotFoundError",
 ]

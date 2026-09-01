@@ -169,6 +169,45 @@ def _patch_manual_session_schema(spec: dict) -> None:
             required.append(field_name)
 
 
+def _patch_test_case_tree_schema(spec: dict) -> None:
+    """Repair hierarchy-node discrimination missing from the upstream contract.
+
+    The TestOps response identifies tree children with the wire values ``GROUP``
+    and ``LEAF``.  The upstream base schema omits those mappings and the page
+    declares an inline oneOf, which the Python generator cannot discriminate.
+    Referencing the corrected named base schema lets generated deserialization
+    return the concrete group and leaf DTOs directly.
+    """
+    schemas = spec.get("components", {}).get("schemas", {})
+    if not isinstance(schemas, dict):
+        return
+
+    node_schema = schemas.get("TestCaseTreeNodeDto")
+    if isinstance(node_schema, dict):
+        discriminator = node_schema.setdefault("discriminator", {})
+        if isinstance(discriminator, dict):
+            discriminator["propertyName"] = "type"
+            discriminator["mapping"] = {
+                "GROUP": "#/components/schemas/TestCaseLightTreeNodeDto",
+                "LEAF": "#/components/schemas/TestCaseTreeLeafDtoV2",
+            }
+
+    page_schema = schemas.get("PageTestCaseTreeNodeDto")
+    if isinstance(page_schema, dict):
+        properties = page_schema.setdefault("properties", {})
+        if isinstance(properties, dict):
+            content = properties.setdefault("content", {"type": "array"})
+            if isinstance(content, dict):
+                content["type"] = "array"
+                content["items"] = {"$ref": "#/components/schemas/TestCaseTreeNodeDto"}
+
+    full_node_schema = schemas.get("TestCaseFullTreeNodeDto")
+    if isinstance(full_node_schema, dict):
+        properties = full_node_schema.setdefault("properties", {})
+        if isinstance(properties, dict):
+            properties.setdefault("type", {"$ref": "#/components/schemas/NodeType"})
+
+
 def filter_spec() -> None:
     print(f"Reading spec from {INPUT_FILE}...")
     with open(INPUT_FILE) as f:
@@ -199,6 +238,7 @@ def filter_spec() -> None:
     spec["paths"] = filtered_paths
 
     _patch_manual_session_schema(spec)
+    _patch_test_case_tree_schema(spec)
 
     # We are NOT filtering components/schemas aggressively because it's hard to trace
     # all dependencies (refs) without a full graph traversal.

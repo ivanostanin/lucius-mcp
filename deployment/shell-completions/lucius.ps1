@@ -68,7 +68,7 @@ Register-ArgumentCompleter -Native -CommandName lucius -ScriptBlock {
         "test_layer_schema" = @("create", "delete", "list", "update")
         "test_plan" = @("create", "delete", "list", "manage-content", "manage_content", "update")
         "test_result" = @("get")
-        "test_suite" = @("assign-test-cases", "assign_test_cases", "create", "delete", "list")
+        "test_suite" = @("assign-test-cases", "assign_test_cases", "create", "delete", "get-contents", "get_contents", "list")
     }
 
     if ($commandAst.CommandElements.Count -le 1) {

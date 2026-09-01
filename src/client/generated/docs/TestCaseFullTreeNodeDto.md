@@ -10,6 +10,7 @@ Name | Type | Description | Notes
 **id** | **int** |  | [optional] 
 **name** | **str** |  | [optional] 
 **parent_node_id** | **int** |  | [optional] 
+**type** | [**NodeType**](NodeType.md) |  | [optional]
 
 ## Example
 
@@ -29,5 +30,4 @@ test_case_full_tree_node_dto_dict = test_case_full_tree_node_dto_instance.to_dic
 test_case_full_tree_node_dto_from_dict = TestCaseFullTreeNodeDto.from_dict(test_case_full_tree_node_dto_dict)
 ```
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
-
 

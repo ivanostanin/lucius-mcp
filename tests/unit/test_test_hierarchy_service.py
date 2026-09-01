@@ -1,7 +1,9 @@
 """Unit tests for TestHierarchyService."""
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
 
 from src.client import AllureClient
@@ -10,13 +12,12 @@ from src.client.generated.models.id_and_name_only_dto import IdAndNameOnlyDto
 from src.client.generated.models.node_type import NodeType
 from src.client.generated.models.page_id_and_name_only_dto import PageIdAndNameOnlyDto
 from src.client.generated.models.page_test_case_tree_node_dto import PageTestCaseTreeNodeDto
-from src.client.generated.models.page_test_case_tree_node_dto_content_inner import PageTestCaseTreeNodeDtoContentInner
 from src.client.generated.models.page_tree_dto_v2 import PageTreeDtoV2
 from src.client.generated.models.test_case_full_tree_node_dto import TestCaseFullTreeNodeDto
 from src.client.generated.models.test_case_light_tree_node_dto import TestCaseLightTreeNodeDto
 from src.client.generated.models.test_case_tree_leaf_dto_v2 import TestCaseTreeLeafDtoV2
 from src.client.generated.models.tree_dto_v2 import TreeDtoV2
-from src.services.test_hierarchy_service import SuiteNode, TestHierarchyService
+from src.services.test_hierarchy_service import MAX_CONCURRENT_TREE_NODE_REQUESTS, SuiteNode, TestHierarchyService
 
 
 @pytest.fixture
@@ -49,12 +50,12 @@ def _root_with_suites() -> TestCaseFullTreeNodeDto:
         id=11,
         name="UI",
         type=NodeType.GROUP,
-        children=PageTestCaseTreeNodeDto(content=[PageTestCaseTreeNodeDtoContentInner(actual_instance=child_suite)]),
+        children=PageTestCaseTreeNodeDto(content=[child_suite]),
     )
     return TestCaseFullTreeNodeDto(
         id=10,
         name="Root",
-        children=PageTestCaseTreeNodeDto(content=[PageTestCaseTreeNodeDtoContentInner(actual_instance=parent_suite)]),
+        children=PageTestCaseTreeNodeDto(content=[parent_suite]),
     )
 
 
@@ -125,13 +126,11 @@ async def test_list_test_suites_returns_hierarchy(service: TestHierarchyService,
             name="UI",
             children=PageTestCaseTreeNodeDto(
                 content=[
-                    PageTestCaseTreeNodeDtoContentInner(
-                        actual_instance=TestCaseLightTreeNodeDto(
-                            id=12,
-                            name="Auth",
-                            type=NodeType.GROUP,
-                            parent_node_id=11,
-                        )
+                    TestCaseLightTreeNodeDto(
+                        id=12,
+                        name="Auth",
+                        type=NodeType.GROUP,
+                        parent_node_id=11,
                     )
                 ]
             ),
@@ -159,6 +158,232 @@ async def test_list_test_suites_invalid_tree_id(service: TestHierarchyService) -
 
 
 @pytest.mark.asyncio
+async def test_get_test_case_ids_in_suite_reads_all_direct_child_pages(
+    service: TestHierarchyService, mock_client: MagicMock
+) -> None:
+    """Targeted suite reads preserve leaves returned after the first page."""
+    mock_client.get_tree.return_value = TreeDtoV2(id=333, name="Tree A", project_id=1, custom_fields_project=[])
+    first_leaf = TestCaseTreeLeafDtoV2(id=9001, name="Case 1001", test_case_id=1001, type=NodeType.LEAF)
+    second_leaf = TestCaseTreeLeafDtoV2(id=9002, name="Case 1002", test_case_id=1002, type=NodeType.LEAF)
+    nested_group = TestCaseLightTreeNodeDto(id=12, name="Nested", type=NodeType.GROUP, parent_node_id=11)
+    mock_client.get_tree_node.side_effect = [
+        TestCaseFullTreeNodeDto(
+            id=11,
+            name="Suite",
+            children=PageTestCaseTreeNodeDto(
+                content=[
+                    first_leaf,
+                    nested_group,
+                ],
+                total_pages=2,
+            ),
+        ),
+        TestCaseFullTreeNodeDto(
+            id=11,
+            name="Suite",
+            children=PageTestCaseTreeNodeDto(
+                content=[second_leaf],
+                total_pages=2,
+            ),
+        ),
+    ]
+
+    test_case_ids = await service.get_test_case_ids_in_suite(suite_id=11, tree_id=333)
+
+    assert test_case_ids == [1001, 1002]
+    assert [call.kwargs["page"] for call in mock_client.get_tree_node.call_args_list] == [0, 1]
+
+
+@pytest.mark.asyncio
+async def test_get_test_case_ids_in_suite_uses_leaf_id_when_test_case_id_is_omitted(
+    service: TestHierarchyService, mock_client: MagicMock
+) -> None:
+    """TestOps leaves without testCaseId retain the legacy node-ID fallback."""
+    mock_client.get_tree.return_value = TreeDtoV2(id=333, name="Tree A", project_id=1, custom_fields_project=[])
+    mock_client.get_tree_node.return_value = TestCaseFullTreeNodeDto(
+        id=11,
+        name="Suite",
+        children=PageTestCaseTreeNodeDto(
+            content=[TestCaseTreeLeafDtoV2(id=1001, name="Case 1001", type=NodeType.LEAF)]
+        ),
+    )
+
+    test_case_ids = await service.get_test_case_ids_in_suite(suite_id=11, tree_id=333)
+
+    assert test_case_ids == [1001]
+
+
+@pytest.mark.asyncio
+async def test_get_test_case_ids_in_suite_rejects_a_mismatched_node(
+    service: TestHierarchyService, mock_client: MagicMock
+) -> None:
+    """A targeted lookup never treats a different node as the requested suite."""
+    mock_client.get_tree.return_value = TreeDtoV2(id=333, name="Tree A", project_id=1, custom_fields_project=[])
+    mock_client.get_tree_node.return_value = TestCaseFullTreeNodeDto(
+        id=12,
+        name="Another suite",
+        children=PageTestCaseTreeNodeDto(content=[]),
+    )
+
+    with pytest.raises(AllureNotFoundError, match="Suite ID 11 was not found"):
+        await service.get_test_case_ids_in_suite(suite_id=11, tree_id=333)
+
+
+@pytest.mark.asyncio
+async def test_get_test_case_ids_in_suite_checks_expected_name_before_node_read(
+    service: TestHierarchyService, mock_client: MagicMock
+) -> None:
+    """An expected name proves absence without an expensive missing-node read."""
+    mock_client.get_tree.return_value = TreeDtoV2(id=333, name="Tree A", project_id=1, custom_fields_project=[])
+    mock_client.suggest_tree_groups.return_value = PageIdAndNameOnlyDto(content=[])
+
+    with pytest.raises(AllureNotFoundError, match="Suite ID 11 was not found"):
+        await service.get_test_case_ids_in_suite(
+            suite_id=11,
+            tree_id=333,
+            expected_suite_name="Deleted suite",
+        )
+
+    mock_client.get_tree_node.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_get_test_case_ids_in_suite_does_not_confuse_a_duplicate_name_with_absence(
+    service: TestHierarchyService, mock_client: MagicMock
+) -> None:
+    """A same-named suite with another ID falls back to the authoritative node read."""
+    mock_client.get_tree.return_value = TreeDtoV2(id=333, name="Tree A", project_id=1, custom_fields_project=[])
+    mock_client.suggest_tree_groups.return_value = PageIdAndNameOnlyDto(
+        content=[IdAndNameOnlyDto(id=12, name="Duplicate")]
+    )
+    mock_client.get_tree_node.return_value = TestCaseFullTreeNodeDto(
+        id=11,
+        name="Duplicate",
+        children=PageTestCaseTreeNodeDto(content=[]),
+    )
+
+    assert (
+        await service.get_test_case_ids_in_suite(
+            suite_id=11,
+            tree_id=333,
+            expected_suite_name="Duplicate",
+        )
+        == []
+    )
+    mock_client.get_tree_node.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_list_test_suites_reads_all_group_child_pages(
+    service: TestHierarchyService, mock_client: MagicMock
+) -> None:
+    """List suites preserves groups returned beyond the first child page."""
+    mock_client.get_tree.return_value = TreeDtoV2(id=333, name="Tree A", project_id=1, custom_fields_project=[])
+
+    root_group = TestCaseLightTreeNodeDto(id=11, name="UI", type=NodeType.GROUP)
+    first_child = TestCaseLightTreeNodeDto(id=12, name="Auth", type=NodeType.GROUP, parent_node_id=11)
+    second_child = TestCaseLightTreeNodeDto(id=13, name="Billing", type=NodeType.GROUP, parent_node_id=11)
+    mock_client.get_tree_node.side_effect = [
+        TestCaseFullTreeNodeDto(
+            id=10,
+            name="Root",
+            children=PageTestCaseTreeNodeDto(content=[root_group]),
+        ),
+        TestCaseFullTreeNodeDto(
+            id=11,
+            name="UI",
+            children=PageTestCaseTreeNodeDto(
+                content=[first_child],
+                total_pages=2,
+            ),
+        ),
+        TestCaseFullTreeNodeDto(
+            id=11,
+            name="UI",
+            children=PageTestCaseTreeNodeDto(
+                content=[second_child],
+                total_pages=2,
+            ),
+        ),
+        TestCaseFullTreeNodeDto(id=12, name="Auth", children=PageTestCaseTreeNodeDto(content=[])),
+        TestCaseFullTreeNodeDto(id=13, name="Billing", children=PageTestCaseTreeNodeDto(content=[])),
+    ]
+
+    _tree, suites = await service.list_test_suites(tree_id=333)
+
+    assert [child.id for child in suites[0].children] == [12, 13]
+    assert mock_client.get_tree_node.call_args_list[2].kwargs["page"] == 1
+
+
+@pytest.mark.asyncio
+async def test_list_test_suites_retries_transient_tree_resolution(
+    service: TestHierarchyService, mock_client: MagicMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A transient tree lookup failure retries the complete snapshot."""
+    mock_client.get_tree.side_effect = [
+        httpx.ReadTimeout("temporary"),
+        TreeDtoV2(id=333, name="Tree A", project_id=1, custom_fields_project=[]),
+    ]
+    mock_client.get_tree_node.return_value = TestCaseFullTreeNodeDto(
+        id=10, name="Root", children=PageTestCaseTreeNodeDto(content=[])
+    )
+    monkeypatch.setattr("src.services.test_hierarchy_service.asyncio.sleep", AsyncMock())
+
+    tree, suites = await service.list_test_suites(tree_id=333)
+
+    assert tree.id == 333
+    assert suites == []
+    assert mock_client.get_tree.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_list_test_suites_does_not_retry_client_errors(
+    service: TestHierarchyService, mock_client: MagicMock
+) -> None:
+    """A client error is returned directly instead of masking it with retries."""
+    mock_client.get_tree.side_effect = AllureAPIError("bad request", status_code=400)
+
+    with pytest.raises(AllureAPIError, match="bad request"):
+        await service.list_test_suites(tree_id=333)
+
+    mock_client.get_tree.assert_awaited_once_with(333)
+
+
+@pytest.mark.asyncio
+async def test_list_test_suites_bounds_parallel_tree_node_reads(
+    service: TestHierarchyService, mock_client: MagicMock
+) -> None:
+    """Wide hierarchies respect the configured tree-node read bound."""
+    mock_client.get_tree.return_value = TreeDtoV2(id=333, name="Tree A", project_id=1, custom_fields_project=[])
+    active_reads = 0
+    peak_reads = 0
+
+    suites = [TestCaseLightTreeNodeDto(id=index, name=f"Suite {index}", type=NodeType.GROUP) for index in range(11, 24)]
+
+    async def get_tree_node(**kwargs: int | None) -> TestCaseFullTreeNodeDto:
+        nonlocal active_reads, peak_reads
+        parent_node_id = kwargs["parent_node_id"]
+        if parent_node_id is None:
+            return TestCaseFullTreeNodeDto(
+                id=10,
+                name="Root",
+                children=PageTestCaseTreeNodeDto(content=suites),
+            )
+        active_reads += 1
+        peak_reads = max(peak_reads, active_reads)
+        await asyncio.sleep(0)
+        active_reads -= 1
+        return TestCaseFullTreeNodeDto(id=parent_node_id, name="Suite", children=PageTestCaseTreeNodeDto(content=[]))
+
+    mock_client.get_tree_node.side_effect = get_tree_node
+
+    _tree, result = await service.list_test_suites(tree_id=333)
+
+    assert len(result) == len(suites)
+    assert peak_reads <= MAX_CONCURRENT_TREE_NODE_REQUESTS
+
+
+@pytest.mark.asyncio
 async def test_assign_test_cases_to_suite_success(service: TestHierarchyService, mock_client: MagicMock) -> None:
     """Assign test cases deduplicates IDs and calls bulk assignment."""
     mock_client.get_tree.return_value = TreeDtoV2(id=200, name="Main", project_id=1, custom_fields_project=[])
@@ -173,21 +398,17 @@ async def test_assign_test_cases_to_suite_success(service: TestHierarchyService,
         name="Root",
         children=PageTestCaseTreeNodeDto(
             content=[
-                PageTestCaseTreeNodeDtoContentInner(
-                    actual_instance=TestCaseTreeLeafDtoV2(
-                        id=9001,
-                        name="Case 1001",
-                        test_case_id=1001,
-                        type=NodeType.LEAF,
-                    )
+                TestCaseTreeLeafDtoV2(
+                    id=9001,
+                    name="Case 1001",
+                    test_case_id=1001,
+                    type=NodeType.LEAF,
                 ),
-                PageTestCaseTreeNodeDtoContentInner(
-                    actual_instance=TestCaseTreeLeafDtoV2(
-                        id=9002,
-                        name="Case 1002",
-                        test_case_id=1002,
-                        type=NodeType.LEAF,
-                    )
+                TestCaseTreeLeafDtoV2(
+                    id=9002,
+                    name="Case 1002",
+                    test_case_id=1002,
+                    type=NodeType.LEAF,
                 ),
             ]
         ),
@@ -249,13 +470,11 @@ async def test_assign_test_cases_to_suite_missing_leaf_raises(
         name="Root",
         children=PageTestCaseTreeNodeDto(
             content=[
-                PageTestCaseTreeNodeDtoContentInner(
-                    actual_instance=TestCaseTreeLeafDtoV2(
-                        id=9000,
-                        name="Case 1000",
-                        test_case_id=1000,
-                        type=NodeType.LEAF,
-                    )
+                TestCaseTreeLeafDtoV2(
+                    id=9000,
+                    name="Case 1000",
+                    test_case_id=1000,
+                    type=NodeType.LEAF,
                 )
             ]
         ),
@@ -268,14 +487,44 @@ async def test_assign_test_cases_to_suite_missing_leaf_raises(
 
 @pytest.mark.asyncio
 async def test_delete_suite_success(service: TestHierarchyService, mock_client: MagicMock) -> None:
-    """Delete suite returns True when API delete succeeds."""
-    mock_client.list_trees.return_value = PageTreeDtoV2(content=[])
+    """Successful group deletes remove the backing value with a targeted lookup."""
+    mock_client.get_tree.return_value = TreeDtoV2(id=200, name="Main", project_id=1, custom_fields_project=[])
+    mock_client.get_tree_node.return_value = TestCaseFullTreeNodeDto(
+        id=11,
+        name="Suite",
+        custom_field_value_id=3706,
+    )
 
-    deleted = await service.delete_suite(suite_id=11)
+    deleted = await service.delete_suite(suite_id=11, tree_id=200)
 
     assert deleted is True
     mock_client.delete_tree_group.assert_called_once_with(project_id=1, group_id=11)
-    mock_client.delete_custom_field_value.assert_not_called()
+    mock_client.list_trees.assert_not_called()
+    mock_client.get_tree_node.assert_called_once_with(project_id=1, tree_id=200, parent_node_id=11, page=0, size=500)
+    mock_client.delete_custom_field_value.assert_called_once_with(project_id=1, cfv_id=3706)
+
+
+@pytest.mark.asyncio
+async def test_delete_suite_retries_transient_backing_value_cleanup(
+    service: TestHierarchyService, mock_client: MagicMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A successful group delete retries transient backing-value cleanup failures."""
+    mock_client.get_tree.side_effect = [
+        httpx.ReadTimeout("temporary"),
+        TreeDtoV2(id=200, name="Main", project_id=1, custom_fields_project=[]),
+    ]
+    mock_client.get_tree_node.return_value = TestCaseFullTreeNodeDto(
+        id=11,
+        name="Suite",
+        custom_field_value_id=3706,
+    )
+    monkeypatch.setattr("src.services.test_hierarchy_service.asyncio.sleep", AsyncMock())
+
+    deleted = await service.delete_suite(suite_id=11, tree_id=200)
+
+    assert deleted is True
+    assert mock_client.get_tree.await_count == 2
+    mock_client.delete_custom_field_value.assert_awaited_once_with(project_id=1, cfv_id=3706)
 
 
 @pytest.mark.asyncio
@@ -295,32 +544,64 @@ async def test_delete_suite_fallback_deletes_custom_field_value(
     service: TestHierarchyService, mock_client: MagicMock
 ) -> None:
     """Delete suite removes backing custom field value when node still exists."""
+    mock_client.delete_tree_group.side_effect = AllureAPIError("delete failed", status_code=500)
     mock_client.list_trees.return_value = PageTreeDtoV2(
         content=[TreeDtoV2(id=200, name="Main", project_id=1, custom_fields_project=[])]
     )
     mock_client.get_tree_node.return_value = TestCaseFullTreeNodeDto(
-        id=10,
-        name="Root",
-        children=PageTestCaseTreeNodeDto(
-            content=[
-                PageTestCaseTreeNodeDtoContentInner(
-                    actual_instance=TestCaseLightTreeNodeDto(
-                        id=11,
-                        name="Suite",
-                        type=NodeType.GROUP,
-                        parent_node_id=10,
-                        custom_field_value_id=3706,
-                    )
-                )
-            ]
-        ),
+        id=11,
+        name="Suite",
+        custom_field_value_id=3706,
     )
 
     deleted = await service.delete_suite(suite_id=11)
 
     assert deleted is True
     mock_client.delete_tree_group.assert_called_once_with(project_id=1, group_id=11)
+    mock_client.get_tree_node.assert_called_once_with(project_id=1, tree_id=200, parent_node_id=11, page=0, size=500)
     mock_client.delete_custom_field_value.assert_called_once_with(project_id=1, cfv_id=3706)
+
+
+@pytest.mark.asyncio
+async def test_delete_suite_fallback_searches_all_project_trees(
+    service: TestHierarchyService, mock_client: MagicMock
+) -> None:
+    """Fallback finds a suite in a non-default tree without walking hierarchy nodes."""
+    mock_client.delete_tree_group.side_effect = AllureAPIError("delete failed", status_code=500)
+    mock_client.list_trees.return_value = PageTreeDtoV2(
+        content=[
+            TreeDtoV2(id=200, name="Default", project_id=1, custom_fields_project=[]),
+            TreeDtoV2(id=201, name="Other", project_id=1, custom_fields_project=[]),
+        ]
+    )
+    mock_client.get_tree_node.side_effect = [
+        TestCaseFullTreeNodeDto(id=10, name="Root", children=PageTestCaseTreeNodeDto(content=[])),
+        TestCaseFullTreeNodeDto(id=11, name="Suite", custom_field_value_id=3706),
+    ]
+
+    deleted = await service.delete_suite(suite_id=11)
+
+    assert deleted is True
+    assert [call.kwargs["tree_id"] for call in mock_client.get_tree_node.call_args_list] == [200, 201]
+    mock_client.delete_custom_field_value.assert_called_once_with(project_id=1, cfv_id=3706)
+
+
+@pytest.mark.asyncio
+async def test_delete_suite_fallback_does_not_claim_success_after_targeted_miss(
+    service: TestHierarchyService, mock_client: MagicMock
+) -> None:
+    """A fallback miss preserves the original delete error instead of hiding it."""
+    delete_error = AllureAPIError("delete failed", status_code=500)
+    mock_client.delete_tree_group.side_effect = delete_error
+    mock_client.list_trees.return_value = PageTreeDtoV2(
+        content=[TreeDtoV2(id=200, name="Default", project_id=1, custom_fields_project=[])]
+    )
+    mock_client.get_tree_node.return_value = TestCaseFullTreeNodeDto(
+        id=10, name="Root", children=PageTestCaseTreeNodeDto(content=[])
+    )
+
+    with pytest.raises(AllureAPIError, match="delete failed"):
+        await service.delete_suite(suite_id=11)
 
 
 @pytest.mark.asyncio
@@ -370,3 +651,37 @@ async def test_resolve_suite_id_by_name_no_match(service: TestHierarchyService, 
     result = await service.resolve_suite_id_by_name(name="Frontend", tree_id=300)
 
     assert result is None
+
+
+@pytest.mark.asyncio
+async def test_resolve_suite_id_by_name_checks_all_suggestion_pages(
+    service: TestHierarchyService, mock_client: MagicMock
+) -> None:
+    """Name resolution does not report a later-page suite as absent."""
+    mock_client.get_tree.return_value = TreeDtoV2(id=300, name="Main", project_id=1, custom_fields_project=[])
+    mock_client.suggest_tree_groups.side_effect = [
+        PageIdAndNameOnlyDto(content=[IdAndNameOnlyDto(id=10, name="Backend")], total_pages=2),
+        PageIdAndNameOnlyDto(content=[IdAndNameOnlyDto(id=11, name="Frontend")], total_pages=2),
+    ]
+
+    result = await service.resolve_suite_id_by_name(name="Frontend", tree_id=300)
+
+    assert result is not None
+    assert result.id == 11
+    assert [call.kwargs["page"] for call in mock_client.suggest_tree_groups.call_args_list] == [0, 1]
+
+
+@pytest.mark.asyncio
+async def test_resolve_suite_id_by_name_retries_transient_failures(
+    service: TestHierarchyService, mock_client: MagicMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Delete polling can rely on the service to absorb transient reads."""
+    mock_client.get_tree.return_value = TreeDtoV2(id=300, name="Main", project_id=1, custom_fields_project=[])
+    mock_client.suggest_tree_groups.side_effect = [
+        AllureAPIError("temporary", status_code=503),
+        PageIdAndNameOnlyDto(content=[]),
+    ]
+    monkeypatch.setattr("src.services.test_hierarchy_service.asyncio.sleep", AsyncMock())
+
+    assert await service.resolve_suite_id_by_name(name="Frontend", tree_id=300) is None
+    assert mock_client.suggest_tree_groups.await_count == 2

@@ -5,10 +5,11 @@ from unittest.mock import AsyncMock
 import pytest
 
 from src.client.generated.models.tree_dto_v2 import TreeDtoV2
-from src.services.test_hierarchy_service import SuiteNode
+from src.services.test_hierarchy_service import SuiteContents, SuiteNode
 from src.tools.assign_test_cases_to_suite import assign_test_cases_to_suite
 from src.tools.create_test_suite import create_test_suite
 from src.tools.delete_test_suite import delete_test_suite
+from src.tools.get_test_suite_contents import get_test_suite_contents
 from src.tools.list_test_suites import list_test_suites
 from tests.support.tool_patching import patch
 
@@ -84,6 +85,40 @@ async def test_list_test_suites_empty_tree_message() -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_test_suite_contents_returns_targeted_structured_output() -> None:
+    """get_test_suite_contents delegates to the targeted service read."""
+    with patch("src.tools.get_test_suite_contents.AllureClient.from_env") as mock_client_ctx:
+        mock_client = AsyncMock()
+        mock_client_ctx.return_value.__aenter__.return_value = mock_client
+
+        with patch("src.tools.get_test_suite_contents.TestHierarchyService") as mock_service_cls:
+            mock_service = mock_service_cls.return_value
+            mock_service.get_suite_contents = AsyncMock(
+                return_value=SuiteContents(suite_id=44, tree_id=2, test_case_ids=[100, 101])
+            )
+
+            output = await get_test_suite_contents(
+                suite_id=44,
+                project_id=1,
+                tree_id=2,
+                expected_suite_name="Payments",
+                output_format="json",
+            )
+
+            assert output.structured_content == {
+                "suite_id": 44,
+                "tree_id": 2,
+                "test_case_ids": [100, 101],
+                "assigned_count": 2,
+            }
+            mock_service.get_suite_contents.assert_called_once_with(
+                suite_id=44,
+                tree_id=2,
+                expected_suite_name="Payments",
+            )
+
+
+@pytest.mark.asyncio
 async def test_assign_test_cases_to_suite_output() -> None:
     """assign_test_cases_to_suite reports assigned count."""
     with patch("src.tools.assign_test_cases_to_suite.AllureClient.from_env") as mock_client_ctx:
@@ -131,4 +166,4 @@ async def test_delete_test_suite_output_confirmed() -> None:
             output = await delete_test_suite(suite_id=555, confirm=True, project_id=7, output_format="plain")
 
             assert output == "✅ Test suite 555 deleted successfully (idempotent)."
-            mock_service.delete_suite.assert_called_once_with(suite_id=555)
+            mock_service.delete_suite.assert_called_once_with(suite_id=555, tree_id=None)

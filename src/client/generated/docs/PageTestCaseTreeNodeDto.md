@@ -5,7 +5,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**content** | [**List[PageTestCaseTreeNodeDtoContentInner]**](PageTestCaseTreeNodeDtoContentInner.md) |  | [optional] 
+**content** | [**List[TestCaseTreeNodeDto]**](TestCaseTreeNodeDto.md) |  | [optional]
 **empty** | **bool** |  | [optional] 
 **first** | **bool** |  | [optional] 
 **last** | **bool** |  | [optional] 
@@ -35,5 +35,4 @@ page_test_case_tree_node_dto_dict = page_test_case_tree_node_dto_instance.to_dic
 page_test_case_tree_node_dto_from_dict = PageTestCaseTreeNodeDto.from_dict(page_test_case_tree_node_dto_dict)
 ```
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
-
 

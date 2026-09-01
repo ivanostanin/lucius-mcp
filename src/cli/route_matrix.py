@@ -75,6 +75,7 @@ CANONICAL_ROUTE_MATRIX: dict[str, dict[str, str]] = {
     "test_suite": {
         "create": "create_test_suite",
         "list": "list_test_suites",
+        "get_contents": "get_test_suite_contents",
         "assign_test_cases": "assign_test_cases_to_suite",
         "delete": "delete_test_suite",
     },

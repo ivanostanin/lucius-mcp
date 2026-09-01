@@ -349,7 +349,6 @@ from src.client.generated.models.page_test_case_row_dto import PageTestCaseRowDt
 from src.client.generated.models.page_test_case_tree_group_dto import PageTestCaseTreeGroupDto
 from src.client.generated.models.page_test_case_tree_leaf_dto import PageTestCaseTreeLeafDto
 from src.client.generated.models.page_test_case_tree_node_dto import PageTestCaseTreeNodeDto
-from src.client.generated.models.page_test_case_tree_node_dto_content_inner import PageTestCaseTreeNodeDtoContentInner
 from src.client.generated.models.page_test_fixture_result_attachment_row_dto import PageTestFixtureResultAttachmentRowDto
 from src.client.generated.models.page_test_key_schema_dto import PageTestKeySchemaDto
 from src.client.generated.models.page_test_layer_dto import PageTestLayerDto

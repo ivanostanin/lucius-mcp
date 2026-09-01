@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -13,7 +12,9 @@ from pydantic import SecretStr
 
 from src.client import (
     AllureAPIError,
+    AllureAuthError,
     AllureClient,
+    AllureNotFoundError,
     AllureValidationError,
     LaunchResultTreePage,
 )
@@ -22,11 +23,15 @@ from src.client.generated.api.shared_step_attachment_controller_api import Share
 from src.client.generated.api.test_case_attachment_controller_api import TestCaseAttachmentControllerApi
 from src.client.generated.exceptions import ApiException
 from src.client.generated.models.launch_existing_upload_dto import LaunchExistingUploadDto
+from src.client.generated.models.node_type import NodeType
 from src.client.generated.models.scenario_step_create_dto import ScenarioStepCreateDto
 from src.client.generated.models.scenario_step_patch_dto import ScenarioStepPatchDto
 from src.client.generated.models.shared_step_patch_dto import SharedStepPatchDto
+from src.client.generated.models.test_case_full_tree_node_dto import TestCaseFullTreeNodeDto
+from src.client.generated.models.test_case_light_tree_node_dto import TestCaseLightTreeNodeDto
 from src.client.generated.models.test_case_patch_v2_dto import TestCasePatchV2Dto
 from src.client.generated.models.test_case_scenario_v2_dto import TestCaseScenarioV2Dto
+from src.client.generated.models.test_case_tree_leaf_dto_v2 import TestCaseTreeLeafDtoV2
 
 
 class RecordingApi:
@@ -46,14 +51,6 @@ class RecordingApi:
             return result()
 
         return call
-
-
-class RawTreeResponse:
-    def __init__(self, payload: dict[str, object]) -> None:
-        self._payload = payload
-
-    def read(self) -> bytes:
-        return json.dumps(self._payload).encode("utf-8")
 
 
 @pytest.fixture
@@ -137,27 +134,6 @@ def test_denormalizes_complex_scenario_tree() -> None:
     assert attachment_step.name == "screen.png"
     assert isinstance(shared_step, SharedStepStepDtoWithId)
     assert shared_step.shared_step_id == 33
-
-
-def test_parse_tree_children_handles_groups_leaves_and_empty_pages(facade_client: AllureClient) -> None:
-    assert facade_client._parse_tree_children(None) is None
-
-    empty_page = facade_client._parse_tree_children({"content": "not-a-list", "totalElements": 0})
-    assert empty_page is not None
-    assert empty_page.content == []
-
-    page = facade_client._parse_tree_children(
-        {
-            "content": [
-                {"id": 10, "name": "Suite", "type": "GROUP", "count": 3},
-                {"id": 20, "name": "Case", "type": "LEAF"},
-                "ignored",
-            ],
-            "totalElements": 2,
-        }
-    )
-    assert page is not None
-    assert len(page.content or []) == 2
 
 
 @pytest.mark.asyncio
@@ -295,18 +271,24 @@ async def test_tree_facade_delegation_and_validation(facade_client: AllureClient
 
 
 @pytest.mark.asyncio
-async def test_raw_tree_node_and_scenario_fetching(facade_client: AllureClient) -> None:
+async def test_typed_tree_node_and_scenario_fetching(facade_client: AllureClient) -> None:
     tree_payload = {
+        "customFieldValueId": 44,
         "id": 1,
         "name": "Root",
+        "parentNodeId": 9,
         "type": "GROUP",
-        "children": {"content": [{"id": 2, "name": "Leaf", "type": "LEAF"}], "totalElements": 1},
+        "children": {
+            "content": [
+                {"id": 2, "name": "Suite", "type": "GROUP", "count": 1},
+                {"id": 3, "name": "Leaf", "type": "LEAF", "testCaseId": 33},
+            ],
+            "totalElements": 2,
+        },
     }
-
-    async def get_tree_node_without_preload_content(**_kwargs: object) -> RawTreeResponse:
-        return RawTreeResponse(tree_payload)
-
-    tree_api = SimpleNamespace(get_tree_node_without_preload_content=get_tree_node_without_preload_content)
+    tree_node = TestCaseFullTreeNodeDto.from_dict(tree_payload)
+    assert tree_node is not None
+    tree_api = RecordingApi(tree_node)
     scenario_payload = {
         "root": {"children": [1]},
         "scenarioSteps": {"1": {"body": "Only step"}},
@@ -317,12 +299,54 @@ async def test_raw_tree_node_and_scenario_fetching(facade_client: AllureClient) 
     facade_client._scenario_api = scenario_api  # type: ignore[assignment]
 
     node = await facade_client.get_tree_node(7, 3, parent_node_id=1, filter_id=2, page=0, size=10)
+    assert node.custom_field_value_id == 44
     assert node.name == "Root"
+    assert node.parent_node_id == 9
     assert node.children is not None
+    assert node.type == NodeType.GROUP
+    assert isinstance(node.children.content[0], TestCaseLightTreeNodeDto)
+    assert isinstance(node.children.content[1], TestCaseTreeLeafDtoV2)
+    assert tree_api.calls[-1] == (
+        "get_tree_node",
+        (),
+        {
+            "project_id": 7,
+            "tree_id": 3,
+            "parent_node_id": 1,
+            "search": None,
+            "filter_id": 2,
+            "page": 0,
+            "size": 10,
+            "sort": None,
+            "query": None,
+            "base_aql": None,
+            "_request_timeout": facade_client._timeout,
+        },
+    )
 
     scenario = await facade_client.get_test_case_scenario(99)
     assert len(scenario.steps or []) == 1
     assert scenario_api.calls[-1][0] == "get_normalized_scenario_without_preload_content"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("status_code", "expected_exception"),
+    [
+        (401, AllureAuthError),
+        (404, AllureNotFoundError),
+        (500, AllureAPIError),
+    ],
+)
+async def test_typed_tree_node_maps_api_errors(
+    facade_client: AllureClient, status_code: int, expected_exception: type[Exception]
+) -> None:
+    tree_api = RecordingApi(ApiException(status=status_code, reason="tree request failed"))
+    facade_client._test_case_tree_api = tree_api  # type: ignore[assignment]
+
+    with pytest.raises(expected_exception):
+        await facade_client.get_tree_node(7, 3)
+    assert tree_api.calls[-1][0] == "get_tree_node"
 
 
 @pytest.mark.asyncio

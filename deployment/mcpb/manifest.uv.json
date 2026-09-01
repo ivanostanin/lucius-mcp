@@ -162,6 +162,10 @@
       "description": "List hierarchical test suites for a project tree."
     },
     {
+      "name": "get_test_suite_contents",
+      "description": "Get test cases directly assigned to one hierarchy suite."
+    },
+    {
       "name": "assign_test_cases_to_suite",
       "description": "Assign test cases to a target hierarchy suite."
     },
