@@ -505,6 +505,29 @@ async def test_delete_suite_success(service: TestHierarchyService, mock_client: 
 
 
 @pytest.mark.asyncio
+async def test_delete_suite_retries_transient_backing_value_cleanup(
+    service: TestHierarchyService, mock_client: MagicMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A successful group delete retries transient backing-value cleanup failures."""
+    mock_client.get_tree.side_effect = [
+        httpx.ReadTimeout("temporary"),
+        TreeDtoV2(id=200, name="Main", project_id=1, custom_fields_project=[]),
+    ]
+    mock_client.get_tree_node.return_value = TestCaseFullTreeNodeDto(
+        id=11,
+        name="Suite",
+        custom_field_value_id=3706,
+    )
+    monkeypatch.setattr("src.services.test_hierarchy_service.asyncio.sleep", AsyncMock())
+
+    deleted = await service.delete_suite(suite_id=11, tree_id=200)
+
+    assert deleted is True
+    assert mock_client.get_tree.await_count == 2
+    mock_client.delete_custom_field_value.assert_awaited_once_with(project_id=1, cfv_id=3706)
+
+
+@pytest.mark.asyncio
 async def test_delete_suite_idempotent_not_found(service: TestHierarchyService, mock_client: MagicMock) -> None:
     """Delete suite is idempotent when suite is already absent."""
     mock_client.delete_tree_group.side_effect = AllureNotFoundError("missing")

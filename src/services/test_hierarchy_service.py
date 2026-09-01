@@ -168,7 +168,7 @@ class TestHierarchyService:
         # TestOps can acknowledge deletion of a group while retaining its backing
         # custom-field value and therefore the visible hierarchy node.  Remove
         # that value through a targeted node lookup; never walk the shared tree.
-        cleanup_deleted = await self._delete_suite_via_custom_field_value(target_suite_id, tree_id=tree_id)
+        cleanup_deleted = await self._delete_suite_backing_value_with_retries(target_suite_id, tree_id=tree_id)
         if cleanup_deleted is True:
             logger.info("Deleted test suite %s via backing custom-field cleanup", target_suite_id)
 
@@ -442,6 +442,19 @@ class TestHierarchyService:
         # A targeted miss does not prove a globally-addressed group was deleted.
         # Propagate the original delete error instead of reporting false success.
         return None
+
+    async def _delete_suite_backing_value_with_retries(self, suite_id: int, tree_id: int | None) -> bool | None:
+        """Clean up a deleted suite's backing value, retrying transient reads."""
+        for attempt in range(TREE_SNAPSHOT_ATTEMPTS):
+            try:
+                return await self._delete_suite_via_custom_field_value(suite_id, tree_id=tree_id)
+            except (httpx.TransportError, AllureAPIError) as exc:
+                if attempt + 1 == TREE_SNAPSHOT_ATTEMPTS or not self._is_retryable_tree_read_error(exc):
+                    raise
+                logger.warning("Retrying suite backing-value cleanup after transient failure: %s", exc)
+                await asyncio.sleep(0.5 * (attempt + 1))
+
+        raise AssertionError("Suite backing-value cleanup retry loop exited unexpectedly")
 
     async def _extract_suite_nodes(
         self,

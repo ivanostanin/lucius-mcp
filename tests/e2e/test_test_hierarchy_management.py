@@ -70,12 +70,18 @@ async def _wait_for_suites_absence(
     *,
     suite_ids: set[int],
     project_id: int,
+    tree_id: int,
     retries: int = 20,
     delay_seconds: float = 0.5,
 ) -> bool:
     """Poll the public list tool until all created suite IDs are absent."""
     for _ in range(retries):
-        output = await list_test_suites(project_id=project_id, include_empty=True, output_format="json")
+        output = await list_test_suites(
+            project_id=project_id,
+            tree_id=tree_id,
+            include_empty=True,
+            output_format="json",
+        )
         items = _structured_payload(output)["items"]
         assert isinstance(items, list)
         if suite_ids.isdisjoint(_suite_ids(items)):
@@ -236,6 +242,7 @@ async def test_e2e_hierarchy_delete_suite_lifecycle(
     assert await _wait_for_suites_absence(
         suite_ids={nested_suite_id},
         project_id=project_id,
+        tree_id=tree_id,
     ), f"Suite {nested_suite_id} is still present after delete lifecycle retries"
 
 
@@ -286,4 +293,5 @@ async def test_e2e_hierarchy_delete_parent_suite_with_children(
     assert await _wait_for_suites_absence(
         suite_ids={root_suite_id, nested_suite_id},
         project_id=project_id,
+        tree_id=tree_id,
     ), f"Parent or nested suite ({root_suite_id}, {nested_suite_id}) is still present after deletion retries"

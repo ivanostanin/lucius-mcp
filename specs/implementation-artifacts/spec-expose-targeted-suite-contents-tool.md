@@ -116,3 +116,8 @@ The targeted tool returns its resolved tree ID so callers can pin subsequent ope
 
 - Unit coverage locks in bounded traversal and targeted backing-value cleanup.
   [`test_test_hierarchy_service.py:362`](../../tests/unit/test_test_hierarchy_service.py#L362)
+
+### Review Findings
+
+- [x] [Review][Patch] Preserve successful deletion when post-delete backing-value cleanup fails transiently [`src/services/test_hierarchy_service.py:171`]
+- [x] [Review][Patch] Pass the resolved tree ID to hierarchy-list deletion polling [`tests/e2e/test_test_hierarchy_management.py:69`]
