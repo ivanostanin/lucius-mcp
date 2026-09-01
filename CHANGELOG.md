@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.15.2] - 2026-09-01
+
+### Changed
+- Improved CLI startup and attachment-download context isolation by lazy-loading the auth validation client and moving direct-CLI state into a dedicated utility (#371).
+
+### Fixed
+- Hardened test-suite deletion polling to handle asynchronous hierarchy deletion reliably (#372).
+
 ## [v0.15.1] - 2026-08-31
 
 ### Changed
@@ -365,7 +373,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.1...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.2...HEAD
+[v0.15.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.1...v0.15.2
 [v0.15.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.0...v0.15.1
 [v0.15.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.14.4...v0.15.0
 [v0.14.4]: https://github.com/ivanostanin/lucius-mcp/compare/v0.14.3...v0.14.4
