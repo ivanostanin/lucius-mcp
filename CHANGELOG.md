@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.15.1] - 2026-08-31
+
+### Changed
+- Updated locked runtime and tooling dependencies, including Cyclopts 4.23.3, Faker 40.37.0, OpenAPI Generator CLI 7.25.0, Platformdirs 4.11.5, and Ruff 0.16.5 (#369).
+
 ## [v0.15.0] - 2026-08-28
 
 ### Added
@@ -360,7 +365,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.1...HEAD
+[v0.15.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.0...v0.15.1
 [v0.15.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.14.4...v0.15.0
 [v0.14.4]: https://github.com/ivanostanin/lucius-mcp/compare/v0.14.3...v0.14.4
 [v0.14.3]: https://github.com/ivanostanin/lucius-mcp/compare/v0.14.2...v0.14.3
