@@ -22,6 +22,8 @@ from src.services.attachment_download_service import (
     AttachmentKind,
     AttachmentPreparationRequest,
     _validate_public_base_url,
+)
+from src.utils.direct_cli_context import (
     is_direct_cli_attachment_request,
     reset_direct_cli_attachment_request,
     set_direct_cli_attachment_request,

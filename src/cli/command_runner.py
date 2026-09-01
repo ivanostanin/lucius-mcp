@@ -235,7 +235,7 @@ def run_cli_command(
 
     # The CLI process exits immediately after rendering. Mark this execution so
     # a capability-link tool returns an actionable error instead of a dead URL.
-    from src.services.attachment_download_service import (
+    from src.utils.direct_cli_context import (
         reset_direct_cli_attachment_request,
         set_direct_cli_attachment_request,
     )

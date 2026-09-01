@@ -178,10 +178,23 @@ def test_legacy_command_style_is_rejected():
 
 def test_process_cli_default_json_output_without_format_flag():
     """Process-level check: action output defaults to JSON when --format is omitted."""
-    result = run_cli_with_mocked_result(
-        ["test_case", "list", "--args", "{}"],
-        '{"ok":true,"count":2}',
+    script = "\n".join(
+        [
+            "import builtins",
+            "_original_import = builtins.__import__",
+            "def _guard(name, globals=None, locals=None, fromlist=(), level=0):",
+            "    if name == 'src.client' or name.startswith('src.client.'):",
+            "        raise AssertionError(f'unexpected client import: {name}')",
+            "    return _original_import(name, globals, locals, fromlist, level)",
+            "builtins.__import__ = _guard",
+            "from src.cli import cli_entry",
+            "async def _fake(_tool_name, _args):",
+            '    return \'{\\"ok\\":true,\\"count\\":2}\'',
+            "cli_entry.call_tool_function = _fake",
+            "cli_entry.run_cli(['test_case', 'list', '--args', '{}'])",
+        ]
     )
+    result = run_python_snippet(script)
     assert result.returncode == 0
     assert result.stdout.strip() == '{"ok":true,"count":2}'
 
