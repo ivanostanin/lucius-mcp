@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.15.3] - 2026-09-02
+
+### Fixed
+- Fixed the Windows `auth status` path handling in the CLI (#374).
+
 ## [v0.15.2] - 2026-09-01
 
 ### Changed
@@ -373,7 +378,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.2...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.3...HEAD
+[v0.15.3]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.2...v0.15.3
 [v0.15.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.1...v0.15.2
 [v0.15.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.0...v0.15.1
 [v0.15.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.14.4...v0.15.0
