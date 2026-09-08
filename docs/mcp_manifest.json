@@ -1,15 +1,17 @@
 {
   "environment": {
-    "fastmcp": "3.4.7",
-    "mcp": "1.29.0"
+    "fastmcp": "4.0.2",
+    "mcp": "2.1.1"
   },
   "serverInfo": {
     "name": "lucius-mcp",
     "title": null,
-    "version": "0.15.3",
+    "version": "0.15.4",
+    "description": null,
     "websiteUrl": null,
     "icons": null
   },
+  "instructions": null,
   "capabilities": {},
   "tools": [
     {
@@ -17,7 +19,6 @@
       "title": "Create Test Case",
       "description": "Create a new test case in Allure TestOps.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "name": {
             "description": "The name of the test case.",
@@ -204,10 +205,11 @@
         "required": [
           "name"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "id": {
             "anyOf": [
@@ -261,8 +263,9 @@
             "title": "Url"
           }
         },
-        "title": "CreateTestCaseOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "CreateTestCaseOutput"
       },
       "icons": null,
       "annotations": {
@@ -278,15 +281,13 @@
             "test-case"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "get_test_case_details",
       "title": "Get Test Case Details",
       "description": "Get complete details of a specific test case.\n\nRetrieves all information about a test case including its steps, tags,\ncustom fields, and attachments. For each attachment, call\nprepare_attachment_download with its attachment_id, attachment_kind, and\ntest_case_id, then HTTP GET the returned Lucius URL. Use this before\nupdating a test case to understand its current state.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "test_case_id": {
             "description": "ID of the test case to retrieve.",
@@ -324,9 +325,146 @@
         "required": [
           "test_case_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Status"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Description"
+          },
+          "precondition": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Precondition"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tags"
+          },
+          "custom_fields": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/CustomFieldEntry"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Custom Fields"
+          },
+          "attachments": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/TestCaseAttachmentOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Attachments"
+          },
+          "steps": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/Step"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Steps"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          }
+        },
+        "type": "object",
         "$defs": {
           "CustomFieldEntry": {
             "additionalProperties": false,
@@ -529,142 +667,7 @@
         },
         "additionalProperties": false,
         "description": "Structured details for one test case.",
-        "properties": {
-          "id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Id"
-          },
-          "name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Name"
-          },
-          "status": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Status"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Description"
-          },
-          "precondition": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Precondition"
-          },
-          "tags": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Tags"
-          },
-          "custom_fields": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/CustomFieldEntry"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Custom Fields"
-          },
-          "attachments": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/TestCaseAttachmentOutput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Attachments"
-          },
-          "steps": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/Step"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Steps"
-          },
-          "url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Url"
-          }
-        },
-        "title": "TestCaseDetailsOutput",
-        "type": "object"
+        "title": "TestCaseDetailsOutput"
       },
       "icons": null,
       "annotations": {
@@ -680,15 +683,13 @@
             "test-case"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "update_test_case",
       "title": "Update Test Case",
       "description": "Update an existing test case in Allure TestOps.\n⚠️ CAUTION: Destructive.\n\nPerforms a partial update: only supplied fields are sent to the API. When\nprovided, ``steps`` replace all existing steps, and ``attachments`` replace\nall existing global attachments. Omit a field to preserve its current value.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "test_case_id": {
             "description": "The ID of the test case to update",
@@ -997,10 +998,11 @@
         "required": [
           "test_case_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "requires_confirmation": {
             "anyOf": [
@@ -1103,8 +1105,9 @@
             "title": "Url"
           }
         },
-        "title": "UpdateTestCaseOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "UpdateTestCaseOutput"
       },
       "icons": null,
       "annotations": {
@@ -1120,15 +1123,13 @@
             "test-case"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "delete_test_case",
       "title": "Delete Test Case",
       "description": "Archive an obsolete test case.\n⚠️ CAUTION: Destructive.\n\nThis performs a SOFT DELETE (archive). The test case can typically\nbe recovered from the Allure UI if needed.\n\n⚠️ CAUTION: This action removes the test case from active views.\nHistorical data and launch associations may be affected.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "test_case_id": {
             "description": "The Allure test case ID to archive.",
@@ -1171,10 +1172,11 @@
         "required": [
           "test_case_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "requires_confirmation": {
             "anyOf": [
@@ -1262,8 +1264,9 @@
             "title": "Url"
           }
         },
-        "title": "DeleteTestCaseOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "DeleteTestCaseOutput"
       },
       "icons": null,
       "annotations": {
@@ -1279,15 +1282,13 @@
             "test-case"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "delete_archived_test_cases",
       "title": "Delete Archived Test Cases",
       "description": "Permanently delete all archived/deleted test cases in the current project.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "confirm": {
             "default": false,
@@ -1323,10 +1324,11 @@
             "description": "Output format: 'json' (default) or 'plain'."
           }
         },
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "requires_confirmation": {
             "anyOf": [
@@ -1366,8 +1368,9 @@
             "title": "Deleted Count"
           }
         },
-        "title": "DeleteArchivedTestCasesOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "DeleteArchivedTestCasesOutput"
       },
       "icons": null,
       "annotations": {
@@ -1383,15 +1386,13 @@
             "test-case"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "list_test_cases",
       "title": "List Test Cases",
       "description": "List all test cases in a project.\n\nReturns a paginated list of test cases with their IDs, names, and tags.\nUse this to review existing test documentation in a project.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "page": {
             "default": 0,
@@ -1474,10 +1475,11 @@
             "description": "Output format: 'json' (default) or 'plain'."
           }
         },
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "total": {
             "anyOf": [
@@ -1797,8 +1799,9 @@
             "title": "Items"
           }
         },
-        "title": "ListTestCasesOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "ListTestCasesOutput"
       },
       "icons": null,
       "annotations": {
@@ -1814,15 +1817,13 @@
             "test-case"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "get_custom_fields",
       "title": "Get Custom Fields",
       "description": "Get available custom fields and their allowed values for the project.\n\nUse this tool to discover what custom fields are available (e.g., 'Layer', 'Priority')\nand what values are valid for them (e.g., 'UI', 'High'). This is essential before\ncreating or updating test cases to ensure you use valid field names and values.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "name": {
             "anyOf": [
@@ -1865,10 +1866,11 @@
             "description": "Output format: 'json' (default) or 'plain'."
           }
         },
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "items": {
             "anyOf": [
@@ -2164,8 +2166,9 @@
             "title": "Filter Name"
           }
         },
-        "title": "GetCustomFieldsOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "GetCustomFieldsOutput"
       },
       "icons": null,
       "annotations": {
@@ -2181,15 +2184,13 @@
             "custom-field"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "delete_unused_custom_fields",
       "title": "Delete Unused Custom Fields",
       "description": "Delete custom fields that are unused by any test case in the current project.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "confirm": {
             "default": false,
@@ -2225,10 +2226,11 @@
             "description": "Output format: 'json' (default) or 'plain'."
           }
         },
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "requires_confirmation": {
             "anyOf": [
@@ -2268,8 +2270,9 @@
             "title": "Deleted Count"
           }
         },
-        "title": "DeleteUnusedCustomFieldsOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "DeleteUnusedCustomFieldsOutput"
       },
       "icons": null,
       "annotations": {
@@ -2286,15 +2289,13 @@
             "test-case"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "list_custom_field_values",
       "title": "List Custom Field Values",
       "description": "List available values for a custom field.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "custom_field_id": {
             "anyOf": [
@@ -2424,10 +2425,11 @@
             "description": "Output format: 'json' (default) or 'plain'."
           }
         },
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "items": {
             "anyOf": [
@@ -2747,8 +2749,9 @@
             "title": "Total Pages"
           }
         },
-        "title": "ListCustomFieldValuesOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "ListCustomFieldValuesOutput"
       },
       "icons": null,
       "annotations": {
@@ -2765,15 +2768,13 @@
             "custom-field-value"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "create_custom_field_value",
       "title": "Create Custom Field Value",
       "description": "Create a new custom field value option.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "name": {
             "description": "Name for the new custom field value.",
@@ -2835,10 +2836,11 @@
         "required": [
           "name"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "id": {
             "anyOf": [
@@ -2889,8 +2891,9 @@
             "title": "Custom Field Name"
           }
         },
-        "title": "CreateCustomFieldValueOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "CreateCustomFieldValueOutput"
       },
       "icons": null,
       "annotations": {
@@ -2907,15 +2910,13 @@
             "custom-field-value"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "update_custom_field_value",
       "title": "Update Custom Field Value",
       "description": "Update an existing custom field value.\n⚠️ CAUTION: Destructive.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "cfv_id": {
             "description": "Custom field value ID to update.",
@@ -2987,10 +2988,11 @@
           "cfv_id",
           "name"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "requires_confirmation": {
             "anyOf": [
@@ -3078,8 +3080,9 @@
             "title": "Custom Field Name"
           }
         },
-        "title": "UpdateCustomFieldValueOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "UpdateCustomFieldValueOutput"
       },
       "icons": null,
       "annotations": {
@@ -3096,15 +3099,13 @@
             "custom-field-value"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "delete_custom_field_value",
       "title": "Delete Custom Field Value",
       "description": "Delete a custom field value.\n⚠️ CAUTION: Destructive.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "cfv_id": {
             "description": "Custom field value ID to delete.",
@@ -3171,10 +3172,11 @@
         "required": [
           "cfv_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "requires_confirmation": {
             "anyOf": [
@@ -3238,8 +3240,9 @@
             "title": "Status"
           }
         },
-        "title": "DeleteCustomFieldValueOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "DeleteCustomFieldValueOutput"
       },
       "icons": null,
       "annotations": {
@@ -3256,15 +3259,13 @@
             "custom-field-value"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "get_test_case_custom_fields",
       "title": "Get Test Case Custom Fields",
       "description": "Retrieve custom field values for a specific test case.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "test_case_id": {
             "description": "The ID of the test case to retrieve custom fields for",
@@ -3302,10 +3303,11 @@
         "required": [
           "test_case_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "test_case_id": {
             "anyOf": [
@@ -3383,8 +3385,9 @@
             "title": "Custom Fields"
           }
         },
-        "title": "GetTestCaseCustomFieldsOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "GetTestCaseCustomFieldsOutput"
       },
       "icons": null,
       "annotations": {
@@ -3401,15 +3404,13 @@
             "test-case"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "search_test_cases",
       "title": "Search Test Cases",
       "description": "Search for test cases by name, tag, or AQL query.\n\nFind test cases matching your search criteria. Supports simple name/tag search\nor advanced AQL (Allure Query Language) for complex filtering.\n\nSimple Query Syntax (use 'query' parameter):\n- Plain text: Searches in test case names (case-insensitive)\n- tag:value: Filters by exact tag match\n- Combined: \"login tag:smoke\" finds test cases with \"login\" in name AND \"smoke\" tag\n\nImportant: see https://docs.qameta.io/allure-testops/advanced/aql/ for the full AQL syntax reference.\nAQL Syntax (use 'aql' parameter):\n- Operators: and, or, not\n- Precedence: and binds tighter than or; use parentheses to group\n- Strings are double-quoted; numbers are unquoted; booleans are true/false\n- Comparison operators: =, !=, ~= (contains), in, not in\n- Field examples: status, tag, name, createdBy, automated, layer",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "query": {
             "anyOf": [
@@ -3475,11 +3476,11 @@
             "description": "Output format: 'json' (default) or 'plain'."
           }
         },
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
-        "description": "Paginated output for ``search_test_cases``.",
         "properties": {
           "total": {
             "description": "Total matching test cases.",
@@ -3588,8 +3589,10 @@
           "query",
           "items"
         ],
-        "title": "SearchTestCasesOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Paginated output for ``search_test_cases``.",
+        "title": "SearchTestCasesOutput"
       },
       "icons": null,
       "annotations": {
@@ -3605,15 +3608,13 @@
             "test-case"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "generate_test_code",
       "title": "Generate Test Code",
       "description": "Generate a current, framework-specific test snippet from a TestOps test case.\n\nBoth target selections are required. The tool validates verified TestOps\nlanguage/framework compatibility locally and synchronizes only requested\ntest-case metadata before generation.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "test_case_id": {
             "description": "ID of the TestOps test case to generate code for.",
@@ -3730,10 +3731,11 @@
           "language",
           "framework"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "test_case_id": {
             "anyOf": [
@@ -3803,8 +3805,9 @@
             "title": "Code"
           }
         },
-        "title": "GenerateTestCodeOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "GenerateTestCodeOutput"
       },
       "icons": null,
       "annotations": {
@@ -3820,15 +3823,13 @@
             "test-case"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "create_launch",
       "title": "Create Launch",
       "description": "Create a new launch in Allure TestOps.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "name": {
             "description": "Launch name (required).",
@@ -3939,11 +3940,11 @@
         "required": [
           "name"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
-        "description": "Stable compact launch fields emitted by create and lifecycle tools.",
         "properties": {
           "id": {
             "anyOf": [
@@ -4104,8 +4105,10 @@
             "title": "Operation"
           }
         },
-        "title": "LaunchMutationSummary",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Stable compact launch fields emitted by create and lifecycle tools.",
+        "title": "LaunchMutationSummary"
       },
       "icons": null,
       "annotations": {
@@ -4121,15 +4124,13 @@
             "launch"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "get_launch",
       "title": "Get Launch",
       "description": "Retrieve a specific launch and summarize its details.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "launch_id": {
             "description": "Launch ID (required).",
@@ -4184,9 +4185,526 @@
         "required": [
           "launch_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name"
+          },
+          "closed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Closed"
+          },
+          "created_date": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Created Date"
+          },
+          "last_modified_date": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Last Modified Date"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Project Id"
+          },
+          "autoclose": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Autoclose"
+          },
+          "external": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "External"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Created By"
+          },
+          "last_modified_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Last Modified By"
+          },
+          "statistic": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/LaunchStatisticItem"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Statistic"
+          },
+          "known_defects_count": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Known Defects Count"
+          },
+          "new_defects_count": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "New Defects Count"
+          },
+          "environment": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/LaunchEnvironmentValue"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Environment"
+          },
+          "jobs": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/LaunchJobRun"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Jobs"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/LaunchTag"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tags"
+          },
+          "issues": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/LaunchIssue"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Issues"
+          },
+          "links": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/LaunchLink"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Links"
+          },
+          "manual_execution_guidance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Manual Execution Guidance"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/LaunchDurationOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Duration"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/LaunchProgressOutput"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "assignees": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Assignees"
+          },
+          "testers": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Testers"
+          },
+          "variables": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/LaunchVariableOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Variables"
+          },
+          "defects": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/LaunchDefectOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Defects"
+          },
+          "member_stats": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/LaunchMemberStatsOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Member Stats"
+          },
+          "muted_results": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/LaunchExecutionResultOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Muted Results"
+          },
+          "retries": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/LaunchExecutionResultOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Retries"
+          },
+          "unresolved_results": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/LaunchExecutionResultOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Unresolved Results"
+          },
+          "flat_test_results": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/LaunchExecutionResultOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Compact rows; each row id is the Test Result ID for get_test_result.",
+            "title": "Flat Test Results"
+          },
+          "core_test_result_index": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/LaunchExecutionResultOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Core Test Result Index"
+          },
+          "result_timeline": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/LaunchResultTreeViewOutput"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "result_defect_tree": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/LaunchResultTreeViewOutput"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "trees": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/LaunchTreeOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Trees"
+          },
+          "execution_snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/LaunchExecutionSnapshotOutput"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "partial": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Partial"
+          },
+          "unavailable_sections": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/LaunchUnavailableSectionOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Unavailable Sections"
+          }
+        },
+        "type": "object",
         "$defs": {
           "LaunchDefectOutput": {
             "additionalProperties": false,
@@ -5784,522 +6302,7 @@
         },
         "additionalProperties": false,
         "description": "Rich exact-ID launch fields, with explicit stable nested projections.",
-        "properties": {
-          "id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Id"
-          },
-          "name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Name"
-          },
-          "closed": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Closed"
-          },
-          "created_date": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Created Date"
-          },
-          "last_modified_date": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Last Modified Date"
-          },
-          "project_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Project Id"
-          },
-          "autoclose": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Autoclose"
-          },
-          "external": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "External"
-          },
-          "created_by": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Created By"
-          },
-          "last_modified_by": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Last Modified By"
-          },
-          "statistic": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/LaunchStatisticItem"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Statistic"
-          },
-          "known_defects_count": {
-            "anyOf": [
-              {
-                "minimum": 0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Known Defects Count"
-          },
-          "new_defects_count": {
-            "anyOf": [
-              {
-                "minimum": 0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "New Defects Count"
-          },
-          "environment": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/LaunchEnvironmentValue"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Environment"
-          },
-          "jobs": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/LaunchJobRun"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Jobs"
-          },
-          "tags": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/LaunchTag"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Tags"
-          },
-          "issues": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/LaunchIssue"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Issues"
-          },
-          "links": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/LaunchLink"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Links"
-          },
-          "manual_execution_guidance": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Manual Execution Guidance"
-          },
-          "url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Url"
-          },
-          "duration": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/LaunchDurationOutput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Duration"
-          },
-          "progress": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/LaunchProgressOutput"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null
-          },
-          "assignees": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Assignees"
-          },
-          "testers": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Testers"
-          },
-          "variables": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/LaunchVariableOutput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Variables"
-          },
-          "defects": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/LaunchDefectOutput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Defects"
-          },
-          "member_stats": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/LaunchMemberStatsOutput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Member Stats"
-          },
-          "muted_results": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/LaunchExecutionResultOutput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Muted Results"
-          },
-          "retries": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/LaunchExecutionResultOutput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Retries"
-          },
-          "unresolved_results": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/LaunchExecutionResultOutput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Unresolved Results"
-          },
-          "flat_test_results": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/LaunchExecutionResultOutput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Compact rows; each row id is the Test Result ID for get_test_result.",
-            "title": "Flat Test Results"
-          },
-          "core_test_result_index": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/LaunchExecutionResultOutput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Core Test Result Index"
-          },
-          "result_timeline": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/LaunchResultTreeViewOutput"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null
-          },
-          "result_defect_tree": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/LaunchResultTreeViewOutput"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null
-          },
-          "trees": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/LaunchTreeOutput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Trees"
-          },
-          "execution_snapshot": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/LaunchExecutionSnapshotOutput"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null
-          },
-          "partial": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Partial"
-          },
-          "unavailable_sections": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/LaunchUnavailableSectionOutput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Unavailable Sections"
-          }
-        },
-        "title": "LaunchDetailOutput",
-        "type": "object"
+        "title": "LaunchDetailOutput"
       },
       "icons": null,
       "annotations": {
@@ -6315,15 +6318,13 @@
             "launch"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "get_test_result",
       "title": "Get Test Result",
       "description": "Retrieve one complete TestOps result without recursively reading related results.\n\nAttachment references identify their verified owner. Call prepare_attachment_download with an attachment's\nattachment_id, attachment_kind, and owner context, then HTTP GET the returned Lucius URL before it expires.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "test_result_id": {
             "description": "Exact Test Result ID from the /tree/{test_result_id} URL path; ignore treeId query state.",
@@ -6361,9 +6362,273 @@
         "required": [
           "test_result_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
+        "properties": {
+          "actual_launch_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Actual Launch Id"
+          },
+          "test_result_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Test Result Id"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Project Id"
+          },
+          "result_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Result Url"
+          },
+          "launch_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Launch Url"
+          },
+          "test_case": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/TestResultReferenceOutput"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "core": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/TestResultCoreOutput"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "custom_fields": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/TestResultCustomFieldValuesOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Custom Fields"
+          },
+          "environment": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/TestResultEnvironmentOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Environment"
+          },
+          "members": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/TestResultMemberOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Members"
+          },
+          "test_keys": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/TestResultKeyOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Test Keys"
+          },
+          "issues": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/TestResultIssueOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Issues"
+          },
+          "defects": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/TestResultDefectOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Defects"
+          },
+          "execution_steps": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/TestResultStepOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Execution Steps"
+          },
+          "fixtures": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/TestResultFixtureOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Fixtures"
+          },
+          "result_attachments": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/TestResultAttachmentOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Result Attachments"
+          },
+          "related_results": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/RelatedTestResultOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Related Results"
+          },
+          "partial": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Partial"
+          },
+          "unavailable_sections": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/UnavailableSectionOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Unavailable Sections"
+          }
+        },
+        "type": "object",
         "$defs": {
           "RelatedTestResultOutput": {
             "additionalProperties": false,
@@ -8128,269 +8393,7 @@
         },
         "additionalProperties": false,
         "description": "Stable object-root output for one exact enriched TestOps result.",
-        "properties": {
-          "actual_launch_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Actual Launch Id"
-          },
-          "test_result_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Test Result Id"
-          },
-          "project_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Project Id"
-          },
-          "result_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Result Url"
-          },
-          "launch_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Launch Url"
-          },
-          "test_case": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/TestResultReferenceOutput"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null
-          },
-          "core": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/TestResultCoreOutput"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null
-          },
-          "custom_fields": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/TestResultCustomFieldValuesOutput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Custom Fields"
-          },
-          "environment": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/TestResultEnvironmentOutput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Environment"
-          },
-          "members": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/TestResultMemberOutput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Members"
-          },
-          "test_keys": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/TestResultKeyOutput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Test Keys"
-          },
-          "issues": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/TestResultIssueOutput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Issues"
-          },
-          "defects": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/TestResultDefectOutput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Defects"
-          },
-          "execution_steps": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/TestResultStepOutput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Execution Steps"
-          },
-          "fixtures": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/TestResultFixtureOutput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Fixtures"
-          },
-          "result_attachments": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/TestResultAttachmentOutput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Result Attachments"
-          },
-          "related_results": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/RelatedTestResultOutput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Related Results"
-          },
-          "partial": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Partial"
-          },
-          "unavailable_sections": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/UnavailableSectionOutput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Unavailable Sections"
-          }
-        },
-        "title": "TestResultDetailOutput",
-        "type": "object"
+        "title": "TestResultDetailOutput"
       },
       "icons": null,
       "annotations": {
@@ -8406,15 +8409,13 @@
             "test-result"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "prepare_attachment_download",
       "title": "Prepare Attachment Download",
       "description": "Prepare one verified attachment download, then HTTP GET its returned Lucius URL.\n\nCall this after get_test_result or get_test_case_details provides an attachment ID, kind, and owner context.\nThe returned download URL is one-time and short-lived: HTTP GET it before expires_at without an Allure bearer token.\nPrepare again if the URL expires or was already retrieved.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "attachment_id": {
             "description": "Attachment ID discovered from a readable result or test case.",
@@ -8490,11 +8491,11 @@
           "attachment_id",
           "attachment_kind"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
-        "description": "Opaque one-time attachment delivery metadata returned by the public preparation tool.",
         "properties": {
           "attachment_id": {
             "description": "Verified attachment identifier.",
@@ -8576,8 +8577,10 @@
           "content_type",
           "content_length"
         ],
-        "title": "PreparedAttachmentDownloadOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Opaque one-time attachment delivery metadata returned by the public preparation tool.",
+        "title": "PreparedAttachmentDownloadOutput"
       },
       "icons": null,
       "annotations": {
@@ -8595,15 +8598,13 @@
             "test-result"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "get_project",
       "title": "Get Project",
       "description": "Retrieve one project by name or list accessible projects.\n\nName matching is case-insensitive. An exact match is preferred; an\nunambiguous partial match is accepted. Omit ``name`` to discover the\navailable project IDs and names before making project-scoped calls.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "name": {
             "anyOf": [
@@ -8634,10 +8635,11 @@
             "description": "Output format: 'json' (default) or 'plain'."
           }
         },
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "id": {
             "anyOf": [
@@ -8983,8 +8985,9 @@
             "title": "Total"
           }
         },
-        "title": "GetProjectOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "GetProjectOutput"
       },
       "icons": null,
       "annotations": {
@@ -9000,15 +9003,13 @@
             "project"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "list_launches",
       "title": "List Launches",
       "description": "List launches in a project.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "page": {
             "default": 0,
@@ -9089,11 +9090,11 @@
             "description": "Output format: 'json' (default) or 'plain'."
           }
         },
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
-        "description": "Paginated compact launches.",
         "properties": {
           "total": {
             "anyOf": [
@@ -9276,8 +9277,10 @@
             "title": "Items"
           }
         },
-        "title": "ListLaunchesOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Paginated compact launches.",
+        "title": "ListLaunchesOutput"
       },
       "icons": null,
       "annotations": {
@@ -9293,15 +9296,13 @@
             "launch"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "list_launch_test_results",
       "title": "List Launch Test Results",
       "description": "List test results inside a launch, including manual execution metadata.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "launch_id": {
             "description": "Launch ID (required).",
@@ -9399,10 +9400,11 @@
         "required": [
           "launch_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "launch_id": {
             "anyOf": [
@@ -9758,8 +9760,9 @@
             "title": "Total Pages"
           }
         },
-        "title": "ListLaunchTestResultsOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "ListLaunchTestResultsOutput"
       },
       "icons": null,
       "annotations": {
@@ -9776,15 +9779,13 @@
             "test-result"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "rerun_test_results_manually",
       "title": "Rerun Test Results Manually",
       "description": "Schedule manual reruns for selected launch results.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "launch_id": {
             "description": "Launch ID containing the failed results (required).",
@@ -9850,10 +9851,11 @@
           "launch_id",
           "result_ids"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "launch_id": {
             "anyOf": [
@@ -9922,8 +9924,9 @@
             "title": "Force Manual"
           }
         },
-        "title": "RerunTestResultsManuallyOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "RerunTestResultsManuallyOutput"
       },
       "icons": null,
       "annotations": {
@@ -9940,15 +9943,13 @@
             "test-result"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "start_manual_test_session",
       "title": "Start Manual Test Session",
       "description": "Start a manual execution session for a launch.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "launch_id": {
             "description": "Launch ID (required).",
@@ -10004,10 +10005,11 @@
         "required": [
           "launch_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "test_session_id": {
             "anyOf": [
@@ -10104,8 +10106,9 @@
             "title": "Environment"
           }
         },
-        "title": "StartManualTestSessionOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "StartManualTestSessionOutput"
       },
       "icons": null,
       "annotations": {
@@ -10122,15 +10125,13 @@
             "test-result"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "submit_manual_test_results",
       "title": "Submit Manual Test Results",
       "description": "Submit manual execution results for a manual session.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "test_session_id": {
             "description": "Manual test session ID (required).",
@@ -10177,10 +10178,11 @@
           "test_session_id",
           "results"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "test_session_id": {
             "anyOf": [
@@ -10222,8 +10224,9 @@
             "title": "Submitted Count"
           }
         },
-        "title": "SubmitManualTestResultsOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "SubmitManualTestResultsOutput"
       },
       "icons": null,
       "annotations": {
@@ -10240,15 +10243,13 @@
             "test-result"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "upload_test_results",
       "title": "Upload Test Results",
       "description": "Upload external test results to an existing launch.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "launch_id": {
             "description": "Launch ID to receive the results (required).",
@@ -10295,10 +10296,11 @@
           "launch_id",
           "results"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "launch_id": {
             "anyOf": [
@@ -10387,8 +10389,9 @@
             "title": "Failures"
           }
         },
-        "title": "UploadTestResultsOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "UploadTestResultsOutput"
       },
       "icons": null,
       "annotations": {
@@ -10405,15 +10408,13 @@
             "test-result"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "add_test_result_attachment",
       "title": "Add Test Result Attachment",
       "description": "Upload evidence to a manual test result.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "test_result_id": {
             "description": "Manual test result ID (required).",
@@ -10459,10 +10460,11 @@
           "test_result_id",
           "attachment"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "target_kind": {
             "anyOf": [
@@ -10516,8 +10518,9 @@
             "title": "Status Code"
           }
         },
-        "title": "AddTestResultAttachmentOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "AddTestResultAttachmentOutput"
       },
       "icons": null,
       "annotations": {
@@ -10534,15 +10537,13 @@
             "test-result"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "add_test_step_attachment",
       "title": "Add Test Step Attachment",
       "description": "Upload evidence to a manual attachment step inside a test result.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "test_result_id": {
             "description": "Parent test result ID (required).",
@@ -10660,10 +10661,11 @@
           "test_result_id",
           "attachment"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "target_kind": {
             "anyOf": [
@@ -10717,8 +10719,9 @@
             "title": "Status Code"
           }
         },
-        "title": "AddTestStepAttachmentOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "AddTestStepAttachmentOutput"
       },
       "icons": null,
       "annotations": {
@@ -10735,15 +10738,13 @@
             "test-result"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "delete_launch",
       "title": "Delete Launch",
       "description": "Delete a launch by ID.\n⚠️ CAUTION: Destructive.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "launch_id": {
             "description": "Launch ID to delete (required).",
@@ -10781,10 +10782,11 @@
         "required": [
           "launch_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "launch_id": {
             "anyOf": [
@@ -10823,8 +10825,9 @@
             "title": "Message"
           }
         },
-        "title": "DeleteLaunchOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "DeleteLaunchOutput"
       },
       "icons": null,
       "annotations": {
@@ -10840,15 +10843,13 @@
             "launch"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "close_launch",
       "title": "Close Launch",
       "description": "Close a launch and return updated launch details.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "launch_id": {
             "description": "Launch ID (required).",
@@ -10898,11 +10899,11 @@
         "required": [
           "launch_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
-        "description": "Stable compact launch fields emitted by create and lifecycle tools.",
         "properties": {
           "id": {
             "anyOf": [
@@ -11063,8 +11064,10 @@
             "title": "Operation"
           }
         },
-        "title": "LaunchMutationSummary",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Stable compact launch fields emitted by create and lifecycle tools.",
+        "title": "LaunchMutationSummary"
       },
       "icons": null,
       "annotations": {
@@ -11080,15 +11083,13 @@
             "launch"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "reopen_launch",
       "title": "Reopen Launch",
       "description": "Reopen a launch and return updated launch details.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "launch_id": {
             "description": "Launch ID (required).",
@@ -11138,11 +11139,11 @@
         "required": [
           "launch_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
-        "description": "Stable compact launch fields emitted by create and lifecycle tools.",
         "properties": {
           "id": {
             "anyOf": [
@@ -11303,8 +11304,10 @@
             "title": "Operation"
           }
         },
-        "title": "LaunchMutationSummary",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Stable compact launch fields emitted by create and lifecycle tools.",
+        "title": "LaunchMutationSummary"
       },
       "icons": null,
       "annotations": {
@@ -11320,15 +11323,13 @@
             "launch"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "list_integrations",
       "title": "List Integrations",
       "description": "List available integrations (issue trackers) in Allure TestOps.\n\nUse this tool to discover which integrations (Jira, GitHub, etc.) are\nconfigured and available for linking issues to test cases.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "project_id": {
             "anyOf": [
@@ -11359,10 +11360,11 @@
             "description": "Output format: 'json' (default) or 'plain'."
           }
         },
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "items": {
             "anyOf": [
@@ -11646,8 +11648,9 @@
             "title": "Total"
           }
         },
-        "title": "ListIntegrationsOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "ListIntegrationsOutput"
       },
       "icons": null,
       "annotations": {
@@ -11663,15 +11666,13 @@
             "integration"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "create_shared_step",
       "title": "Create Shared Step",
       "description": "Create a new reusable Shared Step.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "name": {
             "description": "The name of the shared step (e.g., \"Login as Admin\").",
@@ -11725,10 +11726,11 @@
         "required": [
           "name"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "id": {
             "anyOf": [
@@ -11779,8 +11781,9 @@
             "title": "Url"
           }
         },
-        "title": "CreateSharedStepOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "CreateSharedStepOutput"
       },
       "icons": null,
       "annotations": {
@@ -11796,15 +11799,13 @@
             "shared-step"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "list_shared_steps",
       "title": "List Shared Steps",
       "description": "List shared steps in a project to find existing ones.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "page": {
             "default": 0,
@@ -11862,10 +11863,11 @@
             "description": "Output format: 'json' (default) or 'plain'."
           }
         },
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "items": {
             "anyOf": [
@@ -12185,8 +12187,9 @@
             "title": "Total Pages"
           }
         },
-        "title": "ListSharedStepsOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "ListSharedStepsOutput"
       },
       "icons": null,
       "annotations": {
@@ -12202,15 +12205,13 @@
             "shared-step"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "update_shared_step",
       "title": "Update Shared Step",
       "description": "Update an existing shared step.\n⚠️ CAUTION: Destructive.\n\n⚠️ IMPORTANT: Changes propagate to ALL test cases using this shared step.\n\nOnly provided fields will be updated. Omitted fields remain unchanged.\nRepeated calls with the same data are idempotent.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "step_id": {
             "description": "The shared step ID to update (required).",
@@ -12277,10 +12278,11 @@
         "required": [
           "step_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "requires_confirmation": {
             "anyOf": [
@@ -12383,8 +12385,9 @@
             "title": "Url"
           }
         },
-        "title": "UpdateSharedStepOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "UpdateSharedStepOutput"
       },
       "icons": null,
       "annotations": {
@@ -12400,15 +12403,13 @@
             "shared-step"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "delete_shared_step",
       "title": "Delete Shared Step",
       "description": "Delete a shared step from the library.\n⚠️ CAUTION: Destructive.\n\n⚠️ CAUTION: If this shared step is used by test cases, deleting it\nwill break those references.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "step_id": {
             "description": "The shared step ID to delete (required).",
@@ -12451,10 +12452,11 @@
         "required": [
           "step_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "requires_confirmation": {
             "anyOf": [
@@ -12530,8 +12532,9 @@
             "title": "Url"
           }
         },
-        "title": "DeleteSharedStepOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "DeleteSharedStepOutput"
       },
       "icons": null,
       "annotations": {
@@ -12547,15 +12550,13 @@
             "shared-step"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "delete_archived_shared_steps",
       "title": "Delete Archived Shared Steps",
       "description": "Permanently delete all archived shared steps in the current project.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "confirm": {
             "default": false,
@@ -12591,10 +12592,11 @@
             "description": "Output format: 'json' (default) or 'plain'."
           }
         },
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "requires_confirmation": {
             "anyOf": [
@@ -12634,8 +12636,9 @@
             "title": "Deleted Count"
           }
         },
-        "title": "DeleteArchivedSharedStepsOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "DeleteArchivedSharedStepsOutput"
       },
       "icons": null,
       "annotations": {
@@ -12651,15 +12654,13 @@
             "shared-step"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "link_shared_step",
       "title": "Link Shared Step",
       "description": "Link a shared step to a test case.\n⚠️ CAUTION: Destructive.\n\nAdds a reference to the shared step in the test case's step list.\nThe shared step's actions will expand at execution time.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "test_case_id": {
             "description": "The ID of test case to modify.",
@@ -12719,110 +12720,11 @@
           "test_case_id",
           "shared_step_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "$defs": {
-          "Step": {
-            "additionalProperties": false,
-            "description": "A serialized scenario step, including recursive shared-step children.",
-            "properties": {
-              "index": {
-                "description": "One-based step index.",
-                "minimum": 1,
-                "title": "Index",
-                "type": "integer"
-              },
-              "type": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Step kind, such as shared_step.",
-                "title": "Type"
-              },
-              "action": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Inline step action.",
-                "title": "Action"
-              },
-              "expected": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Expected result for an inline step.",
-                "title": "Expected"
-              },
-              "shared_step_id": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Referenced shared-step identifier.",
-                "title": "Shared Step Id"
-              },
-              "shared_step_url": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Referenced shared-step URL.",
-                "title": "Shared Step Url"
-              },
-              "steps": {
-                "anyOf": [
-                  {
-                    "items": {
-                      "$ref": "#/$defs/Step"
-                    },
-                    "type": "array"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Nested shared-step children.",
-                "title": "Steps"
-              }
-            },
-            "required": [
-              "index"
-            ],
-            "title": "Step",
-            "type": "object"
-          }
-        },
-        "additionalProperties": false,
         "properties": {
           "requires_confirmation": {
             "anyOf": [
@@ -12938,8 +12840,109 @@
             "title": "Error"
           }
         },
-        "title": "LinkSharedStepOutput",
-        "type": "object"
+        "type": "object",
+        "$defs": {
+          "Step": {
+            "additionalProperties": false,
+            "description": "A serialized scenario step, including recursive shared-step children.",
+            "properties": {
+              "index": {
+                "description": "One-based step index.",
+                "minimum": 1,
+                "title": "Index",
+                "type": "integer"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Step kind, such as shared_step.",
+                "title": "Type"
+              },
+              "action": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Inline step action.",
+                "title": "Action"
+              },
+              "expected": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Expected result for an inline step.",
+                "title": "Expected"
+              },
+              "shared_step_id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Referenced shared-step identifier.",
+                "title": "Shared Step Id"
+              },
+              "shared_step_url": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Referenced shared-step URL.",
+                "title": "Shared Step Url"
+              },
+              "steps": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/Step"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Nested shared-step children.",
+                "title": "Steps"
+              }
+            },
+            "required": [
+              "index"
+            ],
+            "title": "Step",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "title": "LinkSharedStepOutput"
       },
       "icons": null,
       "annotations": {
@@ -12956,15 +12959,13 @@
             "test-case"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "unlink_shared_step",
       "title": "Unlink Shared Step",
       "description": "Remove a shared step reference from a test case.\n⚠️ CAUTION: Destructive.\n\nRemoves the link to the shared step. The test case will no longer\ninclude those steps at execution time.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "test_case_id": {
             "description": "The test case to modify.",
@@ -13012,110 +13013,11 @@
           "test_case_id",
           "shared_step_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "$defs": {
-          "Step": {
-            "additionalProperties": false,
-            "description": "A serialized scenario step, including recursive shared-step children.",
-            "properties": {
-              "index": {
-                "description": "One-based step index.",
-                "minimum": 1,
-                "title": "Index",
-                "type": "integer"
-              },
-              "type": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Step kind, such as shared_step.",
-                "title": "Type"
-              },
-              "action": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Inline step action.",
-                "title": "Action"
-              },
-              "expected": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Expected result for an inline step.",
-                "title": "Expected"
-              },
-              "shared_step_id": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Referenced shared-step identifier.",
-                "title": "Shared Step Id"
-              },
-              "shared_step_url": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Referenced shared-step URL.",
-                "title": "Shared Step Url"
-              },
-              "steps": {
-                "anyOf": [
-                  {
-                    "items": {
-                      "$ref": "#/$defs/Step"
-                    },
-                    "type": "array"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Nested shared-step children.",
-                "title": "Steps"
-              }
-            },
-            "required": [
-              "index"
-            ],
-            "title": "Step",
-            "type": "object"
-          }
-        },
-        "additionalProperties": false,
         "properties": {
           "requires_confirmation": {
             "anyOf": [
@@ -13231,8 +13133,109 @@
             "title": "Error"
           }
         },
-        "title": "UnlinkSharedStepOutput",
-        "type": "object"
+        "type": "object",
+        "$defs": {
+          "Step": {
+            "additionalProperties": false,
+            "description": "A serialized scenario step, including recursive shared-step children.",
+            "properties": {
+              "index": {
+                "description": "One-based step index.",
+                "minimum": 1,
+                "title": "Index",
+                "type": "integer"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Step kind, such as shared_step.",
+                "title": "Type"
+              },
+              "action": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Inline step action.",
+                "title": "Action"
+              },
+              "expected": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Expected result for an inline step.",
+                "title": "Expected"
+              },
+              "shared_step_id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Referenced shared-step identifier.",
+                "title": "Shared Step Id"
+              },
+              "shared_step_url": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Referenced shared-step URL.",
+                "title": "Shared Step Url"
+              },
+              "steps": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/Step"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Nested shared-step children.",
+                "title": "Steps"
+              }
+            },
+            "required": [
+              "index"
+            ],
+            "title": "Step",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "title": "UnlinkSharedStepOutput"
       },
       "icons": null,
       "annotations": {
@@ -13249,15 +13252,13 @@
             "test-case"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "list_test_layers",
       "title": "List Test Layers",
       "description": "List test layers to discover available test layer taxonomy.\n\nTest layers define the taxonomy for categorizing test cases (e.g., Unit, Integration, E2E).\nUse this to find layer IDs and names before creating or updating test cases.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "page": {
             "default": 0,
@@ -13286,10 +13287,11 @@
             "description": "Output format: 'json' (default) or 'plain'."
           }
         },
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "items": {
             "anyOf": [
@@ -13609,8 +13611,9 @@
             "title": "Total Pages"
           }
         },
-        "title": "ListTestLayersOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "ListTestLayersOutput"
       },
       "icons": null,
       "annotations": {
@@ -13626,15 +13629,13 @@
             "test-layer"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "create_test_layer",
       "title": "Create Test Layer",
       "description": "Create a new test layer in Allure TestOps.\n\nTest layers define taxonomy for categorizing test cases. Common examples include\n'Unit', 'Integration', 'E2E', 'UI', 'API', etc.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "name": {
             "description": "Name of the test layer (e.g., 'Unit', 'Integration', 'E2E').",
@@ -13672,10 +13673,11 @@
         "required": [
           "name"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "id": {
             "anyOf": [
@@ -13702,8 +13704,9 @@
             "title": "Name"
           }
         },
-        "title": "CreateTestLayerOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "CreateTestLayerOutput"
       },
       "icons": null,
       "annotations": {
@@ -13719,15 +13722,13 @@
             "test-layer"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "update_test_layer",
       "title": "Update Test Layer",
       "description": "Update an existing test layer's name.\n⚠️ CAUTION: Destructive.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "layer_id": {
             "description": "ID of the test layer to update.",
@@ -13775,10 +13776,11 @@
           "layer_id",
           "name"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "requires_confirmation": {
             "anyOf": [
@@ -13854,8 +13856,9 @@
             "title": "Changed"
           }
         },
-        "title": "UpdateTestLayerOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "UpdateTestLayerOutput"
       },
       "icons": null,
       "annotations": {
@@ -13871,15 +13874,13 @@
             "test-layer"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "delete_test_layer",
       "title": "Delete Test Layer",
       "description": "Delete a test layer from Allure TestOps.\n⚠️ CAUTION: Destructive.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "layer_id": {
             "description": "ID of the test layer to delete.",
@@ -13922,10 +13923,11 @@
         "required": [
           "layer_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "requires_confirmation": {
             "anyOf": [
@@ -13989,8 +13991,9 @@
             "title": "Status"
           }
         },
-        "title": "DeleteTestLayerOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "DeleteTestLayerOutput"
       },
       "icons": null,
       "annotations": {
@@ -14006,15 +14009,13 @@
             "test-layer"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "list_test_layer_schemas",
       "title": "List Test Layer Schemas",
       "description": "List test layer schemas for a project.\n\nTest layer schemas map custom field keys to test layers within a project.\nThey determine which test layer is assigned when a specific custom field value is used.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "project_id": {
             "anyOf": [
@@ -14055,10 +14056,11 @@
             "description": "Output format: 'json' (default) or 'plain'."
           }
         },
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "items": {
             "anyOf": [
@@ -14378,8 +14380,9 @@
             "title": "Total Pages"
           }
         },
-        "title": "ListTestLayerSchemasOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "ListTestLayerSchemasOutput"
       },
       "icons": null,
       "annotations": {
@@ -14396,15 +14399,13 @@
             "test-layer-schema"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "create_test_layer_schema",
       "title": "Create Test Layer Schema",
       "description": "Create a new test layer schema to map a custom field key to a test layer.\n\nTest layer schemas define the mapping between custom field keys and test layers.\nThis allows test cases with specific custom field values to be automatically\nassigned to the correct test layer.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "key": {
             "description": "The schema key (e.g., custom field name like 'layer' or 'test_layer').",
@@ -14440,10 +14441,11 @@
           "test_layer_id",
           "project_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "id": {
             "anyOf": [
@@ -14494,8 +14496,9 @@
             "title": "Test Layer Name"
           }
         },
-        "title": "CreateTestLayerSchemaOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "CreateTestLayerSchemaOutput"
       },
       "icons": null,
       "annotations": {
@@ -14512,15 +14515,13 @@
             "test-layer-schema"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "update_test_layer_schema",
       "title": "Update Test Layer Schema",
       "description": "Update an existing test layer schema.\n⚠️ CAUTION: Destructive.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "schema_id": {
             "description": "ID of the test layer schema to update.",
@@ -14587,10 +14588,11 @@
         "required": [
           "schema_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "requires_confirmation": {
             "anyOf": [
@@ -14678,8 +14680,9 @@
             "title": "Changed"
           }
         },
-        "title": "UpdateTestLayerSchemaOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "UpdateTestLayerSchemaOutput"
       },
       "icons": null,
       "annotations": {
@@ -14696,15 +14699,13 @@
             "test-layer-schema"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "delete_test_layer_schema",
       "title": "Delete Test Layer Schema",
       "description": "Delete a test layer schema from the project.\n⚠️ CAUTION: Destructive.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "schema_id": {
             "description": "ID of the test layer schema to delete.",
@@ -14747,10 +14748,11 @@
         "required": [
           "schema_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "requires_confirmation": {
             "anyOf": [
@@ -14814,8 +14816,9 @@
             "title": "Status"
           }
         },
-        "title": "DeleteTestLayerSchemaOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "DeleteTestLayerSchemaOutput"
       },
       "icons": null,
       "annotations": {
@@ -14832,15 +14835,13 @@
             "test-layer-schema"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "create_test_suite",
       "title": "Create Test Suite",
       "description": "Create a new test suite node in the hierarchy tree.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "name": {
             "description": "Suite name to create in hierarchy.",
@@ -14902,10 +14903,11 @@
         "required": [
           "name"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "id": {
             "anyOf": [
@@ -14956,8 +14958,9 @@
             "title": "Parent Suite Id"
           }
         },
-        "title": "CreateTestSuiteOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "CreateTestSuiteOutput"
       },
       "icons": null,
       "annotations": {
@@ -14973,15 +14976,13 @@
             "test-suite"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "list_test_suites",
       "title": "List Test Suites",
       "description": "List hierarchy suites for a project tree.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "project_id": {
             "anyOf": [
@@ -15029,9 +15030,53 @@
             "description": "Output format: 'json' (default) or 'plain'."
           }
         },
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
+        "properties": {
+          "tree": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/EntitySummary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "items": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/SuiteNodeOutput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Items"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Total"
+          }
+        },
+        "type": "object",
         "$defs": {
           "EntitySummary": {
             "additionalProperties": false,
@@ -15331,49 +15376,7 @@
         },
         "additionalProperties": false,
         "description": "Hierarchy tree and its recursive suite nodes.",
-        "properties": {
-          "tree": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/EntitySummary"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null
-          },
-          "items": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/SuiteNodeOutput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Items"
-          },
-          "total": {
-            "anyOf": [
-              {
-                "minimum": 0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Total"
-          }
-        },
-        "title": "ListTestSuitesOutput",
-        "type": "object"
+        "title": "ListTestSuitesOutput"
       },
       "icons": null,
       "annotations": {
@@ -15389,15 +15392,13 @@
             "test-suite"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "get_test_suite_contents",
       "title": "Get Test Suite Contents",
       "description": "Get test cases directly assigned to one test suite.\n\nThis is a targeted hierarchy read. It does not enumerate unrelated suites\nor recursively traverse the project tree.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "suite_id": {
             "description": "Suite/group node ID to inspect in hierarchy.",
@@ -15459,10 +15460,11 @@
         "required": [
           "suite_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "suite_id": {
             "anyOf": [
@@ -15516,8 +15518,9 @@
             "title": "Assigned Count"
           }
         },
-        "title": "GetTestSuiteContentsOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "GetTestSuiteContentsOutput"
       },
       "icons": null,
       "annotations": {
@@ -15533,15 +15536,13 @@
             "test-suite"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "assign_test_cases_to_suite",
       "title": "Assign Test Cases To Suite",
       "description": "Assign test cases to a suite path in hierarchy.\n\n⚠️ CAUTION: Destructive.\nReassigning test cases changes their hierarchy location.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "suite_id": {
             "description": "Target suite/group node ID for assignment.",
@@ -15599,10 +15600,11 @@
           "suite_id",
           "test_case_ids"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "tree_id": {
             "anyOf": [
@@ -15656,8 +15658,9 @@
             "title": "Assigned Count"
           }
         },
-        "title": "AssignTestCasesToSuiteOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "AssignTestCasesToSuiteOutput"
       },
       "icons": null,
       "annotations": {
@@ -15674,15 +15677,13 @@
             "test-suite"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "delete_test_suite",
       "title": "Delete Test Suite",
       "description": "Delete a test suite node from hierarchy.\n⚠️ CAUTION: Destructive.\n\nThis operation removes a hierarchy suite/group node. Allure TestOps handles\nnested entities according to its API behavior for tree groups.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "suite_id": {
             "description": "Suite/group node ID to delete from hierarchy.",
@@ -15737,10 +15738,11 @@
         "required": [
           "suite_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "requires_confirmation": {
             "anyOf": [
@@ -15792,8 +15794,9 @@
             "title": "Status"
           }
         },
-        "title": "DeleteTestSuiteOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "DeleteTestSuiteOutput"
       },
       "icons": null,
       "annotations": {
@@ -15809,15 +15812,13 @@
             "test-suite"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "create_test_plan",
       "title": "Create Test Plan",
       "description": "Create a new Test Plan in Allure TestOps.\n\nThis tool allows creating a Test Plan, which is a collection of Test Cases\nto be executed. You can define the content of the plan either by:\n1. Explicitly listing Test Case IDs (`test_case_ids`).\n2. Providing an AQL (Allure Query Language) filter (`aql_filter`).\n3. Both (explicit selection + dynamic filter).",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "name": {
             "description": "Name of the test plan",
@@ -15870,10 +15871,11 @@
         "required": [
           "name"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "id": {
             "anyOf": [
@@ -15954,8 +15956,9 @@
             "title": "Url"
           }
         },
-        "title": "CreateTestPlanOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "CreateTestPlanOutput"
       },
       "icons": null,
       "annotations": {
@@ -15971,15 +15974,13 @@
             "test-plan"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "update_test_plan",
       "title": "Update Test Plan",
       "description": "Update the metadata of an existing Test Plan.\n\nCurrently, supports updating the name of the plan.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "plan_id": {
             "description": "ID of the test plan",
@@ -16017,10 +16018,11 @@
         "required": [
           "plan_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "id": {
             "anyOf": [
@@ -16059,8 +16061,9 @@
             "title": "Url"
           }
         },
-        "title": "UpdateTestPlanOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "UpdateTestPlanOutput"
       },
       "icons": null,
       "annotations": {
@@ -16076,15 +16079,13 @@
             "test-plan"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "manage_test_plan_content",
       "title": "Manage Test Plan Content",
       "description": "Modify the content (Test Cases) of an existing Test Plan.\n\nAllows adding or removing specific Test Cases by ID, or updating the\nunderlying AQL filter query.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "plan_id": {
             "description": "ID of the test plan",
@@ -16152,10 +16153,11 @@
         "required": [
           "plan_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "plan_id": {
             "anyOf": [
@@ -16254,8 +16256,9 @@
             "title": "Url"
           }
         },
-        "title": "ManageTestPlanContentOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "ManageTestPlanContentOutput"
       },
       "icons": null,
       "annotations": {
@@ -16272,15 +16275,13 @@
             "test-plan"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "list_test_plans",
       "title": "List Test Plans",
       "description": "List Test Plans for the current project.\n\nRetrieves a paginated list of Test Plans, showing their IDs, names,\nand the number of test cases they contain.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "page": {
             "default": 0,
@@ -16309,10 +16310,11 @@
             "description": "Output format: 'json' (default) or 'plain'."
           }
         },
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "items": {
             "anyOf": [
@@ -16632,8 +16634,9 @@
             "title": "Total Pages"
           }
         },
-        "title": "ListTestPlansOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "ListTestPlansOutput"
       },
       "icons": null,
       "annotations": {
@@ -16649,15 +16652,13 @@
             "test-plan"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "delete_test_plan",
       "title": "Delete Test Plan",
       "description": "Delete a Test Plan.\n⚠️ CAUTION: Destructive.\n\nPermanently removes the Test Plan from Allure TestOps.\nThe operation is idempotent: if the plan does not exist, it returns success.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "plan_id": {
             "description": "ID of the test plan to delete",
@@ -16688,10 +16689,11 @@
         "required": [
           "plan_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "requires_confirmation": {
             "anyOf": [
@@ -16743,8 +16745,9 @@
             "title": "Status"
           }
         },
-        "title": "DeleteTestPlanOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "DeleteTestPlanOutput"
       },
       "icons": null,
       "annotations": {
@@ -16760,15 +16763,13 @@
             "test-plan"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "create_defect",
       "title": "Create Defect",
       "description": "Create a new defect in the current project.\n\nUse this tool to register a known defect that can later be linked\nto failing test results through defect matchers (automation rules).",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "name": {
             "description": "Name / title of the defect",
@@ -16806,10 +16807,11 @@
         "required": [
           "name"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "id": {
             "anyOf": [
@@ -16860,8 +16862,9 @@
             "title": "Url"
           }
         },
-        "title": "CreateDefectOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "CreateDefectOutput"
       },
       "icons": null,
       "annotations": {
@@ -16877,15 +16880,13 @@
             "defect"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "get_defect",
       "title": "Get Defect",
       "description": "Retrieve detailed information about a specific defect.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "defect_id": {
             "description": "ID of the defect to retrieve",
@@ -16911,10 +16912,11 @@
         "required": [
           "defect_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "id": {
             "anyOf": [
@@ -16989,8 +16991,9 @@
             "title": "Url"
           }
         },
-        "title": "GetDefectOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "GetDefectOutput"
       },
       "icons": null,
       "annotations": {
@@ -17006,15 +17009,13 @@
             "defect"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "link_defect_to_test_case",
       "title": "Link Defect To Test Case",
       "description": "Link a defect to a test case through a shared issue mapping.\n\nThis operation ensures defect governance and test coverage are connected:\nthe issue is linked to the defect and to the specified test case.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "defect_id": {
             "description": "ID of the defect to link",
@@ -17081,10 +17082,11 @@
           "defect_id",
           "test_case_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "defect_id": {
             "anyOf": [
@@ -17171,8 +17173,9 @@
             "title": "Already Linked"
           }
         },
-        "title": "LinkDefectToTestCaseOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "LinkDefectToTestCaseOutput"
       },
       "icons": null,
       "annotations": {
@@ -17190,15 +17193,13 @@
             "test-case"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "list_defect_test_cases",
       "title": "List Defect Test Cases",
       "description": "List test cases currently linked to a defect.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "defect_id": {
             "description": "ID of the defect whose linked test cases should be listed",
@@ -17234,10 +17235,11 @@
         "required": [
           "defect_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "defect_id": {
             "anyOf": [
@@ -17581,8 +17583,9 @@
             "title": "Total Pages"
           }
         },
-        "title": "ListDefectTestCasesOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "ListDefectTestCasesOutput"
       },
       "icons": null,
       "annotations": {
@@ -17599,15 +17602,13 @@
             "test-case"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "unlink_issue_from_test_case",
       "title": "Unlink Issue From Test Case",
       "description": "Unlink an issue from a test case.\n\nThis operation is idempotent: if the issue is already unlinked, it still\nreturns a successful confirmation. Supply the issue key (for example,\n``PROJ-123``) or the internal issue-link ID returned by Allure TestOps.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "test_case_id": {
             "description": "ID of the test case to unlink from",
@@ -17645,11 +17646,11 @@
           "test_case_id",
           "issue_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
-        "description": "Confirmation for unlinking an issue by numeric ID or issue key.",
         "properties": {
           "test_case_id": {
             "anyOf": [
@@ -17703,8 +17704,10 @@
             "title": "Already Unlinked"
           }
         },
-        "title": "UnlinkIssueFromTestCaseOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Confirmation for unlinking an issue by numeric ID or issue key.",
+        "title": "UnlinkIssueFromTestCaseOutput"
       },
       "icons": null,
       "annotations": {
@@ -17721,15 +17724,13 @@
             "test-case"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "update_defect",
       "title": "Update Defect",
       "description": "Update an existing defect's name, description, or status.\n\nAt least one field must be provided. Fields set to null/None are\nleft unchanged.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "defect_id": {
             "description": "ID of the defect to update",
@@ -17791,10 +17792,11 @@
         "required": [
           "defect_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "id": {
             "anyOf": [
@@ -17869,8 +17871,9 @@
             "title": "Url"
           }
         },
-        "title": "UpdateDefectOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "UpdateDefectOutput"
       },
       "icons": null,
       "annotations": {
@@ -17886,15 +17889,13 @@
             "defect"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "delete_defect",
       "title": "Delete Defect",
       "description": "Permanently delete a defect and all its associated matchers.\n\nThis is a destructive operation. The ``confirm`` parameter must be\nset to ``true`` to actually perform the deletion.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "defect_id": {
             "description": "ID of the defect to delete",
@@ -17925,10 +17926,11 @@
         "required": [
           "defect_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "defect_id": {
             "anyOf": [
@@ -17967,8 +17969,9 @@
             "title": "Status"
           }
         },
-        "title": "DeleteDefectOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "DeleteDefectOutput"
       },
       "icons": null,
       "annotations": {
@@ -17984,15 +17987,13 @@
             "defect"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "list_defects",
       "title": "List Defects",
       "description": "List all defects in the current project.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "output_format": {
             "anyOf": [
@@ -18011,10 +18012,11 @@
             "description": "Output format: 'json' (default) or 'plain'."
           }
         },
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "items": {
             "anyOf": [
@@ -18334,8 +18336,9 @@
             "title": "Total Pages"
           }
         },
-        "title": "ListDefectsOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "ListDefectsOutput"
       },
       "icons": null,
       "annotations": {
@@ -18351,15 +18354,13 @@
             "defect"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "create_defect_matcher",
       "title": "Create Defect Matcher",
       "description": "Create a defect matcher (automation rule) for a defect.\n\nMatchers automatically link future failing test results to a defect\nwhen the test failure's error message or stack trace matches the\nprovided regex patterns.\n\nAt least one of ``message_regex`` or ``trace_regex`` must be\nsupplied.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "defect_id": {
             "description": "ID of the parent defect",
@@ -18414,10 +18415,11 @@
           "defect_id",
           "name"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "id": {
             "anyOf": [
@@ -18480,8 +18482,9 @@
             "title": "Trace Regex"
           }
         },
-        "title": "CreateDefectMatcherOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "CreateDefectMatcherOutput"
       },
       "icons": null,
       "annotations": {
@@ -18498,15 +18501,13 @@
             "defect-matcher"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "update_defect_matcher",
       "title": "Update Defect Matcher",
       "description": "Update a defect matcher's name or regex patterns.\n\nAt least one field must be provided.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "matcher_id": {
             "description": "ID of the matcher to update",
@@ -18568,10 +18569,11 @@
         "required": [
           "matcher_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "id": {
             "anyOf": [
@@ -18622,8 +18624,9 @@
             "title": "Trace Regex"
           }
         },
-        "title": "UpdateDefectMatcherOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "UpdateDefectMatcherOutput"
       },
       "icons": null,
       "annotations": {
@@ -18640,15 +18643,13 @@
             "defect-matcher"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "delete_defect_matcher",
       "title": "Delete Defect Matcher",
       "description": "Permanently delete a defect matcher (automation rule).\n\nThis is a destructive operation. The ``confirm`` parameter must be\nset to ``true`` to actually perform the deletion.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "matcher_id": {
             "description": "ID of the matcher to delete",
@@ -18679,10 +18680,11 @@
         "required": [
           "matcher_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
         "properties": {
           "matcher_id": {
             "anyOf": [
@@ -18721,8 +18723,9 @@
             "title": "Status"
           }
         },
-        "title": "DeleteDefectMatcherOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "title": "DeleteDefectMatcherOutput"
       },
       "icons": null,
       "annotations": {
@@ -18739,15 +18742,13 @@
             "defect-matcher"
           ]
         }
-      },
-      "execution": null
+      }
     },
     {
       "name": "list_defect_matchers",
       "title": "List Defect Matchers",
       "description": "List all matchers (automation rules) for a given defect.",
       "inputSchema": {
-        "additionalProperties": false,
         "properties": {
           "defect_id": {
             "description": "ID of the parent defect",
@@ -18773,11 +18774,11 @@
         "required": [
           "defect_id"
         ],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
+      "execution": null,
       "outputSchema": {
-        "additionalProperties": false,
-        "description": "Matcher list for a defect.",
         "properties": {
           "defect_id": {
             "anyOf": [
@@ -18912,8 +18913,10 @@
             "title": "Total Pages"
           }
         },
-        "title": "ListDefectMatchersOutput",
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Matcher list for a defect.",
+        "title": "ListDefectMatchersOutput"
       },
       "icons": null,
       "annotations": {
@@ -18930,8 +18933,7 @@
             "defect-matcher"
           ]
         }
-      },
-      "execution": null
+      }
     }
   ],
   "prompts": [],
