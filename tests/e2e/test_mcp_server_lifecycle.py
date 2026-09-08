@@ -147,7 +147,9 @@ async def _wait_for_http_server(url: str) -> None:
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.get(url, timeout=1.0)
-                if response.status_code in [200, 404, 405, 406]:
+                # MCP 2.x returns 400 for an incomplete GET without session headers;
+                # receiving it still proves the server is listening and initialized.
+                if response.status_code in [200, 400, 404, 405, 406]:
                     return
         except Exception as e:
             print(f"httpx exception: {e}")
@@ -274,7 +276,7 @@ async def test_stdio_lifecycle() -> None:
 async def test_http_lifecycle(unused_port: int) -> None:
     """Test MCP server lifecycle in HTTP (Streamable) mode."""
     async with run_server_http(unused_port) as http_url:
-        async with streamable_http_client(http_url) as (read, write, _get_session_id):
+        async with streamable_http_client(http_url) as (read, write):
             async with ClientSession(read, write) as session:
                 await session.initialize()
                 tools_result = await session.list_tools()
@@ -296,7 +298,7 @@ async def test_http_lifecycle_from_unpacked_python_bundle(
     _extract_bundle(mcpb_python_bundle_path, bundle_root)
 
     async with run_server_from_bundle_http(bundle_root, unused_port) as http_url:
-        async with streamable_http_client(http_url) as (read, write, _get_session_id):
+        async with streamable_http_client(http_url) as (read, write):
             async with ClientSession(read, write) as session:
                 await session.initialize()
                 tools_result = await session.list_tools()
