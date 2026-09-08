@@ -164,10 +164,10 @@ async def test_telemetry_tool_success_and_error_events_emitted(
 
     async with _stdio_session(env) as session:
         success = await session.call_tool("update_test_case", {"test_case_id": 1, "confirm": False})
-        assert success.isError is False
+        assert success.is_error is False
 
         validation_error = await session.call_tool("search_test_cases", {"query": ""})
-        assert validation_error.isError is True
+        assert validation_error.is_error is True
 
         assert _wait_for_count(captures, expected=3)
 
@@ -217,7 +217,7 @@ async def test_telemetry_opt_out_disables_emission(
 
     async with _stdio_session(env) as session:
         result = await session.call_tool("update_test_case", {"test_case_id": 1, "confirm": False})
-        assert result.isError is False
+        assert result.is_error is False
         time.sleep(0.5)
 
     assert captures == []
