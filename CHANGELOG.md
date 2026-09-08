@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.15.4] - 2026-09-08
+
+### Changed
+- Updated runtime and tooling dependencies, including FastMCP 4.0.2, MCP 2.1.1, Cyclopts 4.24.0, Faker 40.38.0, Platformdirs 4.11.7, and Ruff 0.16.6 (#384).
+- Updated end-to-end coverage for MCP 2.x compatibility (#385).
+
 ## [v0.15.3] - 2026-09-02
 
 ### Fixed
@@ -378,7 +384,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.3...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.4...HEAD
+[v0.15.4]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.3...v0.15.4
 [v0.15.3]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.2...v0.15.3
 [v0.15.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.1...v0.15.2
 [v0.15.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.0...v0.15.1
