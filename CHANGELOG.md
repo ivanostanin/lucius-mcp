@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.15.5] - 2026-09-09
+
+### Changed
+- Updated the `httpx2` and `httpcore2` dependencies from 2.10.0 to 2.12.0 (#387).
+
 ## [v0.15.4] - 2026-09-08
 
 ### Changed
@@ -384,7 +389,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.4...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.5...HEAD
+[v0.15.5]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.4...v0.15.5
 [v0.15.4]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.3...v0.15.4
 [v0.15.3]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.2...v0.15.3
 [v0.15.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.1...v0.15.2
