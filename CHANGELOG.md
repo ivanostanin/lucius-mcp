@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.15.6] - 2026-09-17
+
+### Changed
+- Updated locked runtime and tooling dependencies (#394).
+
 ## [v0.15.5] - 2026-09-09
 
 ### Changed
@@ -389,7 +394,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.5...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.6...HEAD
+[v0.15.6]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.5...v0.15.6
 [v0.15.5]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.4...v0.15.5
 [v0.15.4]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.3...v0.15.4
 [v0.15.3]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.2...v0.15.3
