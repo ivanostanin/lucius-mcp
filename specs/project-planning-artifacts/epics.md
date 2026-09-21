@@ -1481,3 +1481,32 @@ so that I can prepare and download evidence using the supported owner-context co
 **When** the story is complete
 **Then** `TestResultAttachmentOutput` and the generated MCP manifest omit `storage_key`
 **And** focused tests prove a non-null upstream value is absent from result, step, and fixture outputs.
+
+### Story 12.6: Configurable Attachment Upload Size Limit
+
+As a TestOps Operator,
+I want to configure the maximum size of uploaded attachments through an environment variable,
+so that deployments can support their evidence-file requirements without modifying source code.
+
+**Acceptance Criteria:**
+
+**Given** `ATTACHMENT_MAX_FILE_BYTES` is not configured
+**When** Lucius starts and attachment upload services are initialized
+**Then** the upload limit remains 10 MiB, preserving the existing default behavior.
+
+**Given** `ATTACHMENT_MAX_FILE_BYTES` contains a positive byte count such as `104857600`
+**When** Lucius starts
+**Then** Base64-decoded and URL-downloaded attachments up to that configured size are eligible for upload across test-case, test-result, step, and fixture attachment paths.
+
+**Given** `ATTACHMENT_MAX_FILE_BYTES` is zero, negative, or not an integer
+**When** application settings are loaded
+**Then** configuration validation fails with an actionable validation error.
+
+**Given** decoded or downloaded attachment content exceeds the configured limit
+**When** an attachment upload is attempted
+**Then** Lucius rejects the upload before sending it to Allure TestOps
+**And** the existing MIME allowlist and upload APIs remain unchanged.
+
+**Given** the setting is documented for deployment
+**When** maintainers inspect setup documentation or the example environment file
+**Then** they can find the variable, byte-based units, and the 10 MiB default.
