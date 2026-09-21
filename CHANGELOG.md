@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.15.7] - 2026-09-21
+
+### Changed
+- Updated locked runtime and tooling dependencies, including FastMCP 4.0.5, Faker 40.39.0, Ruff 0.16.8, Uvicorn 0.53.0, and urllib3 2.8.0, and refreshed Docker build actions (#405).
+
 ## [v0.15.6] - 2026-09-17
 
 ### Changed
@@ -394,7 +399,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.6...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.7...HEAD
+[v0.15.7]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.6...v0.15.7
 [v0.15.6]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.5...v0.15.6
 [v0.15.5]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.4...v0.15.5
 [v0.15.4]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.3...v0.15.4
