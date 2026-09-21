@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     HOST: str = Field(default="127.0.0.1", description="Host to bind the server to")
     PORT: int = Field(default=8000, description="Port to bind the server to")
     MCP_MODE: Literal["http", "stdio"] = Field(default="stdio", description="Running mode: http or stdio")
+    ATTACHMENT_MAX_FILE_BYTES: int = Field(
+        default=10 * 1024 * 1024,
+        ge=1,
+        description="Maximum size of one uploaded attachment after decoding or download",
+    )
     ATTACHMENT_DOWNLOAD_PUBLIC_BASE_URL: str | None = Field(
         default=None,
         description="Explicit externally reachable base URL for HTTP attachment capability links",

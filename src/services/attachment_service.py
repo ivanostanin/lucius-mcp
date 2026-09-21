@@ -8,9 +8,10 @@ import httpx
 from src.client import AllureClient
 from src.client.exceptions import AllureValidationError
 from src.client.generated.models import TestCaseAttachmentRowDto
+from src.utils.config import settings
 
-# Default limits
-MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024  # 10MB
+# Configured upload limit, applied after Base64 decoding or URL download.
+MAX_ATTACHMENT_SIZE = settings.ATTACHMENT_MAX_FILE_BYTES
 ALLOWED_MIME_TYPES = {
     "image/png",
     "image/jpeg",

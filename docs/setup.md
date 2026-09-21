@@ -69,6 +69,7 @@ The server is configured via environment variables or a `.env` file.
 | `LOG_LEVEL`         | Logging level (`DEBUG`, `INFO`, `ERROR`) | `INFO`                       |
 | `LOG_FORMAT`        | Logging format (`json`, `console`)       | `json`                       |
 | `MCP_MODE`          | Running mode: `stdio` or `http`          | `stdio`                      |
+| `ATTACHMENT_MAX_FILE_BYTES` | Maximum decoded/downloaded size of one uploaded attachment | `10485760` (10 MiB) |
 | `TELEMETRY_ENABLED` | Optional telemetry override (`true`/`false`) | `None` (uses config default) |
 | `TELEMETRY_WEBSITE_ID` | Optional Umami website ID override | `None` (uses config default) |
 | `TELEMETRY_HOSTNAME` | Optional Umami hostname override | `None` (uses config default) |
