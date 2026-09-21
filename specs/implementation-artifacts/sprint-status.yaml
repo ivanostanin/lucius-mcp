@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2025-12-27 18:46
-last_updated: 2026-08-28
+last_updated: 2026-09-21
 project: lucius-mcp
 project_key: lucius-mcp
 tracking_system: file-system
@@ -162,4 +162,5 @@ development_status:
   12-3-prepare-attachment-downloads-and-teach-agents-the-safe-evidence-workflow: done
   12-4-extend-get-launch-info-with-complete-execution-results: done
   12-5-remove-upstream-storage-key-from-test-result-attachment-outputs: done
+  12-6-configurable-attachment-size-limit: done
   epic-12-retrospective: optional
