@@ -2568,6 +2568,80 @@
     },
     "example_command": "lucius launch rerun_test_results_manually --args '{\"launch_id\": 123, \"result_ids\": [456]}'"
   },
+  "run_test_plan": {
+    "name": "run_test_plan",
+    "entity": "test_plan",
+    "action": "run",
+    "description": "Start a launch from an existing Test Plan.\n\nRuns the selected test plan by its ID and returns the created launch as a\ncompact mutation summary enriched with the source plan context. Starting\na launch is reversible: use delete_launch to remove it when unwanted.\n\nArgs:\n    plan_id: The numeric ID of the Test Plan to run.\n    launch_name: Name for the launch created from the plan (1-255 characters).\n    issues: Optional list of issue dictionaries.\n    links: Optional list of external link dictionaries.\n    tags: Optional list of launch tags.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    A success message with the launch ID, name, and launch URL.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "plan_id": {
+          "type": "integer",
+          "description": "ID of the test plan to run"
+        },
+        "launch_name": {
+          "type": "string",
+          "description": "Name for the launch started from the plan"
+        },
+        "issues": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional list of issue dictionaries.",
+          "default": null
+        },
+        "links": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional list of external links (name, url, type).",
+          "default": null
+        },
+        "tags": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional list of tags.",
+          "default": null
+        }
+      },
+      "required": [
+        "plan_id",
+        "launch_name"
+      ]
+    },
+    "example_command": "lucius test_plan run --args '{\"plan_id\": 123, \"launch_name\": \"value\"}'"
+  },
   "search_test_cases": {
     "name": "search_test_cases",
     "entity": "test_case",

@@ -128,7 +128,13 @@ horizontal scaling is deferred in [D-12-7](../specs/implementation-artifacts/def
 | `update_test_plan`         | Update plan metadata (name).                        | `plan_id`, `name`                           |
 | `manage_test_plan_content` | Add/remove test cases or update AQL filter.         | `plan_id`, `add_ids`, `remove_ids`, `aql`   |
 | `list_test_plans`          | List test plans with pagination.                    | `page`, `size`                              |
+| `run_test_plan`            | Start a launch from an existing test plan.          | `plan_id`, `launch_name`, `tags`            |
 | `delete_test_plan`         | Soft-delete (archive) a test plan.                  | `plan_id`                                   |
+
+Curate a plan with `create_test_plan` and `manage_test_plan_content`, then start execution with `run_test_plan`:
+it starts a launch from the plan's current selection (the same simplified `tags`, `links`, and `issues`
+conventions as `create_launch` apply) and returns the launch URL for follow-up through `get_launch` and
+`list_launch_test_results`. Starting a launch is reversible via `delete_launch`, so no confirmation gate is required.
 
 ## 🐛 Defect Management
 

@@ -171,6 +171,12 @@ class LaunchMutationSummary(BaseModel):
     operation: str | None = Field(default=None)
 
 
+class TestPlanRunOutput(LaunchMutationSummary):
+    """Curated launch-started-from-plan summary with source plan context."""
+
+    plan_id: int | None = Field(default=None, description="Source test plan ID for the started launch.")
+
+
 class LaunchListItem(BaseModel):
     """Compact launch fields emitted only for collection discovery."""
 

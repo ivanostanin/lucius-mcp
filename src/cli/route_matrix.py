@@ -84,6 +84,7 @@ CANONICAL_ROUTE_MATRIX: dict[str, dict[str, str]] = {
         "update": "update_test_plan",
         "manage_content": "manage_test_plan_content",
         "list": "list_test_plans",
+        "run": "run_test_plan",
         "delete": "delete_test_plan",
     },
     "defect": {

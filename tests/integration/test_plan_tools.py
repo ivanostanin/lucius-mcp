@@ -4,12 +4,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.client.generated.models import TestPlanDto
+from src.client.exceptions import AllureNotFoundError, AllureValidationError
+from src.client.generated.models import LaunchDto, TestPlanDto
 from src.tools.plans import (
     create_test_plan,
     delete_test_plan,
     list_test_plans,
     manage_test_plan_content,
+    run_test_plan,
     update_test_plan,
 )
 
@@ -175,3 +177,179 @@ async def test_delete_test_plan_no_confirm() -> None:
 
     assert "⚠️ Deletion requires confirmation" in output
     assert "confirm=True" in output
+
+
+@pytest.mark.asyncio
+async def test_run_test_plan_tool_plain() -> None:
+    with patch("src.tools.plans.AllureClient.from_env") as mock_client_ctx:
+        mock_client = _mock_url_context()
+        mock_client_ctx.return_value.__aenter__.return_value = mock_client
+
+        with patch("src.tools.plans.PlanService") as mock_service_cls:
+            mock_service = mock_service_cls.return_value
+            mock_launch = LaunchDto(id=500, name="Nightly Run", project_id=1)
+            mock_service.run_plan = AsyncMock(return_value=mock_launch)
+
+            output = await run_test_plan(plan_id=100, launch_name="Nightly Run", output_format="plain")
+
+            assert "Test Plan 100" in output
+            assert "ID: 500" in output
+            assert "Nightly Run" in output
+            assert "Launch URL: https://example.com/launch/500" in output
+            mock_service.run_plan.assert_called_once_with(
+                plan_id=100,
+                launch_name="Nightly Run",
+                issues=None,
+                links=None,
+                tags=None,
+            )
+
+
+@pytest.mark.asyncio
+async def test_run_test_plan_tool_json_payload_fields() -> None:
+    with patch("src.tools.plans.AllureClient.from_env") as mock_client_ctx:
+        mock_client = _mock_url_context()
+        mock_client_ctx.return_value.__aenter__.return_value = mock_client
+
+        with patch("src.tools.plans.PlanService") as mock_service_cls:
+            mock_service = mock_service_cls.return_value
+            mock_launch = LaunchDto(
+                id=500,
+                name="Nightly Run",
+                project_id=7,
+                closed=False,
+                autoclose=False,
+                external=False,
+            )
+            mock_service.run_plan = AsyncMock(return_value=mock_launch)
+
+            output = await run_test_plan(plan_id=100, launch_name="Nightly Run", output_format="json")
+
+            structured = output.structured_content
+            assert structured["plan_id"] == 100
+            assert structured["id"] == 500
+            assert structured["name"] == "Nightly Run"
+            assert structured["project_id"] == 7
+            assert structured["url"] == "https://example.com/launch/500"
+            assert structured["operation"] == "started"
+            assert structured["closed"] is False
+            assert structured["autoclose"] is False
+            assert structured["external"] is False
+
+
+@pytest.mark.asyncio
+async def test_run_test_plan_json_falls_back_to_configured_project() -> None:
+    with patch("src.tools.plans.AllureClient.from_env") as mock_client_ctx:
+        mock_client = _mock_url_context(project_id=1)
+        mock_client_ctx.return_value.__aenter__.return_value = mock_client
+
+        with patch("src.tools.plans.PlanService") as mock_service_cls:
+            mock_service = mock_service_cls.return_value
+            mock_launch = LaunchDto(id=500, name="Nightly Run")
+            mock_service.run_plan = AsyncMock(return_value=mock_launch)
+
+            output = await run_test_plan(plan_id=100, launch_name="Nightly Run", output_format="json")
+
+            structured = output.structured_content
+            assert structured["project_id"] is None
+            assert structured["url"] == "https://example.com/launch/500"
+
+
+@pytest.mark.asyncio
+async def test_run_test_plan_passes_enrichment_inputs() -> None:
+    with patch("src.tools.plans.AllureClient.from_env") as mock_client_ctx:
+        mock_client = _mock_url_context()
+        mock_client_ctx.return_value.__aenter__.return_value = mock_client
+
+        with patch("src.tools.plans.PlanService") as mock_service_cls:
+            mock_service = mock_service_cls.return_value
+            mock_launch = LaunchDto(id=500, name="Enriched", project_id=1)
+            mock_service.run_plan = AsyncMock(return_value=mock_launch)
+
+            links = [{"name": "Docs", "url": "https://example.com", "type": "issue"}]
+            issues = [{"name": "ISSUE-1"}]
+            await run_test_plan(
+                plan_id=100,
+                launch_name="Enriched",
+                tags=["smoke"],
+                links=links,
+                issues=issues,
+                output_format="json",
+            )
+
+            mock_service.run_plan.assert_called_once_with(
+                plan_id=100,
+                launch_name="Enriched",
+                issues=issues,
+                links=links,
+                tags=["smoke"],
+            )
+
+
+@pytest.mark.asyncio
+async def test_run_test_plan_plain_and_json_parity() -> None:
+    with patch("src.tools.plans.AllureClient.from_env") as mock_client_ctx:
+        mock_client = _mock_url_context()
+        mock_client_ctx.return_value.__aenter__.return_value = mock_client
+
+        with patch("src.tools.plans.PlanService") as mock_service_cls:
+            mock_service = mock_service_cls.return_value
+            mock_launch = LaunchDto(id=500, name="Nightly Run", project_id=1)
+            mock_service.run_plan = AsyncMock(return_value=mock_launch)
+
+            plain = await run_test_plan(plan_id=100, launch_name="Nightly Run", output_format="plain")
+            structured = (
+                await run_test_plan(plan_id=100, launch_name="Nightly Run", output_format="json")
+            ).structured_content
+
+            assert isinstance(plain, str)
+            assert "500" in plain
+            assert "Nightly Run" in plain
+            assert "https://example.com/launch/500" in plain
+            assert structured["id"] == 500
+            assert structured["name"] == "Nightly Run"
+            assert structured["url"] == "https://example.com/launch/500"
+
+
+@pytest.mark.asyncio
+async def test_run_test_plan_upstream_not_found_propagates() -> None:
+    with patch("src.tools.plans.AllureClient.from_env") as mock_client_ctx:
+        mock_client = _mock_url_context()
+        mock_client_ctx.return_value.__aenter__.return_value = mock_client
+
+        with patch("src.tools.plans.PlanService") as mock_service_cls:
+            mock_service = mock_service_cls.return_value
+            mock_service.run_plan = AsyncMock(
+                side_effect=AllureNotFoundError("Test plan ID 100 not found or is not runnable")
+            )
+
+            with pytest.raises(AllureNotFoundError, match="not found or is not runnable"):
+                await run_test_plan(plan_id=100, launch_name="Nightly Run", output_format="json")
+
+
+@pytest.mark.asyncio
+async def test_run_test_plan_validation_error_propagates() -> None:
+    with patch("src.tools.plans.AllureClient.from_env") as mock_client_ctx:
+        mock_client = _mock_url_context()
+        mock_client_ctx.return_value.__aenter__.return_value = mock_client
+
+        with patch("src.tools.plans.PlanService") as mock_service_cls:
+            mock_service = mock_service_cls.return_value
+            mock_service.run_plan = AsyncMock(side_effect=AllureValidationError("Launch name is required"))
+
+            with pytest.raises(AllureValidationError, match="Launch name is required"):
+                await run_test_plan(plan_id=100, launch_name="   ", output_format="json")
+
+
+@pytest.mark.asyncio
+async def test_run_test_plan_requires_launch_id_in_response() -> None:
+    with patch("src.tools.plans.AllureClient.from_env") as mock_client_ctx:
+        mock_client = _mock_url_context()
+        mock_client_ctx.return_value.__aenter__.return_value = mock_client
+
+        with patch("src.tools.plans.PlanService") as mock_service_cls:
+            mock_service = mock_service_cls.return_value
+            mock_service.run_plan = AsyncMock(return_value=LaunchDto(name="No ID"))
+
+            with pytest.raises(ValueError, match="missing an ID"):
+                await run_test_plan(plan_id=100, launch_name="Nightly Run", output_format="json")

@@ -262,6 +262,10 @@
       "description": "Delete a Test Plan."
     },
     {
+      "name": "run_test_plan",
+      "description": "Run a Test Plan to start a launch."
+    },
+    {
       "name": "create_defect",
       "description": "Create a new defect in the current project."
     },

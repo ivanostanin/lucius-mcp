@@ -3,7 +3,9 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from src.client import AllureClient
+from src.client.exceptions import AllureNotFoundError, AllureValidationError
 from src.client.generated.models import (
+    LaunchDto,
     TestPlanDto,
     TreeSelectionDto,
 )
@@ -275,3 +277,124 @@ async def test_delete_plan_not_found(service: PlanService, mock_client: AsyncMoc
         await service.delete_plan(plan_id)
 
         mock_api.delete7.assert_called_once_with(id=plan_id)
+
+
+@pytest.mark.asyncio
+async def test_run_plan_starts_launch_from_plan(service: PlanService, mock_client: AsyncMock) -> None:
+    """Test running a plan starts a launch via the run3 operation."""
+    launch = LaunchDto(id=500, name="Nightly Run", project_id=1)
+
+    with patch("src.services.plan_service.TestPlanControllerApi") as mock_controller:
+        mock_api = mock_controller.return_value
+        mock_api.run3.return_value = "run_coro"
+        mock_client._call_api.return_value = launch
+
+        result = await service.run_plan(plan_id=10, launch_name="Nightly Run")
+
+        assert result == launch
+        mock_api.run3.assert_called_once()
+        call_kwargs = mock_api.run3.call_args.kwargs
+        assert call_kwargs["id"] == 10
+        request = call_kwargs["test_plan_run_request_dto"]
+        assert request.launch_name == "Nightly Run"
+        assert request.env_var_value_sets is None
+        assert request.issues is None
+        assert request.links is None
+        assert request.tags is None
+
+
+@pytest.mark.asyncio
+async def test_run_plan_maps_simplified_enrichment_inputs(service: PlanService, mock_client: AsyncMock) -> None:
+    """Test running a plan maps tags/links/issues like create_launch."""
+    launch = LaunchDto(id=501, name="Enriched Run", project_id=1)
+
+    with patch("src.services.plan_service.TestPlanControllerApi") as mock_controller:
+        mock_api = mock_controller.return_value
+        mock_api.run3.return_value = "run_coro"
+        mock_client._call_api.return_value = launch
+
+        await service.run_plan(
+            plan_id=10,
+            launch_name="Enriched Run",
+            tags=["smoke", "regression"],
+            links=[{"name": "Docs", "url": "https://example.com", "type": "issue"}],
+            issues=[{"name": "ISSUE-1"}],
+        )
+
+        request = mock_api.run3.call_args.kwargs["test_plan_run_request_dto"]
+        assert [tag.name for tag in (request.tags or [])] == ["smoke", "regression"]
+        assert request.links is not None
+        assert request.links[0].name == "Docs"
+        assert request.links[0].url == "https://example.com"
+        assert request.links[0].type == "issue"
+        assert request.issues is not None
+        assert request.issues[0].name == "ISSUE-1"
+        assert request.env_var_value_sets is None
+
+
+@pytest.mark.asyncio
+async def test_run_plan_rejects_empty_launch_name(service: PlanService, mock_client: AsyncMock) -> None:
+    """Test running a plan rejects an empty or whitespace launch name."""
+    with patch("src.services.plan_service.TestPlanControllerApi") as mock_controller:
+        with pytest.raises(AllureValidationError, match="Launch name is required"):
+            await service.run_plan(plan_id=1, launch_name="   ")
+        mock_controller.return_value.run3.assert_not_called()
+        mock_client._call_api.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_run_plan_rejects_non_string_launch_name(service: PlanService) -> None:
+    """Test running a plan rejects a non-string launch name."""
+    with pytest.raises(AllureValidationError, match="Launch name must be a string"):
+        await service.run_plan(plan_id=1, launch_name=None)  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+async def test_run_plan_rejects_overlong_launch_name(service: PlanService) -> None:
+    """Test running a plan rejects a launch name longer than 255 characters."""
+    with pytest.raises(AllureValidationError, match="255 characters or less"):
+        await service.run_plan(plan_id=1, launch_name="x" * 256)
+
+
+@pytest.mark.asyncio
+async def test_run_plan_rejects_invalid_tags(service: PlanService) -> None:
+    """Test running a plan rejects malformed tag entries."""
+    with pytest.raises(AllureValidationError, match="Tag at index 1 must be a string"):
+        await service.run_plan(plan_id=1, launch_name="Ok", tags=["smoke", 7])
+
+
+@pytest.mark.asyncio
+async def test_run_plan_rejects_invalid_links(service: PlanService) -> None:
+    """Test running a plan rejects malformed link entries."""
+    with pytest.raises(AllureValidationError, match="Link at index 0 'url' must be a string"):
+        await service.run_plan(plan_id=1, launch_name="Ok", links=[{"url": 123}])
+
+
+@pytest.mark.asyncio
+async def test_run_plan_rejects_invalid_issues(service: PlanService) -> None:
+    """Test running a plan rejects malformed issue entries."""
+    with pytest.raises(AllureValidationError, match="Issue at index 0 must be a dictionary"):
+        await service.run_plan(plan_id=1, launch_name="Ok", issues=["oops"])
+
+
+@pytest.mark.asyncio
+async def test_run_plan_dto_validation_failure_surfaces_schema_hint(service: PlanService) -> None:
+    """Test running a plan surfaces a schema hint when the upstream DTO rejects input."""
+    with patch("src.services.plan_service.TestPlanControllerApi") as mock_controller:
+        with pytest.raises(AllureValidationError, match="Invalid test plan run request") as exc_info:
+            await service.run_plan(plan_id=1, launch_name="Ok", issues=[{"id": "not-an-int"}])
+        suggestions = exc_info.value.suggestions or []
+        assert any("launchName" in suggestion for suggestion in suggestions)
+        mock_controller.return_value.run3.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_run_plan_maps_unknown_plan_to_actionable_not_found(service: PlanService, mock_client: AsyncMock) -> None:
+    """Test running an unknown plan maps upstream 404s to plan context."""
+    with patch("src.services.plan_service.TestPlanControllerApi") as mock_controller:
+        mock_api = mock_controller.return_value
+        mock_api.run3.return_value = "run_coro"
+        mock_client._call_api.side_effect = AllureNotFoundError("Not found")
+
+        with pytest.raises(AllureNotFoundError, match="Test plan ID 42 not found or is not runnable"):
+            await service.run_plan(plan_id=42, launch_name="Nightly")

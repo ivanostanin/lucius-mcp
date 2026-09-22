@@ -61,6 +61,7 @@ ADDITIVE_NON_IDEMPOTENT_TOOLS: Final[frozenset[str]] = frozenset(
         "attach_file_to_launch",
         "link_shared_step",
         "rerun_test_results_manually",
+        "run_test_plan",
     }
 )
 
@@ -196,6 +197,7 @@ TOOL_TAGS: Final[dict[str, frozenset[str]]] = {
     "manage_test_plan_content": frozenset({"test-case", "test-plan"}),
     "reopen_launch": frozenset({"launch"}),
     "rerun_test_results_manually": frozenset({"launch", "test-result"}),
+    "run_test_plan": frozenset({"test-plan", "launch"}),
     "search_test_cases": frozenset({"test-case"}),
     "start_manual_test_session": frozenset({"launch", "test-result"}),
     "submit_manual_test_results": frozenset({"launch", "test-result"}),

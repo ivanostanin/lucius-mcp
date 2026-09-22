@@ -1,13 +1,27 @@
 import logging
 
+from pydantic import ValidationError as PydanticValidationError
+
 from src.client import AllureClient
 from src.client.exceptions import AllureNotFoundError, AllureValidationError
 from src.client.generated.api.test_plan_controller_api import TestPlanControllerApi
+from src.client.generated.models.launch_dto import LaunchDto
 from src.client.generated.models.test_plan_create_dto import TestPlanCreateDto
 from src.client.generated.models.test_plan_dto import TestPlanDto
 from src.client.generated.models.test_plan_patch_dto import TestPlanPatchDto
+from src.client.generated.models.test_plan_run_request_dto import TestPlanRunRequestDto
 from src.client.generated.models.tree_selection_dto import TreeSelectionDto
+from src.services.launch_inputs import (
+    build_issue_dtos,
+    build_link_dtos,
+    build_tag_dtos,
+    validate_issues,
+    validate_launch_name,
+    validate_links,
+    validate_tags,
+)
 from src.utils.aql import normalize_aql
+from src.utils.schema_hint import generate_schema_hint
 
 logger = logging.getLogger(__name__)
 
@@ -155,6 +169,54 @@ class PlanService:
             self._api.find_all_by_project(project_id=self._project_id, page=page, size=size, sort=["id,desc"])
         )
         return response.content or []
+
+    async def run_plan(
+        self,
+        plan_id: int,
+        launch_name: str,
+        issues: list[dict[str, object]] | None = None,
+        links: list[dict[str, str]] | None = None,
+        tags: list[str] | None = None,
+    ) -> LaunchDto:
+        """Start a launch from an existing test plan.
+
+        Validates the simplified inputs locally, maps them onto the upstream
+        run request, and returns the created launch without further hydration.
+
+        Args:
+            plan_id: ID of the test plan to run.
+            launch_name: Name for the launch created from the plan (1-255 characters).
+            issues: Optional list of issue dictionaries.
+            links: Optional list of external link dictionaries.
+            tags: Optional list of launch tags.
+
+        Returns:
+            The created launch.
+        """
+        validate_launch_name(launch_name)
+        validate_tags(tags)
+        validate_links(links)
+        validate_issues(issues)
+
+        try:
+            run_request = TestPlanRunRequestDto(
+                launch_name=launch_name,
+                issues=build_issue_dtos(issues),
+                links=build_link_dtos(links),
+                tags=build_tag_dtos(tags),
+            )
+        except PydanticValidationError as e:
+            hint = generate_schema_hint(TestPlanRunRequestDto)
+            raise AllureValidationError(f"Invalid test plan run request: {e}", suggestions=[hint]) from e
+
+        try:
+            return await self._client._call_api(self._api.run3(id=plan_id, test_plan_run_request_dto=run_request))
+        except AllureNotFoundError as exc:
+            raise AllureNotFoundError(
+                f"Test plan ID {plan_id} not found or is not runnable",
+                status_code=exc.status_code,
+                response_body=exc.response_body,
+            ) from exc
 
     async def delete_plan(self, plan_id: int) -> None:
         """Delete a test plan."""

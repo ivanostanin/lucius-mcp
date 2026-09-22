@@ -88,7 +88,7 @@ _lucius() {
                 ;;
             test_plan|test_plans|tp)
                 local -a actions
-                actions=(create delete list manage-content manage_content update)
+                actions=(create delete list manage-content manage_content run update)
                 _describe -t actions 'actions' actions
                 ;;
             test_result|test_results|tr)

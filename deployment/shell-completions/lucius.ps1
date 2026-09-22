@@ -66,7 +66,7 @@ Register-ArgumentCompleter -Native -CommandName lucius -ScriptBlock {
         "test_case" = @("create", "delete", "delete-archived", "delete_archived", "get", "get-custom-fields", "get_custom_fields", "list", "search", "update")
         "test_layer" = @("create", "delete", "list", "update")
         "test_layer_schema" = @("create", "delete", "list", "update")
-        "test_plan" = @("create", "delete", "list", "manage-content", "manage_content", "update")
+        "test_plan" = @("create", "delete", "list", "manage-content", "manage_content", "run", "update")
         "test_result" = @("get")
         "test_suite" = @("assign-test-cases", "assign_test_cases", "create", "delete", "get-contents", "get_contents", "list")
     }
