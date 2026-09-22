@@ -2,7 +2,7 @@
 title: 'Story 12.7: Start a launch from a test plan'
 type: 'feature'
 created: '2026-09-22'
-status: 'review'
+status: 'done'
 baseline_commit: '90f22b6'
 context:
   - '../project-planning-artifacts/epics.md'
@@ -132,6 +132,7 @@ nox/noxtua-ai-4.3
 - 2026-09-22: Story created and marked ready-for-dev.
 - 2026-09-22: Implemented `run_test_plan` (service `run_plan`, tool, output schema, CLI route, regenerated schemas/completions/manifest, docs, unit/integration/e2e tests); all quality gates green; marked ready for review.
 - 2026-09-22: Recorded the maintainer-approved deferral of `envVarValueSets` (Ivan) in the open questions and dev record; tool scope unchanged.
+- 2026-09-22: Code review (adversarial pass) — 3 Medium findings fixed (README supported-tools row, File List completeness, output-schemas payload case); 2 Low items recorded as maintainer recommendations; all gates re-verified green; status → done.
 
 ### File List
 
@@ -150,8 +151,42 @@ nox/noxtua-ai-4.3
 - deployment/shell-completions/lucius.zsh
 - docs/mcp_manifest.json
 - docs/tools.md
+- README.md
 - tests/unit/test_plan_service.py
 - tests/integration/test_plan_tools.py
+- tests/unit/test_output_schemas.py
 - tests/e2e/test_plan_management.py
 - specs/implementation-artifacts/12-7-start-launch-from-test-plan.md
 - specs/implementation-artifacts/sprint-status.yaml
+- specs/project-planning-artifacts/epics.md
+
+## Senior Developer Review (AI)
+
+**Reviewer:** samson-og (BMAD code-review workflow, adversarial pass) on 2026-09-22
+**Scope:** Full branch diff vs `origin/main` (commits `da9f3c4`..`9c4d757` at review start) — 21 files, +1167/−67.
+**Outcome:** Approve with fixes — 3 Medium / 2 Low findings; all Medium findings fixed in this review, Low items recorded as maintainer recommendations. Status → done.
+
+### Verification performed
+
+- Tasks marked [x] audited against the diff — all evidenced (service `run_plan`, tool, output schema, annotations, CLI route plus regenerated schemas/completions/manifest, docs, unit/integration/e2e tests).
+- Acceptance criteria 1–6 traced to implementation and tests: local validation coverage in `tests/unit/test_plan_service.py`; payload, plain/JSON parity, URL construction, and error mapping in `tests/integration/test_plan_tools.py`; sandbox e2e in `tests/e2e/test_plan_management.py` (credential-gated).
+- Schema parity verified across `src/tools/annotations.py`, `src/cli/data/tool_schemas.json`, and `docs/mcp_manifest.json`: `TestPlanRunOutput` is a concrete object-root schema with `plan_id`; MCP annotations readOnly/destructive/idempotent all false; tags `launch`+`test-plan`; all four shell-completion files gained `test_plan run`.
+- Input mapping verified as a verbatim extraction: `src/services/launch_inputs.py` reproduces the former `LaunchService` validators/builders byte-for-byte and `LaunchService` delegates, so `create_launch` behavior and schemas are unchanged.
+- Error contract verified: upstream 404 mapped to actionable "not found or is not runnable", DTO validation wrapped with `generate_schema_hint(TestPlanRunRequestDto)`, missing launch ID raises consistently with `create_launch`, all exceptions flow through the global `agent_hint_handler` (no silent failures).
+- Baseline gates re-verified on the branch head before fixes: 1186 passed (unit+integration+docs), 257 passed (CLI), `ruff format --check`/`ruff check` clean, `mypy --strict src` clean (99 files).
+
+### Findings and resolutions
+
+| # | Severity | Finding | Resolution |
+|---|----------|---------|------------|
+| 1 | Medium | `README.md` Supported Tools table omitted `run_test_plan` (AC #5 documentation drift; `docs/tools.md` was updated but the README row was missed) | Fixed — added to the Test Plans row |
+| 2 | Medium | Story File List omitted `specs/project-planning-artifacts/epics.md` (changed in `da9f3c4`; git-vs-story discrepancy) | Fixed — File List updated, including review-touched files |
+| 3 | Medium | Output-schemas suite had no documented-normal-payload case for `run_test_plan` (`create_launch` and other curated models have one in `test_specialized_models_accept_documented_normal_payloads`) | Fixed — payload case added covering `plan_id` + `operation` |
+| 4 | Low | `src/tools/plans.py` imports private helpers `_LAUNCH_OUTPUT_FIELDS` / `_launch_mutation_payload` from `src.tools.launches` (no precedent for cross-module private imports in `src/tools/`) | Recommendation — deliberate parity choice documented in the Dev Agent Record; promoting the helpers to a shared public module is a mechanical follow-up with no behavior change |
+| 5 | Low | Pre-existing: `src/utils/links.py::launch_url` ignores its `project_id` parameter and does not strip a trailing slash from the base URL (unlike `test_result_url`); a trailing-slash `ALLURE_ENDPOINT` yields `…//launch/{id}` URLs for `create_launch` and `run_test_plan` alike | Recommendation — fixing alters existing tool outputs, which this story's boundaries forbid; needs its own story if the maintainer wants URL normalization |
+
+### Maintainer recommendations
+
+- Optional follow-up: promote `_launch_mutation_payload` / `_LAUNCH_OUTPUT_FIELDS` into a shared module (e.g. alongside `launch_inputs`) so plan tools stop importing launch-tool private names.
+- Optional follow-up: normalize `launch_url` base-URL handling (`rstrip('/')`) and either use or drop the unused `project_id` parameter; affects `create_launch`/`close_launch`/`reopen_launch` outputs, so it warrants a separate story.
+- No changelog entry added: repo convention is that `CHANGELOG.md` is updated only in `chore: prepare release` commits by the maintainer.
