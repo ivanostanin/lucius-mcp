@@ -227,6 +227,10 @@ def test_test_result_attachment_schema_rejects_removed_storage_key() -> None:
             {"id": 9, "name": "Launch", "created_date": 1_700_000_000_000, "closed": False},
         ),
         (
+            "run_test_plan",
+            {"id": 500, "name": "Nightly Run", "plan_id": 10, "operation": "started"},
+        ),
+        (
             "get_launch",
             {
                 "id": 9,
