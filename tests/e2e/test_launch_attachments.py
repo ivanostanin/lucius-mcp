@@ -13,7 +13,7 @@ pytestmark = pytest.mark.asyncio(loop_scope="module")
 
 
 @pytest.mark.e2e
-async def test_native_launch_attachment_accepts_api_token_without_browser_state() -> None:
+async def test_native_launch_attachment_accepts_api_token_without_browser_state(api_token: str) -> None:
     """Prove native GET and POST work after removing all browser-auth state."""
     client = AllureClient.from_env()
     async with client:
