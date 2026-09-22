@@ -74,8 +74,7 @@ class LaunchExistingUploadDto(BaseModel):
         _items = []
         if self.env_var_values:
             for _item_env_var_values in self.env_var_values:
-                if _item_env_var_values:
-                    _items.append(_item_env_var_values.to_dict())
+                _items.append(_item_env_var_values.to_dict() if _item_env_var_values is not None else None)
             _dict['envVarValues'] = _items
         return _dict
 

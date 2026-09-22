@@ -4,12 +4,16 @@ import json
 from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import asdict, is_dataclass
-from typing import Annotated
+from functools import partial
+from typing import Annotated, Literal
 
 from pydantic import Field
 
 from src.client import AllureClient
 from src.client.exceptions import AllureValidationError
+from src.services import launch_attachment_upload_runtime
+from src.services.launch_attachment_service import LaunchAttachmentService
+from src.services.launch_attachment_upload_service import LaunchAttachmentUploadService
 from src.services.launch_service import (
     AttachmentUploadResult,
     LaunchDeleteResult,
@@ -23,6 +27,7 @@ from src.services.launch_service import (
 from src.services.test_result_service import TestResultService
 from src.tools.output_contract import DEFAULT_OUTPUT_FORMAT, OutputFormat, ToolOutput, render_output
 from src.tools.output_schemas import (
+    AttachFileToLaunchOutput,
     LaunchDetailOutput,
     LaunchMutationSummary,
     ListLaunchesOutput,
@@ -30,6 +35,7 @@ from src.tools.output_schemas import (
     output_fields,
 )
 from src.utils.auth_resolution import resolve_auth_settings
+from src.utils.config import settings
 from src.utils.links import launch_url
 
 _COLLECTION_OUTPUT_FIELDS = ("items", "total", "page", "size", "total_pages")
@@ -108,6 +114,18 @@ _TEST_RUN_RESULT_OUTPUT_FIELDS = (
     "related_results",
     "partial",
     "unavailable_sections",
+)
+
+_ATTACH_FILE_TO_LAUNCH_OUTPUT_FIELDS = (
+    "state",
+    "launch_id",
+    "name",
+    "content_type",
+    "upload_url",
+    "upload_method",
+    "expires_at",
+    "max_file_bytes",
+    "attachment",
 )
 
 
@@ -587,6 +605,105 @@ async def submit_manual_test_results(
         },
         output_format=output_format,
     )
+
+
+@output_fields(*_ATTACH_FILE_TO_LAUNCH_OUTPUT_FIELDS, model=AttachFileToLaunchOutput)
+async def attach_file_to_launch(
+    launch_id: Annotated[int, Field(gt=0, description="Existing launch ID that will receive the file.")],
+    name: Annotated[str, Field(min_length=1, description="Safe display filename for the launch attachment.")],
+    transfer_mode: Annotated[
+        Literal["push", "pull"],
+        Field(description="push returns a one-use HTTPS upload URL; pull reads from the configured import root."),
+    ] = "push",
+    content_type: Annotated[
+        str | None,
+        Field(description="Required for push; optional for pull and inferred from the filename when absent."),
+    ] = None,
+    source_path: Annotated[
+        str | None,
+        Field(description="Required only for pull; relative paths resolve below LAUNCH_ATTACHMENT_IMPORT_ROOT."),
+    ] = None,
+    project_id: Annotated[int | None, Field(gt=0, description="Optional override for the default Project ID.")] = None,
+    output_format: Annotated[OutputFormat | None, Field(description="Output format: 'json' (default) or 'plain'.")] = (
+        DEFAULT_OUTPUT_FORMAT
+    ),
+) -> ToolOutput:
+    """Attach one file to an existing launch through a secure push or pull transfer.
+
+    Push is available only from a persistent HTTP MCP server with an externally
+    reachable HTTPS URL. It returns a short-lived one-use raw upload URL; POST
+    bytes with exactly the returned content type and no TestOps bearer token.
+    Pull reads a regular file below the deployment's configured import root.
+
+    Args:
+        launch_id: Existing launch ID that will receive the file.
+        name: Safe display filename for the native launch attachment.
+        transfer_mode: ``push`` for a caller upload URL, or ``pull`` for server-side import storage.
+        content_type: Required media type for push; optional inferred media type for pull.
+        source_path: File below the configured import root, required only for pull.
+        project_id: Optional override for the default Project ID.
+        output_format: Output format: 'json' (default) or 'plain'.
+    """
+    if transfer_mode == "push":
+        if content_type is None:
+            raise AllureValidationError("Push launch attachment uploads require content_type")
+        if source_path is not None:
+            raise AllureValidationError("source_path is only valid for pull launch attachment uploads")
+        prepared = await LaunchAttachmentUploadService(
+            holder=launch_attachment_upload_runtime.launch_attachment_upload_runtime_holder,
+            config=launch_attachment_upload_runtime.launch_attachment_upload_config(),
+        ).prepare(
+            launch_id=launch_id,
+            name=name,
+            content_type=content_type,
+            public_base_url=partial(launch_attachment_upload_runtime.get_launch_attachment_upload_public_base_url),
+        )
+        payload = {
+            "state": "awaiting_upload",
+            "launch_id": launch_id,
+            "name": name,
+            "content_type": content_type.lower(),
+            "upload_url": prepared.upload_url,
+            "upload_method": "POST",
+            "expires_at": prepared.expires_at.isoformat().replace("+00:00", "Z"),
+            "max_file_bytes": prepared.max_file_bytes,
+            "attachment": None,
+        }
+        plain = (
+            f"Upload ready for launch {launch_id}: POST raw bytes to the one-use upload_url before expires_at "
+            f"with Content-Type {content_type}. Do not send an Allure bearer token."
+        )
+        return render_output(plain=plain, json_payload=payload, output_format=output_format)
+
+    if source_path is None:
+        raise AllureValidationError("Pull launch attachment uploads require source_path")
+    async with _launch_client_context(project_id=project_id) as client:
+        attachment = await LaunchAttachmentService(client).attach_from_path(
+            launch_id,
+            name,
+            source_path,
+            import_root=settings.LAUNCH_ATTACHMENT_IMPORT_ROOT,
+            max_file_bytes=settings.ATTACHMENT_MAX_FILE_BYTES,
+            content_type=content_type,
+        )
+    payload = {
+        "state": "attached",
+        "launch_id": launch_id,
+        "name": attachment.name,
+        "content_type": attachment.content_type,
+        "upload_url": None,
+        "upload_method": None,
+        "expires_at": None,
+        "max_file_bytes": None,
+        "attachment": {
+            "id": attachment.id,
+            "name": attachment.name,
+            "content_type": attachment.content_type,
+            "content_length": attachment.content_length,
+        },
+    }
+    plain = f"Attached {attachment.name} to launch {launch_id} (attachment ID {attachment.id})."
+    return render_output(plain=plain, json_payload=payload, output_format=output_format)
 
 
 @output_fields("target_kind", "target_id", "file_names", "status_code")

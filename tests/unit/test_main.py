@@ -24,13 +24,15 @@ def test_app_initialization(client: TestClient) -> None:
     assert global_app is not None
 
 
-def test_attachment_download_route_precedes_the_fastmcp_mount() -> None:
-    """The capability endpoint must not be shadowed by FastMCP's root mount."""
+def test_capability_routes_precede_the_fastmcp_mount() -> None:
+    """Capability endpoints must not be shadowed by FastMCP's root mount."""
     assert global_app is not None
     assert isinstance(global_app.routes[0], Route)
-    assert global_app.routes[0].path == "/downloads/{handle}"
-    assert isinstance(global_app.routes[1], Mount)
-    assert global_app.routes[1].path in {"", "/"}
+    assert global_app.routes[0].path == "/launch-uploads/{handle}"
+    assert isinstance(global_app.routes[1], Route)
+    assert global_app.routes[1].path == "/downloads/{handle}"
+    assert isinstance(global_app.routes[2], Mount)
+    assert global_app.routes[2].path in {"", "/"}
 
 
 def test_http_startup_emits_telemetry_status_and_event(app: Starlette, mocker: MockerFixture) -> None:

@@ -75,8 +75,7 @@ class TextParagraphNode(BaseModel):
         _items = []
         if self.marks:
             for _item_marks in self.marks:
-                if _item_marks:
-                    _items.append(_item_marks.to_dict())
+                _items.append(_item_marks.to_dict() if _item_marks is not None else None)
             _dict['marks'] = _items
         return _dict
 

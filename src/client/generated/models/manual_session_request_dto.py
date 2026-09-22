@@ -78,8 +78,7 @@ class ManualSessionRequestDto(BaseModel):
         _items = []
         if self.environment:
             for _item_environment in self.environment:
-                if _item_environment:
-                    _items.append(_item_environment.to_dict())
+                _items.append(_item_environment.to_dict() if _item_environment is not None else None)
             _dict['environment'] = _items
         return _dict
 

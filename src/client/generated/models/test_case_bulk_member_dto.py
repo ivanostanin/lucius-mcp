@@ -77,8 +77,7 @@ class TestCaseBulkMemberDto(BaseModel):
         _items = []
         if self.members:
             for _item_members in self.members:
-                if _item_members:
-                    _items.append(_item_members.to_dict())
+                _items.append(_item_members.to_dict() if _item_members is not None else None)
             _dict['members'] = _items
         # override the default output from pydantic by calling `to_dict()` of selection
         if self.selection:

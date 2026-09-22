@@ -93,6 +93,7 @@ returns the resolved canonical metadata list.
 | `list_launches`              | View compact launch discovery metadata; items intentionally omit statistics, defect counts, environments, jobs, and manual-workflow guidance. | `page`, `size` |
 | `get_launch`                 | Get one exact launch. Set `include_execution_results=true` for complete compact result views, all active project trees, snapshot state, and safe partial-read diagnostics. | `launch_id`, `include_execution_results`, `tree_id` |
 | `upload_test_results`        | Append externally produced test results to a launch concurrently. | `launch_id`, `results` |
+| `attach_file_to_launch`      | Attach a file to an existing launch. `push` returns a short-lived, one-use HTTPS URL for raw bytes; `pull` reads a regular file below the configured import root. Push currently supports one HTTP MCP process only. | `launch_id`, `name`, `transfer_mode`, `content_type` or `source_path` |
 | `list_launch_test_results`   | List result-level launch data including manual flag, status, assignee, and tester. | `launch_id`, `manual_only`, `failed_only` |
 | `rerun_test_results_manually` | Schedule manual reruns for selected failed launch results.      | `launch_id`, `result_ids`, `assignees` |
 | `start_manual_test_session`  | Create a manual execution session for a launch.                 | `launch_id`, `environment` |
@@ -105,6 +106,12 @@ When execution results are included, each compact result row's `id` is the exact
 launch response is intentionally a point-in-time snapshot for open launches; it exhausts supported pages without
 caller page controls. Omit `tree_id` to resolve all active project trees, or provide one verified tree ID to limit the
 expansion.
+
+For `attach_file_to_launch(transfer_mode="push")`, run persistent HTTP MCP behind an externally reachable HTTPS URL
+and set `LAUNCH_ATTACHMENT_UPLOAD_PUBLIC_BASE_URL`. The returned URL accepts exactly one raw `POST` with the declared
+`Content-Type`; it needs no Allure bearer token. This interim capability broker is deliberately single-replica only;
+horizontal scaling is deferred in [D-12-7](../specs/implementation-artifacts/deferred-work.md). For `pull`, configure
+`LAUNCH_ATTACHMENT_IMPORT_ROOT`; Lucius only accepts regular, non-symlinked files beneath that directory.
 
 ## ✅ Test Result Management
 

@@ -232,6 +232,7 @@ from src.client.generated.models.job_run_status_dto import JobRunStatusDto
 from src.client.generated.models.job_run_upload_info_dto import JobRunUploadInfoDto
 from src.client.generated.models.job_test_cases_stat_dto import JobTestCasesStatDto
 from src.client.generated.models.launch import Launch
+from src.client.generated.models.launch_attachment_row_dto import LaunchAttachmentRowDto
 from src.client.generated.models.launch_cleanup_request import LaunchCleanupRequest
 from src.client.generated.models.launch_close_config_dto import LaunchCloseConfigDto
 from src.client.generated.models.launch_copy_rq_dto import LaunchCopyRqDto
@@ -317,6 +318,7 @@ from src.client.generated.models.page_integration_webhook_log_dto import PageInt
 from src.client.generated.models.page_issue_dto import PageIssueDto
 from src.client.generated.models.page_issue_schema_dto import PageIssueSchemaDto
 from src.client.generated.models.page_job_dto import PageJobDto
+from src.client.generated.models.page_launch_attachment_row_dto import PageLaunchAttachmentRowDto
 from src.client.generated.models.page_launch_diff_row import PageLaunchDiffRow
 from src.client.generated.models.page_launch_dto import PageLaunchDto
 from src.client.generated.models.page_launch_member_stats_dto import PageLaunchMemberStatsDto

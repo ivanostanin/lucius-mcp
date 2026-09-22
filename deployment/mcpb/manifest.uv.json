@@ -210,6 +210,10 @@
       "description": "Upload externally produced test results to an existing launch."
     },
     {
+      "name": "attach_file_to_launch",
+      "description": "Attach a file to an existing launch through a one-use HTTPS push URL or configured server-side import root."
+    },
+    {
       "name": "add_test_result_attachment",
       "description": "Upload evidence to a manual test result."
     },

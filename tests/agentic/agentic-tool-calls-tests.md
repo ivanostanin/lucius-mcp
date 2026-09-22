@@ -62,7 +62,7 @@ From `src/tools/__init__.py:24-79`:
 - `get_custom_fields`, `get_test_case_custom_fields`
 - `create_custom_field_value`, `list_custom_field_values`, `update_custom_field_value`, `delete_custom_field_value`
 - `delete_unused_custom_fields`
-- `create_launch`, `list_launches`, `get_launch`, `delete_launch`, `upload_test_results`, `list_launch_test_results`, `rerun_test_results_manually`, `start_manual_test_session`, `submit_manual_test_results`, `add_test_result_attachment`, `add_test_step_attachment`
+- `create_launch`, `list_launches`, `get_launch`, `delete_launch`, `upload_test_results`, `attach_file_to_launch`, `list_launch_test_results`, `rerun_test_results_manually`, `start_manual_test_session`, `submit_manual_test_results`, `add_test_result_attachment`, `add_test_step_attachment`
 - `get_test_result`, `prepare_attachment_download`
 - `create_shared_step`, `list_shared_steps`, `update_shared_step`, `delete_shared_step`
 - `delete_archived_shared_steps`
@@ -244,6 +244,8 @@ From `src/tools/__init__.py:24-79`:
   6a. **Inspect Exact Result**: For a TestOps URL such as `/launch/LAUNCH_ID/tree/RESULT_ID?treeId=UI_STATE`, call `get_test_result(test_result_id=RESULT_ID)`.
      - Expectation: `treeId` is ignored; the result URL has no query string, related results are links only, and every attachment has `attachment_id`, `attachment_kind`, and owner context.
   6b. **Prepare and download evidence**: Select an attachment reference, call `prepare_attachment_download`, then HTTP GET its returned Lucius `download_url` before `expires_at` without an Allure bearer token.
+
+  6c. **Attach launch evidence**: Call `attach_file_to_launch(launch_id=LAUNCH_ID, name="agent-evidence.json", transfer_mode="push", content_type="application/json")`, then raw POST the bytes to its returned one-use HTTPS `upload_url` with that exact content type and no Allure bearer token. For a deployment-managed file, use `transfer_mode="pull"` with a regular path below `LAUNCH_ATTACHMENT_IMPORT_ROOT` instead.
      - Expectation: The URL is one-time/short-lived; a second GET fails safely after cleanup, and a new preparation returns a fresh URL.
   7. **Start Session**: `start_manual_test_session(launch_id=LAUNCH_ID, environment=[{"key":"browser","value":"chrome"}])`
      - Expectation: Output contains `test_session_id`.

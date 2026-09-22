@@ -88,22 +88,19 @@ class TestResultPatchDto(BaseModel):
         _items = []
         if self.custom_fields:
             for _item_custom_fields in self.custom_fields:
-                if _item_custom_fields:
-                    _items.append(_item_custom_fields.to_dict())
+                _items.append(_item_custom_fields.to_dict() if _item_custom_fields is not None else None)
             _dict['customFields'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in links (list)
         _items = []
         if self.links:
             for _item_links in self.links:
-                if _item_links:
-                    _items.append(_item_links.to_dict())
+                _items.append(_item_links.to_dict() if _item_links is not None else None)
             _dict['links'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in members (list)
         _items = []
         if self.members:
             for _item_members in self.members:
-                if _item_members:
-                    _items.append(_item_members.to_dict())
+                _items.append(_item_members.to_dict() if _item_members is not None else None)
             _dict['members'] = _items
         # override the default output from pydantic by calling `to_dict()` of scenario
         if self.scenario:
@@ -112,8 +109,7 @@ class TestResultPatchDto(BaseModel):
         _items = []
         if self.tags:
             for _item_tags in self.tags:
-                if _item_tags:
-                    _items.append(_item_tags.to_dict())
+                _items.append(_item_tags.to_dict() if _item_tags is not None else None)
             _dict['tags'] = _items
         return _dict
 

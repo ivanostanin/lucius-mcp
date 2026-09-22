@@ -77,8 +77,7 @@ class TreeCreateDto(BaseModel):
         _items = []
         if self.fields:
             for _item_fields in self.fields:
-                if _item_fields:
-                    _items.append(_item_fields.to_dict())
+                _items.append(_item_fields.to_dict() if _item_fields is not None else None)
             _dict['fields'] = _items
         return _dict
 

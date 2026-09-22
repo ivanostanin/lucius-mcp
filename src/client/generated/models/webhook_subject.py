@@ -58,7 +58,7 @@ class WebhookSubject(BaseModel):
     @classmethod
     def get_discriminator_value(cls, obj: Dict[str, Any]) -> Optional[str]:
         """Returns the discriminator value (object type) of the data"""
-        discriminator_value = obj[cls.__discriminator_property_name]
+        discriminator_value = obj.get(cls.__discriminator_property_name)
         if discriminator_value:
             return cls.__discriminator_value_class_map.get(discriminator_value)
         else:
@@ -99,8 +99,7 @@ class WebhookSubject(BaseModel):
         _items = []
         if self.event_settings:
             for _item_event_settings in self.event_settings:
-                if _item_event_settings:
-                    _items.append(_item_event_settings.to_dict())
+                _items.append(_item_event_settings.to_dict() if _item_event_settings is not None else None)
             _dict['eventSettings'] = _items
         return _dict
 

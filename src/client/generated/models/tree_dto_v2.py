@@ -77,8 +77,7 @@ class TreeDtoV2(BaseModel):
         _items = []
         if self.custom_fields_project:
             for _item_custom_fields_project in self.custom_fields_project:
-                if _item_custom_fields_project:
-                    _items.append(_item_custom_fields_project.to_dict())
+                _items.append(_item_custom_fields_project.to_dict() if _item_custom_fields_project is not None else None)
             _dict['customFieldsProject'] = _items
         return _dict
 

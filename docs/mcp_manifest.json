@@ -10411,6 +10411,262 @@
       }
     },
     {
+      "name": "attach_file_to_launch",
+      "title": "Attach File To Launch",
+      "description": "Attach one file to an existing launch through a secure push or pull transfer.\n\nPush is available only from a persistent HTTP MCP server with an externally\nreachable HTTPS URL. It returns a short-lived one-use raw upload URL; POST\nbytes with exactly the returned content type and no TestOps bearer token.\nPull reads a regular file below the deployment's configured import root.",
+      "inputSchema": {
+        "properties": {
+          "launch_id": {
+            "description": "Existing launch ID that will receive the file.",
+            "exclusiveMinimum": 0,
+            "type": "integer"
+          },
+          "name": {
+            "description": "Safe display filename for the launch attachment.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "transfer_mode": {
+            "default": "push",
+            "description": "push returns a one-use HTTPS upload URL; pull reads from the configured import root.",
+            "enum": [
+              "push",
+              "pull"
+            ],
+            "type": "string"
+          },
+          "content_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Required for push; optional for pull and inferred from the filename when absent."
+          },
+          "source_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Required only for pull; relative paths resolve below LAUNCH_ATTACHMENT_IMPORT_ROOT."
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional override for the default Project ID."
+          },
+          "output_format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "plain",
+                  "json"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Output format: 'json' (default) or 'plain'."
+          }
+        },
+        "required": [
+          "launch_id",
+          "name"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "execution": null,
+      "outputSchema": {
+        "properties": {
+          "state": {
+            "enum": [
+              "awaiting_upload",
+              "attached"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "launch_id": {
+            "exclusiveMinimum": 0,
+            "title": "Launch Id",
+            "type": "integer"
+          },
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "content_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Content Type"
+          },
+          "upload_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Upload Url"
+          },
+          "upload_method": {
+            "anyOf": [
+              {
+                "const": "POST",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Upload Method"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Expires At"
+          },
+          "max_file_bytes": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max File Bytes"
+          },
+          "attachment": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "description": "Native launch attachment metadata that is safe to expose to callers.",
+                "properties": {
+                  "id": {
+                    "description": "Native TestOps attachment identifier.",
+                    "exclusiveMinimum": 0,
+                    "title": "Id",
+                    "type": "integer"
+                  },
+                  "name": {
+                    "description": "Attachment filename accepted by TestOps.",
+                    "minLength": 1,
+                    "title": "Name",
+                    "type": "string"
+                  },
+                  "content_type": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Attachment media type returned by TestOps.",
+                    "title": "Content Type"
+                  },
+                  "content_length": {
+                    "anyOf": [
+                      {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Attachment length returned by TestOps.",
+                    "title": "Content Length"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name"
+                ],
+                "title": "LaunchAttachmentOutput",
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "state",
+          "launch_id",
+          "name"
+        ],
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Explicit mutually exclusive output states for launch attachment transfer.",
+        "title": "AttachFileToLaunchOutput"
+      },
+      "icons": null,
+      "annotations": {
+        "title": "Attach File To Launch",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": null
+      },
+      "_meta": {
+        "fastmcp": {
+          "tags": [
+            "attachment",
+            "launch"
+          ]
+        }
+      }
+    },
+    {
       "name": "add_test_result_attachment",
       "title": "Add Test Result Attachment",
       "description": "Upload evidence to a manual test result.",

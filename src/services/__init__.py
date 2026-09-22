@@ -4,6 +4,7 @@ from .attachment_service import AttachmentService
 from .custom_field_service import CustomFieldService
 from .custom_field_value_service import CustomFieldValueService
 from .defect_service import DefectService
+from .launch_attachment_service import LaunchAttachmentService, LaunchAttachmentSummary
 from .plan_service import PlanService
 from .project_service import ProjectService
 from .search_service import SearchService
@@ -19,6 +20,8 @@ __all__ = [
     "CustomFieldService",
     "CustomFieldValueService",
     "DefectService",
+    "LaunchAttachmentService",
+    "LaunchAttachmentSummary",
     "PlanService",
     "ProjectService",
     "SearchService",

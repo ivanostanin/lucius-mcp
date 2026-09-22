@@ -85,15 +85,13 @@ class TestResultTree(BaseModel):
         _items = []
         if self.groups:
             for _item_groups in self.groups:
-                if _item_groups:
-                    _items.append(_item_groups.to_dict())
+                _items.append(_item_groups.to_dict() if _item_groups is not None else None)
             _dict['groups'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in leafs (list)
         _items = []
         if self.leafs:
             for _item_leafs in self.leafs:
-                if _item_leafs:
-                    _items.append(_item_leafs.to_dict())
+                _items.append(_item_leafs.to_dict() if _item_leafs is not None else None)
             _dict['leafs'] = _items
         return _dict
 

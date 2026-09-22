@@ -7,8 +7,9 @@ from fastmcp import FastMCP
 from starlette.applications import Starlette
 from starlette.routing import Mount
 
-from src.services import attachment_download_runtime
+from src.services import attachment_download_runtime, launch_attachment_upload_runtime
 from src.services.attachment_download_gateway import attachment_download_route
+from src.services.launch_attachment_upload_gateway import launch_attachment_upload_route
 from src.services.telemetry_service import TelemetryService
 from src.tools import all_tools
 from src.tools.annotations import get_tool_annotations, get_tool_tags, validate_tool_annotation_coverage
@@ -48,6 +49,7 @@ for tool in all_tools:
 _mcp_asgi = None
 attachment_download_runtime_holder = attachment_download_runtime.attachment_download_runtime_holder
 attachment_download_loopback_gateway = attachment_download_runtime.attachment_download_loopback_gateway
+launch_attachment_upload_runtime_holder = launch_attachment_upload_runtime.launch_attachment_upload_runtime_holder
 
 
 async def get_attachment_download_public_base_url() -> str:
@@ -80,6 +82,7 @@ async def lifespan(app: Starlette) -> typing.AsyncGenerator[None, None]:
         else:
             yield
     finally:
+        await launch_attachment_upload_runtime_holder.close()
         await attachment_download_runtime_holder.close()
         logger.info("Shutting down Lucius MCP Server")
 
@@ -93,6 +96,7 @@ def get_app() -> Starlette | None:
             exception_handlers={Exception: agent_hint_handler},
             routes=[
                 # Explicit capability route must precede FastMCP's root mount.
+                launch_attachment_upload_route(launch_attachment_upload_runtime_holder),
                 attachment_download_route(attachment_download_runtime_holder),
                 # Mount the FastMCP ASGI app under /
                 Mount("/", app=get_mcp_asgi()),

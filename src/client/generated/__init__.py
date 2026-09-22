@@ -28,6 +28,7 @@ __all__ = [
     "DefectMatcherControllerApi",
     "IdeControllerApi",
     "IntegrationControllerApi",
+    "LaunchAttachmentControllerApi",
     "LaunchControllerApi",
     "LaunchSearchControllerApi",
     "ProjectControllerApi",
@@ -295,6 +296,7 @@ __all__ = [
     "JobRunUploadInfoDto",
     "JobTestCasesStatDto",
     "Launch",
+    "LaunchAttachmentRowDto",
     "LaunchCleanupRequest",
     "LaunchCloseConfigDto",
     "LaunchCopyRqDto",
@@ -380,6 +382,7 @@ __all__ = [
     "PageIssueDto",
     "PageIssueSchemaDto",
     "PageJobDto",
+    "PageLaunchAttachmentRowDto",
     "PageLaunchDiffRow",
     "PageLaunchDto",
     "PageLaunchMemberStatsDto",
@@ -773,6 +776,7 @@ from src.client.generated.api.defect_controller_api import DefectControllerApi a
 from src.client.generated.api.defect_matcher_controller_api import DefectMatcherControllerApi as DefectMatcherControllerApi
 from src.client.generated.api.ide_controller_api import IdeControllerApi as IdeControllerApi
 from src.client.generated.api.integration_controller_api import IntegrationControllerApi as IntegrationControllerApi
+from src.client.generated.api.launch_attachment_controller_api import LaunchAttachmentControllerApi as LaunchAttachmentControllerApi
 from src.client.generated.api.launch_controller_api import LaunchControllerApi as LaunchControllerApi
 from src.client.generated.api.launch_search_controller_api import LaunchSearchControllerApi as LaunchSearchControllerApi
 from src.client.generated.api.project_controller_api import ProjectControllerApi as ProjectControllerApi
@@ -1044,6 +1048,7 @@ from src.client.generated.models.job_run_status_dto import JobRunStatusDto as Jo
 from src.client.generated.models.job_run_upload_info_dto import JobRunUploadInfoDto as JobRunUploadInfoDto
 from src.client.generated.models.job_test_cases_stat_dto import JobTestCasesStatDto as JobTestCasesStatDto
 from src.client.generated.models.launch import Launch as Launch
+from src.client.generated.models.launch_attachment_row_dto import LaunchAttachmentRowDto as LaunchAttachmentRowDto
 from src.client.generated.models.launch_cleanup_request import LaunchCleanupRequest as LaunchCleanupRequest
 from src.client.generated.models.launch_close_config_dto import LaunchCloseConfigDto as LaunchCloseConfigDto
 from src.client.generated.models.launch_copy_rq_dto import LaunchCopyRqDto as LaunchCopyRqDto
@@ -1129,6 +1134,7 @@ from src.client.generated.models.page_integration_webhook_log_dto import PageInt
 from src.client.generated.models.page_issue_dto import PageIssueDto as PageIssueDto
 from src.client.generated.models.page_issue_schema_dto import PageIssueSchemaDto as PageIssueSchemaDto
 from src.client.generated.models.page_job_dto import PageJobDto as PageJobDto
+from src.client.generated.models.page_launch_attachment_row_dto import PageLaunchAttachmentRowDto as PageLaunchAttachmentRowDto
 from src.client.generated.models.page_launch_diff_row import PageLaunchDiffRow as PageLaunchDiffRow
 from src.client.generated.models.page_launch_dto import PageLaunchDto as PageLaunchDto
 from src.client.generated.models.page_launch_member_stats_dto import PageLaunchMemberStatsDto as PageLaunchMemberStatsDto

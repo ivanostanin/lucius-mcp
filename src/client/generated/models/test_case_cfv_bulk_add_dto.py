@@ -77,8 +77,7 @@ class TestCaseCfvBulkAddDto(BaseModel):
         _items = []
         if self.cfv:
             for _item_cfv in self.cfv:
-                if _item_cfv:
-                    _items.append(_item_cfv.to_dict())
+                _items.append(_item_cfv.to_dict() if _item_cfv is not None else None)
             _dict['cfv'] = _items
         # override the default output from pydantic by calling `to_dict()` of selection
         if self.selection:

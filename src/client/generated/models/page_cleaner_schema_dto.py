@@ -86,8 +86,7 @@ class PageCleanerSchemaDto(BaseModel):
         _items = []
         if self.content:
             for _item_content in self.content:
-                if _item_content:
-                    _items.append(_item_content.to_dict())
+                _items.append(_item_content.to_dict() if _item_content is not None else None)
             _dict['content'] = _items
         # override the default output from pydantic by calling `to_dict()` of pageable
         if self.pageable:

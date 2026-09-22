@@ -76,8 +76,7 @@ class TestPlanWebhook(WebhookSubject):
         _items = []
         if self.event_settings:
             for _item_event_settings in self.event_settings:
-                if _item_event_settings:
-                    _items.append(_item_event_settings.to_dict())
+                _items.append(_item_event_settings.to_dict() if _item_event_settings is not None else None)
             _dict['eventSettings'] = _items
         return _dict
 

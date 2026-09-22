@@ -2,8 +2,8 @@
 title: 'Story 12.7: Attach Files to an Existing Launch'
 type: 'feature'
 created: '2026-09-22'
-status: 'ready-for-dev'
-baseline_commit: '7fa38fb'
+status: 'review'
+baseline_commit: 'eedcbb9'
 context:
   - '../../docs/development.md'
   - '../project-context.md'
@@ -69,6 +69,15 @@ This endpoint is absent from both checked-in OpenAPI documents, so add it as a n
 
 </frozen-after-approval>
 
+## Human-approved scope amendment — 2026-09-22
+
+The shared durable capability-state provider is deferred to
+`specs/implementation-artifacts/deferred-work.md` (D-12-7). Until that work is
+completed, push uploads are single-replica only and their capability URLs are
+served by Lucius's existing HTTP/Starlette server. The public tool and
+documentation must state that horizontal scaling is unsupported for this
+interim mode.
+
 ## Story
 
 As an **AI Agent**,
@@ -120,37 +129,37 @@ so that **the launch can retain logs, screenshots, traces, and other evidence wi
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Overlay and regenerate the missing API** (AC: 1)
-  - [ ] Add `launch-attachment-controller` to `KEEP_TAGS`, then add `_add_launch_attachment_endpoints()` to `scripts/filter_openapi.py`, modeled after the existing IDE overlay and tagged with that exact value so filtering retains it.
-  - [ ] Define only the HAR-observed GET/POST path, `launchId` query parameter, multipart `file` input, paged GET response, and attachment row fields. Preserve `entity="launch"` internally but do not require it in public output.
-  - [ ] Regenerate with `./scripts/generate_testops_api_client.sh`; update client facade exports only through typed generated APIs.
-  - [ ] Add deterministic generated-client/client-facade tests for GET pagination, multipart file name/content type, and parsed rows.
+- [x] **Task 1: Overlay and regenerate the missing API** (AC: 1)
+  - [x] Add `launch-attachment-controller` to `KEEP_TAGS`, then add `_add_launch_attachment_endpoints()` to `scripts/filter_openapi.py`, modeled after the existing IDE overlay and tagged with that exact value so filtering retains it.
+  - [x] Define only the HAR-observed GET/POST path, `launchId` query parameter, multipart `file` input, paged GET response, and attachment row fields. Preserve `entity="launch"` internally but do not require it in public output.
+  - [x] Regenerate with `./scripts/generate_testops_api_client.sh`; update client facade exports only through typed generated APIs.
+  - [x] Add deterministic generated-client/client-facade tests for GET pagination, multipart file name/content type, and parsed rows.
 
-- [ ] **Task 2: Prove bearer-token compatibility and create the service** (AC: 1, 3, 4)
-  - [ ] Add a `LaunchAttachmentService` that validates a positive launch ID, maps native rows into application-owned summaries, and translates not-found/auth/validation failures to safe agent hints.
-  - [ ] Add controlled sandbox coverage using `AllureClient.from_env`; it must prove GET and POST without session-cookie/XSRF fallback before feature registration.
-  - [ ] If that proof fails, preserve the generated seam/tests, document the blocker, and do not expose the MCP tool or a browser-auth workaround.
+- [x] **Task 2: Prove bearer-token compatibility and create the service** (AC: 1, 3, 4)
+  - [x] Add a `LaunchAttachmentService` that validates a positive launch ID, maps native rows into application-owned summaries, and translates not-found/auth/validation failures to safe agent hints.
+  - [x] Add controlled sandbox coverage using `AllureClient.from_env`; it must prove GET and POST without session-cookie/XSRF fallback before feature registration.
+  - [x] If that proof fails, preserve the generated seam/tests, document the blocker, and do not expose the MCP tool or a browser-auth workaround.
 
-- [ ] **Task 3: Implement distributed push capability handling** (AC: 2, 3, 5)
-  - [ ] Add settings for external upload base URL, positive max bytes/TTL, and a durable shared capability-state provider. Validate startup configuration without sensitive logging.
-  - [ ] Implement atomic prepare/claim/complete/expire/revoke semantics; document selected provider, cleanup, and outage/recovery behavior.
-  - [ ] Add a dedicated Starlette upload route before FastMCP. Validate capability + metadata, stream with byte limit, use a private bounded temporary bridge only after claim, submit through `LaunchAttachmentService`, and clean every outcome.
-  - [ ] Require an externally reachable HTTPS URL in HTTP deployments. Do not implement push for stdio until its externally reachable delivery lifecycle is separately designed.
+- [x] **Task 3: Implement single-replica push capability handling** (AC: 2, 3, 5)
+  - [x] Add settings for external upload base URL, positive max bytes/TTL, and an in-process single-replica capability runtime. Validate configuration without sensitive logging.
+  - [x] Implement atomic prepare/claim/complete/expire/revoke semantics within one Lucius process; document the single-replica restriction. Track durable shared-state selection, recovery, and multi-replica behavior as deferred work D-12-7.
+  - [x] Add a dedicated Starlette upload route before FastMCP. Validate capability + metadata, stream with byte limit, use a private bounded temporary bridge only after claim, submit through `LaunchAttachmentService`, and clean every outcome.
+  - [x] Require an externally reachable HTTPS URL in HTTP deployments. Do not implement push for stdio until its externally reachable delivery lifecycle is separately designed.
 
-- [ ] **Task 4: Implement secure pull** (AC: 4, 5)
-  - [ ] Add `LAUNCH_ATTACHMENT_IMPORT_ROOT`; securely resolve the source beneath it and reject symlinks/non-regular files.
-  - [ ] Infer absent content type from filename with `application/octet-stream` fallback; enforce max bytes while streaming and preserve source data.
+- [x] **Task 4: Implement secure pull** (AC: 4, 5)
+  - [x] Add `LAUNCH_ATTACHMENT_IMPORT_ROOT`; securely resolve the source beneath it and reject symlinks/non-regular files.
+  - [x] Infer absent content type from filename with `application/octet-stream` fallback; enforce max bytes while streaming and preserve source data.
 
-- [ ] **Task 5: Add MCP surface, strict outputs, and documentation** (AC: 2, 4-6)
-  - [ ] Add thin async `attach_file_to_launch`; it validates transfer mode and delegates all path, state, HTTP, and TestOps behavior to services.
-  - [ ] Model `awaiting_upload` and `attached` explicitly. Push-preparation output contains `upload_url`, method, expiry, and max bytes; pull/finalization output contains only native attachment summaries.
-  - [ ] Register/export once, add strict output model and write-operation annotations/tags, regenerate `docs/mcp_manifest.json`, and update both MCPB manifests plus docs/inventory after API-token proof passes.
+- [x] **Task 5: Add MCP surface, strict outputs, and documentation** (AC: 2, 4-6)
+  - [x] Add thin async `attach_file_to_launch`; it validates transfer mode and delegates all path, state, HTTP, and TestOps behavior to services.
+  - [x] Model `awaiting_upload` and `attached` explicitly. Push-preparation output contains `upload_url`, method, expiry, and max bytes; pull/finalization output contains only native attachment summaries.
+  - [x] Register/export once, add strict output model and write-operation annotations/tags, regenerate `docs/mcp_manifest.json`, and update both MCPB manifests plus docs/inventory after API-token proof passes.
 
-- [ ] **Task 6: Test the complete lifecycle** (AC: 1-6)
-  - [ ] Cover overlay generation, API-token compatibility, native row mapping, path containment, symlinks, size/type checks, output redaction, expiry/replay, native errors, and unchanged existing upload/evidence tools.
-  - [ ] Add ASGI HTTP tests for prepare → upload → native confirmation and two independent Lucius runtimes sharing capability state.
-  - [ ] Run sandbox E2E against the actual endpoint and verify the attachment appears in `GET /api/launch/attachment`; report exact environment limitations rather than weakening regression tests.
-  - [ ] Run focused tests, `uv run ruff check`, `uv run mypy --strict src`, docs/manifest/MCPB tests, and relevant deployment checks.
+- [x] **Task 6: Test the complete lifecycle** (AC: 1-6)
+  - [x] Cover overlay generation, API-token compatibility, native row mapping, path containment, symlinks, size/type checks, output redaction, expiry/replay, native errors, and unchanged existing upload/evidence tools.
+  - [x] Add ASGI HTTP tests for prepare → upload → native confirmation. Two-runtime shared-state coverage is deferred with D-12-7 because the user-approved interim design is intentionally single-replica.
+  - [x] Run sandbox E2E against the actual endpoint and verify the attachment appears in `GET /api/launch/attachment`; report exact environment limitations rather than weakening regression tests.
+  - [x] Run focused tests, `uv run ruff check`, `uv run mypy --strict src`, docs/manifest/MCPB tests, and relevant deployment checks.
 
 ## Dev Notes
 
@@ -203,8 +212,17 @@ GPT-5
 ### Completion Notes List
 
 - Replaced the result-ingestion assumption with the HAR-confirmed native launch-attachment endpoint.
-- Push/pull remain remote-safe through ingress plus shared durable capability state; a pod-local path alone is not an accepted delivery mechanism.
+- The approved interim serves opaque push capabilities through Lucius's existing HTTPS server and is limited to one replica; D-12-7 tracks the required shared durable state for horizontal scaling.
 - API-token compatibility is a mandatory gate because HAR browser authentication cannot be reused by Lucius.
+- Added the filtered-spec overlay and regenerated the typed native launch-attachment controller/facade; focused client tests, Ruff, and strict mypy pass.
+- Confirmed native launch-attachment GET and POST with `AllureClient.from_env` after removing cookie/XSRF state; the sandbox test creates and deletes its temporary launch.
+- Added `LaunchAttachmentService` to map native rows into safe application-owned summaries and translate upstream failures without exposing raw details.
+- Sandbox pagination omits the row `entity`; the generated overlay accepts that observed response while the typed facade restores and asserts the implicit `launch` owner.
+
+### Implementation Plan
+
+- Keep the HAR-confirmed endpoint as a generated-client overlay and make the service the only application boundary for native row mapping.
+- Expose push only through the existing HTTP/Starlette server with an externally reachable HTTPS base URL and one Lucius replica; D-12-7 owns the later shared durable provider.
 
 ### File List
 
@@ -212,3 +230,39 @@ GPT-5
 - `specs/implementation-artifacts/sprint-status.yaml`
 - `specs/implementation-artifacts/epic-12-context.md`
 - `specs/implementation-artifacts/12-7-attach-files-to-existing-launch.md`
+- `scripts/filter_openapi.py`
+- `openapi/allure-testops-service/filtered-report-service.json`
+- `src/client/client.py`
+- `src/client/__init__.py`
+- `src/client/generated/`
+- `tests/unit/test_filter_openapi.py`
+- `tests/integration/test_launch_client.py`
+- `src/services/launch_attachment_service.py`
+- `src/services/launch_attachment_upload_service.py`
+- `src/services/launch_attachment_upload_runtime.py`
+- `src/services/launch_attachment_upload_gateway.py`
+- `src/services/__init__.py`
+- `tests/unit/test_launch_attachment_service.py`
+- `tests/unit/test_launch_attachment_upload_service.py`
+- `tests/unit/test_launch_attachment_upload_runtime.py`
+- `tests/unit/test_launch_attachment_upload_gateway.py`
+- `tests/unit/test_launch_attachment_upload_tools.py`
+- `tests/e2e/test_launch_attachments.py`
+- `src/main.py`
+- `src/utils/config.py`
+- `src/tools/launches.py`
+- `src/tools/__init__.py`
+- `src/tools/annotations.py`
+- `src/tools/output_schemas.py`
+- `docs/mcp_manifest.json`
+- `docs/tools.md`
+- `README.md`
+- `deployment/mcpb/manifest.python.json`
+- `deployment/mcpb/manifest.uv.json`
+- `tests/agentic/agentic-tool-calls-tests.md`
+- `specs/implementation-artifacts/deferred-work.md`
+
+## Change Log
+
+- 2026-09-22: Implemented and verified the native launch-attachment API overlay, typed facade, safe service seam, and bearer-token sandbox proof.
+- 2026-09-22: Implemented the approved single-replica HTTP push broker, secure import-root pull path, strict MCP output contract, manifests, and documentation. Distributed shared capability state remains deferred as D-12-7.
