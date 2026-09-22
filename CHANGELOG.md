@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `add_test_step_attachment` no longer merges the test case's steps into the patched scenario (which duplicated every expected result) and now preserves `expected_body`/`attachment` node types, existing attachment references, durations, and parameters when rebuilding the scenario, so earlier step attachments survive repeated calls.
+
+### Changed
+- `add_test_step_attachment` step selection now matches only the result's own execution steps: `step_name` must match a runtime step (its step or attachment text) and test-case step names are no longer selectable once a scenario exists; attachment IDs resolve anywhere in the scenario tree, including nested attachment nodes. Test-case steps that were never part of the result's submitted scenario are no longer appended to it. Rich-text step bodies (`bodyJson`) degrade to plain text while the scenario is rewritten.
+
 ## [v0.15.7] - 2026-09-21
 
 ### Changed

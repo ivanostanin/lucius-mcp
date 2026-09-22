@@ -51,6 +51,7 @@ from src.client.generated.models.test_result_bulk_rerun_dto import TestResultBul
 from src.client.generated.models.test_result_create_v2_dto import TestResultCreateV2Dto
 from src.client.generated.models.test_result_dto import TestResultDto
 from src.client.generated.models.test_result_flat_dto import TestResultFlatDto
+from src.client.generated.models.test_result_parameter_dto import TestResultParameterDto
 from src.client.generated.models.test_result_patch_dto import TestResultPatchDto
 from src.client.generated.models.test_result_row_dto import TestResultRowDto
 from src.client.generated.models.test_result_scenario_dto import TestResultScenarioDto
@@ -88,6 +89,26 @@ ATTACHMENT_DOWNLOAD_TIMEOUT_SECONDS = 10.0
 ALLOWED_ATTACHMENT_URL_SCHEMES = frozenset({"http", "https"})
 BLOCKED_ATTACHMENT_HOSTNAMES = frozenset({"localhost"})
 BLOCKED_ATTACHMENT_HOST_SUFFIXES = (".localhost", ".local")
+
+# Node types the scenario PATCH endpoint accepts on each step. Anything else
+# from a v2 execution read-back degrades to a plain named step, as before.
+_PATCH_STEP_NODE_TYPES = frozenset({"body", "expected_body", "attachment"})
+
+
+class _PatchScenarioStepDto(TestResultScenarioStepDto):
+    """Scenario step for PATCH payloads that round-trips v2 execution nodes.
+
+    The generated ``TestResultScenarioStepDto`` has no ``type`` or ``body``
+    fields, so rebuilding a scenario used to flatten ``expected_body`` and
+    ``attachment`` nodes into plain named steps. Traced against a live
+    TestOps 25.4.1 instance, the PATCH endpoint accepts both keys even though
+    the generated spec does not document them, so carrying them through keeps
+    the submitted scenario intact. Rich-text ``bodyJson`` markup has no patch
+    representation and degrades to plain text.
+    """
+
+    type: str | None = None
+    body: str | None = None
 
 
 def _launch_value(value: object, name: str) -> object | None:
@@ -1294,7 +1315,17 @@ class LaunchService:
         fixture_name: str | None = None,
         fixture_type: Literal["before", "after"] | None = None,
     ) -> AttachmentUploadResult:
-        """Upload one attachment to a manual attachment step or explicit fixture fallback."""
+        """Upload one attachment to a manual attachment step or explicit fixture fallback.
+
+        TestOps exposes no step-level attachment endpoint, so the manual path
+        uploads the file at result level and rewrites the result's scenario
+        from its current execution steps, appending the attachment row to the
+        selected step. Node types and existing attachment references are
+        preserved so repeated calls do not degrade earlier attachments. Step
+        selection matches the result's own execution steps (runtime step or
+        attachment text, or an attachment ID anywhere in the scenario tree);
+        test-case step names are not selectable once a scenario exists.
+        """
         self._validate_positive_id(test_result_id, "Test Result ID")
         has_manual_selector = attachment_id is not None or step_name is not None or step_index is not None
         has_fixture_selector = fixture_result_id is not None or fixture_name is not None or fixture_type is not None
@@ -2657,6 +2688,13 @@ class LaunchService:
         return TestResultScenarioDto(steps=steps)
 
     async def _build_patchable_manual_result_steps(self, test_result: TestResultDto) -> list[TestResultScenarioStepDto]:
+        """Rebuild the patch steps from the result's own execution scenario.
+
+        The result's own scenario is what the caller submitted, so it is
+        authoritative: merging the test case's steps over it duplicated
+        expected results and renamed runtime steps. The test case scenario is
+        only used as a scaffold when the result has no execution steps yet.
+        """
         raw_execution = await self._get_test_result_execution_raw_or_raise(test_result.id or 0, v2=True)
         raw_steps = raw_execution.get("steps")
         execution_steps = (
@@ -2665,16 +2703,13 @@ class LaunchService:
             else []
         )
 
-        test_case_steps: list[TestResultScenarioStepDto] = []
-        if isinstance(test_result.test_case_id, int) and test_result.test_case_id > 0:
-            scenario = await self._get_test_case_scenario_or_raise(test_result.test_case_id)
-            test_case_steps = [self._patch_step_from_test_case_step(step) for step in scenario.steps or []]
-
-        if execution_steps and test_case_steps:
-            return self._merge_patch_steps_with_template_steps(execution_steps, test_case_steps)
         if execution_steps:
             return execution_steps
-        return test_case_steps
+
+        if isinstance(test_result.test_case_id, int) and test_result.test_case_id > 0:
+            scenario = await self._get_test_case_scenario_or_raise(test_result.test_case_id)
+            return [self._patch_step_from_test_case_step(step) for step in scenario.steps or []]
+        return []
 
     def _select_manual_patch_step(  # noqa: C901
         self,
@@ -2687,15 +2722,7 @@ class LaunchService:
     ) -> TestResultScenarioStepDto:
         if attachment_id is not None:
             self._validate_positive_id(attachment_id, "Attachment ID")
-            matches = [
-                step
-                for step in steps
-                if any(
-                    isinstance(existing.actual_instance, TestResultAttachmentRowDto)
-                    and existing.actual_instance.id == attachment_id
-                    for existing in step.attachments or []
-                )
-            ]
+            matches = self._collect_steps_referencing_attachment(steps, attachment_id)
             if not matches:
                 raise AllureNotFoundError(
                     f"Attachment step ID {attachment_id} not found in test result ID {test_result_id}"
@@ -2737,6 +2764,26 @@ class LaunchService:
             )
         return steps[0]
 
+    @classmethod
+    def _collect_steps_referencing_attachment(
+        cls,
+        steps: list[TestResultScenarioStepDto],
+        attachment_id: int,
+    ) -> list[TestResultScenarioStepDto]:
+        """Find every step, nested included, whose attachments reference the ID."""
+        matches: list[TestResultScenarioStepDto] = []
+        for step in steps:
+            if any(
+                isinstance(existing.actual_instance, TestResultAttachmentRowDto)
+                and existing.actual_instance.id == attachment_id
+                for existing in step.attachments or []
+            ):
+                matches.append(step)
+            nested = step.steps or []
+            if nested:
+                matches.extend(cls._collect_steps_referencing_attachment(nested, attachment_id))
+        return matches
+
     @staticmethod
     def _select_uploaded_attachment_row(rows: list[TestResultAttachmentRowDto]) -> TestResultAttachmentRowDto:
         if not rows:
@@ -2750,37 +2797,93 @@ class LaunchService:
             if isinstance(nested_raw_steps, list)
             else None
         )
-        attachments_raw = step.get("attachments")
-        attachments = (
-            [
-                TestResultAttachmentStepDtoAllOfAttachment(
-                    actual_instance=self._coerce_test_result_attachment_row(item)
-                )
-                for item in attachments_raw
-                if isinstance(item, dict)
-            ]
-            if isinstance(attachments_raw, list)
-            else None
-        )
-        return TestResultScenarioStepDto(
-            name=(
-                step.get("name")
-                if isinstance(step.get("name"), str)
-                else step.get("body")
-                if isinstance(step.get("body"), str)
-                else step.get("attachment", {}).get("name")
-                if isinstance(step.get("attachment"), dict) and isinstance(step.get("attachment", {}).get("name"), str)
-                else None
-            ),
+        node_type = step.get("type") if isinstance(step.get("type"), str) else None
+        return _PatchScenarioStepDto(
+            type=node_type if node_type in _PATCH_STEP_NODE_TYPES else None,
+            body=step.get("body") if isinstance(step.get("body"), str) else None,
+            name=self._raw_step_name(step),
             expected_result=step.get("expectedResult") if isinstance(step.get("expectedResult"), str) else None,
             message=step.get("message") if isinstance(step.get("message"), str) else None,
             trace=step.get("trace") if isinstance(step.get("trace"), str) else None,
             start=step.get("start") if isinstance(step.get("start"), int) else None,
             stop=step.get("stop") if isinstance(step.get("stop"), int) else None,
+            duration=step.get("duration") if isinstance(step.get("duration"), int) else None,
+            show_message=step.get("showMessage") if isinstance(step.get("showMessage"), bool) else None,
+            parameters=self._coerce_raw_step_parameters(step.get("parameters")),
             status=self._normalize_test_status(step.get("status"), field_name="execution.step.status"),
             steps=nested_steps,
-            attachments=attachments,
+            attachments=self._collect_raw_step_attachments(step),
         )
+
+    @staticmethod
+    def _coerce_raw_step_parameters(raw: object) -> list[TestResultParameterDto] | None:
+        """Carry v2 execution step parameters into the patch representation."""
+        if not isinstance(raw, list):
+            return None
+        parameters: list[TestResultParameterDto] = []
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+            try:
+                parameters.append(TestResultParameterDto.model_validate(item))
+            except PydanticValidationError:
+                continue
+        return parameters or None
+
+    @staticmethod
+    def _raw_step_name(step: dict[str, Any]) -> str | None:
+        name = step.get("name")
+        if isinstance(name, str):
+            return name
+        body = step.get("body")
+        if isinstance(body, str):
+            return body
+        attachment = step.get("attachment")
+        if isinstance(attachment, dict):
+            attachment_name = attachment.get("name")
+            if isinstance(attachment_name, str):
+                return attachment_name
+        return None
+
+    def _collect_raw_step_attachments(
+        self, step: dict[str, Any]
+    ) -> list[TestResultAttachmentStepDtoAllOfAttachment] | None:
+        """Collect every attachment reference a v2 execution node carries.
+
+        Body-style nodes may hold a top-level ``attachments`` list, while
+        attachment nodes keep their reference under ``attachment``/``attachmentId``.
+        Every reference must survive the rebuild, otherwise earlier step
+        attachments degrade into plain text rows on the next call. A node
+        carrying the same reference in several shapes yields it only once.
+        """
+        attachments: list[TestResultAttachmentStepDtoAllOfAttachment] = []
+        seen_ids: set[int] = set()
+
+        def append_row(row: TestResultAttachmentRowDto) -> None:
+            if isinstance(row.id, int):
+                if row.id in seen_ids:
+                    return
+                seen_ids.add(row.id)
+            attachments.append(TestResultAttachmentStepDtoAllOfAttachment(actual_instance=row))
+
+        attachments_raw = step.get("attachments")
+        if isinstance(attachments_raw, list):
+            for item in attachments_raw:
+                if isinstance(item, dict):
+                    append_row(self._coerce_test_result_attachment_row(item))
+
+        attachment_raw = step.get("attachment")
+        if isinstance(attachment_raw, dict):
+            append_row(self._coerce_test_result_attachment_row(attachment_raw))
+        elif isinstance(step.get("attachmentId"), int):
+            append_row(
+                TestResultAttachmentRowDto.model_construct(
+                    entity="test_result",
+                    id=step["attachmentId"],
+                    name=self._raw_step_name(step),
+                )
+            )
+        return attachments or None
 
     def _patch_step_from_test_case_step(self, step: SharedStepScenarioDtoStepsInner) -> TestResultScenarioStepDto:
         actual = step.actual_instance
@@ -2807,44 +2910,6 @@ class LaunchService:
             name=name if isinstance(name, str) and name.strip() else None,
             expected_result=expected_result,
             steps=nested_steps,
-        )
-
-    def _merge_patch_steps_with_template_steps(
-        self,
-        runtime_steps: list[TestResultScenarioStepDto],
-        template_steps: list[TestResultScenarioStepDto],
-    ) -> list[TestResultScenarioStepDto]:
-        merged: list[TestResultScenarioStepDto] = []
-        for index, runtime_step in enumerate(runtime_steps):
-            template_step = template_steps[index] if index < len(template_steps) else None
-            merged.append(self._merge_patch_step_with_template_step(runtime_step, template_step))
-
-        if len(template_steps) > len(runtime_steps):
-            merged.extend(template_steps[len(runtime_steps) :])
-        return merged
-
-    def _merge_patch_step_with_template_step(
-        self,
-        runtime_step: TestResultScenarioStepDto,
-        template_step: TestResultScenarioStepDto | None,
-    ) -> TestResultScenarioStepDto:
-        if template_step is None:
-            return runtime_step
-
-        runtime_nested = runtime_step.steps or []
-        template_nested = template_step.steps or []
-        merged_nested = self._merge_patch_steps_with_template_steps(runtime_nested, template_nested)
-
-        return TestResultScenarioStepDto(
-            attachments=runtime_step.attachments,
-            expected_result=runtime_step.expected_result or template_step.expected_result,
-            message=runtime_step.message,
-            name=runtime_step.name or template_step.name,
-            start=runtime_step.start,
-            status=runtime_step.status,
-            steps=merged_nested or None,
-            stop=runtime_step.stop,
-            trace=runtime_step.trace,
         )
 
     @staticmethod

@@ -788,6 +788,16 @@ async def add_test_step_attachment(
 ) -> ToolOutput:
     """Upload evidence to a manual attachment step inside a test result.
 
+    TestOps has no step-level attachment endpoint: the file is uploaded at result
+    level, then the result's scenario is rewritten from its current execution
+    steps (node types and existing step attachments preserved) with the
+    attachment row appended to the selected step. The test case's steps are
+    only used as a scaffold when the result has no scenario yet. Step selection
+    matches the result's own steps (runtime step or attachment text, or an
+    attachment ID anywhere in the scenario tree); test-case step names are not
+    selectable once the result has a scenario. Rich-text step bodies degrade
+    to plain text when the scenario is rewritten.
+
     Args:
         test_result_id: Parent test result ID. In rerun workflows, use the completed result ID
             returned by the latest submit_manual_test_results call.

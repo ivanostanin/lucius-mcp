@@ -285,14 +285,34 @@ async def test_manual_launch_submission_creates_complete_new_result(
     assert step_attachment.target_kind == "test_step"
     assert step_attachment.status_code == 200
 
+    second_step_attachment = await launch_service.add_test_step_attachment(
+        test_result_id=created_result_id,
+        step_index=1,
+        attachment={
+            "name": "manual-step-2.txt",
+            "content_type": "text/plain",
+            "content": "U2Vjb25k",
+        },
+    )
+    assert second_step_attachment.target_kind == "test_step"
+    assert second_step_attachment.status_code == 200
+
     result_attachments = await allure_client.list_test_result_attachments(created_result_id, size=50)
     attachment_rows = result_attachments.content or []
     assert any(attachment.name == "manual-result.txt" for attachment in attachment_rows)
 
     execution = await allure_client.get_test_result_execution_raw(created_result_id, v2=True)
+    execution_steps = execution.get("steps")
+    assert isinstance(execution_steps, list) and len(execution_steps) == 2
+    assert execution_steps[0].get("type") == "body"
+    assert "Open app" in (execution_steps[0].get("body"), execution_steps[0].get("name"))
+    assert execution_steps[1].get("type") == "attachment"
     matching_attachments = list(_iter_execution_attachments(execution, step_attachment.target_id))
     assert len(matching_attachments) == 1
     assert matching_attachments[0].get("name") == "manual-step.txt"
+    execution_attachment_ids = _collect_execution_attachment_ids(execution)
+    assert step_attachment.target_id in execution_attachment_ids
+    assert second_step_attachment.target_id in execution_attachment_ids
 
     attachment_bytes = await allure_client.read_test_result_attachment_content(step_attachment.target_id)
     assert attachment_bytes == b"Sandbox manual step evidence"
@@ -334,3 +354,24 @@ def _iter_execution_attachments(node: object, attachment_id: int) -> Iterator[di
     if isinstance(node, list):
         for item in node:
             yield from _iter_execution_attachments(item, attachment_id)
+
+
+def _collect_execution_attachment_ids(node: object, ids: set[int] | None = None) -> set[int]:
+    """Collect every attachment ID referenced anywhere in the execution tree."""
+    if ids is None:
+        ids = set()
+    if isinstance(node, dict):
+        attachment_id = node.get("attachmentId")
+        if isinstance(attachment_id, int):
+            ids.add(attachment_id)
+        attachments = node.get("attachments")
+        if isinstance(attachments, list):
+            for item in attachments:
+                if isinstance(item, dict) and isinstance(item.get("id"), int):
+                    ids.add(item["id"])
+        for value in node.values():
+            _collect_execution_attachment_ids(value, ids)
+    elif isinstance(node, list):
+        for item in node:
+            _collect_execution_attachment_ids(item, ids)
+    return ids

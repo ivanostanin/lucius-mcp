@@ -10798,7 +10798,7 @@
     {
       "name": "add_test_step_attachment",
       "title": "Add Test Step Attachment",
-      "description": "Upload evidence to a manual attachment step inside a test result.",
+      "description": "Upload evidence to a manual attachment step inside a test result.\n\nTestOps has no step-level attachment endpoint: the file is uploaded at result\nlevel, then the result's scenario is rewritten from its current execution\nsteps (node types and existing step attachments preserved) with the\nattachment row appended to the selected step. The test case's steps are\nonly used as a scaffold when the result has no scenario yet. Step selection\nmatches the result's own steps (runtime step or attachment text, or an\nattachment ID anywhere in the scenario tree); test-case step names are not\nselectable once the result has a scenario. Rich-text step bodies degrade\nto plain text when the scenario is rewritten.",
       "inputSchema": {
         "properties": {
           "test_result_id": {

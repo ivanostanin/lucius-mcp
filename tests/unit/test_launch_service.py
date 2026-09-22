@@ -1548,9 +1548,10 @@ async def test_add_test_step_attachment_requires_unambiguous_manual_step_selecti
 
 
 @pytest.mark.asyncio
-async def test_add_test_step_attachment_uses_test_case_scenario_when_runtime_names_are_missing(
+async def test_add_test_step_attachment_rejects_template_only_step_name(
     service: LaunchService, mock_client: MagicMock
 ) -> None:
+    """Runtime steps are authoritative: test-case step names are not selectable."""
     mock_client.get_test_result.return_value = TestResultDto(
         id=55,
         name="Manual Result",
@@ -1563,17 +1564,138 @@ async def test_add_test_step_attachment_uses_test_case_scenario_when_runtime_nam
         TestResultAttachmentRowDto.model_construct(entity="test_result", id=702, name="evidence.txt")
     ]
 
+    with pytest.raises(AllureNotFoundError, match="No step named 'Open app' found"):
+        await service.add_test_step_attachment(
+            test_result_id=55,
+            step_name="Open app",
+            attachment={
+                "name": "evidence.txt",
+                "content_type": "text/plain",
+                "content": "QQ==",
+            },
+        )
+
+
+@pytest.mark.asyncio
+async def test_add_test_step_attachment_patch_preserves_scenario_node_types(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    """The scenario PATCH round-trips node types and existing attachment references."""
+    mock_client.get_test_result.return_value = TestResultDto(
+        id=55,
+        name="Manual Result",
+        full_name="Manual Result",
+        test_case_id=501,
+    )
+    mock_client.get_test_result_execution_raw.return_value = {
+        "steps": [
+            {
+                "type": "body",
+                "body": "Observe the login form",
+                "status": "passed",
+                "steps": [
+                    {"type": "expected_body", "body": "No language picker is displayed", "status": "passed"},
+                    {
+                        "type": "attachment",
+                        "attachment": {"id": 2873028, "name": "step-01.png", "contentType": "image/png"},
+                        "attachmentId": 2873028,
+                    },
+                ],
+            }
+        ]
+    }
+    mock_client.create_test_result_attachments.return_value = [
+        TestResultAttachmentRowDto.model_construct(entity="test_result", id=2873029, name="step-02.png")
+    ]
+
     result = await service.add_test_step_attachment(
         test_result_id=55,
-        step_name="Open app",
+        step_index=0,
         attachment={
-            "name": "evidence.txt",
-            "content_type": "text/plain",
+            "name": "step-02.png",
+            "content_type": "image/png",
+            "content": "QQ==",
+        },
+    )
+
+    assert result.target_id == 2873029
+    mock_client.patch_test_result.assert_awaited_once()
+    patch_dto = mock_client.patch_test_result.await_args.args[1]
+    payload = patch_dto.to_dict()
+    step_payload = payload["scenario"]["steps"][0]
+    assert step_payload["type"] == "body"
+    assert step_payload["steps"][0]["type"] == "expected_body"
+    assert step_payload["steps"][1]["type"] == "attachment"
+    assert step_payload["steps"][1]["attachments"][0]["id"] == 2873028
+    assert [row["id"] for row in step_payload["attachments"]] == [2873029]
+    assert "expectedResult" not in step_payload
+
+
+@pytest.mark.asyncio
+async def test_add_test_step_attachment_selects_nested_attachment_step_by_id(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    """An attachment ID on a nested attachment node selects that node."""
+    mock_client.get_test_result.return_value = TestResultDto(
+        id=55,
+        name="Manual Result",
+        full_name="Manual Result",
+        test_case_id=501,
+    )
+    mock_client.get_test_result_execution_raw.return_value = {
+        "steps": [
+            {
+                "type": "body",
+                "body": "Observe the login form",
+                "status": "passed",
+                "steps": [
+                    {
+                        "type": "attachment",
+                        "attachment": {"id": 701, "name": "step-01.png", "contentType": "image/png"},
+                        "attachmentId": 701,
+                    },
+                ],
+            }
+        ]
+    }
+    mock_client.create_test_result_attachments.return_value = [
+        TestResultAttachmentRowDto.model_construct(entity="test_result", id=702, name="step-02.png")
+    ]
+
+    result = await service.add_test_step_attachment(
+        test_result_id=55,
+        attachment_id=701,
+        attachment={
+            "name": "step-02.png",
+            "content_type": "image/png",
             "content": "QQ==",
         },
     )
 
     assert result.target_id == 702
+    mock_client.patch_test_result.assert_awaited_once()
+    patch_dto = mock_client.patch_test_result.await_args.args[1]
+    step_payload = patch_dto.to_dict()["scenario"]["steps"][0]
+    nested_attachment = step_payload["steps"][0]
+    assert nested_attachment["type"] == "attachment"
+    assert [row["id"] for row in nested_attachment["attachments"]] == [701, 702]
+    assert "attachments" not in step_payload
+
+
+@pytest.mark.asyncio
+async def test_collect_raw_step_attachments_deduplicates_shared_references(service: LaunchService) -> None:
+    """A node carrying the same reference in several shapes yields it once."""
+    collected = service._collect_raw_step_attachments(
+        {
+            "type": "attachment",
+            "attachments": [{"id": 701, "name": "step-01.png"}],
+            "attachment": {"id": 701, "name": "step-01.png", "contentType": "image/png"},
+            "attachmentId": 701,
+        }
+    )
+
+    assert collected is not None
+    assert [attachment.actual_instance.id for attachment in collected] == [701]
 
 
 @pytest.mark.asyncio
@@ -1671,10 +1793,11 @@ async def test_add_test_step_attachment_rejects_invalid_fixture_type(service: La
 
 
 @pytest.mark.asyncio
-async def test_build_manual_step_attachment_patch_scenario_merges_runtime_steps_with_test_case_template(
+async def test_build_manual_step_attachment_patch_scenario_round_trips_execution_steps(
     service: LaunchService,
     mock_client: MagicMock,
 ) -> None:
+    """The patch is rebuilt from the result's own steps, not the test case template."""
     test_result = TestResultDto(
         id=55,
         name="Manual Result",
@@ -1684,9 +1807,30 @@ async def test_build_manual_step_attachment_patch_scenario_merges_runtime_steps_
     mock_client.get_test_result_execution_raw.return_value = {
         "steps": [
             {
+                "type": "body",
+                "body": "Select the tenant ID / email+password login option",
                 "status": "failed",
-                "attachments": [{"id": 701, "name": "existing-evidence.txt"}],
-                "steps": [{"body": "Nested runtime step", "status": "passed"}],
+                "duration": 1500,
+                "showMessage": True,
+                "parameters": [{"name": "browser", "value": "chromium"}],
+                "steps": [
+                    {
+                        "type": "expected_body",
+                        "body": "The email/password login form is displayed",
+                        "status": "passed",
+                    },
+                    {
+                        "type": "attachment",
+                        "attachment": {
+                            "id": 701,
+                            "name": "step-01.png",
+                            "contentType": "image/png",
+                            "entity": "test_result",
+                        },
+                        "attachmentId": 701,
+                        "status": None,
+                    },
+                ],
             }
         ]
     }
@@ -1697,22 +1841,46 @@ async def test_build_manual_step_attachment_patch_scenario_merges_runtime_steps_
         attachment_row=TestResultAttachmentRowDto.model_construct(
             entity="test_result",
             id=702,
-            name="new-evidence.txt",
+            name="step-02.png",
         ),
-        attachment_id=701,
+        attachment_id=None,
         step_name=None,
-        step_index=None,
+        step_index=0,
     )
+
+    # The test case template must not be merged over the result's own steps.
+    mock_client.get_test_case_scenario.assert_not_awaited()
 
     assert scenario.steps is not None
     assert len(scenario.steps) == 1
     top_step = scenario.steps[0]
-    assert top_step.name == "Open app"
-    assert top_step.status == "failed"
+    assert top_step.name == "Select the tenant ID / email+password login option"
+    assert top_step.status is not None and top_step.status.value == "failed"
+    assert top_step.expected_result is None
     assert top_step.attachments is not None
-    assert [attachment.actual_instance.id for attachment in top_step.attachments] == [701, 702]
+    assert [attachment.actual_instance.id for attachment in top_step.attachments] == [702]
+
     assert top_step.steps is not None
-    assert top_step.steps[0].name == "Nested runtime step"
+    expected_child, attachment_child = top_step.steps
+    assert expected_child.name == "The email/password login form is displayed"
+    assert attachment_child.name == "step-01.png"
+    assert attachment_child.attachments is not None
+    assert [attachment.actual_instance.id for attachment in attachment_child.attachments] == [701]
+
+    # The serialized patch must preserve node types so the server keeps
+    # expected_body/attachment nodes instead of flattening them to body steps.
+    payload = scenario.to_dict()
+    top_payload = payload["steps"][0]
+    assert top_payload["type"] == "body"
+    assert top_payload["body"] == "Select the tenant ID / email+password login option"
+    assert top_payload["duration"] == 1500
+    assert top_payload["showMessage"] is True
+    assert top_payload["parameters"] == [{"name": "browser", "value": "chromium"}]
+    assert top_payload["steps"][0]["type"] == "expected_body"
+    attachment_payload = top_payload["steps"][1]
+    assert attachment_payload["type"] == "attachment"
+    assert attachment_payload["attachments"][0]["id"] == 701
+    assert "expectedResult" not in top_payload
 
 
 @pytest.mark.asyncio
