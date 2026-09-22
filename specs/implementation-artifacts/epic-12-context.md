@@ -13,6 +13,8 @@ Give agents complete, stable, and evidence-ready inspection of launch-wide execu
 - Story 12.3: Prepare Attachment Downloads and Teach Agents the Safe Evidence Workflow
 - Story 12.4: Extend Get Launch Info with Complete Execution Results
 - Story 12.5: Remove Upstream Storage Keys from Test-Result Attachment Outputs
+- Story 12.6: Configurable Attachment Upload Size Limit
+- Story 12.7: Attach Files to an Existing Launch
 
 ## Requirements & Constraints
 
@@ -26,6 +28,7 @@ Give agents complete, stable, and evidence-ready inspection of launch-wide execu
 - `get_launch` must remain backward compatible when execution inclusion is disabled, and launch listing must stay compact. When execution inclusion is enabled, return the available stable launch-scoped execution views exhaustively, retaining exact result IDs and upstream result statuses.
 - Exhaust pagination and hierarchy traversal with non-progress, cycle, and malformed-pagination safeguards. On partial collection, return collected data with diagnostics instead of silently truncating or looping indefinitely. Open-launch data is a timestamped mutable snapshot, not inherently partial.
 - Attachment metadata must omit upstream storage implementation keys at every public serialization boundary without changing supported owner context, hierarchy, or completeness semantics.
+- The TestOps web client confirms `POST /api/launch/attachment?launchId=...` for native launch attachments, but it is omitted from the checked-in OpenAPI. Add it through a narrow generator overlay and first prove API-token authentication against the target deployment. Remote delivery must support both pull from a configured shared-volume root and one-use push through an externally reachable capability URL; it must not substitute internal result ingestion or per-result evidence attachments.
 - MCP and CLI must expose equivalent structured behavior and concrete object-root output schemas. Agent-facing descriptions and CLI help must guide agents through the safe prepare-then-GET evidence workflow.
 - Verification must cover complete and partial results, pagination, non-recursion, attachment ownership, capability expiry and single use, schema/manifest output, CLI behavior, and authenticated sandbox evidence retrieval.
 
@@ -51,3 +54,4 @@ Give agents complete, stable, and evidence-ready inspection of launch-wide execu
 - The capability broker underpins the public preparation tool and the attachment guidance used by result and test-case outputs.
 - Expanded launch execution views provide exact result IDs and compact navigation into individual result reads; they must remain non-recursive to preserve the boundary between collection and detail views.
 - Storage-key removal applies across result, step, and fixture attachment serialization without changing the broker's verified owner/kind contract.
+- Launch-attachment capability delivery may reuse the download broker's security patterns, but uses an independent upload runtime and must work across HTTP replicas through a shared, durable capability state store or an equivalent atomic coordination mechanism.
