@@ -25,21 +25,27 @@ def _native_attachment_row(
     )
 
 
+async def _chunks(content: bytes):
+    yield content
+
+
 @pytest.mark.asyncio
 async def test_attach_maps_native_row_to_safe_application_summary() -> None:
     client = MagicMock()
-    client.create_launch_attachment = AsyncMock(
+    client.create_launch_attachment_stream = AsyncMock(
         return_value=[_native_attachment_row(name="evidence.json", content_type="application/json")]
     )
     service = LaunchAttachmentService(client)
 
-    summary = await service.attach(17, "evidence.json", b"{}")
+    summary = await service.attach(17, "evidence.json", "application/json", _chunks(b"{}"))
 
     assert summary.id == 88
     assert summary.name == "evidence.json"
     assert summary.content_type == "application/json"
     assert summary.content_length == 2
-    client.create_launch_attachment.assert_awaited_once_with(17, ("evidence.json", b"{}"))
+    args = client.create_launch_attachment_stream.await_args.args
+    assert args[:3] == (17, "evidence.json", "application/json")
+    assert [chunk async for chunk in args[3]] == [b"{}"]
 
 
 @pytest.mark.asyncio
@@ -48,23 +54,23 @@ async def test_attach_rejects_invalid_metadata_before_client_call() -> None:
     service = LaunchAttachmentService(client)
 
     with pytest.raises(AllureValidationError, match="Launch ID must be a positive integer"):
-        await service.attach(0, "evidence.txt", b"x")
+        await service.attach(0, "evidence.txt", "text/plain", _chunks(b"x"))
     with pytest.raises(AllureValidationError, match="Attachment filename must be non-empty"):
-        await service.attach(17, " ", b"x")
+        await service.attach(17, " ", "text/plain", _chunks(b"x"))
 
-    client.create_launch_attachment.assert_not_called()
+    client.create_launch_attachment_stream.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_attach_translates_missing_launch_without_raw_upstream_detail() -> None:
     client = MagicMock()
-    client.create_launch_attachment = AsyncMock(
+    client.create_launch_attachment_stream = AsyncMock(
         side_effect=AllureNotFoundError("launch unavailable at upstream URL", status_code=404)
     )
     service = LaunchAttachmentService(client)
 
     with pytest.raises(LaunchNotFoundError) as error:
-        await service.attach(17, "evidence.txt", b"x")
+        await service.attach(17, "evidence.txt", "text/plain", _chunks(b"x"))
 
     assert "upstream URL" not in str(error.value)
 
@@ -76,7 +82,9 @@ async def test_attach_from_path_reads_a_regular_file_beneath_import_root(tmp_pat
     source = import_root / "evidence.json"
     source.write_bytes(b"{}")
     client = MagicMock()
-    client.create_launch_attachment = AsyncMock(return_value=[_native_attachment_row(content_type="application/json")])
+    client.create_launch_attachment_stream = AsyncMock(
+        return_value=[_native_attachment_row(content_type="application/json")]
+    )
 
     summary = await LaunchAttachmentService(client).attach_from_path(
         17,
@@ -87,7 +95,8 @@ async def test_attach_from_path_reads_a_regular_file_beneath_import_root(tmp_pat
     )
 
     assert summary.content_type == "application/json"
-    client.create_launch_attachment.assert_awaited_once_with(17, ("evidence.json", b"{}"))
+    args = client.create_launch_attachment_stream.await_args.args
+    assert args[:3] == (17, "evidence.json", "application/json")
     assert source.read_bytes() == b"{}"
 
 
@@ -117,7 +126,7 @@ async def test_attach_from_path_rejects_traversal_and_symlinks(tmp_path: Path, s
             max_file_bytes=1024,
         )
 
-    client.create_launch_attachment.assert_not_called()
+    client.create_launch_attachment_stream.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -136,7 +145,7 @@ async def test_attach_from_path_rejects_invalid_supplied_content_type_before_rea
             content_type="not a media type",
         )
 
-    client.create_launch_attachment.assert_not_called()
+    client.create_launch_attachment_stream.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -156,7 +165,7 @@ async def test_attach_from_path_rejects_non_regular_files_before_client_call(tmp
             max_file_bytes=1024,
         )
 
-    client.create_launch_attachment.assert_not_called()
+    client.create_launch_attachment_stream.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -165,7 +174,7 @@ async def test_attach_from_path_infers_unknown_extension_as_octet_stream(tmp_pat
     import_root.mkdir()
     (import_root / "evidence.unknown").write_bytes(b"{}")
     client = MagicMock()
-    client.create_launch_attachment = AsyncMock(return_value=[_native_attachment_row()])
+    client.create_launch_attachment_stream = AsyncMock(return_value=[_native_attachment_row()])
     guess_type = mocker.patch("src.services.launch_attachment_service.mimetypes.guess_type", return_value=(None, None))
 
     summary = await LaunchAttachmentService(client).attach_from_path(
@@ -178,6 +187,11 @@ async def test_attach_from_path_infers_unknown_extension_as_octet_stream(tmp_pat
 
     assert summary.content_type == "application/octet-stream"
     guess_type.assert_called_once_with("evidence.unknown")
+    assert client.create_launch_attachment_stream.await_args.args[:3] == (
+        17,
+        "evidence.unknown",
+        "application/octet-stream",
+    )
 
 
 @pytest.mark.asyncio
@@ -197,4 +211,4 @@ async def test_attach_from_path_enforces_the_limit_before_client_call(tmp_path: 
             max_file_bytes=2,
         )
 
-    client.create_launch_attachment.assert_not_called()
+    client.create_launch_attachment_stream.assert_not_called()

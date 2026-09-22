@@ -9,6 +9,8 @@ from pydantic import SecretStr
 
 from src.client import AllureClient
 from src.client.exceptions import AllureAPIError, AllureNotFoundError, AllureValidationError
+from src.client.generated.api_client import ApiClient
+from src.client.generated.configuration import Configuration
 from src.client.generated.exceptions import ApiException
 from src.client.generated.models.aql_validate_response_dto import AqlValidateResponseDto
 from src.client.generated.models.env_var_value_dto import EnvVarValueDto
@@ -691,6 +693,34 @@ def test_generated_launch_attachment_uses_filename_to_set_multipart_content_type
     assert ApiClient().files_parameters({"file": ("evidence.json", b"{}")}) == [
         ("file", ("evidence.json", b"{}", "application/json"))
     ]
+
+
+@pytest.mark.asyncio
+async def test_client_streams_launch_attachment_with_the_declared_multipart_content_type() -> None:
+    client = AllureClient(base_url="https://example.com", token=SecretStr("token"), project=1)
+    client._is_entered = True
+    client._token_expires_at = time.time() + 3600
+    client._api_client = ApiClient(configuration=Configuration(host="https://example.com"))
+    response = httpx.Response(
+        200,
+        json=[{"id": 77, "name": "evidence.txt", "contentType": "application/gzip", "contentLength": 2}],
+        request=httpx.Request("POST", "https://example.com/api/launch/attachment?launchId=9"),
+    )
+    pool = MagicMock()
+    pool.request = AsyncMock(return_value=response)
+    client._api_client.rest_client.pool_manager = pool
+
+    async def chunks():
+        yield b"gz"
+
+    rows = await client.create_launch_attachment_stream(9, "evidence.txt", "application/gzip", chunks())
+
+    assert rows[0].content_type == "application/gzip"
+    call = pool.request.await_args
+    assert call.kwargs["headers"]["Content-Type"].startswith("multipart/form-data; boundary=")
+    body = b"".join([chunk async for chunk in call.kwargs["content"]])
+    assert b"Content-Type: application/gzip" in body
+    assert b"\r\n\r\ngz\r\n--" in body
 
 
 @pytest.mark.asyncio

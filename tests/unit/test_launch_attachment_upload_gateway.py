@@ -21,10 +21,11 @@ async def test_gateway_consumes_capability_once_and_returns_only_safe_summary(tm
         LaunchAttachmentUploadConfig(temp_parent=tmp_path, max_file_bytes=10, ttl_seconds=60)
     )
     prepared = await runtime.prepare(launch_id=17, name="evidence.json", content_type="application/json")
-    received: list[tuple[int, str, bytes]] = []
+    received: list[tuple[int, str, str, bytes]] = []
 
-    async def attach(launch_id: int, name: str, content: bytes) -> LaunchAttachmentSummary:
-        received.append((launch_id, name, content))
+    async def attach(launch_id: int, name: str, content_type: str, chunks) -> LaunchAttachmentSummary:
+        content = b"".join([chunk async for chunk in chunks])
+        received.append((launch_id, name, content_type, content))
         return LaunchAttachmentSummary(id=99, name=name, content_type="application/json", content_length=len(content))
 
     app = Starlette(routes=[launch_attachment_upload_route(holder, attach=attach)])
@@ -49,7 +50,7 @@ async def test_gateway_consumes_capability_once_and_returns_only_safe_summary(tm
             "content_type": "application/json",
             "content_length": 2,
         }
-        assert received == [(17, "evidence.json", b"{}")]
+        assert received == [(17, "evidence.json", "application/json", b"{}")]
         assert replay.status_code == 404
     finally:
         await holder.close()
@@ -64,7 +65,7 @@ async def test_gateway_rejects_wrong_type_and_oversize_without_upstream_upload(t
     wrong_type = await runtime.prepare(launch_id=17, name="evidence.json", content_type="application/json")
     too_large = await runtime.prepare(launch_id=17, name="evidence.json", content_type="application/json")
 
-    async def attach(_: int, __: str, ___: bytes) -> LaunchAttachmentSummary:
+    async def attach(_: int, __: str, ___: str, ____):
         raise AssertionError("The gateway must reject invalid payloads before the upstream upload")
 
     app = Starlette(routes=[launch_attachment_upload_route(holder, attach=attach)])

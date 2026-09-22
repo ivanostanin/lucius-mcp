@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import secrets
 import time
 from collections.abc import AsyncIterator, Awaitable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
@@ -262,6 +263,33 @@ class AttachmentContentStream:
     def iter_bytes(self) -> AsyncIterator[bytes]:
         """Yield the response body without materializing it in memory."""
         return self.response.aiter_bytes()
+
+
+class _MultipartAttachmentStream(httpx.AsyncByteStream):
+    """Encode one file part without buffering its content in memory."""
+
+    def __init__(self, *, name: str, content_type: str, chunks: AsyncIterator[bytes]) -> None:
+        self._boundary = secrets.token_hex(24)
+        self._name = name
+        self._content_type = content_type
+        self._chunks = chunks
+
+    @property
+    def content_type(self) -> str:
+        return f"multipart/form-data; boundary={self._boundary}"
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        escaped_name = self._name.replace("\\", "\\\\").replace('"', '\\"')
+        yield (
+            f"--{self._boundary}\r\n"
+            f'Content-Disposition: form-data; name="file"; filename="{escaped_name}"\r\n'
+            f"Content-Type: {self._content_type}\r\n\r\n"
+        ).encode()
+        async for chunk in self._chunks:
+            if not isinstance(chunk, bytes):
+                raise AllureValidationError("Attachment stream must yield bytes")
+            yield chunk
+        yield f"\r\n--{self._boundary}--\r\n".encode("ascii")
 
 
 class AttachmentStepDtoWithName(AttachmentStepDto):
@@ -1657,6 +1685,63 @@ class AllureClient:
             )
         )
         return self._normalize_launch_attachment_rows(response)
+
+    async def create_launch_attachment_stream(
+        self,
+        launch_id: int,
+        name: str,
+        content_type: str,
+        chunks: AsyncIterator[bytes],
+    ) -> list[LaunchAttachmentRowDto]:
+        """Stream one native attachment through the generated controller's HTTP transport.
+
+        The generated multipart helper eagerly collects file bytes and guesses the
+        part media type from the filename. This narrow streaming seam keeps the
+        generated endpoint, auth, response model, and URL serialization while
+        preserving the caller's validated file-part media type.
+        """
+        if not isinstance(launch_id, int) or isinstance(launch_id, bool) or launch_id <= 0:
+            raise AllureValidationError("Launch ID must be a positive integer")
+        if not isinstance(name, str) or not name.strip():
+            raise AllureValidationError("Attachment filename must be non-empty")
+        if not isinstance(content_type, str) or not content_type:
+            raise AllureValidationError("Attachment content type must be non-empty")
+        self._require_entered()
+        await self._ensure_valid_token()
+        if self._api_client is None:  # pragma: no cover - guarded by _require_entered
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+
+        method, url, headers, _, _ = self._api_client.param_serialize(
+            method="POST",
+            resource_path="/api/launch/attachment",
+            query_params=[("launchId", launch_id)],
+            header_params={"Accept": "application/json"},
+            auth_settings=[],
+        )
+        stream = _MultipartAttachmentStream(name=name, content_type=content_type, chunks=chunks)
+        headers["Content-Type"] = stream.content_type
+        rest_client = self._api_client.rest_client
+        if rest_client.pool_manager is None:
+            rest_client.pool_manager = rest_client._create_pool_manager()
+        response = await rest_client.pool_manager.request(
+            method,
+            url,
+            headers=headers,
+            content=stream,
+            timeout=self._timeout,
+        )
+        if not 200 <= response.status_code <= 299:
+            self._handle_api_exception(
+                ApiException(status=response.status_code, reason=response.reason_phrase, body=response.text)
+            )
+        data = response.json()
+        if not isinstance(data, list):
+            raise AllureAPIError("Launch attachment API returned an unexpected response")
+        try:
+            rows = [LaunchAttachmentRowDto.model_validate(row) for row in data]
+        except (TypeError, ValueError) as exc:
+            raise AllureAPIError("Launch attachment API returned malformed attachment metadata") from exc
+        return self._normalize_launch_attachment_rows(rows)
 
     @staticmethod
     def _normalize_launch_attachment_rows(rows: list[LaunchAttachmentRowDto]) -> list[LaunchAttachmentRowDto]:

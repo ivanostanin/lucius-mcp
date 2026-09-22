@@ -8,6 +8,8 @@ import mimetypes
 import os
 import re
 import stat
+from collections.abc import AsyncGenerator, AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import BinaryIO
@@ -41,14 +43,15 @@ class LaunchAttachmentService:
     def __init__(self, client: AllureClient) -> None:
         self._client = client
 
-    async def attach(self, launch_id: int, name: str, content: bytes) -> LaunchAttachmentSummary:
-        """Attach one bounded, already-validated file to an existing launch."""
+    async def attach(
+        self, launch_id: int, name: str, content_type: str, chunks: AsyncIterator[bytes]
+    ) -> LaunchAttachmentSummary:
+        """Stream one bounded, already-validated file to an existing launch."""
         self._validate_attachment_metadata(launch_id, name)
-        if not isinstance(content, bytes):
-            raise AllureValidationError("Attachment content must be bytes")
+        self._resolve_content_type(name, content_type)
 
         try:
-            rows = await self._client.create_launch_attachment(launch_id, (name, content))
+            rows = await self._client.create_launch_attachment_stream(launch_id, name, content_type, chunks)
         except AllureNotFoundError as exc:
             raise LaunchNotFoundError(launch_id, status_code=exc.status_code) from exc
         except AllureAuthError as exc:
@@ -80,21 +83,14 @@ class LaunchAttachmentService:
     ) -> LaunchAttachmentSummary:
         """Read one safe import-root file asynchronously and attach it to a launch.
 
-        The native generated client determines the multipart part type from the
-        supplied filename.  Resolve and validate ``content_type`` here so callers
-        receive the documented inference and invalid values are rejected before
-        any file is read or upstream request is made.
+        Resolve and validate ``content_type`` before any file is read or upstream
+        request is made, then preserve it on the multipart file part.
         """
         self._validate_attachment_metadata(launch_id, name)
-        self._resolve_content_type(name, content_type)
         configured_import_root = self._validate_import_configuration(import_root, max_file_bytes)
-        content = await asyncio.to_thread(
-            _read_import_file,
-            configured_import_root,
-            source_path,
-            max_file_bytes,
-        )
-        return await self.attach(launch_id, name, content)
+        resolved_content_type = self._resolve_content_type(name, content_type)
+        async with _open_import_file_stream(configured_import_root, source_path, max_file_bytes) as chunks:
+            return await self.attach(launch_id, name, resolved_content_type, chunks)
 
     @staticmethod
     def _validate_attachment_metadata(launch_id: int, name: str) -> None:
@@ -134,13 +130,38 @@ class LaunchAttachmentService:
         )
 
 
-def _read_import_file(import_root: Path, source_path: str | Path, max_file_bytes: int) -> bytes:
-    """Read a bounded regular file without allowing import-root escape or links."""
+@asynccontextmanager
+async def _open_import_file_stream(
+    import_root: Path, source_path: str | Path, max_file_bytes: int
+) -> AsyncGenerator[AsyncIterator[bytes], None]:
+    """Open a bounded regular import file as an async stream without root escape."""
     root = _resolve_import_root(import_root)
     relative_source = _relative_import_source(source_path, root)
     if os.name == "nt":
-        return _read_import_file_portably(root, relative_source, max_file_bytes)
-    return _read_import_file_posix(root, relative_source, max_file_bytes)
+        async with _open_import_file_stream_portably(root, relative_source, max_file_bytes) as chunks:
+            yield chunks
+        return
+    file_fd: int | None = None
+    directory_fds: list[int] = []
+    try:
+        file_fd, directory_fds = await asyncio.to_thread(
+            _open_regular_import_file, root, relative_source, max_file_bytes
+        )
+        if file_fd is None:  # pragma: no cover - helper always returns an open descriptor
+            raise AllureValidationError("Attachment source file cannot be read safely")
+        yield _read_open_file_chunks(file_fd, max_file_bytes)
+    except FileNotFoundError as exc:
+        raise AllureValidationError("Attachment source file does not exist") from exc
+    except PermissionError as exc:
+        raise AllureValidationError("Attachment source file is not readable") from exc
+    except OSError as exc:
+        if exc.errno == errno.ELOOP:
+            raise AllureValidationError("Attachment source path must not contain symlinks") from exc
+        raise AllureValidationError("Attachment source file cannot be read safely") from exc
+    finally:
+        if file_fd is not None:
+            await asyncio.to_thread(os.close, file_fd)
+        await asyncio.to_thread(_close_file_descriptors, directory_fds)
 
 
 def _resolve_import_root(import_root: Path) -> Path:
@@ -167,27 +188,6 @@ def _relative_import_source(source_path: str | Path, root: Path) -> Path:
     if not relative.parts or any(part in {".", ".."} for part in relative.parts):
         raise AllureValidationError("Attachment source path is outside the configured import root")
     return relative
-
-
-def _read_import_file_posix(root: Path, relative_source: Path, max_file_bytes: int) -> bytes:
-    """Use descriptor-relative opens so a symlink swap cannot escape the root."""
-    directory_fds: list[int] = []
-    file_fd: int | None = None
-    try:
-        file_fd, directory_fds = _open_regular_import_file(root, relative_source, max_file_bytes)
-        return _read_open_file(file_fd, max_file_bytes)
-    except FileNotFoundError as exc:
-        raise AllureValidationError("Attachment source file does not exist") from exc
-    except PermissionError as exc:
-        raise AllureValidationError("Attachment source file is not readable") from exc
-    except OSError as exc:
-        if exc.errno == errno.ELOOP:
-            raise AllureValidationError("Attachment source path must not contain symlinks") from exc
-        raise AllureValidationError("Attachment source file cannot be read safely") from exc
-    finally:
-        if file_fd is not None:
-            os.close(file_fd)
-        _close_file_descriptors(directory_fds)
 
 
 def _open_regular_import_file(root: Path, relative_source: Path, max_file_bytes: int) -> tuple[int, list[int]]:
@@ -228,7 +228,10 @@ def _close_file_descriptors(file_descriptors: list[int]) -> None:
             pass
 
 
-def _read_import_file_portably(root: Path, relative_source: Path, max_file_bytes: int) -> bytes:
+@asynccontextmanager
+async def _open_import_file_stream_portably(
+    root: Path, relative_source: Path, max_file_bytes: int
+) -> AsyncGenerator[AsyncIterator[bytes], None]:
     """Use lstat checks where descriptor-relative, no-follow opens are unavailable."""
     path = root
     for part in relative_source.parts:
@@ -245,30 +248,33 @@ def _read_import_file_portably(root: Path, relative_source: Path, max_file_bytes
         raise AllureValidationError("Attachment source must be a regular file")
     if path.stat().st_size > max_file_bytes:
         raise AllureValidationError("Attachment exceeds Lucius's configured attachment file limit")
+    file = None
     try:
-        with path.open("rb") as source:
-            return _read_chunks(source, max_file_bytes)
+        file = await asyncio.to_thread(path.open, "rb")
+        yield _read_file_chunks(file, max_file_bytes)
     except PermissionError as exc:
         raise AllureValidationError("Attachment source file is not readable") from exc
+    finally:
+        if file is not None:
+            await asyncio.to_thread(file.close)
 
 
-def _read_open_file(file_fd: int, max_file_bytes: int) -> bytes:
-    with os.fdopen(file_fd, "rb", closefd=False) as source:
-        return _read_chunks(source, max_file_bytes)
-
-
-def _read_chunks(source: BinaryIO, max_file_bytes: int) -> bytes:
-    chunks: list[bytes] = []
+async def _read_open_file_chunks(file_fd: int, max_file_bytes: int) -> AsyncIterator[bytes]:
     byte_count = 0
-    while True:
-        chunk = source.read(min(_READ_CHUNK_BYTES, max_file_bytes - byte_count + 1))
-        if not chunk:
-            break
+    while chunk := await asyncio.to_thread(os.read, file_fd, _READ_CHUNK_BYTES):
         byte_count += len(chunk)
         if byte_count > max_file_bytes:
             raise AllureValidationError("Attachment exceeds Lucius's configured attachment file limit")
-        chunks.append(chunk)
-    return b"".join(chunks)
+        yield chunk
+
+
+async def _read_file_chunks(file: BinaryIO, max_file_bytes: int) -> AsyncIterator[bytes]:
+    byte_count = 0
+    while chunk := await asyncio.to_thread(file.read, _READ_CHUNK_BYTES):
+        byte_count += len(chunk)
+        if byte_count > max_file_bytes:
+            raise AllureValidationError("Attachment exceeds Lucius's configured attachment file limit")
+        yield chunk
 
 
 __all__ = ["LaunchAttachmentService", "LaunchAttachmentSummary"]

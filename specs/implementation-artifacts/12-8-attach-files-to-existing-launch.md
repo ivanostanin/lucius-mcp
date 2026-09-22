@@ -1,8 +1,8 @@
 ---
-title: 'Story 12.7: Attach Files to an Existing Launch'
+title: 'Story 12.8: Attach Files to an Existing Launch'
 type: 'feature'
 created: '2026-09-22'
-status: 'review'
+status: 'done'
 baseline_commit: 'eedcbb9'
 context:
   - '../../docs/development.md'
@@ -161,6 +161,11 @@ so that **the launch can retain logs, screenshots, traces, and other evidence wi
   - [x] Run sandbox E2E against the actual endpoint and verify the attachment appears in `GET /api/launch/attachment`; report exact environment limitations rather than weakening regression tests.
   - [x] Run focused tests, `uv run ruff check`, `uv run mypy --strict src`, docs/manifest/MCPB tests, and relevant deployment checks.
 
+### Review Findings
+
+- [x] [Review][Patch] Preserve the declared multipart content type [src/services/launch_attachment_service.py:51] — Fixed by carrying the declared or inferred type through a streaming multipart adapter.
+- [x] [Review][Patch] Stream bounded attachments instead of materializing them in memory [src/services/launch_attachment_upload_gateway.py:47] — Fixed by forwarding bounded async file streams from both pull and push paths.
+
 ## Dev Notes
 
 ### Confirmed API contract and generation decision
@@ -229,7 +234,7 @@ GPT-5
 - `specs/project-planning-artifacts/epics.md`
 - `specs/implementation-artifacts/sprint-status.yaml`
 - `specs/implementation-artifacts/epic-12-context.md`
-- `specs/implementation-artifacts/12-7-attach-files-to-existing-launch.md`
+- `specs/implementation-artifacts/12-8-attach-files-to-existing-launch.md`
 - `scripts/filter_openapi.py`
 - `openapi/allure-testops-service/filtered-report-service.json`
 - `src/client/client.py`

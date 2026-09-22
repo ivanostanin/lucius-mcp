@@ -14,7 +14,7 @@ Give agents complete, stable, and evidence-ready inspection of launch-wide execu
 - Story 12.4: Extend Get Launch Info with Complete Execution Results
 - Story 12.5: Remove Upstream Storage Keys from Test-Result Attachment Outputs
 - Story 12.6: Configurable Attachment Upload Size Limit
-- Story 12.7: Attach Files to an Existing Launch
+- Story 12.8: Attach Files to an Existing Launch
 
 ## Requirements & Constraints
 

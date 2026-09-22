@@ -163,5 +163,5 @@ development_status:
   12-4-extend-get-launch-info-with-complete-execution-results: done
   12-5-remove-upstream-storage-key-from-test-result-attachment-outputs: done
   12-6-configurable-attachment-size-limit: done
-  12-7-attach-files-to-existing-launch: review
+  12-8-attach-files-to-existing-launch: done
   epic-12-retrospective: optional

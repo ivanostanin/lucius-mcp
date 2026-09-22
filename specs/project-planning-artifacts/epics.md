@@ -1511,7 +1511,7 @@ so that deployments can support their evidence-file requirements without modifyi
 **When** maintainers inspect setup documentation or the example environment file
 **Then** they can find the variable, byte-based units, and the 10 MiB default.
 
-### Story 12.7: Attach Files to an Existing Launch
+### Story 12.8: Attach Files to an Existing Launch
 
 As an AI Agent,
 I want to attach a file to an existing launch through a remote-safe push or pull workflow,
