@@ -1510,3 +1510,40 @@ so that deployments can support their evidence-file requirements without modifyi
 **Given** the setting is documented for deployment
 **When** maintainers inspect setup documentation or the example environment file
 **Then** they can find the variable, byte-based units, and the 10 MiB default.
+
+### Story 12.7: Start a Launch from a Test Plan
+
+As an AI Agent,
+I want to start a new launch from an existing test plan,
+so that I can execute the plan's curated test cases in Allure TestOps without leaving Lucius or reconstructing TestOps API calls.
+
+**Acceptance Criteria:**
+
+**Given** an existing Test Plan ID and a valid launch name
+**When** I call `run_test_plan`
+**Then** Allure TestOps starts a new launch from that test plan
+**And** the tool returns a curated summary including the source plan ID, launch ID, name, project, and launch URL
+**And** plain and JSON outputs expose equivalent structured data.
+
+**Given** a missing, empty, or over-long launch name
+**When** I call `run_test_plan`
+**Then** Lucius rejects the request locally with an actionable validation error before calling Allure TestOps.
+
+**Given** the test plan does not exist, is not runnable, or Allure TestOps rejects the run request
+**When** I call `run_test_plan`
+**Then** the tool surfaces an actionable error with agent hints and does not report a created launch.
+
+**Given** optional tags, links, or issues are supplied
+**When** I call `run_test_plan`
+**Then** they are mapped to the upstream request through the same simplified input conventions used by `create_launch`.
+
+**Given** the tool is exposed through MCP and CLI
+**When** schemas, help, manifests, and routes are inspected
+**Then** `run_test_plan` publishes a concrete object-root output schema matching the curated DTO
+**And** the canonical CLI action `lucius test_plan run` routes to the same service behavior
+**And** tool documentation and shell completions include the new tool.
+
+**Given** automated verification runs
+**When** unit and integration tests execute
+**Then** they cover successful plan runs, local validation failures, upstream error mapping, output parity, and launch URL construction
+**And** existing launch and test plan tools remain unchanged.
