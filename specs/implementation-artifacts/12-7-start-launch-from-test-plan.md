@@ -103,6 +103,7 @@ context:
 ## Open Questions
 
 - Should `env_var_value_sets` (upstream `envVarValueSets`) be exposed in a follow-up story, and if so with what simplified input shape?
+  - **Resolved (2026-09-22):** Deferral approved by the maintainer (Ivan). Not exposed in this story; a follow-up story may propose a simplified input shape only if the need arises.
 - Is sandbox e2e coverage for plan execution feasible with the current e2e harness, or should this stay unit/integration-only for now?
 
 ## Dev Agent Record
@@ -119,17 +120,18 @@ nox/noxtua-ai-4.3
 
 ### Completion Notes List
 
-- `PlanService.run_plan` validates `launch_name` (non-empty, ≤255) plus the simplified `tags`/`links`/`issues` inputs locally, builds `TestPlanRunRequestDto` with `generate_schema_hint(TestPlanRunRequestDto)` surfaced on DTO validation failure, awaits `TestPlanControllerApi.run3` (`POST /api/testplan/{id}/run`), and maps upstream 404s to an actionable "Test plan ID {id} not found or is not runnable" error. `envVarValueSets` is deliberately not exposed (Ask-First boundary).
+- `PlanService.run_plan` validates `launch_name` (non-empty, ≤255) plus the simplified `tags`/`links`/`issues` inputs locally, builds `TestPlanRunRequestDto` with `generate_schema_hint(TestPlanRunRequestDto)` surfaced on DTO validation failure, awaits `TestPlanControllerApi.run3` (`POST /api/testplan/{id}/run`), and maps upstream 404s to an actionable "Test plan ID {id} not found or is not runnable" error. `envVarValueSets` is deliberately not exposed — deferral approved by the maintainer (Ivan, 2026-09-22).
 - The simplified input validators and DTO builders were extracted into `src/services/launch_inputs.py` (Design Notes: reuse or extract, never duplicate in `PlanService`); `LaunchService` delegates to them, so `create_launch`/`close_launch`/`reopen_launch` behavior and published schemas are unchanged (127 launch regression tests and the output-schema suites pass untouched).
 - `run_test_plan` publishes a concrete object-root schema via `TestPlanRunOutput` (a `LaunchMutationSummary` subclass adding optional `plan_id`), reuses `_launch_mutation_payload` for exact mutation-summary parity with `create_launch`, sets `operation: "started"`, and builds the launch URL preferring `launch.project_id` with fallback to the client's configured project.
 - CLI: `lucius test_plan run` routes to the same tool via `route_matrix.py`; `src/cli/data/tool_schemas.json`, `deployment/shell-completions/*`, and `docs/mcp_manifest.json` were regenerated via `scripts/build_tool_schema.py`, `deployment/scripts/generate_completions.py`, and `fastmcp inspect`.
 - Files touched beyond the Code Map (`src/tools/annotations.py`, `src/cli/data/tool_schemas.json`, `docs/mcp_manifest.json`) are required by repo-enforced registration coverage: annotations/tags policy is validated at import time, the CLI registry is built from the checked-in tool schemas, and `tests/docs/test_mcp_manifest.py` fails when the manifest drifts from `src.tools.all_tools`.
-- Open questions resolved: sandbox e2e coverage is feasible and was added (`test_run_test_plan_starts_launch`); `envVarValueSets` stays deferred to a follow-up story pending a simplified input shape.
+- Open questions resolved: sandbox e2e coverage is feasible and was added (`test_run_test_plan_starts_launch`); `envVarValueSets` deferral is maintainer-approved (Ivan, 2026-09-22) and deferred to a follow-up story.
 
 ### Change Log
 
 - 2026-09-22: Story created and marked ready-for-dev.
 - 2026-09-22: Implemented `run_test_plan` (service `run_plan`, tool, output schema, CLI route, regenerated schemas/completions/manifest, docs, unit/integration/e2e tests); all quality gates green; marked ready for review.
+- 2026-09-22: Recorded the maintainer-approved deferral of `envVarValueSets` (Ivan) in the open questions and dev record; tool scope unchanged.
 
 ### File List
 
