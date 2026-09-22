@@ -79,15 +79,13 @@ class ProjectIntegrationFieldsFormDto(BaseModel):
         _items = []
         if self.project_fields:
             for _item_project_fields in self.project_fields:
-                if _item_project_fields:
-                    _items.append(_item_project_fields.to_dict())
+                _items.append(_item_project_fields.to_dict() if _item_project_fields is not None else None)
             _dict['projectFields'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in secret_fields (list)
         _items = []
         if self.secret_fields:
             for _item_secret_fields in self.secret_fields:
-                if _item_secret_fields:
-                    _items.append(_item_secret_fields.to_dict())
+                _items.append(_item_secret_fields.to_dict() if _item_secret_fields is not None else None)
             _dict['secretFields'] = _items
         return _dict
 

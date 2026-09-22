@@ -75,8 +75,7 @@ class LaunchTestPlanAddDto(BaseModel):
         _items = []
         if self.env_var_value_sets:
             for _item_env_var_value_sets in self.env_var_value_sets:
-                if _item_env_var_value_sets:
-                    _items.append(_item_env_var_value_sets.to_dict())
+                _items.append(_item_env_var_value_sets.to_dict() if _item_env_var_value_sets is not None else None)
             _dict['envVarValueSets'] = _items
         return _dict
 

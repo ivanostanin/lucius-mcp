@@ -66,6 +66,8 @@ KEEP_TAGS = {
     "test-fixture-result-attachment-controller",
     # IDE test code generation (not published in the standard TestOps spec)
     "ide-controller",
+    # Native launch attachments (confirmed by the TestOps web client, absent from the public spec)
+    "launch-attachment-controller",
 }
 
 
@@ -150,6 +152,129 @@ def _add_ide_test_code_endpoint(spec: dict) -> None:
     )
 
 
+def _add_launch_attachment_endpoints(spec: dict) -> None:
+    """Add the narrowly observed native launch-attachment contract.
+
+    TestOps's web client exposes this controller, but the checked-in report
+    service specification omits it.  Keep this overlay constrained to the
+    observed GET and POST operations so generated code remains the sole HTTP
+    interface used by Lucius services.
+    """
+    components = spec.setdefault("components", {})
+    schemas = components.setdefault("schemas", {})
+    schemas.setdefault(
+        "LaunchAttachmentRowDto",
+        {
+            "type": "object",
+            "properties": {
+                "id": {"type": "integer", "format": "int64"},
+                "name": {"type": "string"},
+                "contentType": {"type": "string"},
+                "contentLength": {"type": "integer", "format": "int64"},
+                "entity": {"type": "string"},
+            },
+        },
+    )
+    schemas.setdefault(
+        "PageLaunchAttachmentRowDto",
+        {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "array",
+                    "items": {"$ref": "#/components/schemas/LaunchAttachmentRowDto"},
+                },
+                "empty": {"type": "boolean"},
+                "first": {"type": "boolean"},
+                "last": {"type": "boolean"},
+                "number": {"type": "integer", "format": "int32"},
+                "numberOfElements": {"type": "integer", "format": "int32"},
+                "pageable": {"$ref": "#/components/schemas/Pageable"},
+                "size": {"type": "integer", "format": "int32"},
+                "totalElements": {"type": "integer", "format": "int64"},
+                "totalPages": {"type": "integer", "format": "int32"},
+            },
+        },
+    )
+
+    launch_id = {
+        "name": "launchId",
+        "in": "query",
+        "required": True,
+        "schema": {"type": "integer", "format": "int64"},
+    }
+    spec.setdefault("paths", {}).setdefault(
+        "/api/launch/attachment",
+        {
+            "get": {
+                "tags": ["launch-attachment-controller"],
+                "operationId": "listLaunchAttachments",
+                "summary": "List native launch attachments",
+                "parameters": [
+                    launch_id,
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": False,
+                        "schema": {"type": "integer", "default": 0, "minimum": 0},
+                    },
+                    {
+                        "name": "size",
+                        "in": "query",
+                        "required": False,
+                        "schema": {"type": "integer", "default": 10, "minimum": 1},
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": False,
+                        "schema": {"type": "array", "items": {"type": "string"}},
+                    },
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Native launch attachment page.",
+                        "content": {
+                            "application/json": {"schema": {"$ref": "#/components/schemas/PageLaunchAttachmentRowDto"}}
+                        },
+                    }
+                },
+            },
+            "post": {
+                "tags": ["launch-attachment-controller"],
+                "operationId": "createLaunchAttachment",
+                "summary": "Attach one file to a launch",
+                "parameters": [launch_id],
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["file"],
+                                "properties": {"file": {"type": "string", "format": "binary"}},
+                            }
+                        }
+                    },
+                },
+                "responses": {
+                    "200": {
+                        "description": "Created native launch attachment.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {"$ref": "#/components/schemas/LaunchAttachmentRowDto"},
+                                }
+                            }
+                        },
+                    }
+                },
+            },
+        },
+    )
+
+
 def _patch_manual_session_schema(spec: dict) -> None:
     manual_session_schema = spec.get("components", {}).get("schemas", {}).get("ManualSessionRequestDto")
     if not isinstance(manual_session_schema, dict):
@@ -214,6 +339,7 @@ def filter_spec() -> None:
         spec = json.load(f)
 
     _add_ide_test_code_endpoint(spec)
+    _add_launch_attachment_endpoints(spec)
 
     original_paths_count = len(spec.get("paths", {}))
     print(f"Original paths: {original_paths_count}")

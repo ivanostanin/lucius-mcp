@@ -81,8 +81,7 @@ class TestResultGroupNode(BaseModel):
         _items = []
         if self.leafs:
             for _item_leafs in self.leafs:
-                if _item_leafs:
-                    _items.append(_item_leafs.to_dict())
+                _items.append(_item_leafs.to_dict() if _item_leafs is not None else None)
             _dict['leafs'] = _items
         return _dict
 

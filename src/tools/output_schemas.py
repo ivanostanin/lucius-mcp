@@ -799,6 +799,43 @@ class ListLaunchesOutput(BaseModel):
     items: list[LaunchListItem] | None = Field(default=None)
 
 
+class LaunchAttachmentOutput(BaseModel):
+    """Native launch attachment metadata that is safe to expose to callers."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    id: int = Field(gt=0, description="Native TestOps attachment identifier.")
+    name: str = Field(min_length=1, description="Attachment filename accepted by TestOps.")
+    content_type: str | None = Field(default=None, description="Attachment media type returned by TestOps.")
+    content_length: int | None = Field(default=None, ge=0, description="Attachment length returned by TestOps.")
+
+
+class AttachFileToLaunchOutput(BaseModel):
+    """Explicit mutually exclusive output states for launch attachment transfer."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    state: Literal["awaiting_upload", "attached"]
+    launch_id: int = Field(gt=0)
+    name: str = Field(min_length=1)
+    content_type: str | None = Field(default=None)
+    upload_url: str | None = Field(default=None)
+    upload_method: Literal["POST"] | None = Field(default=None)
+    expires_at: str | None = Field(default=None)
+    max_file_bytes: int | None = Field(default=None, ge=1)
+    attachment: LaunchAttachmentOutput | None = Field(default=None)
+
+    @model_validator(mode="after")
+    def validate_state_shape(self) -> AttachFileToLaunchOutput:
+        push_fields = (self.upload_url, self.upload_method, self.expires_at, self.max_file_bytes)
+        if self.state == "awaiting_upload":
+            if self.content_type is None or any(value is None for value in push_fields) or self.attachment is not None:
+                raise ValueError("awaiting_upload requires upload metadata and no attachment summary")
+        elif any(value is not None for value in push_fields) or self.attachment is None:
+            raise ValueError("attached requires an attachment summary and no upload metadata")
+        return self
+
+
 class ListTestSuitesOutput(BaseModel):
     """Hierarchy tree and its recursive suite nodes."""
 

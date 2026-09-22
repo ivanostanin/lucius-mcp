@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import secrets
 import time
 from collections.abc import AsyncIterator, Awaitable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
@@ -35,6 +36,7 @@ from .generated.api.custom_field_project_controller_v2_api import CustomFieldPro
 from .generated.api.custom_field_value_controller_api import CustomFieldValueControllerApi
 from .generated.api.custom_field_value_project_controller_api import CustomFieldValueProjectControllerApi
 from .generated.api.integration_controller_api import IntegrationControllerApi
+from .generated.api.launch_attachment_controller_api import LaunchAttachmentControllerApi
 from .generated.api.launch_controller_api import LaunchControllerApi
 from .generated.api.launch_search_controller_api import LaunchSearchControllerApi
 from .generated.api.project_controller_api import ProjectControllerApi
@@ -88,6 +90,7 @@ from .generated.models.find_all29200_response import FindAll29200Response
 from .generated.models.id_and_name_only_dto import IdAndNameOnlyDto
 from .generated.models.integration_dto import IntegrationDto
 from .generated.models.issue_dto import IssueDto
+from .generated.models.launch_attachment_row_dto import LaunchAttachmentRowDto
 from .generated.models.launch_create_dto import LaunchCreateDto
 from .generated.models.launch_dto import LaunchDto
 from .generated.models.launch_existing_upload_dto import LaunchExistingUploadDto
@@ -100,6 +103,7 @@ from .generated.models.normalized_scenario_dto_attachments_value import Normaliz
 from .generated.models.page_custom_field_value_with_tc_count_dto import PageCustomFieldValueWithTcCountDto
 from .generated.models.page_defect_row_dto import PageDefectRowDto
 from .generated.models.page_id_and_name_only_dto import PageIdAndNameOnlyDto
+from .generated.models.page_launch_attachment_row_dto import PageLaunchAttachmentRowDto
 from .generated.models.page_launch_dto import PageLaunchDto
 from .generated.models.page_launch_preview_dto import PageLaunchPreviewDto
 from .generated.models.page_shared_step_dto import PageSharedStepDto
@@ -261,6 +265,33 @@ class AttachmentContentStream:
         return self.response.aiter_bytes()
 
 
+class _MultipartAttachmentStream(httpx.AsyncByteStream):
+    """Encode one file part without buffering its content in memory."""
+
+    def __init__(self, *, name: str, content_type: str, chunks: AsyncIterator[bytes]) -> None:
+        self._boundary = secrets.token_hex(24)
+        self._name = name
+        self._content_type = content_type
+        self._chunks = chunks
+
+    @property
+    def content_type(self) -> str:
+        return f"multipart/form-data; boundary={self._boundary}"
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        escaped_name = self._name.replace("\\", "\\\\").replace('"', '\\"')
+        yield (
+            f"--{self._boundary}\r\n"
+            f'Content-Disposition: form-data; name="file"; filename="{escaped_name}"\r\n'
+            f"Content-Type: {self._content_type}\r\n\r\n"
+        ).encode()
+        async for chunk in self._chunks:
+            if not isinstance(chunk, bytes):
+                raise AllureValidationError("Attachment stream must yield bytes")
+            yield chunk
+        yield f"\r\n--{self._boundary}--\r\n".encode("ascii")
+
+
 class AttachmentStepDtoWithName(AttachmentStepDto):
     """Subclass to support name attribute and id."""
 
@@ -295,6 +326,7 @@ ApiType: TypeAlias = (
     | CustomFieldValueProjectControllerApi
     | TestLayerControllerApi
     | TestLayerSchemaControllerApi
+    | LaunchAttachmentControllerApi
     | LaunchControllerApi
     | LaunchSearchControllerApi
     | TestResultAttachmentControllerApi
@@ -337,11 +369,13 @@ __all__ = [
     "CustomFieldProjectWithValuesDto",
     "CustomFieldWithValuesDto",
     "FindAll29200Response",
+    "LaunchAttachmentRowDto",
     "LaunchCreateDto",
     "LaunchDto",
     "LaunchResultTreeNode",
     "LaunchResultTreePage",
     "LaunchUploadResponseDto",
+    "PageLaunchAttachmentRowDto",
     "PageLaunchDto",
     "PageLaunchPreviewDto",
     "PageSharedStepDto",
@@ -440,6 +474,7 @@ class AllureClient:
         self._custom_field_value_project_api: CustomFieldValueProjectControllerApi | None = None
         self._test_layer_api: TestLayerControllerApi | None = None
         self._test_layer_schema_api: TestLayerSchemaControllerApi | None = None
+        self._launch_attachment_api: LaunchAttachmentControllerApi | None = None
         self._launch_api: LaunchControllerApi | None = None
         self._launch_search_api: LaunchSearchControllerApi | None = None
         self._test_result_attachment_api: TestResultAttachmentControllerApi | None = None
@@ -618,6 +653,7 @@ class AllureClient:
             self._custom_field_value_project_api = CustomFieldValueProjectControllerApi(self._api_client)
             self._test_layer_api = TestLayerControllerApi(self._api_client)
             self._test_layer_schema_api = TestLayerSchemaControllerApi(self._api_client)
+            self._launch_attachment_api = LaunchAttachmentControllerApi(self._api_client)
             self._launch_api = LaunchControllerApi(self._api_client)
             self._launch_search_api = LaunchSearchControllerApi(self._api_client)
             self._test_result_attachment_api = TestResultAttachmentControllerApi(self._api_client)
@@ -819,6 +855,11 @@ class AllureClient:
     async def _get_api(
         self, attr_name: Literal["_custom_field_value_project_api"], *, error_name: str | None = None
     ) -> CustomFieldValueProjectControllerApi: ...
+
+    @overload
+    async def _get_api(
+        self, attr_name: Literal["_launch_attachment_api"], *, error_name: str | None = None
+    ) -> LaunchAttachmentControllerApi: ...
 
     @overload
     async def _get_api(
@@ -1594,6 +1635,123 @@ class AllureClient:
 
         await self._enrich_sparse_launch_preview(api=api, launch_id=launch_id, raw_data=data, preview=preview)
         return LaunchDetailResponse(base=base, preview=preview)
+
+    async def list_launch_attachments(
+        self,
+        launch_id: int,
+        *,
+        page: int = 0,
+        size: int = 10,
+        sort: list[str] | None = None,
+    ) -> PageLaunchAttachmentRowDto:
+        """List native attachments owned directly by a launch."""
+        api = await self._get_api("_launch_attachment_api", error_name="launch attachment APIs")
+        if not isinstance(launch_id, int) or isinstance(launch_id, bool) or launch_id <= 0:
+            raise AllureValidationError("Launch ID must be a positive integer")
+        if not isinstance(page, int) or isinstance(page, bool) or page < 0:
+            raise AllureValidationError("Page must be a non-negative integer")
+        if not isinstance(size, int) or isinstance(size, bool) or size <= 0 or size > 100:
+            raise AllureValidationError("Size must be between 1 and 100")
+        response = await self._call_api(
+            api.list_launch_attachments(
+                launch_id=launch_id,
+                page=page,
+                size=size,
+                sort=sort,
+                _request_timeout=self._timeout,
+            )
+        )
+        return response.model_copy(update={"content": self._normalize_launch_attachment_rows(response.content or [])})
+
+    async def create_launch_attachment(
+        self,
+        launch_id: int,
+        file: tuple[str, bytes],
+    ) -> list[LaunchAttachmentRowDto]:
+        """Upload one file through the generated native launch-attachment API."""
+        api = await self._get_api("_launch_attachment_api", error_name="launch attachment APIs")
+        if not isinstance(launch_id, int) or isinstance(launch_id, bool) or launch_id <= 0:
+            raise AllureValidationError("Launch ID must be a positive integer")
+        filename, content = file
+        if not isinstance(filename, str) or not filename.strip():
+            raise AllureValidationError("Attachment filename must be non-empty")
+        if not isinstance(content, bytes):
+            raise AllureValidationError("Attachment content must be bytes")
+        response = await self._call_api(
+            api.create_launch_attachment(
+                launch_id=launch_id,
+                file=(filename, content),
+                _request_timeout=self._timeout,
+            )
+        )
+        return self._normalize_launch_attachment_rows(response)
+
+    async def create_launch_attachment_stream(
+        self,
+        launch_id: int,
+        name: str,
+        content_type: str,
+        chunks: AsyncIterator[bytes],
+    ) -> list[LaunchAttachmentRowDto]:
+        """Stream one native attachment through the generated controller's HTTP transport.
+
+        The generated multipart helper eagerly collects file bytes and guesses the
+        part media type from the filename. This narrow streaming seam keeps the
+        generated endpoint, auth, response model, and URL serialization while
+        preserving the caller's validated file-part media type.
+        """
+        if not isinstance(launch_id, int) or isinstance(launch_id, bool) or launch_id <= 0:
+            raise AllureValidationError("Launch ID must be a positive integer")
+        if not isinstance(name, str) or not name.strip():
+            raise AllureValidationError("Attachment filename must be non-empty")
+        if not isinstance(content_type, str) or not content_type:
+            raise AllureValidationError("Attachment content type must be non-empty")
+        self._require_entered()
+        await self._ensure_valid_token()
+        if self._api_client is None:  # pragma: no cover - guarded by _require_entered
+            raise AllureAPIError("Client not initialized. Use 'async with AllureClient(...)'")
+
+        method, url, headers, _, _ = self._api_client.param_serialize(
+            method="POST",
+            resource_path="/api/launch/attachment",
+            query_params=[("launchId", launch_id)],
+            header_params={"Accept": "application/json"},
+            auth_settings=[],
+        )
+        stream = _MultipartAttachmentStream(name=name, content_type=content_type, chunks=chunks)
+        headers["Content-Type"] = stream.content_type
+        rest_client = self._api_client.rest_client
+        if rest_client.pool_manager is None:
+            rest_client.pool_manager = rest_client._create_pool_manager()
+        response = await rest_client.pool_manager.request(
+            method,
+            url,
+            headers=headers,
+            content=stream,
+            timeout=self._timeout,
+        )
+        if not 200 <= response.status_code <= 299:
+            self._handle_api_exception(
+                ApiException(status=response.status_code, reason=response.reason_phrase, body=response.text)
+            )
+        data = response.json()
+        if not isinstance(data, list):
+            raise AllureAPIError("Launch attachment API returned an unexpected response")
+        try:
+            rows = [LaunchAttachmentRowDto.model_validate(row) for row in data]
+        except (TypeError, ValueError) as exc:
+            raise AllureAPIError("Launch attachment API returned malformed attachment metadata") from exc
+        return self._normalize_launch_attachment_rows(rows)
+
+    @staticmethod
+    def _normalize_launch_attachment_rows(rows: list[LaunchAttachmentRowDto]) -> list[LaunchAttachmentRowDto]:
+        """Assert and restore the implicit ``launch`` owner on native rows."""
+        normalized: list[LaunchAttachmentRowDto] = []
+        for row in rows:
+            if row.entity not in (None, "launch"):
+                raise AllureAPIError("Unexpected attachment owner returned by the launch attachment API")
+            normalized.append(row.model_copy(update={"entity": "launch"}))
+        return normalized
 
     async def get_launch_core(self, launch_id: int) -> LaunchDetailResponse:
         """Read the authoritative exact launch response without optional enrichment.

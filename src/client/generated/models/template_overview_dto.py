@@ -78,8 +78,7 @@ class TemplateOverviewDto(BaseModel):
         _items = []
         if self.widgets:
             for _item_widgets in self.widgets:
-                if _item_widgets:
-                    _items.append(_item_widgets.to_dict())
+                _items.append(_item_widgets.to_dict() if _item_widgets is not None else None)
             _dict['widgets'] = _items
         return _dict
 

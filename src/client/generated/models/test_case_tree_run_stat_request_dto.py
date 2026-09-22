@@ -85,8 +85,7 @@ class TestCaseTreeRunStatRequestDto(BaseModel):
         _items = []
         if self.jobs_mapping:
             for _item_jobs_mapping in self.jobs_mapping:
-                if _item_jobs_mapping:
-                    _items.append(_item_jobs_mapping.to_dict())
+                _items.append(_item_jobs_mapping.to_dict() if _item_jobs_mapping is not None else None)
             _dict['jobsMapping'] = _items
         return _dict
 

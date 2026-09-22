@@ -36,6 +36,28 @@ class Settings(BaseSettings):
         ge=1,
         description="Maximum size of one uploaded attachment after decoding or download",
     )
+    LAUNCH_ATTACHMENT_IMPORT_ROOT: Path | None = Field(
+        default=None,
+        description="Shared mounted directory from which launch attachments may be imported",
+    )
+    LAUNCH_ATTACHMENT_UPLOAD_PUBLIC_BASE_URL: str | None = Field(
+        default=None,
+        description="Externally reachable HTTPS base URL for one-time launch attachment uploads",
+    )
+    LAUNCH_ATTACHMENT_UPLOAD_TEMP_DIR: Path | None = Field(
+        default=None,
+        description="Optional private parent directory for temporary launch attachment upload bridges",
+    )
+    LAUNCH_ATTACHMENT_UPLOAD_MAX_FILE_BYTES: int = Field(
+        default=10 * 1024 * 1024,
+        ge=1,
+        description="Maximum size of one HTTP push launch attachment",
+    )
+    LAUNCH_ATTACHMENT_UPLOAD_TTL_SECONDS: int = Field(
+        default=300,
+        ge=1,
+        description="Lifetime of an unconsumed HTTP push launch attachment capability",
+    )
     ATTACHMENT_DOWNLOAD_PUBLIC_BASE_URL: str | None = Field(
         default=None,
         description="Explicit externally reachable base URL for HTTP attachment capability links",

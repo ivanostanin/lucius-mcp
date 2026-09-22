@@ -76,8 +76,7 @@ class LaunchDiffRow(BaseModel):
         _items = []
         if self.cells:
             for _item_cells in self.cells:
-                if _item_cells:
-                    _items.append(_item_cells.to_dict())
+                _items.append(_item_cells.to_dict() if _item_cells is not None else None)
             _dict['cells'] = _items
         return _dict
 

@@ -80,8 +80,7 @@ class NormalizedScenarioDto(BaseModel):
         _field_dict = {}
         if self.attachments:
             for _key_attachments in self.attachments:
-                if self.attachments[_key_attachments]:
-                    _field_dict[_key_attachments] = self.attachments[_key_attachments].to_dict()
+                _field_dict[_key_attachments] = self.attachments[_key_attachments].to_dict() if self.attachments[_key_attachments] is not None else None
             _dict['attachments'] = _field_dict
         # override the default output from pydantic by calling `to_dict()` of root
         if self.root:
@@ -90,29 +89,25 @@ class NormalizedScenarioDto(BaseModel):
         _field_dict = {}
         if self.scenario_steps:
             for _key_scenario_steps in self.scenario_steps:
-                if self.scenario_steps[_key_scenario_steps]:
-                    _field_dict[_key_scenario_steps] = self.scenario_steps[_key_scenario_steps].to_dict()
+                _field_dict[_key_scenario_steps] = self.scenario_steps[_key_scenario_steps].to_dict() if self.scenario_steps[_key_scenario_steps] is not None else None
             _dict['scenarioSteps'] = _field_dict
         # override the default output from pydantic by calling `to_dict()` of each value in shared_step_attachments (dict)
         _field_dict = {}
         if self.shared_step_attachments:
             for _key_shared_step_attachments in self.shared_step_attachments:
-                if self.shared_step_attachments[_key_shared_step_attachments]:
-                    _field_dict[_key_shared_step_attachments] = self.shared_step_attachments[_key_shared_step_attachments].to_dict()
+                _field_dict[_key_shared_step_attachments] = self.shared_step_attachments[_key_shared_step_attachments].to_dict() if self.shared_step_attachments[_key_shared_step_attachments] is not None else None
             _dict['sharedStepAttachments'] = _field_dict
         # override the default output from pydantic by calling `to_dict()` of each value in shared_step_scenario_steps (dict)
         _field_dict = {}
         if self.shared_step_scenario_steps:
             for _key_shared_step_scenario_steps in self.shared_step_scenario_steps:
-                if self.shared_step_scenario_steps[_key_shared_step_scenario_steps]:
-                    _field_dict[_key_shared_step_scenario_steps] = self.shared_step_scenario_steps[_key_shared_step_scenario_steps].to_dict()
+                _field_dict[_key_shared_step_scenario_steps] = self.shared_step_scenario_steps[_key_shared_step_scenario_steps].to_dict() if self.shared_step_scenario_steps[_key_shared_step_scenario_steps] is not None else None
             _dict['sharedStepScenarioSteps'] = _field_dict
         # override the default output from pydantic by calling `to_dict()` of each value in shared_steps (dict)
         _field_dict = {}
         if self.shared_steps:
             for _key_shared_steps in self.shared_steps:
-                if self.shared_steps[_key_shared_steps]:
-                    _field_dict[_key_shared_steps] = self.shared_steps[_key_shared_steps].to_dict()
+                _field_dict[_key_shared_steps] = self.shared_steps[_key_shared_steps].to_dict() if self.shared_steps[_key_shared_steps] is not None else None
             _dict['sharedSteps'] = _field_dict
         return _dict
 

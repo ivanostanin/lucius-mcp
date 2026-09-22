@@ -92,22 +92,19 @@ class TestResultScenarioStepDto(BaseModel):
         _items = []
         if self.attachments:
             for _item_attachments in self.attachments:
-                if _item_attachments:
-                    _items.append(_item_attachments.to_dict())
+                _items.append(_item_attachments.to_dict() if _item_attachments is not None else None)
             _dict['attachments'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in parameters (list)
         _items = []
         if self.parameters:
             for _item_parameters in self.parameters:
-                if _item_parameters:
-                    _items.append(_item_parameters.to_dict())
+                _items.append(_item_parameters.to_dict() if _item_parameters is not None else None)
             _dict['parameters'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in steps (list)
         _items = []
         if self.steps:
             for _item_steps in self.steps:
-                if _item_steps:
-                    _items.append(_item_steps.to_dict())
+                _items.append(_item_steps.to_dict() if _item_steps is not None else None)
             _dict['steps'] = _items
         return _dict
 

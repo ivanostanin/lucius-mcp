@@ -95,43 +95,37 @@ class LaunchPreviewDto(BaseModel):
         _items = []
         if self.environment:
             for _item_environment in self.environment:
-                if _item_environment:
-                    _items.append(_item_environment.to_dict())
+                _items.append(_item_environment.to_dict() if _item_environment is not None else None)
             _dict['environment'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in issues (list)
         _items = []
         if self.issues:
             for _item_issues in self.issues:
-                if _item_issues:
-                    _items.append(_item_issues.to_dict())
+                _items.append(_item_issues.to_dict() if _item_issues is not None else None)
             _dict['issues'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in jobs (list)
         _items = []
         if self.jobs:
             for _item_jobs in self.jobs:
-                if _item_jobs:
-                    _items.append(_item_jobs.to_dict())
+                _items.append(_item_jobs.to_dict() if _item_jobs is not None else None)
             _dict['jobs'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in links (list)
         _items = []
         if self.links:
             for _item_links in self.links:
-                if _item_links:
-                    _items.append(_item_links.to_dict())
+                _items.append(_item_links.to_dict() if _item_links is not None else None)
             _dict['links'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in statistic (list)
         _items = []
         if self.statistic:
             for _item_statistic in self.statistic:
-                if _item_statistic:
-                    _items.append(_item_statistic.to_dict())
+                _items.append(_item_statistic.to_dict() if _item_statistic is not None else None)
             _dict['statistic'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in tags (list)
         _items = []
         if self.tags:
             for _item_tags in self.tags:
-                if _item_tags:
-                    _items.append(_item_tags.to_dict())
+                _items.append(_item_tags.to_dict() if _item_tags is not None else None)
             _dict['tags'] = _items
         return _dict
 

@@ -77,8 +77,7 @@ class DefaultWebhookSettings(WebhookSettings):
         _items = []
         if self.subjects:
             for _item_subjects in self.subjects:
-                if _item_subjects:
-                    _items.append(_item_subjects.to_dict())
+                _items.append(_item_subjects.to_dict() if _item_subjects is not None else None)
             _dict['subjects'] = _items
         return _dict
 

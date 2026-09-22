@@ -78,8 +78,7 @@ class ExtFormFieldFormChoice(ExtFormField):
         _items = []
         if self.options:
             for _item_options in self.options:
-                if _item_options:
-                    _items.append(_item_options.to_dict())
+                _items.append(_item_options.to_dict() if _item_options is not None else None)
             _dict['options'] = _items
         return _dict
 

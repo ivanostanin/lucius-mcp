@@ -75,8 +75,7 @@ class UploadFixturesResultsDto(BaseModel):
         _items = []
         if self.fixtures:
             for _item_fixtures in self.fixtures:
-                if _item_fixtures:
-                    _items.append(_item_fixtures.to_dict())
+                _items.append(_item_fixtures.to_dict() if _item_fixtures is not None else None)
             _dict['fixtures'] = _items
         return _dict
 

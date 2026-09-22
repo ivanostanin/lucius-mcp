@@ -79,22 +79,19 @@ class IntegrationFieldsFormDto(BaseModel):
         _items = []
         if self.default_project_fields:
             for _item_default_project_fields in self.default_project_fields:
-                if _item_default_project_fields:
-                    _items.append(_item_default_project_fields.to_dict())
+                _items.append(_item_default_project_fields.to_dict() if _item_default_project_fields is not None else None)
             _dict['defaultProjectFields'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in default_secret_fields (list)
         _items = []
         if self.default_secret_fields:
             for _item_default_secret_fields in self.default_secret_fields:
-                if _item_default_secret_fields:
-                    _items.append(_item_default_secret_fields.to_dict())
+                _items.append(_item_default_secret_fields.to_dict() if _item_default_secret_fields is not None else None)
             _dict['defaultSecretFields'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in global_fields (list)
         _items = []
         if self.global_fields:
             for _item_global_fields in self.global_fields:
-                if _item_global_fields:
-                    _items.append(_item_global_fields.to_dict())
+                _items.append(_item_global_fields.to_dict() if _item_global_fields is not None else None)
             _dict['globalFields'] = _items
         return _dict
 

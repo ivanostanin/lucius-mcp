@@ -76,8 +76,7 @@ class TestResultMuteReason(BaseModel):
         _items = []
         if self.issues:
             for _item_issues in self.issues:
-                if _item_issues:
-                    _items.append(_item_issues.to_dict())
+                _items.append(_item_issues.to_dict() if _item_issues is not None else None)
             _dict['issues'] = _items
         return _dict
 

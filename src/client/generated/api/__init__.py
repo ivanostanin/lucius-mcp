@@ -11,6 +11,7 @@ from src.client.generated.api.defect_controller_api import DefectControllerApi
 from src.client.generated.api.defect_matcher_controller_api import DefectMatcherControllerApi
 from src.client.generated.api.ide_controller_api import IdeControllerApi
 from src.client.generated.api.integration_controller_api import IntegrationControllerApi
+from src.client.generated.api.launch_attachment_controller_api import LaunchAttachmentControllerApi
 from src.client.generated.api.launch_controller_api import LaunchControllerApi
 from src.client.generated.api.launch_search_controller_api import LaunchSearchControllerApi
 from src.client.generated.api.project_controller_api import ProjectControllerApi

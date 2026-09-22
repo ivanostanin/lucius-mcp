@@ -87,8 +87,7 @@ class TestCaseSyncRqDto(BaseModel):
         _items = []
         if self.mapping:
             for _item_mapping in self.mapping:
-                if _item_mapping:
-                    _items.append(_item_mapping.to_dict())
+                _items.append(_item_mapping.to_dict() if _item_mapping is not None else None)
             _dict['mapping'] = _items
         return _dict
 

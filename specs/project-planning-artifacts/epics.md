@@ -1510,3 +1510,25 @@ so that deployments can support their evidence-file requirements without modifyi
 **Given** the setting is documented for deployment
 **When** maintainers inspect setup documentation or the example environment file
 **Then** they can find the variable, byte-based units, and the 10 MiB default.
+
+### Story 12.8: Attach Files to an Existing Launch
+
+As an AI Agent,
+I want to attach a file to an existing launch through a remote-safe push or pull workflow,
+so that I can preserve launch-level evidence without requiring the agent and Lucius to share a pod filesystem.
+
+**Acceptance Criteria:**
+
+**Given** the native TestOps launch-attachment endpoint confirmed from the web-client workflow
+**When** I request a push or pull attachment through `attach_file_to_launch`
+**Then** Lucius streams the file through a remote-safe, one-use capability workflow to `POST /api/launch/attachment?launchId=...`
+**And** it returns only the attachment's safe metadata and state.
+
+**Given** the endpoint is unavailable to Lucius API-token authentication
+**When** the tool is called
+**Then** Lucius returns a safe actionable compatibility error
+**And** it does not substitute result ingestion, test-result/step attachment, or a Lucius-only private cache.
+
+**Given** multiple Lucius HTTP replicas behind an ingress
+**When** a caller uses the push workflow
+**Then** any replica can receive the one-use upload URL without losing authorization, replay protection, or finalization state.

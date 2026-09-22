@@ -80,8 +80,7 @@ class ProjectCollaboratorAccessDto(BaseModel):
         _items = []
         if self.project_groups:
             for _item_project_groups in self.project_groups:
-                if _item_project_groups:
-                    _items.append(_item_project_groups.to_dict())
+                _items.append(_item_project_groups.to_dict() if _item_project_groups is not None else None)
             _dict['projectGroups'] = _items
         return _dict
 

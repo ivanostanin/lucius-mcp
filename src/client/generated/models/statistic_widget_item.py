@@ -76,8 +76,7 @@ class StatisticWidgetItem(BaseModel):
         _items = []
         if self.statistic:
             for _item_statistic in self.statistic:
-                if _item_statistic:
-                    _items.append(_item_statistic.to_dict())
+                _items.append(_item_statistic.to_dict() if _item_statistic is not None else None)
             _dict['statistic'] = _items
         return _dict
 

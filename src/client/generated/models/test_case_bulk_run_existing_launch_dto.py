@@ -82,22 +82,19 @@ class TestCaseBulkRunExistingLaunchDto(BaseModel):
         _items = []
         if self.env_var_value_sets:
             for _item_env_var_value_sets in self.env_var_value_sets:
-                if _item_env_var_value_sets:
-                    _items.append(_item_env_var_value_sets.to_dict())
+                _items.append(_item_env_var_value_sets.to_dict() if _item_env_var_value_sets is not None else None)
             _dict['envVarValueSets'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in jobs_mapping (list)
         _items = []
         if self.jobs_mapping:
             for _item_jobs_mapping in self.jobs_mapping:
-                if _item_jobs_mapping:
-                    _items.append(_item_jobs_mapping.to_dict())
+                _items.append(_item_jobs_mapping.to_dict() if _item_jobs_mapping is not None else None)
             _dict['jobsMapping'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in jobs_params (list)
         _items = []
         if self.jobs_params:
             for _item_jobs_params in self.jobs_params:
-                if _item_jobs_params:
-                    _items.append(_item_jobs_params.to_dict())
+                _items.append(_item_jobs_params.to_dict() if _item_jobs_params is not None else None)
             _dict['jobsParams'] = _items
         # override the default output from pydantic by calling `to_dict()` of selection
         if self.selection:

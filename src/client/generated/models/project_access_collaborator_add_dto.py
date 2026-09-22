@@ -75,8 +75,7 @@ class ProjectAccessCollaboratorAddDto(BaseModel):
         _items = []
         if self.collaborators:
             for _item_collaborators in self.collaborators:
-                if _item_collaborators:
-                    _items.append(_item_collaborators.to_dict())
+                _items.append(_item_collaborators.to_dict() if _item_collaborators is not None else None)
             _dict['collaborators'] = _items
         return _dict
 

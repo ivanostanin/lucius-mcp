@@ -84,22 +84,19 @@ class UploadTestCaseDto(BaseModel):
         _items = []
         if self.labels:
             for _item_labels in self.labels:
-                if _item_labels:
-                    _items.append(_item_labels.to_dict())
+                _items.append(_item_labels.to_dict() if _item_labels is not None else None)
             _dict['labels'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in links (list)
         _items = []
         if self.links:
             for _item_links in self.links:
-                if _item_links:
-                    _items.append(_item_links.to_dict())
+                _items.append(_item_links.to_dict() if _item_links is not None else None)
             _dict['links'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in parameters (list)
         _items = []
         if self.parameters:
             for _item_parameters in self.parameters:
-                if _item_parameters:
-                    _items.append(_item_parameters.to_dict())
+                _items.append(_item_parameters.to_dict() if _item_parameters is not None else None)
             _dict['parameters'] = _items
         return _dict
 

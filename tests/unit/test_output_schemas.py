@@ -62,6 +62,19 @@ def test_every_registered_model_accepts_its_documented_empty_or_confirmation_bra
                     "content_length": 0,
                 }
             )
+        if tool_name == "attach_file_to_launch":
+            payload.update(
+                {
+                    "state": "awaiting_upload",
+                    "launch_id": 1,
+                    "name": "evidence.txt",
+                    "content_type": "text/plain",
+                    "upload_url": "https://lucius.example/launch-uploads/opaque",
+                    "upload_method": "POST",
+                    "expires_at": "2026-08-26T12:00:00Z",
+                    "max_file_bytes": 1,
+                }
+            )
 
         validated = model.model_validate(payload)
         assert validated.model_dump(mode="json", by_alias=True, exclude_none=True) == payload
