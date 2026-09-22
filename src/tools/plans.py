@@ -2,6 +2,7 @@ from typing import Annotated
 
 from src.client import AllureClient
 from src.services.plan_service import PlanService
+from src.tools.launches import _LAUNCH_OUTPUT_FIELDS, _launch_mutation_payload
 from src.tools.output_contract import (
     DEFAULT_OUTPUT_FORMAT,
     OutputFormat,
@@ -10,8 +11,8 @@ from src.tools.output_contract import (
     render_confirmation_required,
     render_output,
 )
-from src.tools.output_schemas import output_fields
-from src.utils.links import test_case_url, test_plan_url
+from src.tools.output_schemas import TestPlanRunOutput, output_fields
+from src.utils.links import launch_url, test_case_url, test_plan_url
 
 
 def _test_case_urls(base_url: str, project_id: int, test_case_ids: list[int] | None) -> list[str]:
@@ -233,6 +234,68 @@ async def list_test_plans(
             size=size,
             output_format=output_format,
         )
+
+
+@output_fields("plan_id", *_LAUNCH_OUTPUT_FIELDS, model=TestPlanRunOutput)
+async def run_test_plan(
+    plan_id: Annotated[int, "ID of the test plan to run"],
+    launch_name: Annotated[str, "Name for the launch started from the plan"],
+    issues: Annotated[list[dict[str, object]] | None, "Optional list of issue dictionaries."] = None,
+    links: Annotated[
+        list[dict[str, str]] | None,
+        "Optional list of external links (name, url, type).",
+    ] = None,
+    tags: Annotated[list[str] | None, "Optional list of tags."] = None,
+    output_format: Annotated[
+        OutputFormat | None, "Output format: 'json' (default) or 'plain'."
+    ] = DEFAULT_OUTPUT_FORMAT,
+) -> ToolOutput:
+    """Start a launch from an existing Test Plan.
+
+    Runs the selected test plan by its ID and returns the created launch as a
+    compact mutation summary enriched with the source plan context. Starting
+    a launch is reversible: use delete_launch to remove it when unwanted.
+
+    Args:
+        plan_id: The numeric ID of the Test Plan to run.
+        launch_name: Name for the launch created from the plan (1-255 characters).
+        issues: Optional list of issue dictionaries.
+        links: Optional list of external link dictionaries.
+        tags: Optional list of launch tags.
+        output_format: Output format: 'json' (default) or 'plain'.
+
+    Returns:
+        A success message with the launch ID, name, and launch URL.
+    """
+    async with AllureClient.from_env() as client:
+        service = PlanService(client)
+        launch = await service.run_plan(
+            plan_id=plan_id,
+            launch_name=launch_name,
+            issues=issues,
+            links=links,
+            tags=tags,
+        )
+        base_url = client.get_base_url()
+        configured_project_id = client.get_project()
+
+    if launch.id is None:
+        raise ValueError("Started launch is missing an ID")
+    # Prefer the launch's own project: the plan may live outside the default project.
+    url_project_id = launch.project_id if isinstance(launch.project_id, int) else configured_project_id
+    url = launch_url(base_url, url_project_id, launch.id)
+    message = (
+        f"✅ Launch started successfully from Test Plan {plan_id}! ID: {launch.id}, Name: {launch.name}\n"
+        f"Launch URL: {url}"
+    )
+    payload = _launch_mutation_payload(launch, base_url=base_url, project_id=url_project_id)
+    payload["plan_id"] = plan_id
+    payload["operation"] = "started"
+    return render_output(
+        plain=message,
+        json_payload=payload,
+        output_format=output_format,
+    )
 
 
 @output_fields("requires_confirmation", "action", "plan_id", "status")

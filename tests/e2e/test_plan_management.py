@@ -3,11 +3,13 @@
 import pytest
 
 from src.client import AllureClient
+from src.services.launch_service import LaunchService
 from src.tools.plans import (
     create_test_plan,
     delete_test_plan,
     list_test_plans,
     manage_test_plan_content,
+    run_test_plan,
     update_test_plan,
 )
 from tests.e2e.helpers.cleanup import CleanupTracker
@@ -52,3 +54,32 @@ async def test_test_plan_lifecycle(
     # Listing again should not show the plan
     final_list = await list_test_plans(page=0, size=100, output_format="plain")
     assert f"[{plan_id}]" not in final_list
+
+
+async def test_run_test_plan_starts_launch(
+    allure_client: AllureClient, cleanup_tracker: CleanupTracker, test_run_id: str
+) -> None:
+    """Verify a curated plan can be run to start a launch."""
+
+    # 1. Create a Test Plan with an AQL selection so it has runnable content
+    plan_name = f"[{test_run_id}] E2E Run Plan"
+    create_output = await create_test_plan(name=plan_name, aql_filter="id > 0", output_format="plain")
+    assert "Created Test Plan" in create_output
+
+    plan_id = int(create_output.split("Plan ")[1].split(":")[0])
+    cleanup_tracker.track_test_plan(plan_id)
+
+    # 2. Run the plan to start a launch
+    launch_name = f"[{test_run_id}] E2E Launch From Plan"
+    run_output = await run_test_plan(plan_id=plan_id, launch_name=launch_name, tags=["e2e"], output_format="plain")
+    assert f"Launch started successfully from Test Plan {plan_id}" in run_output
+    assert launch_name in run_output
+    assert "Launch URL: " in run_output
+
+    launch_id = int(run_output.split("ID: ")[1].split(",")[0])
+    cleanup_tracker.track_launch(launch_id)
+
+    # 3. Verify the created launch through the service layer
+    launch = await LaunchService(client=allure_client).get_launch(launch_id)
+    assert launch.id == launch_id
+    assert launch.name == launch_name

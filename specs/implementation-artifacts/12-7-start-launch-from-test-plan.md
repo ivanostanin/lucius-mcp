@@ -2,7 +2,7 @@
 title: 'Story 12.7: Start a launch from a test plan'
 type: 'feature'
 created: '2026-09-22'
-status: 'ready-for-dev'
+status: 'review'
 baseline_commit: '90f22b6'
 context:
   - '../project-planning-artifacts/epics.md'
@@ -61,15 +61,15 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `src/services/plan_service.py` -- add `run_plan(plan_id, launch_name, issues=None, links=None, tags=None)` that validates `launch_name` (non-empty, ≤255) and the simplified enrichment inputs, builds `TestPlanRunRequestDto` (with `generate_schema_hint(TestPlanRunRequestDto)` surfaced on DTO validation failure), awaits `run3(id=plan_id, ...)`, and returns the created `LaunchDto` -- (AC: #1, #2, #3)
-- [ ] `src/tools/plans.py` -- add the `run_test_plan` tool (`plan_id`, `launch_name`, optional `tags`/`links`/`issues`, `output_format`) decorated with `@output_fields(..., model=...)`, building the curated payload with the launch URL from the returned `LaunchDto` (prefer `launch.project_id` when present) and the source plan context -- (AC: #1, #4)
-- [ ] `src/tools/__init__.py` -- register `run_test_plan` -- (AC: #5)
-- [ ] `src/tools/output_schemas.py` -- publish the concrete object-root output schema for the curated run result -- (AC: #1, #5)
-- [ ] `src/cli/route_matrix.py` plus regenerated completions (`python3 deployment/scripts/generate_completions.py`) -- add the `test_plan run` action -- (AC: #5)
-- [ ] `docs/tools.md` -- document the tool, its parameters, and the plan-to-launch workflow -- (AC: #5)
-- [ ] `tests/unit/test_plan_service.py` -- cover local validation failures and the successful `run3` invocation -- (AC: #2, #3)
-- [ ] `tests/integration/test_plan_tools.py` -- cover plain/JSON parity, payload fields, URL construction, and upstream error mapping -- (AC: #1, #2, #3)
-- [ ] Optional: sandbox e2e coverage when the e2e harness supports plan execution -- (AC: #6)
+- [x] `src/services/plan_service.py` -- add `run_plan(plan_id, launch_name, issues=None, links=None, tags=None)` that validates `launch_name` (non-empty, ≤255) and the simplified enrichment inputs, builds `TestPlanRunRequestDto` (with `generate_schema_hint(TestPlanRunRequestDto)` surfaced on DTO validation failure), awaits `run3(id=plan_id, ...)`, and returns the created `LaunchDto` -- (AC: #1, #2, #3)
+- [x] `src/tools/plans.py` -- add the `run_test_plan` tool (`plan_id`, `launch_name`, optional `tags`/`links`/`issues`, `output_format`) decorated with `@output_fields(..., model=...)`, building the curated payload with the launch URL from the returned `LaunchDto` (prefer `launch.project_id` when present) and the source plan context -- (AC: #1, #4)
+- [x] `src/tools/__init__.py` -- register `run_test_plan` -- (AC: #5)
+- [x] `src/tools/output_schemas.py` -- publish the concrete object-root output schema for the curated run result -- (AC: #1, #5)
+- [x] `src/cli/route_matrix.py` plus regenerated completions (`python3 deployment/scripts/generate_completions.py`) -- add the `test_plan run` action -- (AC: #5)
+- [x] `docs/tools.md` -- document the tool, its parameters, and the plan-to-launch workflow -- (AC: #5)
+- [x] `tests/unit/test_plan_service.py` -- cover local validation failures and the successful `run3` invocation -- (AC: #2, #3)
+- [x] `tests/integration/test_plan_tools.py` -- cover plain/JSON parity, payload fields, URL construction, and upstream error mapping -- (AC: #1, #2, #3)
+- [x] Optional: sandbox e2e coverage when the e2e harness supports plan execution -- (AC: #6)
 
 **Acceptance Criteria:**
 1. Given an existing test plan and a valid launch name, when `run_test_plan` is called, then a launch is started from the plan via `POST /api/testplan/{id}/run` and a curated summary with the source plan ID, launch ID, name, project, launch URL, and operation is returned in both output formats.
@@ -104,3 +104,52 @@ context:
 
 - Should `env_var_value_sets` (upstream `envVarValueSets`) be exposed in a follow-up story, and if so with what simplified input shape?
 - Is sandbox e2e coverage for plan execution feasible with the current e2e harness, or should this stay unit/integration-only for now?
+
+## Dev Agent Record
+
+### Agent Model Used
+
+nox/noxtua-ai-4.3
+
+### Debug Log References
+
+- RED/GREEN cycle: new service and tool tests were written first and confirmed failing, then the implementation made them pass.
+- Validated: focused plan suite (38 passed: 22 unit + 16 integration), launch regression suites (`test_launch_tools.py` + `test_launch_service.py`, 127 passed), full unit/integration/docs suite (1,186 passed), CLI suite (257 passed); `ruff format .` and `ruff check .` clean; `mypy --strict src` clean (99 files).
+- Sandbox e2e coverage follows the existing `test_plan_management.py` lifecycle pattern; it skips locally without sandbox credentials and executes only in the credential-backed e2e workflow.
+
+### Completion Notes List
+
+- `PlanService.run_plan` validates `launch_name` (non-empty, ≤255) plus the simplified `tags`/`links`/`issues` inputs locally, builds `TestPlanRunRequestDto` with `generate_schema_hint(TestPlanRunRequestDto)` surfaced on DTO validation failure, awaits `TestPlanControllerApi.run3` (`POST /api/testplan/{id}/run`), and maps upstream 404s to an actionable "Test plan ID {id} not found or is not runnable" error. `envVarValueSets` is deliberately not exposed (Ask-First boundary).
+- The simplified input validators and DTO builders were extracted into `src/services/launch_inputs.py` (Design Notes: reuse or extract, never duplicate in `PlanService`); `LaunchService` delegates to them, so `create_launch`/`close_launch`/`reopen_launch` behavior and published schemas are unchanged (127 launch regression tests and the output-schema suites pass untouched).
+- `run_test_plan` publishes a concrete object-root schema via `TestPlanRunOutput` (a `LaunchMutationSummary` subclass adding optional `plan_id`), reuses `_launch_mutation_payload` for exact mutation-summary parity with `create_launch`, sets `operation: "started"`, and builds the launch URL preferring `launch.project_id` with fallback to the client's configured project.
+- CLI: `lucius test_plan run` routes to the same tool via `route_matrix.py`; `src/cli/data/tool_schemas.json`, `deployment/shell-completions/*`, and `docs/mcp_manifest.json` were regenerated via `scripts/build_tool_schema.py`, `deployment/scripts/generate_completions.py`, and `fastmcp inspect`.
+- Files touched beyond the Code Map (`src/tools/annotations.py`, `src/cli/data/tool_schemas.json`, `docs/mcp_manifest.json`) are required by repo-enforced registration coverage: annotations/tags policy is validated at import time, the CLI registry is built from the checked-in tool schemas, and `tests/docs/test_mcp_manifest.py` fails when the manifest drifts from `src.tools.all_tools`.
+- Open questions resolved: sandbox e2e coverage is feasible and was added (`test_run_test_plan_starts_launch`); `envVarValueSets` stays deferred to a follow-up story pending a simplified input shape.
+
+### Change Log
+
+- 2026-09-22: Story created and marked ready-for-dev.
+- 2026-09-22: Implemented `run_test_plan` (service `run_plan`, tool, output schema, CLI route, regenerated schemas/completions/manifest, docs, unit/integration/e2e tests); all quality gates green; marked ready for review.
+
+### File List
+
+- src/services/launch_inputs.py
+- src/services/launch_service.py
+- src/services/plan_service.py
+- src/tools/output_schemas.py
+- src/tools/plans.py
+- src/tools/__init__.py
+- src/tools/annotations.py
+- src/cli/route_matrix.py
+- src/cli/data/tool_schemas.json
+- deployment/shell-completions/lucius.bash
+- deployment/shell-completions/lucius.fish
+- deployment/shell-completions/lucius.ps1
+- deployment/shell-completions/lucius.zsh
+- docs/mcp_manifest.json
+- docs/tools.md
+- tests/unit/test_plan_service.py
+- tests/integration/test_plan_tools.py
+- tests/e2e/test_plan_management.py
+- specs/implementation-artifacts/12-7-start-launch-from-test-plan.md
+- specs/implementation-artifacts/sprint-status.yaml

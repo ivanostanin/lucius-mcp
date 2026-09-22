@@ -67,11 +67,18 @@ from src.client.generated.models.upload_test_result_dto import UploadTestResultD
 from src.client.generated.models.upload_test_result_expected_body_step_dto import UploadTestResultExpectedBodyStepDto
 from src.client.generated.models.upload_test_status import UploadTestStatus
 from src.services.attachment_service import ALLOWED_MIME_TYPES, MAX_ATTACHMENT_SIZE
+from src.services.launch_inputs import (
+    build_issue_dtos,
+    build_link_dtos,
+    build_tag_dtos,
+    validate_issues,
+    validate_launch_name,
+    validate_links,
+    validate_tags,
+)
 from src.utils.aql import quote_aql_string
 from src.utils.schema_hint import generate_schema_hint
 
-MAX_NAME_LENGTH = 255
-MAX_TAG_LENGTH = 255
 MAX_LAUNCH_RESULT_UPLOAD_BATCH_SIZE = 1000
 MAX_LAUNCH_RESULT_UPLOAD_CONCURRENCY = 20
 MAX_LAUNCH_EXECUTION_PAGES = 100
@@ -1478,12 +1485,8 @@ class LaunchService:
 
     @staticmethod
     def _validate_name(name: str) -> None:
-        if not isinstance(name, str):
-            raise AllureValidationError(f"Launch name must be a string, got {type(name).__name__}")
-        if not name.strip():
-            raise AllureValidationError("Launch name is required")
-        if len(name) > MAX_NAME_LENGTH:
-            raise AllureValidationError(f"Launch name must be {MAX_NAME_LENGTH} characters or less")
+        # Shared with PlanService.run_plan through src.services.launch_inputs.
+        validate_launch_name(name)
 
     @staticmethod
     def _should_fallback_to_aql(search: str | None, filter_id: int | None, error: AllureValidationError) -> bool:
@@ -1495,50 +1498,15 @@ class LaunchService:
 
     @staticmethod
     def _validate_tags(tags: list[str] | None) -> None:
-        if tags is None:
-            return
-        if not isinstance(tags, list):
-            raise AllureValidationError(f"Tags must be a list, got {type(tags).__name__}")
-        for i, tag in enumerate(tags):
-            if not isinstance(tag, str):
-                raise AllureValidationError(f"Tag at index {i} must be a string, got {type(tag).__name__}")
-            if not tag.strip():
-                raise AllureValidationError(f"Tag at index {i} cannot be empty")
-            if len(tag) > MAX_TAG_LENGTH:
-                raise AllureValidationError(f"Tag at index {i} must be {MAX_TAG_LENGTH} characters or less")
+        validate_tags(tags)
 
     @staticmethod
     def _validate_links(links: list[dict[str, str]] | None) -> None:
-        if links is None:
-            return
-        if not isinstance(links, list):
-            raise AllureValidationError(f"Links must be a list, got {type(links).__name__}")
-        for i, link in enumerate(links):
-            if not isinstance(link, dict):
-                raise AllureValidationError(f"Link at index {i} must be a dictionary")
-            if not link:
-                raise AllureValidationError(f"Link at index {i} cannot be empty")
-            url = link.get("url")
-            if url is not None and not isinstance(url, str):
-                raise AllureValidationError(f"Link at index {i} 'url' must be a string")
-            name = link.get("name")
-            if name is not None and not isinstance(name, str):
-                raise AllureValidationError(f"Link at index {i} 'name' must be a string")
-            link_type = link.get("type")
-            if link_type is not None and not isinstance(link_type, str):
-                raise AllureValidationError(f"Link at index {i} 'type' must be a string")
+        validate_links(links)
 
     @staticmethod
     def _validate_issues(issues: list[dict[str, object]] | None) -> None:
-        if issues is None:
-            return
-        if not isinstance(issues, list):
-            raise AllureValidationError(f"Issues must be a list, got {type(issues).__name__}")
-        for i, issue in enumerate(issues):
-            if not isinstance(issue, dict):
-                raise AllureValidationError(f"Issue at index {i} must be a dictionary")
-            if not issue:
-                raise AllureValidationError(f"Issue at index {i} cannot be empty")
+        validate_issues(issues)
 
     @staticmethod
     def _validate_positive_id(value: object, label: str) -> None:
@@ -3219,18 +3187,12 @@ class LaunchService:
 
     @staticmethod
     def _build_tag_dtos(tags: list[str] | None) -> list[LaunchTagDto] | None:
-        if not tags:
-            return None
-        return [LaunchTagDto(name=tag) for tag in tags]
+        return build_tag_dtos(tags)
 
     @staticmethod
     def _build_link_dtos(links: list[dict[str, str]] | None) -> list[ExternalLinkDto] | None:
-        if not links:
-            return None
-        return [ExternalLinkDto(**link) for link in links]
+        return build_link_dtos(links)
 
     @staticmethod
     def _build_issue_dtos(issues: list[dict[str, object]] | None) -> list[IssueDto] | None:
-        if not issues:
-            return None
-        return [IssueDto(**issue) for issue in issues]
+        return build_issue_dtos(issues)

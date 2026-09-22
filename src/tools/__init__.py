@@ -48,6 +48,7 @@ from src.tools.plans import (
     delete_test_plan,
     list_test_plans,
     manage_test_plan_content,
+    run_test_plan,
     update_test_plan,
 )
 from src.tools.projects import get_project
@@ -130,6 +131,7 @@ __all__ = [
     "prepare_attachment_download",
     "reopen_launch",
     "rerun_test_results_manually",
+    "run_test_plan",
     "search_test_cases",
     "start_manual_test_session",
     "submit_manual_test_results",
@@ -210,6 +212,7 @@ all_tools: list[ToolFn] = [
     update_test_plan,
     manage_test_plan_content,
     list_test_plans,
+    run_test_plan,
     delete_test_plan,
     # Defect Management Tools
     create_defect,

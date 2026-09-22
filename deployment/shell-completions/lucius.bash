@@ -69,7 +69,7 @@ _lucius_completion() {
                 return 0
                 ;;
             test_plan|test_plans|tp)
-                COMPREPLY=($(compgen -W "create delete list manage-content manage_content update" -- "$cur"))
+                COMPREPLY=($(compgen -W "create delete list manage-content manage_content run update" -- "$cur"))
                 return 0
                 ;;
             test_result|test_results|tr)
