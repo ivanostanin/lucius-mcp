@@ -769,6 +769,10 @@ async def add_test_step_attachment(
         int | None,
         Field(description="Optional zero-based manual step index to resolve within the test result execution."),
     ] = None,
+    status: Annotated[
+        str | None,
+        Field(description="Final status for an in-progress manual result; required for manual step evidence."),
+    ] = None,
     fixture_result_id: Annotated[
         int | None,
         Field(description="Optional explicit fixture result ID for legacy fixture-step fallback."),
@@ -788,13 +792,18 @@ async def add_test_step_attachment(
 ) -> ToolOutput:
     """Upload evidence to a manual attachment step inside a test result.
 
+    TestOps has no step-level attachment endpoint. For an in-progress manual
+    result, Lucius uploads the file at result level and then resolves the full
+    v2 execution tree once. The attachment is placed alongside the selected
+    action's expected result, which is the shape used by the TestOps UI.
+
     Args:
-        test_result_id: Parent test result ID. In rerun workflows, use the completed result ID
-            returned by the latest submit_manual_test_results call.
+        test_result_id: In-progress manual result ID.
         attachment: Attachment payload using content or url.
         attachment_id: Optional explicit manual step attachment ID.
         step_name: Optional attachment-step name to resolve within the result execution.
         step_index: Optional zero-based step index to resolve within the result execution.
+        status: Required final status for the in-progress manual result.
         fixture_result_id: Optional explicit fixture result ID for legacy fallback.
         fixture_name: Optional fixture name for legacy fallback.
         fixture_type: Optional fixture type hint ('before' or 'after') for legacy fallback.
@@ -813,6 +822,7 @@ async def add_test_step_attachment(
             attachment_id=attachment_id,
             step_name=step_name,
             step_index=step_index,
+            status=status,
             fixture_result_id=fixture_result_id,
             fixture_name=fixture_name,
             fixture_type=normalized_fixture_type,  # type: ignore[arg-type]
