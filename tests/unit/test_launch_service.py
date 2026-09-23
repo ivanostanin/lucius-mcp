@@ -1116,6 +1116,10 @@ async def test_submit_manual_test_results_maps_nested_steps(service: LaunchServi
         name="Manual login test",
         test_case_id=91,
     )
+    mock_client.list_test_result_attachments.return_value = SimpleNamespace(
+        content=[TestResultAttachmentRowDto.model_construct(entity="test_result", id=701, name="evidence.txt")],
+        total_pages=1,
+    )
 
     result = await service.submit_manual_test_results(
         44,
@@ -1335,6 +1339,10 @@ async def test_submit_manual_test_results_maps_expected_attachment_steps_and_par
         test_case_id=92,
         status="failed",
     )
+    mock_client.list_test_result_attachments.return_value = SimpleNamespace(
+        content=[TestResultAttachmentRowDto.model_construct(entity="test_result", id=701, name="evidence.txt")],
+        total_pages=1,
+    )
 
     result = await service.submit_manual_test_results(
         45,
@@ -1346,18 +1354,22 @@ async def test_submit_manual_test_results_maps_expected_attachment_steps_and_par
                 "stop": 2000,
                 "steps": [
                     {
-                        "type": "expected",
-                        "body": "Verify error banner",
-                        "status": "passed",
-                        "message": "Banner visible",
-                    },
-                    {
-                        "type": "attachment",
+                        "type": "body",
+                        "body": "Open the error state",
                         "status": "failed",
-                        "attachment": {
-                            "name": "evidence.txt",
-                            "content_type": "text/plain",
-                        },
+                        "steps": [
+                            {
+                                "type": "expected",
+                                "body": "Verify error banner",
+                                "status": "passed",
+                                "message": "Banner visible",
+                            },
+                            {
+                                "type": "attachment",
+                                "status": "failed",
+                                "attachment": {"name": "evidence.txt"},
+                            },
+                        ],
                     },
                 ],
                 "parameters": [
@@ -1375,19 +1387,148 @@ async def test_submit_manual_test_results_maps_expected_attachment_steps_and_par
     assert isinstance(execution, dict)
     steps = execution["steps"]
     assert isinstance(steps, list)
-    assert len(steps) == 2
-    assert steps[0]["type"] == "expected_body"
-    assert steps[0]["body"] == "Verify error banner"
-    assert steps[1]["type"] == "attachment"
-    assert steps[1]["attachment"]["entity"] == "test_result"
-    assert steps[1]["attachment"]["name"] == "evidence.txt"
+    assert len(steps) == 1
+    assert steps[0]["type"] == "body"
+    expected_result_steps = steps[0]["expectedResultSteps"]
+    assert expected_result_steps[0]["type"] == "expected_body"
+    assert expected_result_steps[0]["body"] == "Verify error banner"
+    assert expected_result_steps[1]["type"] == "attachment"
+    assert expected_result_steps[1]["attachment"]["entity"] == "test_result"
+    assert expected_result_steps[1]["attachment"]["name"] == "evidence.txt"
+    assert expected_result_steps[1]["attachmentId"] == 701
     assert result.result_ids == [92]
+
+
+@pytest.mark.asyncio
+async def test_submit_manual_test_results_places_multiple_uploaded_step_attachments_in_one_resolve(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    mock_client.get_test_result.return_value = TestResultDto(id=92, manual=True)
+    mock_client.resolve_test_result.return_value = TestResultRowDto(id=92)
+
+    result = await service.submit_manual_test_results(
+        45,
+        results=[
+            {
+                "result_id": 92,
+                "status": "failed",
+                "steps": [
+                    {
+                        "type": "body",
+                        "body": "Open page",
+                        "status": "passed",
+                        "steps": [
+                            {"type": "expected", "body": "Page opens", "status": "passed"},
+                            {"type": "attachment", "attachment_id": 701, "status": "passed"},
+                        ],
+                    },
+                    {
+                        "type": "body",
+                        "body": "Click save",
+                        "status": "failed",
+                        "steps": [
+                            {"type": "expected", "body": "Save succeeds", "status": "failed"},
+                            {"type": "attachment", "attachment_id": 702, "status": "failed"},
+                        ],
+                    },
+                ],
+            }
+        ],
+    )
+
+    payload = mock_client.resolve_test_result.await_args.args[1]
+    execution = payload["execution"]
+    assert isinstance(execution, dict)
+    first, second = execution["steps"]
+    assert [node["type"] for node in first["expectedResultSteps"]] == ["expected_body", "attachment"]
+    assert [node["type"] for node in second["expectedResultSteps"]] == ["expected_body", "attachment"]
+    assert first["expectedResultSteps"][1]["attachmentId"] == 701
+    assert second["expectedResultSteps"][1]["attachmentId"] == 702
+    assert first["expectedResultSteps"][1]["attachment"]["entity"] == "test_result"
+    assert result.result_ids == [92]
+    mock_client.create_test_result_attachments.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_submit_manual_test_results_uploads_inline_evidence_before_resolving(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    mock_client.get_test_result.return_value = TestResultDto(id=92, manual=True)
+    mock_client.create_test_result_attachments.return_value = [
+        TestResultAttachmentRowDto.model_construct(entity="test_result", id=703, name="step.png")
+    ]
+    mock_client.resolve_test_result.return_value = TestResultRowDto(id=92)
+
+    await service.submit_manual_test_results(
+        45,
+        results=[
+            {
+                "result_id": 92,
+                "status": "passed",
+                "steps": [
+                    {
+                        "type": "body",
+                        "body": "Open page",
+                        "steps": [
+                            {
+                                "type": "attachment",
+                                "status": "passed",
+                                "attachment": {
+                                    "name": "step.png",
+                                    "content_type": "image/png",
+                                    "content": "QQ==",
+                                },
+                            }
+                        ],
+                    }
+                ],
+            }
+        ],
+    )
+
+    mock_client.create_test_result_attachments.assert_awaited_once_with(92, [("step.png", b"A")])
+    attachment = mock_client.resolve_test_result.await_args.args[1]["execution"]["steps"][0]["expectedResultSteps"][0]
+    assert attachment["attachmentId"] == 703
+
+
+@pytest.mark.asyncio
+async def test_submit_manual_test_results_rejects_ambiguous_attachment_before_upload_or_resolve(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    mock_client.get_test_result.return_value = TestResultDto(id=92, manual=True)
+    mock_client.list_test_result_attachments.return_value = SimpleNamespace(
+        content=[
+            TestResultAttachmentRowDto.model_construct(entity="test_result", id=701, name="step.png"),
+            TestResultAttachmentRowDto.model_construct(entity="test_result", id=702, name="step.png"),
+        ],
+        total_pages=1,
+    )
+
+    with pytest.raises(AllureValidationError, match="ambiguous"):
+        await service.submit_manual_test_results(
+            45,
+            results=[
+                {
+                    "result_id": 92,
+                    "status": "passed",
+                    "steps": [
+                        {
+                            "type": "body",
+                            "steps": [{"type": "attachment", "attachment": {"name": "step.png"}}],
+                        }
+                    ],
+                }
+            ],
+        )
+
+    mock_client.create_test_result_attachments.assert_not_awaited()
+    mock_client.resolve_test_result.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_submit_manual_test_results_rejects_attachment_step_without_metadata(service: LaunchService) -> None:
     service._client.create_test_result.return_value = TestResultDto(id=999, name="Manual login test")
-    with pytest.raises(AllureValidationError, match="attachment is required"):
+    with pytest.raises(AllureValidationError, match="attachment steps require result_id"):
         await service.submit_manual_test_results(
             44,
             results=[
@@ -1423,6 +1564,7 @@ async def test_add_test_result_attachment_prepares_base64_file(service: LaunchSe
     )
 
     assert result.file_names == ["evidence.txt"]
+    assert result.attachment_ids == [1001]
     assert result.status_code == 200
     mock_client.create_test_result_attachments.assert_awaited_once_with(77, [("evidence.txt", b"A")])
 

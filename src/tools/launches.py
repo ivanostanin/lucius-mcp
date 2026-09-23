@@ -571,7 +571,11 @@ async def submit_manual_test_results(
                 "result for that test case. The returned result_ids are the resolved result IDs to use for follow-up "
                 "attachments and reads. As a lower-level fallback, you may still provide launch_id + test_case_id + "
                 "name/full_name explicitly to create a standalone manual result. Optional fields include "
-                "status/start/stop/duration/message/trace/description/precondition/expected_result/steps."
+                "status/start/stop/duration/message/trace/description/precondition/expected_result/steps. "
+                "For result_id submissions, a body step can contain expected and attachment children. "
+                "Prefer attachment_id from add_test_result_attachment. An attachment by exact uploaded name is also "
+                "supported; alternatively, provide {name, content_type, content|url} for Lucius to upload before "
+                "the single final resolve."
             )
         ),
     ],
@@ -585,7 +589,9 @@ async def submit_manual_test_results(
     Args:
         test_session_id: Manual test session ID.
         results: Manual result payloads. Prefer `result_id` from `list_launch_test_results` for launch-managed flows.
-            The service resolves those existing results in place and returns their IDs for follow-up actions.
+            The service resolves those existing results in place and returns their IDs for follow-up actions. Evidence
+            belongs in a body's attachment child after its expected child. Attachment steps require result_id; prefer
+            attachment_id returned by add_test_result_attachment over inline base64 content.
         project_id: Optional override for the default Project ID.
         output_format: Output format: 'json' (default) or 'plain'.
 
@@ -706,7 +712,7 @@ async def attach_file_to_launch(
     return render_output(plain=plain, json_payload=payload, output_format=output_format)
 
 
-@output_fields("target_kind", "target_id", "file_names", "status_code")
+@output_fields("target_kind", "target_id", "file_names", "attachment_ids", "status_code")
 async def add_test_result_attachment(
     test_result_id: Annotated[int, Field(description="Manual test result ID (required).")],
     attachment: Annotated[
@@ -722,6 +728,10 @@ async def add_test_result_attachment(
 ) -> ToolOutput:
     """Upload evidence to a manual test result.
 
+    The returned attachment_ids can be used as attachment_id values in
+    submit_manual_test_results. Result-level evidence can also be uploaded
+    after a manual result has been resolved.
+
     Args:
         test_result_id: Manual test result ID. In rerun workflows, use the resolved result ID
             returned by the latest submit_manual_test_results call.
@@ -730,7 +740,7 @@ async def add_test_result_attachment(
         output_format: Output format: 'json' (default) or 'plain'.
 
     Returns:
-        Confirmation that the attachment was accepted for the result.
+        Confirmation that the attachment was accepted for the result, including its attachment ID.
     """
     async with _launch_client_context(project_id=project_id) as client:
         service = LaunchService(client=client)
@@ -742,6 +752,7 @@ async def add_test_result_attachment(
             "target_kind": result.target_kind,
             "target_id": result.target_id,
             "file_names": result.file_names,
+            "attachment_ids": result.attachment_ids,
             "status_code": result.status_code,
         },
         output_format=output_format,

@@ -62,7 +62,7 @@ From `src/tools/__init__.py:24-79`:
 - `get_custom_fields`, `get_test_case_custom_fields`
 - `create_custom_field_value`, `list_custom_field_values`, `update_custom_field_value`, `delete_custom_field_value`
 - `delete_unused_custom_fields`
-- `create_launch`, `list_launches`, `get_launch`, `delete_launch`, `upload_test_results`, `attach_file_to_launch`, `list_launch_test_results`, `rerun_test_results_manually`, `start_manual_test_session`, `submit_manual_test_results`, `add_test_result_attachment`, `add_test_step_attachment`
+- `create_launch`, `list_launches`, `get_launch`, `delete_launch`, `upload_test_results`, `attach_file_to_launch`, `list_launch_test_results`, `rerun_test_results_manually`, `start_manual_test_session`, `submit_manual_test_results`, `add_test_result_attachment`
 - `get_test_result`, `prepare_attachment_download`
 - `create_shared_step`, `list_shared_steps`, `update_shared_step`, `delete_shared_step`
 - `delete_archived_shared_steps`
@@ -256,9 +256,9 @@ From `src/tools/__init__.py:24-79`:
   9. **Schedule Manual Rerun**: `rerun_test_results_manually(launch_id=LAUNCH_ID, result_ids=[RESULT_ID], force_manual=true)`
      - Expectation: Output confirms one rerun was scheduled.
      - Action: Refresh launch results and capture the new active rerun `result_id` as `ACTIVE_RESULT_ID` before the next submission or attachment upload.
-  10. **Upload Result Evidence**: `add_test_result_attachment(test_result_id=ACTIVE_RESULT_ID, attachment={...})`
-     - Expectation: Output confirms the upload was accepted.
-  11. **Finish Active Manual Rerun**: `submit_manual_test_results(test_session_id=SESSION_ID, results=[{"result_id":ACTIVE_RESULT_ID, "status":"passed"}])`
+  10. **Upload Step Evidence**: `add_test_result_attachment(test_result_id=ACTIVE_RESULT_ID, attachment={...})`
+     - Expectation: Output includes `attachment_ids`; retain the returned ID for the step that produced the evidence.
+  11. **Finish Active Manual Rerun**: `submit_manual_test_results(test_session_id=SESSION_ID, results=[{"result_id":ACTIVE_RESULT_ID, "status":"passed", "steps":[{"type":"body", "steps":[{"type":"expected", ...}, {"type":"attachment", "attachment_id": ATTACHMENT_ID}]}]}])`
      - Expectation: Output contains resolved `result_ids` for the currently active rerun result.
      - Verification: The submitted result ID matches `ACTIVE_RESULT_ID` (or resolves to the same active rerun row for that test case).
   12. **Verify No In-Progress Rows Remain**: `list_launch_test_results(launch_id=LAUNCH_ID, manual_only=true)`
@@ -498,7 +498,7 @@ From `src/tools/__init__.py:24-79`:
 - **Shared steps**: 5 covers `create_shared_step`, `list_shared_steps`, `update_shared_step`, `delete_shared_step`, `link_shared_step`, `unlink_shared_step`.
 - **Test layers**: 6 covers `list_test_layers`, `create_test_layer`, `update_test_layer`, `delete_test_layer`, `list_test_layer_schemas`, `create_test_layer_schema`, `update_test_layer_schema`, `delete_test_layer_schema`.
 - **Test hierarchy**: 7 covers `create_test_suite`, `list_test_suites`, `assign_test_cases_to_suite`, `delete_test_suite` (+ test-case cleanup via `delete_test_case`).
-- **Launches**: 8 covers `create_launch`, `list_launches`, `get_launch`, `upload_test_results`, `list_launch_test_results`, `rerun_test_results_manually`, `start_manual_test_session`, `submit_manual_test_results`, `add_test_result_attachment`, and `add_test_step_attachment`.
+- **Launches**: 8 covers `create_launch`, `list_launches`, `get_launch`, `upload_test_results`, `list_launch_test_results`, `rerun_test_results_manually`, `start_manual_test_session`, `submit_manual_test_results`, and `add_test_result_attachment`.
 - **Custom Field Values**: 9 covers `create_custom_field_value`, `list_custom_field_values`, `update_custom_field_value`, `delete_custom_field_value`.
 - **Issue Linking & Integrations**: 10 covers `list_integrations` and `issues` parameter in `create_test_case` and `update_test_case` (add, remove, clear, explicit integration selection).
 - **Test Plans**: 11 covers `create_test_plan`, `update_test_plan`, `manage_test_plan_content`, `list_test_plans`, `delete_test_plan`.

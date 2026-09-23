@@ -330,6 +330,7 @@ class AttachmentUploadResult:
     target_kind: Literal["test_result", "test_step"]
     target_id: int
     file_names: list[str]
+    attachment_ids: list[int]
     status_code: int
 
 
@@ -1272,10 +1273,12 @@ class LaunchService:
             ) from exc
 
         uploaded_names = [row.name for row in uploaded_rows if isinstance(row.name, str) and row.name.strip()]
+        attachment_ids = [row.id for row in uploaded_rows if isinstance(row.id, int) and row.id > 0]
         return AttachmentUploadResult(
             target_kind="test_result",
             target_id=test_result_id,
             file_names=uploaded_names or [file_entry[0]],
+            attachment_ids=attachment_ids,
             status_code=200,
         )
 
@@ -1332,6 +1335,7 @@ class LaunchService:
                 target_kind="test_step",
                 target_id=target_fixture_id,
                 file_names=[file_entry[0]],
+                attachment_ids=[],
                 status_code=status_code,
             )
 
@@ -1383,6 +1387,7 @@ class LaunchService:
             target_kind="test_step",
             target_id=uploaded_row.id or test_result_id,
             file_names=[uploaded_row.name or file_entry[0]],
+            attachment_ids=[uploaded_row.id] if isinstance(uploaded_row.id, int) else [],
             status_code=200,
         )
 
@@ -1786,6 +1791,11 @@ class LaunchService:
             ) from exc
 
     async def _create_manual_launch_result(self, result: dict[str, Any], *, index: int) -> TestResultDto:
+        if self._manual_result_attachment_steps(result):
+            raise AllureValidationError(
+                f"results[{index}] attachment steps require result_id: upload evidence to an existing manual result "
+                "and resolve it in place"
+            )
         source_result, launch_id, test_case_id = await self._resolve_manual_result_context(result, index=index)
         result_name, result_full_name = self._resolve_manual_result_names(
             result,
@@ -1882,10 +1892,19 @@ class LaunchService:
                 f"results[{index}].result_id must reference a manual launch result to resolve in place"
             )
 
+        attachment_rows, uploaded_file_names = await self._resolve_manual_result_attachment_rows(
+            result_id,
+            result=result,
+            index=index,
+        )
         try:
             return await self._client.resolve_test_result(
                 result_id,
-                self._build_manual_result_resolve_payload(result, index=index),
+                self._build_manual_result_resolve_payload(
+                    result,
+                    index=index,
+                    attachment_rows=attachment_rows,
+                ),
             )
         except AllureNotFoundError as exc:
             raise AllureNotFoundError(
@@ -1893,6 +1912,122 @@ class LaunchService:
                 status_code=exc.status_code,
                 response_body=exc.response_body,
             ) from exc
+        except AllureAPIError as exc:
+            if uploaded_file_names:
+                raise AllureAPIError(
+                    f"Manual result resolve failed after uploading evidence: {', '.join(uploaded_file_names)}. {exc}"
+                ) from exc
+            raise
+
+    def _manual_result_attachment_steps(self, result: dict[str, Any]) -> list[dict[str, Any]]:
+        """Return attachment steps anywhere in a caller's manual execution tree."""
+        found: list[dict[str, Any]] = []
+
+        def visit(steps: object) -> None:
+            if not isinstance(steps, list):
+                return
+            for step in steps:
+                if not isinstance(step, dict):
+                    continue
+                if isinstance(step.get("type"), str) and step["type"].strip().lower() == "attachment":
+                    found.append(step)
+                visit(step.get("steps"))
+
+        visit(result.get("steps"))
+        return found
+
+    async def _resolve_manual_result_attachment_rows(  # noqa: C901
+        self,
+        result_id: int,
+        *,
+        result: dict[str, Any],
+        index: int,
+    ) -> tuple[dict[int, TestResultAttachmentRowDto], list[str]]:
+        """Validate all evidence before uploading it, then resolve each step to an upload row."""
+        attachment_steps = self._manual_result_attachment_steps(result)
+        if not attachment_steps:
+            return {}, []
+
+        rows: dict[int, TestResultAttachmentRowDto] = {}
+        names_to_resolve: dict[int, str] = {}
+        uploads: list[tuple[dict[str, Any], tuple[str, bytes]]] = []
+        for step in attachment_steps:
+            attachment_id = step.get("attachment_id")
+            attachment = step.get("attachment")
+            if attachment_id is not None:
+                self._validate_positive_id(attachment_id, f"results[{index}].attachment_id")
+                if attachment is not None:
+                    raise AllureValidationError(
+                        f"results[{index}] attachment steps must use exactly one of attachment_id or attachment"
+                    )
+                rows[id(step)] = TestResultAttachmentRowDto.model_construct(entity="test_result", id=attachment_id)
+                continue
+
+            if not isinstance(attachment, dict):
+                raise AllureValidationError(
+                    f"results[{index}] attachment steps require attachment_id or attachment metadata"
+                )
+            has_content = attachment.get("content") is not None
+            has_url = attachment.get("url") is not None
+            if has_content or has_url:
+                # Preparing every file here validates its metadata, source, and size before any TestOps upload.
+                uploads.append((step, await self._prepare_attachment_file(cast(dict[str, str], attachment))))
+                continue
+
+            names_to_resolve[id(step)] = (
+                self._normalize_text(
+                    attachment.get("name"),
+                    field_name=f"results[{index}].attachment.name",
+                )
+                or ""
+            )
+
+        # Build once with placeholder rows so malformed non-attachment steps never cause partial uploads.
+        self._build_manual_result_resolve_payload(
+            result,
+            index=index,
+            attachment_rows=rows
+            | {
+                id(step): TestResultAttachmentRowDto.model_construct(entity="test_result", id=1)
+                for step, _file in uploads
+            }
+            | {
+                step_id: TestResultAttachmentRowDto.model_construct(entity="test_result", id=1)
+                for step_id in names_to_resolve
+            },
+        )
+
+        if names_to_resolve:
+            existing_rows = await self._list_all_test_result_attachments(result_id)
+            for step_id, name in names_to_resolve.items():
+                matches = [row for row in existing_rows if row.name == name]
+                if not matches:
+                    raise AllureValidationError(
+                        f"Attachment named {name!r} was not uploaded to test result ID {result_id}"
+                    )
+                if len(matches) > 1:
+                    raise AllureValidationError(
+                        f"Attachment named {name!r} is ambiguous on test result ID {result_id}; use attachment_id"
+                    )
+                rows[step_id] = matches[0]
+
+        uploaded_file_names: list[str] = []
+        for step, file_entry in uploads:
+            uploaded_rows = await self._client.create_test_result_attachments(result_id, [file_entry])
+            rows[id(step)] = self._select_uploaded_attachment_row(uploaded_rows)
+            uploaded_file_names.append(file_entry[0])
+        return rows, uploaded_file_names
+
+    async def _list_all_test_result_attachments(self, result_id: int) -> list[TestResultAttachmentRowDto]:
+        collected: list[TestResultAttachmentRowDto] = []
+        page_number = 0
+        total_pages = 1
+        while page_number < total_pages:
+            page = await self._client.list_test_result_attachments(result_id, page=page_number, size=100)
+            collected.extend(row for row in (page.content or []) if isinstance(row, TestResultAttachmentRowDto))
+            total_pages = page.total_pages if isinstance(page.total_pages, int) and page.total_pages > 0 else 1
+            page_number += 1
+        return collected
 
     async def _resolve_manual_result_context(
         self,
@@ -2098,6 +2233,7 @@ class LaunchService:
         result: dict[str, Any],
         *,
         index: int,
+        attachment_rows: dict[int, TestResultAttachmentRowDto] | None = None,
     ) -> dict[str, object]:
         status = (
             self._normalize_test_status(result.get("status"), field_name=f"results[{index}].status")
@@ -2146,6 +2282,7 @@ class LaunchService:
             start=start,
             stop=stop,
             duration=duration,
+            attachment_rows=attachment_rows or {},
         )
         if execution is not None:
             payload["execution"] = execution
@@ -2161,6 +2298,7 @@ class LaunchService:
         start: int | None,
         stop: int | None,
         duration: int | None,
+        attachment_rows: dict[int, TestResultAttachmentRowDto],
     ) -> dict[str, object] | None:
         raw_steps = result.get("steps")
         if raw_steps is None:
@@ -2171,7 +2309,12 @@ class LaunchService:
         execution: dict[str, object] = {
             "status": status.value,
             "steps": [
-                self._build_manual_result_resolve_step(step, result_index=index, step_index=step_index)
+                self._build_manual_result_resolve_step(
+                    step,
+                    result_index=index,
+                    step_index=step_index,
+                    attachment_rows=attachment_rows,
+                )
                 for step_index, step in enumerate(raw_steps)
             ],
         }
@@ -2189,6 +2332,7 @@ class LaunchService:
         *,
         result_index: int,
         step_index: int,
+        attachment_rows: dict[int, TestResultAttachmentRowDto],
     ) -> dict[str, object]:
         if not isinstance(step, dict):
             raise AllureValidationError(f"results[{result_index}].steps[{step_index}] must be a dictionary")
@@ -2206,33 +2350,45 @@ class LaunchService:
         )
 
         if normalized_type == "body":
-            return self._apply_manual_result_resolve_body_step(
+            resolved = self._apply_manual_result_resolve_body_step(
                 payload,
                 step=step,
                 result_index=result_index,
                 step_index=step_index,
                 name=name,
             )
-        if normalized_type == "expected":
-            return self._apply_manual_result_resolve_expected_step(
+        elif normalized_type == "expected":
+            resolved = self._apply_manual_result_resolve_expected_step(
                 payload,
                 step=step,
                 result_index=result_index,
                 step_index=step_index,
                 name=name,
             )
-        if normalized_type == "attachment":
-            return self._apply_manual_result_resolve_attachment_step(
+        elif normalized_type == "attachment":
+            resolved = self._apply_manual_result_resolve_attachment_step(
                 payload,
                 step=step,
                 result_index=result_index,
                 step_index=step_index,
                 name=name,
+                attachment_rows=attachment_rows,
+            )
+        else:
+            raise AllureValidationError(
+                f"results[{result_index}].steps[{step_index}].type must be one of: body, expected, attachment"
             )
 
-        raise AllureValidationError(
-            f"results[{result_index}].steps[{step_index}].type must be one of: body, expected, attachment"
+        resolved.update(
+            self._build_manual_result_resolve_nested_steps(
+                step,
+                result_index=result_index,
+                step_index=step_index,
+                parent_type=normalized_type,
+                attachment_rows=attachment_rows,
+            )
         )
+        return resolved
 
     def _normalize_manual_resolve_step_type(
         self,
@@ -2283,13 +2439,6 @@ class LaunchService:
         if trace is not None:
             payload["trace"] = trace
 
-        payload.update(
-            self._build_manual_result_resolve_nested_steps(
-                step,
-                result_index=result_index,
-                step_index=step_index,
-            )
-        )
         return payload
 
     def _build_manual_result_resolve_nested_steps(
@@ -2298,22 +2447,34 @@ class LaunchService:
         *,
         result_index: int,
         step_index: int,
+        parent_type: str,
+        attachment_rows: dict[int, TestResultAttachmentRowDto],
     ) -> dict[str, object]:
         nested_steps = step.get("steps")
         if nested_steps is None:
             return {}
         if not isinstance(nested_steps, list):
             raise AllureValidationError(f"results[{result_index}].steps[{step_index}].steps must be a list")
-        return {
-            "steps": [
-                self._build_manual_result_resolve_step(
-                    child,
-                    result_index=result_index,
-                    step_index=child_index,
-                )
-                for child_index, child in enumerate(nested_steps)
-            ]
-        }
+        resolved_children = [
+            self._build_manual_result_resolve_step(
+                child,
+                result_index=result_index,
+                step_index=child_index,
+                attachment_rows=attachment_rows,
+            )
+            for child_index, child in enumerate(nested_steps)
+        ]
+        if parent_type != "body":
+            return {"steps": resolved_children}
+
+        body_steps = [child for child in resolved_children if child.get("type") == "body"]
+        expected_result_steps = [child for child in resolved_children if child.get("type") != "body"]
+        nested: dict[str, object] = {}
+        if body_steps:
+            nested["steps"] = body_steps
+        if expected_result_steps:
+            nested["expectedResultSteps"] = expected_result_steps
+        return nested
 
     def _apply_manual_result_resolve_body_step(
         self,
@@ -2365,27 +2526,14 @@ class LaunchService:
         result_index: int,
         step_index: int,
         name: str | None,
+        attachment_rows: dict[int, TestResultAttachmentRowDto],
     ) -> dict[str, object]:
-        attachment_meta = step.get("attachment")
-        if not isinstance(attachment_meta, dict):
+        attachment_row = attachment_rows.get(id(step))
+        if attachment_row is None:
             raise AllureValidationError(
-                f"results[{result_index}].steps[{step_index}].attachment is required for attachment steps"
+                f"results[{result_index}].steps[{step_index}] attachment must identify an uploaded file"
             )
-        attachment_name = self._normalize_text(
-            attachment_meta.get("name"),
-            field_name=f"results[{result_index}].steps[{step_index}].attachment.name",
-        )
-        content_type = self._normalize_text(
-            attachment_meta.get("content_type"),
-            field_name=f"results[{result_index}].steps[{step_index}].attachment.content_type",
-            allow_empty=True,
-        )
-        payload["type"] = "attachment"
-        payload["attachment"] = {
-            "entity": "test_result",
-            "name": attachment_name,
-            **({"contentType": content_type} if content_type is not None else {}),
-        }
+        payload.update(self._attachment_execution_node(attachment_row, status=payload.get("status")))
         if name is not None:
             payload["name"] = name
         return payload
@@ -2812,15 +2960,21 @@ class LaunchService:
         )
 
     @staticmethod
-    def _attachment_execution_node(attachment_row: TestResultAttachmentRowDto) -> dict[str, object]:
+    def _attachment_execution_node(
+        attachment_row: TestResultAttachmentRowDto,
+        *,
+        status: object = "skipped",
+    ) -> dict[str, object]:
         attachment_id = attachment_row.id
         if not isinstance(attachment_id, int) or attachment_id <= 0:
             raise AllureAPIError("Attachment upload completed without returning an attachment ID")
+        attachment = attachment_row.to_dict()
+        attachment["entity"] = "test_result"
         return {
             "type": "attachment",
-            "attachment": attachment_row.to_dict(),
+            "attachment": attachment,
             "attachmentId": attachment_id,
-            "status": "skipped",
+            "status": status if isinstance(status, str) else "skipped",
             "steps": [],
         }
 

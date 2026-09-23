@@ -10138,7 +10138,7 @@
             "type": "integer"
           },
           "results": {
-            "description": "Manual result payloads. When an item includes result_id from list_launch_test_results, the service resolves that existing launch result in place through TestOps' test-result run controller. After rerun_test_results_manually, re-list launch results and submit against the newly visible active result for that test case. The returned result_ids are the resolved result IDs to use for follow-up attachments and reads. As a lower-level fallback, you may still provide launch_id + test_case_id + name/full_name explicitly to create a standalone manual result. Optional fields include status/start/stop/duration/message/trace/description/precondition/expected_result/steps.",
+            "description": "Manual result payloads. When an item includes result_id from list_launch_test_results, the service resolves that existing launch result in place through TestOps' test-result run controller. After rerun_test_results_manually, re-list launch results and submit against the newly visible active result for that test case. The returned result_ids are the resolved result IDs to use for follow-up attachments and reads. As a lower-level fallback, you may still provide launch_id + test_case_id + name/full_name explicitly to create a standalone manual result. Optional fields include status/start/stop/duration/message/trace/description/precondition/expected_result/steps. For result_id submissions, a body step can contain expected and attachment children. Prefer attachment_id from add_test_result_attachment. An attachment by exact uploaded name is also supported; alternatively, provide {name, content_type, content|url} for Lucius to upload before the single final resolve.",
             "items": {
               "additionalProperties": true,
               "type": "object"
@@ -10669,7 +10669,7 @@
     {
       "name": "add_test_result_attachment",
       "title": "Add Test Result Attachment",
-      "description": "Upload evidence to a manual test result.",
+      "description": "Upload evidence to a manual test result.\n\nThe returned attachment_ids can be used as attachment_id values in\nsubmit_manual_test_results. Result-level evidence can also be uploaded\nafter a manual result has been resolved.",
       "inputSchema": {
         "properties": {
           "test_result_id": {
@@ -10761,6 +10761,21 @@
             "default": null,
             "title": "File Names"
           },
+          "attachment_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Attachment Ids"
+          },
           "status_code": {
             "anyOf": [
               {
@@ -10781,219 +10796,6 @@
       "icons": null,
       "annotations": {
         "title": "Add Test Result Attachment",
-        "readOnlyHint": false,
-        "destructiveHint": false,
-        "idempotentHint": false,
-        "openWorldHint": null
-      },
-      "_meta": {
-        "fastmcp": {
-          "tags": [
-            "launch",
-            "test-result"
-          ]
-        }
-      }
-    },
-    {
-      "name": "add_test_step_attachment",
-      "title": "Add Test Step Attachment",
-      "description": "Upload evidence to a manual attachment step inside a test result.\n\nTestOps has no step-level attachment endpoint. For an in-progress manual\nresult, Lucius uploads the file at result level and then resolves the full\nv2 execution tree once. The attachment is placed alongside the selected\naction's expected result, which is the shape used by the TestOps UI.",
-      "inputSchema": {
-        "properties": {
-          "test_result_id": {
-            "description": "Parent test result ID (required).",
-            "type": "integer"
-          },
-          "attachment": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "description": "Attachment payload using the repo-standard pattern: {name, content_type, content? | url?}.",
-            "type": "object"
-          },
-          "attachment_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Optional explicit manual step attachment ID resolved from the test result execution."
-          },
-          "step_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Optional attachment-step name to resolve within the manual test result."
-          },
-          "step_index": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Optional zero-based manual step index to resolve within the test result execution."
-          },
-          "status": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Final status for an in-progress manual result; required for manual step evidence."
-          },
-          "fixture_result_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Optional explicit fixture result ID for legacy fixture-step fallback."
-          },
-          "fixture_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Optional fixture name used only for the legacy fixture-step fallback."
-          },
-          "fixture_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Optional fixture type hint for the legacy fixture-step fallback: 'before' or 'after'."
-          },
-          "project_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Optional override for the default Project ID."
-          },
-          "output_format": {
-            "anyOf": [
-              {
-                "enum": [
-                  "plain",
-                  "json"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Output format: 'json' (default) or 'plain'."
-          }
-        },
-        "required": [
-          "test_result_id",
-          "attachment"
-        ],
-        "type": "object",
-        "additionalProperties": false
-      },
-      "execution": null,
-      "outputSchema": {
-        "properties": {
-          "target_kind": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Target Kind"
-          },
-          "target_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Target Id"
-          },
-          "file_names": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "File Names"
-          },
-          "status_code": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Status Code"
-          }
-        },
-        "type": "object",
-        "additionalProperties": false,
-        "title": "AddTestStepAttachmentOutput"
-      },
-      "icons": null,
-      "annotations": {
-        "title": "Add Test Step Attachment",
         "readOnlyHint": false,
         "destructiveHint": false,
         "idempotentHint": false,
