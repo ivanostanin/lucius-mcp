@@ -7,11 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-- `add_test_step_attachment` no longer merges the test case's steps into the patched scenario (which duplicated every expected result) and now preserves `expected_body`/`attachment` node types, existing attachment references, durations, and parameters when rebuilding the scenario, so earlier step attachments survive repeated calls.
+## [v0.16.0] - 2026-09-23
+
+### Added
+- `run_test_plan` tool that starts a launch directly from a curated test plan with optional issues, links, and tags, plus the matching `lucius test_plan run` CLI route (#410).
+- `attach_file_to_launch` tool for attaching files to existing TestOps launches through remote-safe push and shared-volume pull workflows, with streamed, bounded uploads (#411).
+- Configurable attachment upload size limit via the `ATTACHMENT_MAX_FILE_BYTES` setting, preserving the existing 10 MiB default (#407).
 
 ### Changed
-- `add_test_step_attachment` step selection now matches only the result's own execution steps: `step_name` must match a runtime step (its step or attachment text) and test-case step names are no longer selectable once a scenario exists; attachment IDs resolve anywhere in the scenario tree, including nested attachment nodes. Test-case steps that were never part of the result's submitted scenario are no longer appended to it. Rich-text step bodies (`bodyJson`) degrade to plain text while the scenario is rewritten.
+- `add_test_step_attachment` step selection now matches only the result's own execution steps: `step_name` must match a runtime step (its step or attachment text) and test-case step names are no longer selectable once a scenario exists; attachment IDs resolve anywhere in the scenario tree, including nested attachment nodes. Test-case steps that were never part of the result's submitted scenario are no longer appended to it. Rich-text step bodies (`bodyJson`) degrade to plain text while the scenario is rewritten (#412).
+
+### Fixed
+- `add_test_step_attachment` no longer merges the test case's steps into the patched scenario (which duplicated every expected result) and now preserves `expected_body`/`attachment` node types, existing attachment references, durations, and parameters when rebuilding the scenario, so earlier step attachments survive repeated calls (#412).
 
 ## [v0.15.7] - 2026-09-21
 
@@ -405,7 +412,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.7...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.0...HEAD
+[v0.16.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.7...v0.16.0
 [v0.15.7]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.6...v0.15.7
 [v0.15.6]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.5...v0.15.6
 [v0.15.5]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.4...v0.15.5
