@@ -146,14 +146,9 @@ async def test_get_test_result_downloads_fixture_evidence_when_sandbox_provides_
         pytest.skip("Sandbox did not create a fixture result for this exact test-result scenario")
     fixture_id = fixture.id
 
-    await launch_service.add_test_step_attachment(
-        test_result_id=result_id,
-        fixture_result_id=fixture_id,
-        attachment={
-            "name": "detail-fixture.txt",
-            "content_type": "text/plain",
-            "content": "U2FuZGJveCBmaXh0dXJlIGRldGFpbCBldmlkZW5jZQ==",
-        },
+    await allure_client.add_test_fixture_attachment(
+        fixture_id,
+        [("detail-fixture.txt", b"Sandbox fixture detail evidence")],
     )
     detail = await TestResultService(allure_client).get_test_result(result_id)
     fixture_attachment = next(

@@ -3,7 +3,7 @@
     "name": "add_test_result_attachment",
     "entity": "launch",
     "action": "add_test_result_attachment",
-    "description": "Upload evidence to a manual test result.\n\nArgs:\n    test_result_id: Manual test result ID. In rerun workflows, use the resolved result ID\n        returned by the latest submit_manual_test_results call.\n    attachment: Attachment payload using content or url.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Confirmation that the attachment was accepted for the result.",
+    "description": "Upload evidence to a manual test result.\n\nThe returned attachment_ids can be used as attachment_id values in\nsubmit_manual_test_results. Result-level evidence can also be uploaded\nafter a manual result has been resolved.\n\nArgs:\n    test_result_id: Manual test result ID. In rerun workflows, use the resolved result ID\n        returned by the latest submit_manual_test_results call.\n    attachment: Attachment payload using content or url.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Confirmation that the attachment was accepted for the result, including its attachment ID.",
     "input_schema": {
       "type": "object",
       "additionalProperties": false,
@@ -38,118 +38,6 @@
       ]
     },
     "example_command": "lucius launch add_test_result_attachment --args '{\"test_result_id\": 123, \"attachment\": {\"name\": \"evidence.txt\", \"content_type\": \"text/plain\", \"content\": \"QQ==\"}}'"
-  },
-  "add_test_step_attachment": {
-    "name": "add_test_step_attachment",
-    "entity": "launch",
-    "action": "add_test_step_attachment",
-    "description": "Upload evidence to a manual attachment step inside a test result.\n\nArgs:\n    test_result_id: Parent test result ID. In rerun workflows, use the completed result ID\n        returned by the latest submit_manual_test_results call.\n    attachment: Attachment payload using content or url.\n    attachment_id: Optional explicit manual step attachment ID.\n    step_name: Optional attachment-step name to resolve within the result execution.\n    step_index: Optional zero-based step index to resolve within the result execution.\n    fixture_result_id: Optional explicit fixture result ID for legacy fallback.\n    fixture_name: Optional fixture name for legacy fallback.\n    fixture_type: Optional fixture type hint ('before' or 'after') for legacy fallback.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Confirmation that the attachment was accepted for the manual step context.",
-    "input_schema": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "test_result_id": {
-          "type": "integer",
-          "description": "Parent test result ID (required)."
-        },
-        "attachment": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          },
-          "description": "Attachment payload using the repo-standard pattern: {name, content_type, content? | url?}."
-        },
-        "attachment_id": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Optional explicit manual step attachment ID resolved from the test result execution.",
-          "default": null
-        },
-        "step_name": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Optional attachment-step name to resolve within the manual test result.",
-          "default": null
-        },
-        "step_index": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Optional zero-based manual step index to resolve within the test result execution.",
-          "default": null
-        },
-        "fixture_result_id": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Optional explicit fixture result ID for legacy fixture-step fallback.",
-          "default": null
-        },
-        "fixture_name": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Optional fixture name used only for the legacy fixture-step fallback.",
-          "default": null
-        },
-        "fixture_type": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Optional fixture type hint for the legacy fixture-step fallback: 'before' or 'after'.",
-          "default": null
-        },
-        "project_id": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Optional override for the default Project ID.",
-          "default": null
-        }
-      },
-      "required": [
-        "test_result_id",
-        "attachment"
-      ]
-    },
-    "example_command": "lucius launch add_test_step_attachment --args '{\"test_result_id\": 123, \"step_name\": \"manual-step.txt\", \"attachment\": {\"name\": \"manual-step.txt\", \"content_type\": \"text/plain\", \"content\": \"QQ==\"}}'"
   },
   "assign_test_cases_to_suite": {
     "name": "assign_test_cases_to_suite",
@@ -2755,7 +2643,7 @@
     "name": "submit_manual_test_results",
     "entity": "launch",
     "action": "submit_manual_test_results",
-    "description": "Submit manual execution results for a manual session.\n\nArgs:\n    test_session_id: Manual test session ID.\n    results: Manual result payloads. Prefer `result_id` from `list_launch_test_results` for launch-managed flows.\n        The service resolves those existing results in place and returns their IDs for follow-up actions.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Resolved or created test result IDs for follow-up actions such as attachment upload.",
+    "description": "Submit manual execution results for a manual session.\n\nArgs:\n    test_session_id: Manual test session ID.\n    results: Manual result payloads. Prefer `result_id` from `list_launch_test_results` for launch-managed flows.\n        The service resolves those existing results in place and returns their IDs for follow-up actions. Evidence\n        belongs in a body's attachment child after its expected child. Attachment steps require result_id; prefer\n        attachment_id returned by add_test_result_attachment over inline base64 content.\n    project_id: Optional override for the default Project ID.\n    output_format: Output format: 'json' (default) or 'plain'.\n\nReturns:\n    Resolved or created test result IDs for follow-up actions such as attachment upload.",
     "input_schema": {
       "type": "object",
       "additionalProperties": false,
@@ -2770,7 +2658,7 @@
             "type": "object",
             "additionalProperties": true
           },
-          "description": "Manual result payloads. When an item includes result_id from list_launch_test_results, the service resolves that existing launch result in place through TestOps' test-result run controller. After rerun_test_results_manually, re-list launch results and submit against the newly visible active result for that test case. The returned result_ids are the resolved result IDs to use for follow-up attachments and reads. As a lower-level fallback, you may still provide launch_id + test_case_id + name/full_name explicitly to create a standalone manual result. Optional fields include status/start/stop/duration/message/trace/description/precondition/expected_result/steps."
+          "description": "Manual result payloads. When an item includes result_id from list_launch_test_results, the service resolves that existing launch result in place through TestOps' test-result run controller. After rerun_test_results_manually, re-list launch results and submit against the newly visible active result for that test case. The returned result_ids are the resolved result IDs to use for follow-up attachments and reads. As a lower-level fallback, you may still provide launch_id + test_case_id + name/full_name explicitly to create a standalone manual result. Optional fields include status/start/stop/duration/message/trace/description/precondition/expected_result/steps. For result_id submissions, a body step can contain expected and attachment children. Prefer attachment_id from add_test_result_attachment. An attachment by exact uploaded name is also supported; alternatively, provide {name, content_type, content|url} for Lucius to upload before the single final resolve."
         },
         "project_id": {
           "anyOf": [

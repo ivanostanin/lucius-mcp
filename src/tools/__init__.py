@@ -24,7 +24,6 @@ from src.tools.get_custom_fields import get_custom_fields
 from src.tools.get_test_case_custom_fields import get_test_case_custom_fields
 from src.tools.launches import (
     add_test_result_attachment,
-    add_test_step_attachment,
     attach_file_to_launch,
     close_launch,
     create_launch,
@@ -76,7 +75,6 @@ from src.tools.update_test_case import update_test_case
 
 __all__ = [
     "add_test_result_attachment",
-    "add_test_step_attachment",
     "assign_test_cases_to_suite",
     "attach_file_to_launch",
     "close_launch",
@@ -179,7 +177,6 @@ all_tools: list[ToolFn] = [
     upload_test_results,
     attach_file_to_launch,
     add_test_result_attachment,
-    add_test_step_attachment,
     delete_launch,
     close_launch,
     reopen_launch,

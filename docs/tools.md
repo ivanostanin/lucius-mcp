@@ -97,9 +97,8 @@ returns the resolved canonical metadata list.
 | `list_launch_test_results`   | List result-level launch data including manual flag, status, assignee, and tester. | `launch_id`, `manual_only`, `failed_only` |
 | `rerun_test_results_manually` | Schedule manual reruns for selected failed launch results.      | `launch_id`, `result_ids`, `assignees` |
 | `start_manual_test_session`  | Create a manual execution session for a launch.                 | `launch_id`, `environment` |
-| `submit_manual_test_results` | Resolve an existing launch manual result in place or submit explicit manual result updates for a session. | `test_session_id`, `results` |
-| `add_test_result_attachment` | Upload evidence to a manual test result.                        | `test_result_id`, `attachment` |
-| `add_test_step_attachment`   | Resolve an in-progress manual result with evidence attached to an action step beside its expected result. | `test_result_id`, `attachment`, `status`, `step_name` |
+| `submit_manual_test_results` | Resolve an existing launch manual result in place. A body can include expected and attachment children, so one resolve writes each step's status and evidence. | `test_session_id`, `results` |
+| `add_test_result_attachment` | Upload result evidence and return attachment IDs for manual-step evidence references. | `test_result_id`, `attachment` |
 
 When execution results are included, each compact result row's `id` is the exact Test Result ID: follow it with
 `get_test_result(test_result_id=<row.id>)` for details and the separate attachment/evidence workflow. The expanded

@@ -33,15 +33,6 @@ EXAMPLE_ARG_OVERRIDES: dict[str, dict[str, typing.Any]] = {
             "content": "QQ==",
         },
     },
-    "add_test_step_attachment": {
-        "test_result_id": 123,
-        "step_name": "manual-step.txt",
-        "attachment": {
-            "name": "manual-step.txt",
-            "content_type": "text/plain",
-            "content": "QQ==",
-        },
-    },
     "prepare_attachment_download": {
         "attachment_id": 123,
         "attachment_kind": "test_result",

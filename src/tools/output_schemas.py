@@ -935,6 +935,7 @@ class ToolOutputModel(BaseModel):
     aql_filter: str | None = Field(default=None)
     assigned_count: int | None = Field(default=None, ge=0)
     assignees: list[str] | None = Field(default=None)
+    attachment_ids: list[int] | None = Field(default=None)
     attachments: list[Attachment] | None = Field(default=None)
     autoclose: bool | None = Field(default=None)
     cfv_id: int | None = Field(default=None)

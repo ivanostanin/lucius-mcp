@@ -121,7 +121,10 @@ async def test_manual_rerun_of_automated_result_resolves_existing_test_run(
         cleanup_tracker,
         test_run_id,
         suffix="automated-rerun",
-        steps=[{"action": "Retry app", "expected": "App opens after rerun"}],
+        steps=[
+            {"action": "Retry app", "expected": "App opens after rerun"},
+            {"action": "Confirm state", "expected": "State is restored"},
+        ],
     )
 
     automated_result = await allure_client.create_test_result(
@@ -158,10 +161,8 @@ async def test_manual_rerun_of_automated_result_resolves_existing_test_run(
     rerun_session = await launch_service.start_manual_test_session(launch.id)
     assert rerun_session.test_session_id > 0
 
-    step_attachment = await launch_service.add_test_step_attachment(
-        test_result_id=active_rerun_result.result_id,
-        step_index=0,
-        status="passed",
+    step_attachment = await launch_service.add_test_result_attachment(
+        active_rerun_result.result_id,
         attachment={
             "name": "active-manual-step.png",
             "content_type": "image/png",
@@ -170,15 +171,75 @@ async def test_manual_rerun_of_automated_result_resolves_existing_test_run(
             ),
         },
     )
-    assert step_attachment.target_kind == "test_step"
+    assert step_attachment.attachment_ids
+    second_step_attachment = await launch_service.add_test_result_attachment(
+        active_rerun_result.result_id,
+        attachment={
+            "name": "active-manual-step-02.png",
+            "content_type": "image/png",
+            "content": (
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL6xQAAAABJRU5ErkJggg=="
+            ),
+        },
+    )
+    assert second_step_attachment.attachment_ids
+
+    submission = await launch_service.submit_manual_test_results(
+        rerun_session.test_session_id,
+        results=[
+            {
+                "result_id": active_rerun_result.result_id,
+                "status": "passed",
+                "steps": [
+                    {
+                        "type": "body",
+                        "body": "Retry app",
+                        "status": "passed",
+                        "steps": [
+                            {
+                                "type": "expected",
+                                "body": "App opens after rerun",
+                                "status": "passed",
+                            },
+                            {
+                                "type": "attachment",
+                                "status": "passed",
+                                "attachment_id": step_attachment.attachment_ids[0],
+                            },
+                        ],
+                    },
+                    {
+                        "type": "body",
+                        "body": "Confirm state",
+                        "status": "passed",
+                        "steps": [
+                            {
+                                "type": "expected",
+                                "body": "State is restored",
+                                "status": "passed",
+                            },
+                            {
+                                "type": "attachment",
+                                "status": "passed",
+                                "attachment_id": second_step_attachment.attachment_ids[0],
+                            },
+                        ],
+                    },
+                ],
+            }
+        ],
+    )
+    assert submission.result_ids == [active_rerun_result.result_id]
 
     execution_after_attachment = await allure_client.get_test_result_execution_raw(
         active_rerun_result.result_id,
         v2=True,
     )
-    attachment_step = execution_after_attachment["steps"][0]["expectedResultSteps"][-1]
-    assert attachment_step["type"] == "attachment"
-    assert attachment_step["attachmentId"] == step_attachment.target_id
+    first_attachment_step = execution_after_attachment["steps"][0]["expectedResultSteps"][-1]
+    second_attachment_step = execution_after_attachment["steps"][1]["expectedResultSteps"][-1]
+    assert first_attachment_step["type"] == second_attachment_step["type"] == "attachment"
+    assert first_attachment_step["attachmentId"] == step_attachment.attachment_ids[0]
+    assert second_attachment_step["attachmentId"] == second_step_attachment.attachment_ids[0]
 
     rerun_result = await allure_client.get_test_result(active_rerun_result.result_id)
     assert rerun_result.manual is True
