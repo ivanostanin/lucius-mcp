@@ -13,6 +13,7 @@ from src.services.launch_service import LaunchUnavailableSection
 from src.tools.launches import (
     _launch_detail_payload,
     add_test_result_attachment,
+    add_test_step_attachment,
     close_launch,
     create_launch,
     delete_launch,
@@ -515,6 +516,50 @@ async def test_submit_manual_test_results_and_attachment_outputs() -> None:
 
                 assert "Result IDs: 101" in submit_output
                 assert "HTTP status: 202" in attachment_output
+
+
+@pytest.mark.asyncio
+async def test_add_test_step_attachment_passes_final_status_to_service() -> None:
+    with patch("src.tools.launches.resolve_auth_settings", return_value=_resolved_auth()):
+        with patch("src.tools.launches.AllureClient") as mock_client_cls:
+            mock_client = _mock_url_context()
+            mock_client_cls.return_value.__aenter__.return_value = mock_client
+
+            with patch("src.tools.launches.LaunchService") as mock_service_cls:
+                mock_service = mock_service_cls.return_value
+                mock_service.add_test_step_attachment = AsyncMock(
+                    return_value=type(
+                        "AttachmentUploadResult",
+                        (),
+                        {
+                            "target_kind": "test_step",
+                            "target_id": 701,
+                            "file_names": ["evidence.png"],
+                            "status_code": 200,
+                        },
+                    )
+                )
+
+                output = await add_test_step_attachment(
+                    test_result_id=101,
+                    step_index=0,
+                    status="passed",
+                    attachment={"name": "evidence.png", "content_type": "image/png", "content": "QQ=="},
+                    output_format="plain",
+                )
+
+    assert "HTTP status: 200" in output
+    mock_service.add_test_step_attachment.assert_awaited_once_with(
+        test_result_id=101,
+        attachment={"name": "evidence.png", "content_type": "image/png", "content": "QQ=="},
+        attachment_id=None,
+        step_name=None,
+        step_index=0,
+        status="passed",
+        fixture_result_id=None,
+        fixture_name=None,
+        fixture_type=None,
+    )
 
 
 @pytest.mark.asyncio

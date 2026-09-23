@@ -431,7 +431,10 @@ class TestResultService:
             value = _unwrap_one_of(value)
             attachment = _value(value, "attachment")
             nested = self._map_steps(
-                _value(value, "steps"),
+                (
+                    *_sequence(_value(value, "expected_result_steps")),
+                    *_sequence(_value(value, "steps")),
+                ),
                 fixture=fixture,
                 test_result_id=test_result_id,
                 test_case_id=test_case_id,

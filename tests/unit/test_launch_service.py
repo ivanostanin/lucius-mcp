@@ -33,7 +33,6 @@ from src.client.generated.models.test_result_body_step_dto import TestResultBody
 from src.client.generated.models.test_result_dto import TestResultDto
 from src.client.generated.models.test_result_flat_dto import TestResultFlatDto
 from src.client.generated.models.test_result_row_dto import TestResultRowDto
-from src.client.generated.models.test_result_scenario_step_dto import TestResultScenarioStepDto
 from src.client.generated.models.test_result_scenario_v2_dto import TestResultScenarioV2Dto
 from src.client.generated.models.test_result_scenario_v2_dto_steps_inner import TestResultScenarioV2DtoStepsInner
 from src.client.generated.models.test_session_response_dto import TestSessionResponseDto
@@ -1116,7 +1115,6 @@ async def test_submit_manual_test_results_maps_nested_steps(service: LaunchServi
         id=91,
         name="Manual login test",
         test_case_id=91,
-        status="passed",
     )
 
     result = await service.submit_manual_test_results(
@@ -1495,7 +1493,8 @@ async def test_add_test_step_attachment_resolves_manual_attachment_step_by_name(
     mock_client.get_test_result_execution_raw.return_value = {
         "steps": [
             {
-                "name": "manual-step.txt",
+                "type": "body",
+                "body": "manual-step.txt",
                 "status": "failed",
             }
         ]
@@ -1507,6 +1506,7 @@ async def test_add_test_step_attachment_resolves_manual_attachment_step_by_name(
     result = await service.add_test_step_attachment(
         test_result_id=55,
         step_name="manual-step.txt",
+        status="passed",
         attachment={
             "name": "manual-step.txt",
             "content_type": "text/plain",
@@ -1516,8 +1516,29 @@ async def test_add_test_step_attachment_resolves_manual_attachment_step_by_name(
 
     assert result.target_id == 701
     mock_client.create_test_result_attachments.assert_awaited_once_with(55, [("manual-step.txt", b"A")])
-    mock_client.patch_test_result.assert_awaited_once()
+    mock_client.resolve_test_result.assert_awaited_once()
+    payload = mock_client.resolve_test_result.await_args.args[1]
+    assert payload["status"] == "passed"
+    assert payload["execution"]["steps"][0]["expectedResultSteps"][-1]["attachmentId"] == 701
+    mock_client.patch_test_result.assert_not_awaited()
     mock_client.add_test_fixture_attachment.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_add_test_step_attachment_rejects_completed_result_before_upload(
+    service: LaunchService, mock_client: MagicMock
+) -> None:
+    mock_client.get_test_result.return_value = TestResultDto(id=55, status="passed")
+
+    with pytest.raises(AllureValidationError, match="already resolved"):
+        await service.add_test_step_attachment(
+            test_result_id=55,
+            step_index=0,
+            status="passed",
+            attachment={"name": "evidence.png", "content_type": "image/png", "content": "QQ=="},
+        )
+
+    mock_client.create_test_result_attachments.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -1539,6 +1560,7 @@ async def test_add_test_step_attachment_requires_unambiguous_manual_step_selecti
     with pytest.raises(AllureValidationError, match="Attachment step selection is ambiguous"):
         await service.add_test_step_attachment(
             test_result_id=55,
+            status="passed",
             attachment={
                 "name": "evidence.txt",
                 "content_type": "text/plain",
@@ -1568,6 +1590,7 @@ async def test_add_test_step_attachment_rejects_template_only_step_name(
         await service.add_test_step_attachment(
             test_result_id=55,
             step_name="Open app",
+            status="passed",
             attachment={
                 "name": "evidence.txt",
                 "content_type": "text/plain",
@@ -1577,7 +1600,7 @@ async def test_add_test_step_attachment_rejects_template_only_step_name(
 
 
 @pytest.mark.asyncio
-async def test_add_test_step_attachment_patch_preserves_scenario_node_types(
+async def test_add_test_step_attachment_resolve_preserves_execution_tree_and_expected_result_children(
     service: LaunchService, mock_client: MagicMock
 ) -> None:
     """The scenario PATCH round-trips node types and existing attachment references."""
@@ -1593,7 +1616,7 @@ async def test_add_test_step_attachment_patch_preserves_scenario_node_types(
                 "type": "body",
                 "body": "Observe the login form",
                 "status": "passed",
-                "steps": [
+                "expectedResultSteps": [
                     {"type": "expected_body", "body": "No language picker is displayed", "status": "passed"},
                     {
                         "type": "attachment",
@@ -1611,6 +1634,7 @@ async def test_add_test_step_attachment_patch_preserves_scenario_node_types(
     result = await service.add_test_step_attachment(
         test_result_id=55,
         step_index=0,
+        status="passed",
         attachment={
             "name": "step-02.png",
             "content_type": "image/png",
@@ -1619,16 +1643,19 @@ async def test_add_test_step_attachment_patch_preserves_scenario_node_types(
     )
 
     assert result.target_id == 2873029
-    mock_client.patch_test_result.assert_awaited_once()
-    patch_dto = mock_client.patch_test_result.await_args.args[1]
-    payload = patch_dto.to_dict()
-    step_payload = payload["scenario"]["steps"][0]
+    mock_client.resolve_test_result.assert_awaited_once()
+    payload = mock_client.resolve_test_result.await_args.args[1]
+    step_payload = payload["execution"]["steps"][0]
     assert step_payload["type"] == "body"
-    assert step_payload["steps"][0]["type"] == "expected_body"
-    assert step_payload["steps"][1]["type"] == "attachment"
-    assert step_payload["steps"][1]["attachments"][0]["id"] == 2873028
-    assert [row["id"] for row in step_payload["attachments"]] == [2873029]
-    assert "expectedResult" not in step_payload
+    assert step_payload["expectedResultSteps"][0]["type"] == "expected_body"
+    assert step_payload["expectedResultSteps"][1]["type"] == "attachment"
+    assert step_payload["expectedResultSteps"][1]["attachmentId"] == 2873028
+    new_attachment = step_payload["expectedResultSteps"][2]
+    assert new_attachment["type"] == "attachment"
+    assert new_attachment["attachmentId"] == 2873029
+    assert new_attachment["attachment"]["id"] == 2873029
+    assert "attachments" not in step_payload
+    mock_client.patch_test_result.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -1648,7 +1675,7 @@ async def test_add_test_step_attachment_selects_nested_attachment_step_by_id(
                 "type": "body",
                 "body": "Observe the login form",
                 "status": "passed",
-                "steps": [
+                "expectedResultSteps": [
                     {
                         "type": "attachment",
                         "attachment": {"id": 701, "name": "step-01.png", "contentType": "image/png"},
@@ -1665,6 +1692,7 @@ async def test_add_test_step_attachment_selects_nested_attachment_step_by_id(
     result = await service.add_test_step_attachment(
         test_result_id=55,
         attachment_id=701,
+        status="passed",
         attachment={
             "name": "step-02.png",
             "content_type": "image/png",
@@ -1673,29 +1701,11 @@ async def test_add_test_step_attachment_selects_nested_attachment_step_by_id(
     )
 
     assert result.target_id == 702
-    mock_client.patch_test_result.assert_awaited_once()
-    patch_dto = mock_client.patch_test_result.await_args.args[1]
-    step_payload = patch_dto.to_dict()["scenario"]["steps"][0]
-    nested_attachment = step_payload["steps"][0]
-    assert nested_attachment["type"] == "attachment"
-    assert [row["id"] for row in nested_attachment["attachments"]] == [701, 702]
-    assert "attachments" not in step_payload
-
-
-@pytest.mark.asyncio
-async def test_collect_raw_step_attachments_deduplicates_shared_references(service: LaunchService) -> None:
-    """A node carrying the same reference in several shapes yields it once."""
-    collected = service._collect_raw_step_attachments(
-        {
-            "type": "attachment",
-            "attachments": [{"id": 701, "name": "step-01.png"}],
-            "attachment": {"id": 701, "name": "step-01.png", "contentType": "image/png"},
-            "attachmentId": 701,
-        }
-    )
-
-    assert collected is not None
-    assert [attachment.actual_instance.id for attachment in collected] == [701]
+    mock_client.resolve_test_result.assert_awaited_once()
+    payload = mock_client.resolve_test_result.await_args.args[1]
+    expected_result_steps = payload["execution"]["steps"][0]["expectedResultSteps"]
+    assert [step["attachmentId"] for step in expected_result_steps] == [701, 702]
+    mock_client.patch_test_result.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -1730,6 +1740,7 @@ async def test_add_test_step_attachment_maps_missing_attachment_slot(
         await service.add_test_step_attachment(
             test_result_id=55,
             step_index=1,
+            status="passed",
             attachment={
                 "name": "manual-step.txt",
                 "content_type": "text/plain",
@@ -1793,238 +1804,103 @@ async def test_add_test_step_attachment_rejects_invalid_fixture_type(service: La
 
 
 @pytest.mark.asyncio
-async def test_build_manual_step_attachment_patch_scenario_round_trips_execution_steps(
+async def test_build_manual_step_attachment_resolve_payload_preserves_full_v2_tree(
     service: LaunchService,
     mock_client: MagicMock,
 ) -> None:
-    """The patch is rebuilt from the result's own steps, not the test case template."""
-    test_result = TestResultDto(
-        id=55,
-        name="Manual Result",
-        full_name="Manual Result",
-        test_case_id=901,
-    )
+    test_result = TestResultDto(id=55, status="failed", start=1000, stop=2500, duration=1500)
     mock_client.get_test_result_execution_raw.return_value = {
+        "showMessage": False,
         "steps": [
             {
                 "type": "body",
-                "body": "Select the tenant ID / email+password login option",
-                "status": "failed",
-                "duration": 1500,
-                "showMessage": True,
-                "parameters": [{"name": "browser", "value": "chromium"}],
-                "steps": [
-                    {
-                        "type": "expected_body",
-                        "body": "The email/password login form is displayed",
-                        "status": "passed",
-                    },
+                "body": "Select tenant",
+                "bodyJson": {"type": "doc", "content": []},
+                "expectedResultSteps": [
+                    {"type": "expected_body", "body": "Login form", "steps": [], "status": "passed"},
                     {
                         "type": "attachment",
-                        "attachment": {
-                            "id": 701,
-                            "name": "step-01.png",
-                            "contentType": "image/png",
-                            "entity": "test_result",
-                        },
+                        "attachment": {"id": 701, "name": "step-01.png", "entity": "test_result"},
                         "attachmentId": 701,
-                        "status": None,
+                        "status": "skipped",
+                        "steps": [],
                     },
                 ],
+                "steps": [{"type": "body", "body": "Nested action", "steps": []}],
+                "status": "failed",
+                "start": 1000,
+                "stop": 2500,
+                "duration": 1500,
             }
-        ]
+        ],
     }
-    mock_client.get_test_case_scenario.return_value = TestCaseScenarioV2Dto(steps=[_scenario_body_step("Open app")])
 
-    scenario = await service._build_manual_step_attachment_patch_scenario(
+    payload = await service._build_manual_step_attachment_resolve_payload(
         test_result=test_result,
-        attachment_row=TestResultAttachmentRowDto.model_construct(
-            entity="test_result",
-            id=702,
-            name="step-02.png",
-        ),
+        attachment_row=TestResultAttachmentRowDto.model_construct(entity="test_result", id=702, name="step-02.png"),
         attachment_id=None,
         step_name=None,
         step_index=0,
+        status="failed",
     )
 
-    # The test case template must not be merged over the result's own steps.
-    mock_client.get_test_case_scenario.assert_not_awaited()
-
-    assert scenario.steps is not None
-    assert len(scenario.steps) == 1
-    top_step = scenario.steps[0]
-    assert top_step.name == "Select the tenant ID / email+password login option"
-    assert top_step.status is not None and top_step.status.value == "failed"
-    assert top_step.expected_result is None
-    assert top_step.attachments is not None
-    assert [attachment.actual_instance.id for attachment in top_step.attachments] == [702]
-
-    assert top_step.steps is not None
-    expected_child, attachment_child = top_step.steps
-    assert expected_child.name == "The email/password login form is displayed"
-    assert attachment_child.name == "step-01.png"
-    assert attachment_child.attachments is not None
-    assert [attachment.actual_instance.id for attachment in attachment_child.attachments] == [701]
-
-    # The serialized patch must preserve node types so the server keeps
-    # expected_body/attachment nodes instead of flattening them to body steps.
-    payload = scenario.to_dict()
-    top_payload = payload["steps"][0]
-    assert top_payload["type"] == "body"
-    assert top_payload["body"] == "Select the tenant ID / email+password login option"
-    assert top_payload["duration"] == 1500
-    assert top_payload["showMessage"] is True
-    assert top_payload["parameters"] == [{"name": "browser", "value": "chromium"}]
-    assert top_payload["steps"][0]["type"] == "expected_body"
-    attachment_payload = top_payload["steps"][1]
-    assert attachment_payload["type"] == "attachment"
-    assert attachment_payload["attachments"][0]["id"] == 701
-    assert "expectedResult" not in top_payload
+    assert payload["status"] == "failed"
+    assert payload["start"] == 1000
+    assert payload["stop"] == 2500
+    execution = payload["execution"]
+    assert isinstance(execution, dict)
+    assert execution["showMessage"] is False
+    step = execution["steps"][0]
+    assert step["bodyJson"] == {"type": "doc", "content": []}
+    assert step["steps"] == [{"type": "body", "body": "Nested action", "steps": []}]
+    expected_result_steps = step["expectedResultSteps"]
+    assert [node["type"] for node in expected_result_steps] == [
+        "expected_body",
+        "attachment",
+        "attachment",
+    ]
+    assert expected_result_steps[1]["attachmentId"] == 701
+    assert expected_result_steps[2]["attachmentId"] == 702
+    assert expected_result_steps[2]["attachment"]["id"] == 702
+    assert "attachments" not in step
 
 
-@pytest.mark.asyncio
-async def test_build_patchable_manual_result_steps_returns_template_when_runtime_steps_are_empty(
-    service: LaunchService,
-    mock_client: MagicMock,
-) -> None:
-    mock_client.get_test_result_execution_raw.return_value = {"steps": []}
-    mock_client.get_test_case_scenario.return_value = TestCaseScenarioV2Dto(
-        steps=[_scenario_body_step("Only template")]
-    )
-
-    steps = await service._build_patchable_manual_result_steps(TestResultDto(id=55, test_case_id=901))
-
-    assert len(steps) == 1
-    assert steps[0].name == "Only template"
-
-
-def test_select_manual_patch_step_supports_attachment_id_name_index_and_default(service: LaunchService) -> None:
-    first_attachment = TestResultAttachmentRowDto.model_construct(entity="test_result", id=701, name="First evidence")
-    second_attachment = TestResultAttachmentRowDto.model_construct(entity="test_result", id=702, name="Second evidence")
-    first_step = TestResultScenarioStepDto.model_construct(
-        name="Capture first evidence",
-        attachments=[TestResultAttachmentStepDtoAllOfAttachment.model_construct(actual_instance=first_attachment)],
-    )
-    second_step = TestResultScenarioStepDto.model_construct(
-        name="Capture second evidence",
-        attachments=[TestResultAttachmentStepDtoAllOfAttachment.model_construct(actual_instance=second_attachment)],
-    )
+def test_select_manual_execution_body_validates_attachment_and_body_targets(service: LaunchService) -> None:
+    steps = [
+        {
+            "type": "body",
+            "body": "Capture evidence",
+            "expectedResultSteps": [
+                {
+                    "type": "attachment",
+                    "attachment": {"id": 701, "name": "first.png"},
+                    "attachmentId": 701,
+                    "steps": [],
+                }
+            ],
+            "steps": [],
+        }
+    ]
 
     assert (
-        service._select_manual_patch_step(
-            [first_step, second_step],
-            test_result_id=55,
-            attachment_id=701,
-            step_name=None,
-            step_index=None,
+        service._select_manual_execution_body(
+            steps, test_result_id=55, attachment_id=701, step_name=None, step_index=None
         )
-        is first_step
+        is steps[0]
     )
     assert (
-        service._select_manual_patch_step(
-            [first_step, second_step],
-            test_result_id=55,
-            attachment_id=None,
-            step_name="Capture second evidence",
-            step_index=None,
+        service._select_manual_execution_body(
+            steps, test_result_id=55, attachment_id=None, step_name="Capture evidence", step_index=None
         )
-        is second_step
+        is steps[0]
     )
-    assert (
-        service._select_manual_patch_step(
-            [first_step, second_step],
-            test_result_id=55,
-            attachment_id=None,
-            step_name=None,
-            step_index=0,
-        )
-        is first_step
-    )
-    assert (
-        service._select_manual_patch_step(
-            [first_step],
-            test_result_id=55,
-            attachment_id=None,
-            step_name=None,
-            step_index=None,
-        )
-        is first_step
-    )
-
-
-def test_select_manual_patch_step_validation_errors(service: LaunchService) -> None:
-    first_attachment = TestResultAttachmentRowDto.model_construct(entity="test_result", id=701, name="Shared evidence")
-    duplicate_attachment = TestResultAttachmentRowDto.model_construct(
-        entity="test_result", id=701, name="Shared evidence"
-    )
-    shared_name_step = TestResultScenarioStepDto.model_construct(
-        name="Shared name",
-        attachments=[TestResultAttachmentStepDtoAllOfAttachment.model_construct(actual_instance=first_attachment)],
-    )
-    duplicate_id_step = TestResultScenarioStepDto.model_construct(
-        name="Other step",
-        attachments=[TestResultAttachmentStepDtoAllOfAttachment.model_construct(actual_instance=duplicate_attachment)],
-    )
-    duplicate_name_step = TestResultScenarioStepDto.model_construct(
-        name="Shared name",
-        attachments=[TestResultAttachmentStepDtoAllOfAttachment.model_construct(actual_instance=duplicate_attachment)],
-    )
-
     with pytest.raises(AllureNotFoundError, match="Attachment step ID 999 not found"):
-        service._select_manual_patch_step(
-            [shared_name_step],
-            test_result_id=55,
-            attachment_id=999,
-            step_name=None,
-            step_index=None,
+        service._select_manual_execution_body(
+            steps, test_result_id=55, attachment_id=999, step_name=None, step_index=None
         )
-
-    with pytest.raises(
-        AllureValidationError, match=r"Attachment step selection is ambiguous\. Provide step_name or step_index\."
-    ):
-        service._select_manual_patch_step(
-            [shared_name_step, duplicate_id_step],
-            test_result_id=55,
-            attachment_id=701,
-            step_name=None,
-            step_index=None,
-        )
-
     with pytest.raises(AllureValidationError, match="step_index must be a non-negative integer"):
-        service._select_manual_patch_step(
-            [shared_name_step],
-            test_result_id=55,
-            attachment_id=None,
-            step_name=None,
-            step_index=-1,
-        )
-
-    with pytest.raises(AllureNotFoundError, match="No step named 'Missing' found"):
-        service._select_manual_patch_step(
-            [shared_name_step],
-            test_result_id=55,
-            attachment_id=None,
-            step_name="Missing",
-            step_index=None,
-        )
-
-    with pytest.raises(AllureValidationError, match=r"Provide attachment_id or step_index\."):
-        service._select_manual_patch_step(
-            [shared_name_step, duplicate_name_step],
-            test_result_id=55,
-            attachment_id=None,
-            step_name="Shared name",
-            step_index=None,
-        )
-
-    with pytest.raises(AllureNotFoundError, match="has no manual scenario steps"):
-        service._select_manual_patch_step(
-            [],
-            test_result_id=55,
-            attachment_id=None,
-            step_name=None,
-            step_index=None,
+        service._select_manual_execution_body(
+            steps, test_result_id=55, attachment_id=None, step_name=None, step_index=-1
         )
 
 

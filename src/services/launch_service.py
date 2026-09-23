@@ -7,6 +7,7 @@ import ipaddress
 import json
 import uuid
 from collections.abc import Sequence
+from copy import deepcopy
 from dataclasses import asdict, dataclass, is_dataclass
 from datetime import datetime, timezone
 from typing import Any, Literal, TypeAlias, cast
@@ -39,19 +40,14 @@ from src.client.generated.models.page_launch_dto import PageLaunchDto
 from src.client.generated.models.page_launch_preview_dto import PageLaunchPreviewDto
 from src.client.generated.models.page_test_result_flat_dto import PageTestResultFlatDto
 from src.client.generated.models.session_variable import SessionVariable
-from src.client.generated.models.shared_step_scenario_dto_steps_inner import SharedStepScenarioDtoStepsInner
 from src.client.generated.models.test_case_scenario_v2_dto import TestCaseScenarioV2Dto
 from src.client.generated.models.test_fixture_result_v2_dto import TestFixtureResultV2Dto
 from src.client.generated.models.test_result_attachment_row_dto import TestResultAttachmentRowDto
 from src.client.generated.models.test_result_attachment_step_dto import TestResultAttachmentStepDto
-from src.client.generated.models.test_result_attachment_step_dto_all_of_attachment import (
-    TestResultAttachmentStepDtoAllOfAttachment,
-)
 from src.client.generated.models.test_result_bulk_rerun_dto import TestResultBulkRerunDto
 from src.client.generated.models.test_result_create_v2_dto import TestResultCreateV2Dto
 from src.client.generated.models.test_result_dto import TestResultDto
 from src.client.generated.models.test_result_flat_dto import TestResultFlatDto
-from src.client.generated.models.test_result_parameter_dto import TestResultParameterDto
 from src.client.generated.models.test_result_patch_dto import TestResultPatchDto
 from src.client.generated.models.test_result_row_dto import TestResultRowDto
 from src.client.generated.models.test_result_scenario_dto import TestResultScenarioDto
@@ -89,26 +85,6 @@ ATTACHMENT_DOWNLOAD_TIMEOUT_SECONDS = 10.0
 ALLOWED_ATTACHMENT_URL_SCHEMES = frozenset({"http", "https"})
 BLOCKED_ATTACHMENT_HOSTNAMES = frozenset({"localhost"})
 BLOCKED_ATTACHMENT_HOST_SUFFIXES = (".localhost", ".local")
-
-# Node types the scenario PATCH endpoint accepts on each step. Anything else
-# from a v2 execution read-back degrades to a plain named step, as before.
-_PATCH_STEP_NODE_TYPES = frozenset({"body", "expected_body", "attachment"})
-
-
-class _PatchScenarioStepDto(TestResultScenarioStepDto):
-    """Scenario step for PATCH payloads that round-trips v2 execution nodes.
-
-    The generated ``TestResultScenarioStepDto`` has no ``type`` or ``body``
-    fields, so rebuilding a scenario used to flatten ``expected_body`` and
-    ``attachment`` nodes into plain named steps. Traced against a live
-    TestOps 25.4.1 instance, the PATCH endpoint accepts both keys even though
-    the generated spec does not document them, so carrying them through keeps
-    the submitted scenario intact. Rich-text ``bodyJson`` markup has no patch
-    representation and degrades to plain text.
-    """
-
-    type: str | None = None
-    body: str | None = None
 
 
 def _launch_value(value: object, name: str) -> object | None:
@@ -1311,20 +1287,18 @@ class LaunchService:
         attachment_id: int | None = None,
         step_name: str | None = None,
         step_index: int | None = None,
+        status: str | None = None,
         fixture_result_id: int | None = None,
         fixture_name: str | None = None,
         fixture_type: Literal["before", "after"] | None = None,
     ) -> AttachmentUploadResult:
         """Upload one attachment to a manual attachment step or explicit fixture fallback.
 
-        TestOps exposes no step-level attachment endpoint, so the manual path
-        uploads the file at result level and rewrites the result's scenario
-        from its current execution steps, appending the attachment row to the
-        selected step. Node types and existing attachment references are
-        preserved so repeated calls do not degrade earlier attachments. Step
-        selection matches the result's own execution steps (runtime step or
-        attachment text, or an attachment ID anywhere in the scenario tree);
-        test-case step names are not selectable once a scenario exists.
+        TestOps exposes no step-level attachment endpoint. The manual path
+        uploads the file at result level and resolves the in-progress result
+        once with its complete v2 execution tree. Evidence is appended to the
+        selected action body's ``expectedResultSteps`` as an attachment node,
+        matching the TestOps UI. ``status`` is required for that final resolve.
         """
         self._validate_positive_id(test_result_id, "Test Result ID")
         has_manual_selector = attachment_id is not None or step_name is not None or step_index is not None
@@ -1335,7 +1309,6 @@ class LaunchService:
                 "or fixture selectors (fixture_result_id, fixture_name, fixture_type), not both."
             )
 
-        attachment_name, _content_type = self._normalize_attachment_metadata(attachment)
         file_entry = await self._prepare_attachment_file(attachment)
 
         if has_fixture_selector:
@@ -1364,23 +1337,39 @@ class LaunchService:
 
         try:
             test_result = await self._get_test_result_or_raise(test_result_id)
+            resolve_status = self._manual_attachment_resolve_status(test_result, status)
+            raw_execution = await self._get_test_result_execution_raw_or_raise(test_result_id, v2=True)
+            raw_steps = raw_execution.get("steps")
+            if not isinstance(raw_steps, list):
+                raise AllureNotFoundError(
+                    f"Test result ID {test_result_id} has no manual scenario steps. "
+                    "Submit step data first or use explicit fixture selectors."
+                )
+            manual_steps = [step for step in raw_steps if isinstance(step, dict)]
+            if not manual_steps:
+                raise AllureNotFoundError(
+                    f"Test result ID {test_result_id} has no manual scenario steps. "
+                    "Submit step data first or use explicit fixture selectors."
+                )
+            self._select_manual_execution_body(
+                manual_steps,
+                test_result_id=test_result_id,
+                attachment_id=attachment_id,
+                step_name=step_name,
+                step_index=step_index,
+            )
             uploaded_rows = await self._client.create_test_result_attachments(test_result_id, [file_entry])
             uploaded_row = self._select_uploaded_attachment_row(uploaded_rows)
-            patch_scenario = await self._build_manual_step_attachment_patch_scenario(
+            resolve_payload = await self._build_manual_step_attachment_resolve_payload(
                 test_result=test_result,
                 attachment_row=uploaded_row,
                 attachment_id=attachment_id,
                 step_name=step_name,
                 step_index=step_index,
+                status=resolve_status,
+                raw_execution=raw_execution,
             )
-            await self._client.patch_test_result(
-                test_result_id,
-                TestResultPatchDto(
-                    name=test_result.name or attachment_name,
-                    full_name=test_result.full_name,
-                    scenario=patch_scenario,
-                ),
-            )
+            await self._client.resolve_test_result(test_result_id, resolve_payload)
         except AllureNotFoundError as exc:
             raise AllureNotFoundError(
                 f"Test result ID {test_result_id} not found"
@@ -2665,7 +2654,7 @@ class LaunchService:
             )
         return matching_ids[0]
 
-    async def _build_manual_step_attachment_patch_scenario(
+    async def _build_manual_step_attachment_resolve_payload(
         self,
         *,
         test_result: TestResultDto,
@@ -2673,56 +2662,63 @@ class LaunchService:
         attachment_id: int | None,
         step_name: str | None,
         step_index: int | None,
-    ) -> TestResultScenarioDto:
-        steps = await self._build_patchable_manual_result_steps(test_result)
-        target_step = self._select_manual_patch_step(
+        status: str,
+        raw_execution: dict[str, object] | None = None,
+    ) -> dict[str, object]:
+        """Build the UI-equivalent v2 resolve request for manual evidence."""
+        test_result_id = test_result.id
+        if not isinstance(test_result_id, int) or test_result_id <= 0:
+            raise AllureAPIError("Manual test result is missing an ID")
+
+        if raw_execution is None:
+            raw_execution = await self._get_test_result_execution_raw_or_raise(test_result_id, v2=True)
+        execution = deepcopy(raw_execution)
+        raw_steps = execution.get("steps")
+        if not isinstance(raw_steps, list):
+            raise AllureNotFoundError(
+                f"Test result ID {test_result_id} has no manual scenario steps. "
+                "Submit step data first or use explicit fixture selectors."
+            )
+        steps = [step for step in raw_steps if isinstance(step, dict)]
+        if not steps:
+            raise AllureNotFoundError(
+                f"Test result ID {test_result_id} has no manual scenario steps. "
+                "Submit step data first or use explicit fixture selectors."
+            )
+
+        target_body = self._select_manual_execution_body(
             steps,
-            test_result_id=test_result.id or 0,
+            test_result_id=test_result_id,
             attachment_id=attachment_id,
             step_name=step_name,
             step_index=step_index,
         )
-        current_attachments = list(target_step.attachments or [])
-        current_attachments.append(TestResultAttachmentStepDtoAllOfAttachment(actual_instance=attachment_row))
-        target_step.attachments = current_attachments
-        return TestResultScenarioDto(steps=steps)
+        expected_result_steps = target_body.setdefault("expectedResultSteps", [])
+        if not isinstance(expected_result_steps, list):
+            raise AllureAPIError("Manual execution body has malformed expectedResultSteps")
+        expected_result_steps.append(self._attachment_execution_node(attachment_row))
 
-    async def _build_patchable_manual_result_steps(self, test_result: TestResultDto) -> list[TestResultScenarioStepDto]:
-        """Rebuild the patch steps from the result's own execution scenario.
+        execution["status"] = status
+        payload: dict[str, object] = {"status": status, "execution": execution}
+        for field_name in ("start", "stop", "duration", "message", "trace"):
+            value = getattr(test_result, field_name)
+            if value is not None:
+                payload[field_name] = value
+        return payload
 
-        The result's own scenario is what the caller submitted, so it is
-        authoritative: merging the test case's steps over it duplicated
-        expected results and renamed runtime steps. The test case scenario is
-        only used as a scaffold when the result has no execution steps yet.
-        """
-        raw_execution = await self._get_test_result_execution_raw_or_raise(test_result.id or 0, v2=True)
-        raw_steps = raw_execution.get("steps")
-        execution_steps = (
-            [self._patch_step_from_raw_execution_step(step) for step in raw_steps if isinstance(step, dict)]
-            if isinstance(raw_steps, list)
-            else []
-        )
-
-        if execution_steps:
-            return execution_steps
-
-        if isinstance(test_result.test_case_id, int) and test_result.test_case_id > 0:
-            scenario = await self._get_test_case_scenario_or_raise(test_result.test_case_id)
-            return [self._patch_step_from_test_case_step(step) for step in scenario.steps or []]
-        return []
-
-    def _select_manual_patch_step(  # noqa: C901
+    def _select_manual_execution_body(  # noqa: C901
         self,
-        steps: list[TestResultScenarioStepDto],
+        steps: list[dict[str, object]],
         *,
         test_result_id: int,
         attachment_id: int | None,
         step_name: str | None,
         step_index: int | None,
-    ) -> TestResultScenarioStepDto:
+    ) -> dict[str, object]:
+        """Select the body that owns a manual step's expected-result children."""
         if attachment_id is not None:
             self._validate_positive_id(attachment_id, "Attachment ID")
-            matches = self._collect_steps_referencing_attachment(steps, attachment_id)
+            matches = self._find_execution_body_attachment_parents(steps, attachment_id)
             if not matches:
                 raise AllureNotFoundError(
                     f"Attachment step ID {attachment_id} not found in test result ID {test_result_id}"
@@ -2738,11 +2734,11 @@ class LaunchService:
                 raise AllureValidationError(
                     f"step_index {step_index} is out of range for test result ID {test_result_id}"
                 )
-            return steps[step_index]
+            return self._require_execution_body(steps[step_index], test_result_id=test_result_id)
 
         if step_name is not None:
             normalized_step_name = self._normalize_text(step_name, field_name="step_name")
-            matches = [step for step in steps if step.name == normalized_step_name]
+            matches = [step for step in steps if self._execution_step_name(step) == normalized_step_name]
             if not matches:
                 raise AllureNotFoundError(
                     f"No step named {normalized_step_name!r} found in test result ID {test_result_id}"
@@ -2751,174 +2747,105 @@ class LaunchService:
                 raise AllureValidationError(
                     "Attachment step selection is ambiguous. Provide attachment_id or step_index."
                 )
-            return matches[0]
+            return self._require_execution_body(matches[0], test_result_id=test_result_id)
 
-        if not steps:
-            raise AllureNotFoundError(
-                f"Test result ID {test_result_id} has no manual scenario steps. "
-                "Submit step data first or use explicit fixture selectors."
-            )
         if len(steps) > 1:
             raise AllureValidationError(
                 "Attachment step selection is ambiguous. Provide attachment_id, step_name, or step_index."
             )
-        return steps[0]
+        return self._require_execution_body(steps[0], test_result_id=test_result_id)
 
     @classmethod
-    def _collect_steps_referencing_attachment(
+    def _find_execution_body_attachment_parents(
         cls,
-        steps: list[TestResultScenarioStepDto],
+        steps: Sequence[dict[str, object]],
         attachment_id: int,
-    ) -> list[TestResultScenarioStepDto]:
-        """Find every step, nested included, whose attachments reference the ID."""
-        matches: list[TestResultScenarioStepDto] = []
+    ) -> list[dict[str, object]]:
+        """Return closest body ancestors for matching attachment nodes."""
+        matches: list[dict[str, object]] = []
+
+        def visit(node: dict[str, object], current_body: dict[str, object] | None) -> None:
+            body = node if node.get("type") == "body" else current_body
+            if cls._execution_node_references_attachment(node, attachment_id):
+                if body is not None:
+                    matches.append(body)
+                return
+            for child_key in ("expectedResultSteps", "steps"):
+                children = node.get(child_key)
+                if isinstance(children, list):
+                    for child in children:
+                        if isinstance(child, dict):
+                            visit(child, body)
+
         for step in steps:
-            if any(
-                isinstance(existing.actual_instance, TestResultAttachmentRowDto)
-                and existing.actual_instance.id == attachment_id
-                for existing in step.attachments or []
-            ):
-                matches.append(step)
-            nested = step.steps or []
-            if nested:
-                matches.extend(cls._collect_steps_referencing_attachment(nested, attachment_id))
+            visit(step, None)
         return matches
+
+    @staticmethod
+    def _execution_node_references_attachment(node: dict[str, object], attachment_id: int) -> bool:
+        if node.get("attachmentId") == attachment_id:
+            return True
+        attachment = node.get("attachment")
+        return isinstance(attachment, dict) and attachment.get("id") == attachment_id
+
+    @staticmethod
+    def _execution_step_name(step: dict[str, object]) -> str | None:
+        body = step.get("body")
+        if isinstance(body, str):
+            return body
+        name = step.get("name")
+        if isinstance(name, str):
+            return name
+        attachment = step.get("attachment")
+        if isinstance(attachment, dict):
+            attachment_name = attachment.get("name")
+            return attachment_name if isinstance(attachment_name, str) else None
+        return None
+
+    @staticmethod
+    def _require_execution_body(step: dict[str, object], *, test_result_id: int) -> dict[str, object]:
+        if step.get("type") == "body":
+            return step
+        raise AllureValidationError(
+            f"Selected step is not an action body in test result ID {test_result_id}; "
+            "select a body step or an attachment within one."
+        )
+
+    @staticmethod
+    def _attachment_execution_node(attachment_row: TestResultAttachmentRowDto) -> dict[str, object]:
+        attachment_id = attachment_row.id
+        if not isinstance(attachment_id, int) or attachment_id <= 0:
+            raise AllureAPIError("Attachment upload completed without returning an attachment ID")
+        return {
+            "type": "attachment",
+            "attachment": attachment_row.to_dict(),
+            "attachmentId": attachment_id,
+            "status": "skipped",
+            "steps": [],
+        }
+
+    def _manual_attachment_resolve_status(self, test_result: TestResultDto, status: str | None) -> str:
+        current_status = _launch_json(test_result.status)
+        if isinstance(current_status, str) and current_status.strip():
+            raise AllureValidationError(
+                "Test result is already resolved. Upload step evidence before setting its final status."
+            )
+        if status is None:
+            raise AllureValidationError(
+                "status is required when adding step evidence to an in-progress manual test result"
+            )
+        resolved_status = self._normalize_test_status(status, field_name="status")
+        if resolved_status is None:
+            raise AllureValidationError(
+                "status is required when adding step evidence to an in-progress manual test result"
+            )
+        return resolved_status.value
 
     @staticmethod
     def _select_uploaded_attachment_row(rows: list[TestResultAttachmentRowDto]) -> TestResultAttachmentRowDto:
         if not rows:
             raise AllureAPIError("Attachment upload completed without returning an attachment row")
         return rows[0]
-
-    def _patch_step_from_raw_execution_step(self, step: dict[str, Any]) -> TestResultScenarioStepDto:
-        nested_raw_steps = step.get("steps")
-        nested_steps = (
-            [self._patch_step_from_raw_execution_step(child) for child in nested_raw_steps if isinstance(child, dict)]
-            if isinstance(nested_raw_steps, list)
-            else None
-        )
-        node_type = step.get("type") if isinstance(step.get("type"), str) else None
-        return _PatchScenarioStepDto(
-            type=node_type if node_type in _PATCH_STEP_NODE_TYPES else None,
-            body=step.get("body") if isinstance(step.get("body"), str) else None,
-            name=self._raw_step_name(step),
-            expected_result=step.get("expectedResult") if isinstance(step.get("expectedResult"), str) else None,
-            message=step.get("message") if isinstance(step.get("message"), str) else None,
-            trace=step.get("trace") if isinstance(step.get("trace"), str) else None,
-            start=step.get("start") if isinstance(step.get("start"), int) else None,
-            stop=step.get("stop") if isinstance(step.get("stop"), int) else None,
-            duration=step.get("duration") if isinstance(step.get("duration"), int) else None,
-            show_message=step.get("showMessage") if isinstance(step.get("showMessage"), bool) else None,
-            parameters=self._coerce_raw_step_parameters(step.get("parameters")),
-            status=self._normalize_test_status(step.get("status"), field_name="execution.step.status"),
-            steps=nested_steps,
-            attachments=self._collect_raw_step_attachments(step),
-        )
-
-    @staticmethod
-    def _coerce_raw_step_parameters(raw: object) -> list[TestResultParameterDto] | None:
-        """Carry v2 execution step parameters into the patch representation."""
-        if not isinstance(raw, list):
-            return None
-        parameters: list[TestResultParameterDto] = []
-        for item in raw:
-            if not isinstance(item, dict):
-                continue
-            try:
-                parameters.append(TestResultParameterDto.model_validate(item))
-            except PydanticValidationError:
-                continue
-        return parameters or None
-
-    @staticmethod
-    def _raw_step_name(step: dict[str, Any]) -> str | None:
-        name = step.get("name")
-        if isinstance(name, str):
-            return name
-        body = step.get("body")
-        if isinstance(body, str):
-            return body
-        attachment = step.get("attachment")
-        if isinstance(attachment, dict):
-            attachment_name = attachment.get("name")
-            if isinstance(attachment_name, str):
-                return attachment_name
-        return None
-
-    def _collect_raw_step_attachments(
-        self, step: dict[str, Any]
-    ) -> list[TestResultAttachmentStepDtoAllOfAttachment] | None:
-        """Collect every attachment reference a v2 execution node carries.
-
-        Body-style nodes may hold a top-level ``attachments`` list, while
-        attachment nodes keep their reference under ``attachment``/``attachmentId``.
-        Every reference must survive the rebuild, otherwise earlier step
-        attachments degrade into plain text rows on the next call. A node
-        carrying the same reference in several shapes yields it only once.
-        """
-        attachments: list[TestResultAttachmentStepDtoAllOfAttachment] = []
-        seen_ids: set[int] = set()
-
-        def append_row(row: TestResultAttachmentRowDto) -> None:
-            if isinstance(row.id, int):
-                if row.id in seen_ids:
-                    return
-                seen_ids.add(row.id)
-            attachments.append(TestResultAttachmentStepDtoAllOfAttachment(actual_instance=row))
-
-        attachments_raw = step.get("attachments")
-        if isinstance(attachments_raw, list):
-            for item in attachments_raw:
-                if isinstance(item, dict):
-                    append_row(self._coerce_test_result_attachment_row(item))
-
-        attachment_raw = step.get("attachment")
-        if isinstance(attachment_raw, dict):
-            append_row(self._coerce_test_result_attachment_row(attachment_raw))
-        elif isinstance(step.get("attachmentId"), int):
-            append_row(
-                TestResultAttachmentRowDto.model_construct(
-                    entity="test_result",
-                    id=step["attachmentId"],
-                    name=self._raw_step_name(step),
-                )
-            )
-        return attachments or None
-
-    def _patch_step_from_test_case_step(self, step: SharedStepScenarioDtoStepsInner) -> TestResultScenarioStepDto:
-        actual = step.actual_instance
-        nested_children = getattr(actual, "steps", None)
-        nested_steps = (
-            [
-                self._patch_step_from_test_case_step(child)
-                for child in nested_children
-                if isinstance(child, SharedStepScenarioDtoStepsInner)
-            ]
-            if isinstance(nested_children, list)
-            else None
-        )
-
-        name = None
-        expected_result = None
-        if actual is not None:
-            body = getattr(actual, "body", None)
-            name = body if isinstance(body, str) and body.strip() else getattr(actual, "name", None)
-            expected = getattr(actual, "expected_result", None)
-            expected_result = expected if isinstance(expected, str) and expected.strip() else None
-
-        return TestResultScenarioStepDto(
-            name=name if isinstance(name, str) and name.strip() else None,
-            expected_result=expected_result,
-            steps=nested_steps,
-        )
-
-    @staticmethod
-    def _coerce_test_result_attachment_row(data: dict[str, Any]) -> TestResultAttachmentRowDto:
-        normalized = dict(data)
-        entity = normalized.get("entity")
-        if not isinstance(entity, str) or not entity.strip():
-            normalized["entity"] = "test_result"
-        return TestResultAttachmentRowDto.model_validate(normalized)
 
     async def _resolve_manual_step_attachment_target(
         self,

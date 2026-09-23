@@ -10798,7 +10798,7 @@
     {
       "name": "add_test_step_attachment",
       "title": "Add Test Step Attachment",
-      "description": "Upload evidence to a manual attachment step inside a test result.\n\nTestOps has no step-level attachment endpoint: the file is uploaded at result\nlevel, then the result's scenario is rewritten from its current execution\nsteps (node types and existing step attachments preserved) with the\nattachment row appended to the selected step. The test case's steps are\nonly used as a scaffold when the result has no scenario yet. Step selection\nmatches the result's own steps (runtime step or attachment text, or an\nattachment ID anywhere in the scenario tree); test-case step names are not\nselectable once the result has a scenario. Rich-text step bodies degrade\nto plain text when the scenario is rewritten.",
+      "description": "Upload evidence to a manual attachment step inside a test result.\n\nTestOps has no step-level attachment endpoint. For an in-progress manual\nresult, Lucius uploads the file at result level and then resolves the full\nv2 execution tree once. The attachment is placed alongside the selected\naction's expected result, which is the shape used by the TestOps UI.",
       "inputSchema": {
         "properties": {
           "test_result_id": {
@@ -10847,6 +10847,18 @@
             ],
             "default": null,
             "description": "Optional zero-based manual step index to resolve within the test result execution."
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Final status for an in-progress manual result; required for manual step evidence."
           },
           "fixture_result_id": {
             "anyOf": [

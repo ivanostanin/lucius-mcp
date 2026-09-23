@@ -99,7 +99,7 @@ returns the resolved canonical metadata list.
 | `start_manual_test_session`  | Create a manual execution session for a launch.                 | `launch_id`, `environment` |
 | `submit_manual_test_results` | Resolve an existing launch manual result in place or submit explicit manual result updates for a session. | `test_session_id`, `results` |
 | `add_test_result_attachment` | Upload evidence to a manual test result.                        | `test_result_id`, `attachment` |
-| `add_test_step_attachment`   | Upload evidence to a manual attachment step; rewrites the result's scenario from its own execution steps (node types preserved), fixture selectors remain as fallback. | `test_result_id`, `attachment`, `step_name` |
+| `add_test_step_attachment`   | Resolve an in-progress manual result with evidence attached to an action step beside its expected result. | `test_result_id`, `attachment`, `status`, `step_name` |
 
 When execution results are included, each compact result row's `id` is the exact Test Result ID: follow it with
 `get_test_result(test_result_id=<row.id>)` for details and the separate attachment/evidence workflow. The expanded

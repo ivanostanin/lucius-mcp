@@ -52,7 +52,7 @@ async def test_get_test_result_returns_exact_result_with_stable_result_url(
     test_run_id: str,
     stdio_attachment_delivery: None,
 ) -> None:
-    """Verify result and step evidence downloads through Lucius without a bearer token."""
+    """Verify result evidence downloads through Lucius without a bearer token."""
     launch_service = LaunchService(allure_client)
     launch, test_case = await _create_launch_with_test_case(
         allure_client,
@@ -77,11 +77,6 @@ async def test_get_test_result_returns_exact_result_with_stable_result_url(
                 "status": "passed",
                 "steps": [
                     {"type": "body", "body": "Open detail", "status": "passed"},
-                    {
-                        "type": "attachment",
-                        "attachment": {"name": "detail-step.txt", "content_type": "text/plain"},
-                        "status": "passed",
-                    },
                 ],
             }
         ],
@@ -96,17 +91,7 @@ async def test_get_test_result_returns_exact_result_with_stable_result_url(
             "content": "U2FuZGJveCByZXN1bHQgZGV0YWlsIGV2aWRlbmNl",
         },
     )
-    step_upload = await launch_service.add_test_step_attachment(
-        test_result_id=result_id,
-        step_index=1,
-        attachment={
-            "name": "detail-step.txt",
-            "content_type": "text/plain",
-            "content": "U2FuZGJveCBzdGVwIGRldGFpbCBldmlkZW5jZQ==",
-        },
-    )
     assert result_upload.target_id == result_id
-    assert step_upload.target_kind == "test_step"
 
     detail = await TestResultService(allure_client).get_test_result(result_id)
 
@@ -116,16 +101,9 @@ async def test_get_test_result_returns_exact_result_with_stable_result_url(
     assert "treeId" not in detail.result_url
 
     result_attachment = next(item for item in detail.result_attachments if item.name == "detail-result.txt")
-    step_attachment = next(
-        item for item in _iter_step_attachments(detail.execution_steps) if item.name == "detail-step.txt"
-    )
     await _download_and_verify_evidence(
         result_attachment,
         expected_content=b"Sandbox result detail evidence",
-    )
-    await _download_and_verify_evidence(
-        step_attachment,
-        expected_content=b"Sandbox step detail evidence",
     )
 
 

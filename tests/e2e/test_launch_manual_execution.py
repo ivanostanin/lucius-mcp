@@ -1,7 +1,5 @@
 """E2E coverage for manual execution workflows inside launches."""
 
-from collections.abc import Iterator
-
 import pytest
 
 from src.client import AllureClient
@@ -160,34 +158,33 @@ async def test_manual_rerun_of_automated_result_resolves_existing_test_run(
     rerun_session = await launch_service.start_manual_test_session(launch.id)
     assert rerun_session.test_session_id > 0
 
-    rerun_submission = await launch_service.submit_manual_test_results(
-        rerun_session.test_session_id,
-        results=[
-            {
-                "result_id": active_rerun_result.result_id,
-                "status": "passed",
-                "start": 3000,
-                "stop": 4000,
-                "message": "Manual rerun completed successfully",
-                "steps": [
-                    {
-                        "type": "body",
-                        "body": "Retry app",
-                        "status": "passed",
-                        "message": "Manual rerun passed",
-                    }
-                ],
-            }
-        ],
+    step_attachment = await launch_service.add_test_step_attachment(
+        test_result_id=active_rerun_result.result_id,
+        step_index=0,
+        status="passed",
+        attachment={
+            "name": "active-manual-step.png",
+            "content_type": "image/png",
+            "content": (
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL6xQAAAABJRU5ErkJggg=="
+            ),
+        },
     )
-    assert rerun_submission.result_ids == [active_rerun_result.result_id]
+    assert step_attachment.target_kind == "test_step"
+
+    execution_after_attachment = await allure_client.get_test_result_execution_raw(
+        active_rerun_result.result_id,
+        v2=True,
+    )
+    attachment_step = execution_after_attachment["steps"][0]["expectedResultSteps"][-1]
+    assert attachment_step["type"] == "attachment"
+    assert attachment_step["attachmentId"] == step_attachment.target_id
 
     rerun_result = await allure_client.get_test_result(active_rerun_result.result_id)
     assert rerun_result.manual is True
     assert rerun_result.hidden is not True
     assert rerun_result.status is not None
     assert rerun_result.status.value.lower() == "passed"
-
     visible_passed_result = await launch_service.resolve_launch_test_result_for_test_case(
         launch.id,
         test_case_id=test_case.id,
@@ -229,7 +226,7 @@ async def test_manual_launch_submission_creates_complete_new_result(
                 "test_case_id": test_case.id,
                 "name": f"[{test_run_id}] Complete Manual Result",
                 "full_name": f"[{test_run_id}] Complete Manual Result",
-                "status": "passed",
+                "status": "unknown",
                 "start": 1000,
                 "stop": 2000,
                 "message": "Standalone manual completion",
@@ -237,17 +234,9 @@ async def test_manual_launch_submission_creates_complete_new_result(
                     {
                         "type": "body",
                         "body": "Open app",
-                        "status": "passed",
+                        "status": "unknown",
                         "message": "Completed successfully",
-                    },
-                    {
-                        "type": "attachment",
-                        "attachment": {
-                            "name": "manual-step.txt",
-                            "content_type": "text/plain",
-                        },
-                        "status": "passed",
-                    },
+                    }
                 ],
             }
         ],
@@ -259,7 +248,7 @@ async def test_manual_launch_submission_creates_complete_new_result(
     assert created_result.manual is True
     assert created_result.hidden is not True
     assert created_result.status is not None
-    assert created_result.status.value.lower() == "passed"
+    assert created_result.status.value.lower() == "unknown"
 
     result_attachment = await launch_service.add_test_result_attachment(
         created_result_id,
@@ -273,49 +262,12 @@ async def test_manual_launch_submission_creates_complete_new_result(
     assert result_attachment.target_id == created_result_id
     assert result_attachment.status_code == 200
 
-    step_attachment = await launch_service.add_test_step_attachment(
-        test_result_id=created_result_id,
-        step_index=1,
-        attachment={
-            "name": "manual-step.txt",
-            "content_type": "text/plain",
-            "content": "U2FuZGJveCBtYW51YWwgc3RlcCBldmlkZW5jZQ==",
-        },
-    )
-    assert step_attachment.target_kind == "test_step"
-    assert step_attachment.status_code == 200
-
-    second_step_attachment = await launch_service.add_test_step_attachment(
-        test_result_id=created_result_id,
-        step_index=1,
-        attachment={
-            "name": "manual-step-2.txt",
-            "content_type": "text/plain",
-            "content": "U2Vjb25k",
-        },
-    )
-    assert second_step_attachment.target_kind == "test_step"
-    assert second_step_attachment.status_code == 200
-
     result_attachments = await allure_client.list_test_result_attachments(created_result_id, size=50)
     attachment_rows = result_attachments.content or []
     assert any(attachment.name == "manual-result.txt" for attachment in attachment_rows)
 
-    execution = await allure_client.get_test_result_execution_raw(created_result_id, v2=True)
-    execution_steps = execution.get("steps")
-    assert isinstance(execution_steps, list) and len(execution_steps) == 2
-    assert execution_steps[0].get("type") == "body"
-    assert "Open app" in (execution_steps[0].get("body"), execution_steps[0].get("name"))
-    assert execution_steps[1].get("type") == "attachment"
-    matching_attachments = list(_iter_execution_attachments(execution, step_attachment.target_id))
-    assert len(matching_attachments) == 1
-    assert matching_attachments[0].get("name") == "manual-step.txt"
-    execution_attachment_ids = _collect_execution_attachment_ids(execution)
-    assert step_attachment.target_id in execution_attachment_ids
-    assert second_step_attachment.target_id in execution_attachment_ids
-
-    attachment_bytes = await allure_client.read_test_result_attachment_content(step_attachment.target_id)
-    assert attachment_bytes == b"Sandbox manual step evidence"
+    attachment_bytes = await allure_client.read_test_result_attachment_content(result_attachments.content[0].id)
+    assert attachment_bytes == b"Sandbox manual result evidence"
 
 
 async def _create_launch_with_test_case(
@@ -340,38 +292,3 @@ async def _create_launch_with_test_case(
     assert launch.id is not None
     cleanup_tracker.track_launch(launch.id)
     return launch, test_case
-
-
-def _iter_execution_attachments(node: object, attachment_id: int) -> Iterator[dict[str, object]]:
-    if isinstance(node, dict):
-        current_attachment = node.get("attachment")
-        if node.get("attachmentId") == attachment_id and isinstance(current_attachment, dict):
-            yield current_attachment
-        for value in node.values():
-            yield from _iter_execution_attachments(value, attachment_id)
-        return
-
-    if isinstance(node, list):
-        for item in node:
-            yield from _iter_execution_attachments(item, attachment_id)
-
-
-def _collect_execution_attachment_ids(node: object, ids: set[int] | None = None) -> set[int]:
-    """Collect every attachment ID referenced anywhere in the execution tree."""
-    if ids is None:
-        ids = set()
-    if isinstance(node, dict):
-        attachment_id = node.get("attachmentId")
-        if isinstance(attachment_id, int):
-            ids.add(attachment_id)
-        attachments = node.get("attachments")
-        if isinstance(attachments, list):
-            for item in attachments:
-                if isinstance(item, dict) and isinstance(item.get("id"), int):
-                    ids.add(item["id"])
-        for value in node.values():
-            _collect_execution_attachment_ids(value, ids)
-    elif isinstance(node, list):
-        for item in node:
-            _collect_execution_attachment_ids(item, ids)
-    return ids

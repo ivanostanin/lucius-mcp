@@ -45,6 +45,22 @@ def _client() -> MagicMock:
                     "id": 3,
                     "name": "parent",
                     "status": "failed",
+                    "expectedResultSteps": [
+                        {
+                            "type": "expected_body",
+                            "body": "expected result",
+                            "steps": [
+                                {
+                                    "type": "attachment",
+                                    "attachment": {
+                                        "id": 56,
+                                        "name": "expected-step.png",
+                                        "entity": "test_result",
+                                    },
+                                }
+                            ],
+                        }
+                    ],
                     "steps": [
                         {
                             "type": "attachment",
@@ -90,11 +106,15 @@ async def test_get_test_result_uses_exact_id_preserves_falsey_values_and_v2_exec
         "name": None,
         "url": "https://testops.example/project/9/test-cases/41",
     }
-    attachment = detail.execution_steps[0].steps[0].attachments[0]
-    assert attachment.attachment_id == 55
+    expected_step = detail.execution_steps[0].steps[0]
+    assert expected_step.type == "expected_body"
+    assert expected_step.body == "expected result"
+    attachment = expected_step.steps[0].attachments[0]
+    assert attachment.attachment_id == 56
     assert attachment.attachment_kind == "test_result"
     assert attachment.test_result_id == 1498142
     assert attachment.test_case_id is None
+    assert detail.execution_steps[0].steps[1].attachments[0].attachment_id == 55
 
 
 @pytest.mark.asyncio
