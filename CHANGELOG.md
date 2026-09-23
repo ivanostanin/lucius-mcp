@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.16.1] - 2026-09-23
+
+### Added
+- `submit_manual_test_results` now supports manual step evidence attachments in existing result submissions (#415).
+
+### Removed
+- Removed `add_test_step_attachment`; submit manual step evidence through attachment steps in `submit_manual_test_results` (#415).
+
 ## [v0.16.0] - 2026-09-23
 
 ### Added
@@ -412,7 +420,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.1...HEAD
+[v0.16.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.0...v0.16.1
 [v0.16.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.7...v0.16.0
 [v0.15.7]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.6...v0.15.7
 [v0.15.6]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.5...v0.15.6
