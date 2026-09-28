@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.16.2] - 2026-09-28
+
+### Changed
+- Updated locked runtime and tooling dependencies (#422).
+
+### Fixed
+- Select the active macOS compiler and SDK when building CLI packages (#423).
+
 ## [v0.16.1] - 2026-09-23
 
 ### Added
@@ -420,7 +428,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.1...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.2...HEAD
+[v0.16.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.1...v0.16.2
 [v0.16.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.0...v0.16.1
 [v0.16.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.7...v0.16.0
 [v0.15.7]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.6...v0.15.7
