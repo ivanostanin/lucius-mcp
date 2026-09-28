@@ -134,6 +134,20 @@ if ! command -v uv >/dev/null 2>&1; then
     exit 1
 fi
 
+# On macOS, Nuitka may pick /usr/bin/clang, whose xcrun shim can run under a
+# different architecture than the active Command Line Tools. Resolve clang and
+# the SDK from the currently selected developer directory instead.
+if [[ "${TARGET_PLATFORM}" == "macos" ]]; then
+    if [[ -z "${CC:-}" ]]; then
+        CC="$(xcrun --find clang)"
+        export CC
+    fi
+    if [[ -z "${SDKROOT:-}" ]]; then
+        SDKROOT="$(xcrun --show-sdk-path)"
+        export SDKROOT
+    fi
+fi
+
 OUTPUT_DIR="dist/cli"
 
 echo "Generating tool schemas..."
