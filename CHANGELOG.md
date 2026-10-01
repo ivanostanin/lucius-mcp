@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.16.3] - 2026-10-01
+
+### Changed
+- Updated PyJWT from 2.13.0 to 2.15.0 (#425).
+
 ## [v0.16.2] - 2026-09-28
 
 ### Changed
@@ -428,7 +433,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.2...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.3...HEAD
+[v0.16.3]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.2...v0.16.3
 [v0.16.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.1...v0.16.2
 [v0.16.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.0...v0.16.1
 [v0.16.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.15.7...v0.16.0
