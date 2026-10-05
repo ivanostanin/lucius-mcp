@@ -54,28 +54,28 @@ wheels = [
 
 [[package]]
 name = "allure-pytest"
-version = "2.16.1"
+version = "2.16.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "allure-python-commons" },
     { name = "pytest" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/72/26/2c5b357f349a42c81f1f9ddb4ed6e05352f34a18f6f88b8d466a443b049f/allure_pytest-2.16.1.tar.gz", hash = "sha256:4aefe54f9b6020f44a113af94f0772a9a95f47472358d9d27ccf1edb886e05f7", size = 17779, upload-time = "2026-09-18T19:46:50.364Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/12/e1/bf366fd5e97ac0d94584bbb5fdc0476741de8262ca401ac12b720451d7cf/allure_pytest-2.16.2.tar.gz", hash = "sha256:19912ee41c298e080ea4dbffaa3a2cbbc9ca93da14a664056192fc4609ec8eed", size = 17768, upload-time = "2026-09-29T14:06:31.457Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ee/07/46cb1eca6f025e5c22bb1fc0b0d6bbfb79f73bbb0ebe2919a02d43b32bd4/allure_pytest-2.16.1-py3-none-any.whl", hash = "sha256:07a9b8ae2840254250887b27e1f51af9732611285f7db301048c388fb60bddf4", size = 12496, upload-time = "2026-09-18T19:46:49.084Z" },
+    { url = "https://files.pythonhosted.org/packages/ba/57/29f41ee6f00e4d860f260b10d4672ffa781e97effe7d5c6c47fc1664c47b/allure_pytest-2.16.2-py3-none-any.whl", hash = "sha256:b16790e2f3749ffb2d3737ba443ba2eede8efba5226978847358fe2fd3e31303", size = 12496, upload-time = "2026-09-29T14:06:30.613Z" },
 ]
 
 [[package]]
 name = "allure-python-commons"
-version = "2.16.1"
+version = "2.16.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
     { name = "pluggy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/17/06/bad27c0d10d9c7f03b40bcf85d7d56e098a44b4de13e7fed177fdf528f89/allure_python_commons-2.16.1.tar.gz", hash = "sha256:3bfb00982a17dd325581f7ca7ebc142d4e3ba2a001ba1f800c2d4e69ddf54a82", size = 15779, upload-time = "2026-09-18T19:46:41.393Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/84/91/2da69e393261aa9486d5c41543df4013a199d27911e27ec8de9da95e62d6/allure_python_commons-2.16.2.tar.gz", hash = "sha256:2df87131ae5cbd941e656a56261000189862ebcb71e4c4435879ee2a7c07daa1", size = 15780, upload-time = "2026-09-29T14:06:22.96Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/45/53/8e55e46cf7f90a0e7a2c3938fa17563e6d6539ce268344c217f7638377b2/allure_python_commons-2.16.1-py3-none-any.whl", hash = "sha256:bcc9698e3df33bcc83ab9df276c4e17c8f8007837e216b17bc9b0385043d00c2", size = 16934, upload-time = "2026-09-18T19:46:40.111Z" },
+    { url = "https://files.pythonhosted.org/packages/8f/9c/9fdf49dd9652ae7bfade74e811a961b8461797a3325a6ba35652f3206013/allure_python_commons-2.16.2-py3-none-any.whl", hash = "sha256:0445f2745dfa8af70da1d3261cde2c83d44e7278c105f113ed050b61252f79bd", size = 16932, upload-time = "2026-09-29T14:06:21.875Z" },
 ]
 
 [[package]]
