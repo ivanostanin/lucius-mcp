@@ -178,7 +178,8 @@ name = "authlib"
 version = "1.8.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cryptography" },
+    { name = "cryptography", version = "46.0.3", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'ARM64' and sys_platform == 'win32') or (platform_machine == 'aarch64' and sys_platform == 'win32')" },
+    { name = "cryptography", version = "50.0.2", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine != 'ARM64' and platform_machine != 'aarch64') or sys_platform != 'win32'" },
     { name = "joserfc" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f1/51/bc1729d3cfdc214b4935f4e886e4dd443c3065fd8e1e66423fe84b490f81/authlib-1.8.0.tar.gz", hash = "sha256:f3ecd5f1da737262fb53bf1a4d95c4ea1ad9dd509316587a255c99ab1838a4f0", size = 177759, upload-time = "2026-08-30T12:12:34.833Z" }
@@ -622,8 +623,37 @@ toml = [
 
 [[package]]
 name = "cryptography"
+version = "46.0.3"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "(python_full_version >= '3.14' and platform_machine == 'ARM64' and sys_platform == 'win32') or (python_full_version >= '3.14' and platform_machine == 'aarch64' and sys_platform == 'win32')",
+    "(python_full_version >= '3.11' and python_full_version < '3.14' and platform_machine == 'ARM64' and sys_platform == 'win32') or (python_full_version >= '3.11' and python_full_version < '3.14' and platform_machine == 'aarch64' and sys_platform == 'win32')",
+    "(python_full_version < '3.11' and platform_machine == 'ARM64' and sys_platform == 'win32') or (python_full_version < '3.11' and platform_machine == 'aarch64' and sys_platform == 'win32')",
+]
+dependencies = [
+    { name = "cffi", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9f/33/c00162f49c0e2fe8064a62cb92b93e50c74a72bc370ab92f86112b33ff62/cryptography-46.0.3.tar.gz", hash = "sha256:a8b17438104fed022ce745b362294d9ce35b4c2e45c1d958ad4a4b019285f4a1", size = 749258, upload-time = "2025-10-15T23:18:31.74Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2e/af/9b302da4c87b0beb9db4e756386a7c6c5b8003cd0e742277888d352ae91d/cryptography-46.0.3-cp311-abi3-win_arm64.whl", hash = "sha256:5d7f93296ee28f68447397bf5198428c9aeeab45705a55d53a6343455dcb2c3c", size = 2928007, upload-time = "2025-10-15T23:17:18.04Z" },
+    { url = "https://files.pythonhosted.org/packages/ba/8b/88cc7e3bd0a8e7b861f26981f7b820e1f46aa9d26cc482d0feba0ecb4919/cryptography-46.0.3-cp314-cp314t-win_arm64.whl", hash = "sha256:516ea134e703e9fe26bcd1277a4b59ad30586ea90c365a87781d7887a646fe21", size = 2919331, upload-time = "2025-10-15T23:17:44.468Z" },
+    { url = "https://files.pythonhosted.org/packages/e8/cb/2da4cc83f5edb9c3257d09e1e7ab7b23f049c7962cae8d842bbef0a9cec9/cryptography-46.0.3-cp38-abi3-win_arm64.whl", hash = "sha256:d89c3468de4cdc4f08a57e214384d0471911a3830fcdaf7a8cc587e42a866372", size = 2918740, upload-time = "2025-10-15T23:18:12.277Z" },
+]
+
+[[package]]
+name = "cryptography"
 version = "50.0.2"
 source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.14' and platform_machine != 'ARM64' and platform_machine != 'aarch64' and sys_platform == 'win32'",
+    "python_full_version >= '3.14' and sys_platform != 'win32'",
+    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
+    "python_full_version >= '3.11' and python_full_version < '3.14' and platform_machine != 'ARM64' and platform_machine != 'aarch64' and sys_platform == 'win32'",
+    "(python_full_version >= '3.11' and python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32') or (python_full_version == '3.11.*' and sys_platform == 'emscripten')",
+    "python_full_version < '3.11' and platform_machine != 'ARM64' and platform_machine != 'aarch64' and sys_platform == 'win32'",
+    "python_full_version < '3.11' and sys_platform != 'win32'",
+]
 dependencies = [
     { name = "cffi", marker = "platform_python_implementation != 'PyPy'" },
     { name = "typing-extensions", marker = "python_full_version < '3.11'" },
@@ -1049,7 +1079,8 @@ name = "joserfc"
 version = "1.7.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cryptography" },
+    { name = "cryptography", version = "46.0.3", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'ARM64' and sys_platform == 'win32') or (platform_machine == 'aarch64' and sys_platform == 'win32')" },
+    { name = "cryptography", version = "50.0.2", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine != 'ARM64' and platform_machine != 'aarch64') or sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c7/e0/27a6a081ae25420eda6768ceae05d7022a7f2447f420588843f2a44e4298/joserfc-1.7.4.tar.gz", hash = "sha256:b3bc561672ae541b17a9237053b48a03dacddd92d68047b3ecdfb4b5714a88ed", size = 234027, upload-time = "2026-07-19T15:43:02.739Z" }
 wheels = [
@@ -1227,11 +1258,12 @@ wheels = [
 
 [[package]]
 name = "lucius-mcp"
-version = "0.16.3"
+version = "0.16.4"
 source = { editable = "." }
 dependencies = [
     { name = "authlib" },
-    { name = "cryptography" },
+    { name = "cryptography", version = "46.0.3", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'ARM64' and sys_platform == 'win32') or (platform_machine == 'aarch64' and sys_platform == 'win32')" },
+    { name = "cryptography", version = "50.0.2", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine != 'ARM64' and platform_machine != 'aarch64') or sys_platform != 'win32'" },
     { name = "cyclopts" },
     { name = "fastmcp" },
     { name = "httpx" },
@@ -1273,7 +1305,7 @@ requires-dist = [
     { name = "allure-pytest", marker = "extra == 'dev'", specifier = ">=2.15.3" },
     { name = "authlib", specifier = ">=1.6.7" },
     { name = "cryptography", marker = "(platform_machine != 'ARM64' and platform_machine != 'aarch64') or sys_platform != 'win32'", specifier = "==50.0.2" },
-    { name = "cryptography", marker = "(platform_machine == 'ARM64' and sys_platform == 'win32') or (platform_machine == 'aarch64' and sys_platform == 'win32')", specifier = "==50.0.2" },
+    { name = "cryptography", marker = "(platform_machine == 'ARM64' and sys_platform == 'win32') or (platform_machine == 'aarch64' and sys_platform == 'win32')", specifier = "==46.0.3" },
     { name = "cyclopts", specifier = ">=4.22.2" },
     { name = "faker", marker = "extra == 'dev'", specifier = ">=40.36.0" },
     { name = "fastmcp", specifier = ">=3.0.0" },
@@ -1793,7 +1825,8 @@ wheels = [
 
 [package.optional-dependencies]
 crypto = [
-    { name = "cryptography" },
+    { name = "cryptography", version = "46.0.3", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'ARM64' and sys_platform == 'win32') or (platform_machine == 'aarch64' and sys_platform == 'win32')" },
+    { name = "cryptography", version = "50.0.2", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine != 'ARM64' and platform_machine != 'aarch64') or sys_platform != 'win32'" },
 ]
 
 [[package]]
@@ -2385,7 +2418,7 @@ name = "secretstorage"
 version = "3.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cryptography" },
+    { name = "cryptography", version = "50.0.2", source = { registry = "https://pypi.org/simple" } },
     { name = "jeepney" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/1c/03/e834bcd866f2f8a49a85eaff47340affa3bfa391ee9912a952a1faa68c7b/secretstorage-3.5.0.tar.gz", hash = "sha256:f04b8e4689cbce351744d5537bf6b1329c6fc68f91fa666f60a380edddcd11be", size = 19884, upload-time = "2025-11-23T19:02:53.191Z" }

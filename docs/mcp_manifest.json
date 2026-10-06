@@ -1,12 +1,12 @@
 {
   "environment": {
-    "fastmcp": "4.0.9",
+    "fastmcp": "4.0.10",
     "mcp": "2.1.1"
   },
   "serverInfo": {
     "name": "lucius-mcp",
     "title": null,
-    "version": "0.16.3",
+    "version": "0.16.4",
     "description": null,
     "websiteUrl": null,
     "icons": null
