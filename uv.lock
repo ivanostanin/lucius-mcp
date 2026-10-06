@@ -1273,7 +1273,7 @@ requires-dist = [
     { name = "allure-pytest", marker = "extra == 'dev'", specifier = ">=2.15.3" },
     { name = "authlib", specifier = ">=1.6.7" },
     { name = "cryptography", marker = "(platform_machine != 'ARM64' and platform_machine != 'aarch64') or sys_platform != 'win32'", specifier = "==50.0.2" },
-    { name = "cryptography", marker = "(platform_machine == 'ARM64' and sys_platform == 'win32') or (platform_machine == 'aarch64' and sys_platform == 'win32')", specifier = "==50.0.2" },
+    { name = "cryptography", marker = "(platform_machine == 'ARM64' and sys_platform == 'win32') or (platform_machine == 'aarch64' and sys_platform == 'win32')", specifier = "==46.0.3" },
     { name = "cyclopts", specifier = ">=4.22.2" },
     { name = "faker", marker = "extra == 'dev'", specifier = ">=40.36.0" },
     { name = "fastmcp", specifier = ">=3.0.0" },
