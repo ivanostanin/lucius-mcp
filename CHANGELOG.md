@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.16.4] - 2026-10-06
+
+### Changed
+- Updated locked runtime and tooling dependencies, including cryptography 50.0.2 and virtualenv 21.7.13 (#432, #433).
+
 ## [v0.16.3] - 2026-10-01
 
 ### Changed
@@ -433,7 +438,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.3...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.4...HEAD
+[v0.16.4]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.3...v0.16.4
 [v0.16.3]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.2...v0.16.3
 [v0.16.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.1...v0.16.2
 [v0.16.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.0...v0.16.1
