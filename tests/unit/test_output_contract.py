@@ -1,8 +1,10 @@
 import pytest
 
 from src.tools.output_contract import (
+    PlainToolOutput,
     apply_output_contract,
     render_collection_output,
+    render_confirmation_required,
     render_message_output,
     render_output,
 )
@@ -31,6 +33,8 @@ def test_render_output_preserves_plain_text_and_structured_json_modes() -> None:
     )
 
     assert plain == "line1\nline2"
+    assert isinstance(plain, str)
+    assert plain.structured_payload == {"ok": True}
     assert structured_json.content == []
     assert structured_json.structured_content == {"ok": True}
 
@@ -62,3 +66,23 @@ def test_apply_output_contract_wraps_non_object_structured_payloads() -> None:
 def test_render_output_rejects_unknown_format() -> None:
     with pytest.raises(ValueError, match="Unsupported output_format"):
         render_output(plain="x", json_payload={"x": 1}, output_format="yaml")
+
+
+@pytest.mark.parametrize(
+    ("plain", "payload"),
+    [
+        (apply_output_contract(["a", "b"], output_format="plain"), {"result": ["a", "b"]}),
+        (render_message_output("Done", output_format="plain"), {"message": "Done"}),
+        (
+            render_collection_output(items=[], plain_empty="No items", output_format="plain", page=0),
+            {"items": [], "total": 0, "page": 0},
+        ),
+        (
+            render_confirmation_required(action="delete", plain="Confirm deletion", output_format="plain"),
+            {"requires_confirmation": True, "action": "delete"},
+        ),
+    ],
+)
+def test_plain_helpers_retain_structured_payload(plain: PlainToolOutput, payload: dict[str, object]) -> None:
+    assert isinstance(plain, str)
+    assert plain.structured_payload == payload

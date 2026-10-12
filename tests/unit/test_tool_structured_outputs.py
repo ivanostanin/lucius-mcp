@@ -1,12 +1,16 @@
 from unittest.mock import AsyncMock
 
 import pytest
+from fastmcp import Client, FastMCP
 from fastmcp.tools import Tool
 from fastmcp.tools.base import ToolResult
+from mcp.types import TextContent
+from pydantic import ValidationError
 
 import src.tools.search as search_tools
 from src.client import PageTestCaseDto, TestCaseDto
 from src.client.generated.models.test_tag_dto import TestTagDto
+from src.tools.output_contract import render_output
 from src.tools.output_schemas import output_model_for, output_schema_for
 from src.utils.telemetry import _apply_mcp_output_contract, wrap_tool_with_telemetry
 
@@ -39,6 +43,11 @@ class _SearchClient:
                 total_pages=1,
             )
         )
+        self.get_test_case = AsyncMock(
+            return_value=TestCaseDto(id=1, name="Login Flow", tags=[TestTagDto.model_construct(name="smoke")])
+        )
+        self.get_test_case_scenario = AsyncMock(return_value=None)
+        self.list_test_case_attachments = AsyncMock(return_value=None)
 
     def get_project(self) -> int:
         return 123
@@ -129,7 +138,8 @@ async def test_fastmcp_keeps_text_content_when_plain_output_is_requested(search_
 
     result = await tool.run({"query": "login", "output_format": "plain"})
 
-    assert result.structured_content is None
+    expected = await search_tools.search_test_cases(query="login", output_format="json")
+    assert result.structured_content == expected.structured_content
     assert len(result.content) == 1
     assert result.content[0].type == "text"
     assert "Found 1 test cases matching 'login':" in result.content[0].text
@@ -160,3 +170,76 @@ def test_mcp_contract_preserves_explicit_null_fields() -> None:
 
     assert isinstance(validated, ToolResult)
     assert validated.structured_content == {"id": 1, "name": "Defect", "description": None, "url": "x"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("output_format", [None, "json", "plain"])
+async def test_mcp_client_accepts_test_case_details_in_all_formats(
+    search_client: _SearchClient, output_format: str | None
+) -> None:
+    server = FastMCP("output-contract-regression")
+    server.tool(output_schema=output_schema_for("get_test_case_details"))(
+        wrap_tool_with_telemetry(
+            search_tools.get_test_case_details, output_model=output_model_for("get_test_case_details")
+        )
+    )
+    arguments: dict[str, object] = {"test_case_id": 1, "project_id": 123}
+    if output_format is not None:
+        arguments["output_format"] = output_format
+
+    async with Client(server) as client:
+        result = await client.call_tool("get_test_case_details", arguments)
+
+    search_client.get_test_case.assert_awaited_once_with(1)
+    search_client.get_test_case_scenario.assert_awaited_once_with(1)
+    search_client.list_test_case_attachments.assert_awaited_once_with(1, page=0, size=100)
+    expected = await search_tools.get_test_case_details(test_case_id=1, project_id=123, output_format="json")
+    assert result.structured_content == expected.structured_content
+    assert result.structured_content["id"] == 1
+    assert result.structured_content["description"] is None
+    assert result.structured_content["url"] == "https://example.com/project/123/test-cases/1"
+    if output_format == "plain":
+        plain = await search_tools.get_test_case_details(test_case_id=1, project_id=123, output_format="plain")
+        assert isinstance(plain, str)
+        assert len(result.content) == 1
+        assert result.content[0].text == plain
+    else:
+        assert result.content == []
+
+
+def test_mcp_contract_validates_plain_payload() -> None:
+    result = render_output(plain="Found a case", json_payload={"unexpected": "field"}, output_format="plain")
+
+    with pytest.raises(ValidationError):
+        _apply_mcp_output_contract(result, output_model_for("get_test_case_details"))
+
+
+@pytest.mark.parametrize("payload", [None, {"error": "upstream unavailable"}])
+def test_mcp_contract_preserves_error_results(payload: dict[str, str] | None) -> None:
+    result = ToolResult(
+        content=[TextContent(type="text", text="upstream unavailable")],
+        structured_content=payload,
+        is_error=True,
+    )
+
+    assert _apply_mcp_output_contract(result, output_model_for("get_test_case_details")) is result
+
+
+@pytest.mark.asyncio
+async def test_mcp_client_accepts_error_without_structured_content(search_client: _SearchClient) -> None:
+    search_client.get_test_case.side_effect = RuntimeError("upstream unavailable")
+    server = FastMCP("output-contract-error-regression")
+    server.tool(output_schema=output_schema_for("get_test_case_details"))(
+        wrap_tool_with_telemetry(
+            search_tools.get_test_case_details, output_model=output_model_for("get_test_case_details")
+        )
+    )
+
+    async with Client(server) as client:
+        result = await client.call_tool(
+            "get_test_case_details", {"test_case_id": 1, "output_format": "plain"}, raise_on_error=False
+        )
+
+    assert result.is_error
+    assert result.structured_content is None
+    assert "upstream unavailable" in result.content[0].text

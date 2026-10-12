@@ -8,6 +8,11 @@ coverage currently includes test cases, launches, defects, test plans, and share
 records such as test layers, custom fields, integrations, and defect matchers keep IDs only unless a stable browser
 route is verified.
 
+Successful MCP responses include `structuredContent` matching the tool's `outputSchema` in every output format.
+Omitting `output_format` or setting it to `"json"` returns structured content only. Setting it to `"plain"` also
+includes human-readable text alongside the same structured payload. Direct tool calls and CLI plain output
+continue to return the human-readable text.
+
 ## 📁 Test Case Management
 
 | Tool                          | Description                                                 | Key Parameters                  |
