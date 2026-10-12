@@ -164,8 +164,12 @@ def _sequence_or_none(value: object | None) -> Sequence[object] | None:
 
 
 def _launch_unavailable(
-    section: str, exc: AllureAPIError | AllureValidationError, items_retrieved: int | None = None
+    section: str,
+    exc: AllureAPIError | AllureValidationError | PydanticValidationError,
+    items_retrieved: int | None = None,
 ) -> "LaunchUnavailableSection":
+    if isinstance(exc, PydanticValidationError):
+        return LaunchUnavailableSection(section, "upstream_schema_error", items_retrieved=items_retrieved)
     status = exc.status_code if isinstance(exc.status_code, int) else None
     reason = "forbidden" if status == 403 else "unsupported_or_not_found" if status == 404 else "upstream_error"
     return LaunchUnavailableSection(section, reason, status, items_retrieved=items_retrieved)
@@ -576,7 +580,7 @@ class LaunchService:
                     values[section] = _launch_json(await self._client.get_launch_result_view(section, launch_id))
                 else:
                     values[section] = _launch_json(await self._client.get_launch_execution_section(section, launch_id))
-            except (AllureAPIError, AllureValidationError) as exc:
+            except (AllureAPIError, AllureValidationError, PydanticValidationError) as exc:
                 unavailable.append(_launch_unavailable(section, exc))
 
         await asyncio.gather(*(collect_simple(section) for section in simple))
@@ -645,7 +649,7 @@ class LaunchService:
                     response = await self._client.get_launch_result_view(section, launch_id, page=page, size=100)
                 else:
                     response = await self._client.get_launch_execution_section(section, launch_id, page=page, size=100)
-            except (AllureAPIError, AllureValidationError) as exc:
+            except (AllureAPIError, AllureValidationError, PydanticValidationError) as exc:
                 return tuple(items), _launch_unavailable(section, exc, len(items))
             content = _launch_page_content(response)
             fingerprint = _launch_page_fingerprint(response)
@@ -673,7 +677,7 @@ class LaunchService:
         if tree_id is not None:
             try:
                 selected_tree = await self._client.get_tree(tree_id, with_archived=True)
-            except (AllureAPIError, AllureValidationError) as exc:
+            except (AllureAPIError, AllureValidationError, PydanticValidationError) as exc:
                 issues.append(_launch_unavailable("trees", exc, len(trees)))
             else:
                 if selected_tree.project_id != project_id:
@@ -684,7 +688,7 @@ class LaunchService:
             for page in range(MAX_LAUNCH_EXECUTION_PAGES):
                 try:
                     response = await self._client.list_trees(project_id, with_archived=False, page=page, size=100)
-                except (AllureAPIError, AllureValidationError) as exc:
+                except (AllureAPIError, AllureValidationError, PydanticValidationError) as exc:
                     issues.append(_launch_unavailable("trees", exc, len(trees)))
                     break
                 fingerprint = _launch_page_fingerprint(response)
@@ -735,7 +739,7 @@ class LaunchService:
                 response = await self._client.get_launch_execution_section(
                     "tree_widget", launch_id, tree_id=tree_id, page=page, size=100
                 )
-            except (AllureAPIError, AllureValidationError) as exc:
+            except (AllureAPIError, AllureValidationError, PydanticValidationError) as exc:
                 return tuple(items), _launch_unavailable(f"trees.{tree_id}.statistic_widget", exc, len(items))
             fingerprint = _launch_page_fingerprint(response)
             if fingerprint is not None and fingerprint in seen_content:
@@ -779,8 +783,8 @@ class LaunchService:
                 result = await self._client.get_launch_result_tree_page(
                     launch_id, tree_id, path=list(path) or None, page=page_number, size=100
                 )
-            except (AllureAPIError, AllureValidationError) as exc:
-                return tuple(nodes), [_launch_unavailable(f"{section}.{branch}", exc, node_count[0])]
+            except (AllureAPIError, AllureValidationError, PydanticValidationError) as exc:
+                return tuple(nodes), [*issues, _launch_unavailable(f"{section}.{branch}", exc, node_count[0])]
             fingerprint = _launch_page_fingerprint(result)
             if fingerprint is not None and fingerprint in seen_content:
                 return tuple(nodes), [

@@ -111,6 +111,10 @@ launch response is intentionally a point-in-time snapshot for open launches; it 
 caller page controls. Omit `tree_id` to resolve all active project trees, or provide one verified tree ID to limit the
 expansion.
 
+Optional upstream response schema errors return `partial=true` with an `upstream_schema_error` entry in
+`unavailable_sections`. Successfully collected data and earlier pages are retained; `items_retrieved` records
+the collected count for paginated sections. The authoritative core launch read remains fatal on failure.
+
 For `attach_file_to_launch(transfer_mode="push")`, run persistent HTTP MCP behind an externally reachable HTTPS URL
 and set `LAUNCH_ATTACHMENT_UPLOAD_PUBLIC_BASE_URL`. The returned URL accepts exactly one raw `POST` with the declared
 `Content-Type`; it needs no Allure bearer token. This interim capability broker is deliberately single-replica only;
