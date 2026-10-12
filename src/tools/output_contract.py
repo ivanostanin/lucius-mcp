@@ -14,6 +14,17 @@ SUPPORTED_OUTPUT_FORMATS: set[str] = {"plain", "json"}
 DEFAULT_OUTPUT_FORMAT: OutputFormat | None = None
 
 
+class PlainToolOutput(str):
+    """Plain text for direct callers, retaining the payload for MCP registration."""
+
+    structured_payload: StructuredPayload
+
+    def __new__(cls, text: str, structured_payload: StructuredPayload) -> PlainToolOutput:
+        result = super().__new__(cls, text)
+        result.structured_payload = structured_payload
+        return result
+
+
 def _to_plain_output(result: typing.Any) -> str:
     """Normalize tool output to plain text."""
     if isinstance(result, str):
@@ -79,7 +90,7 @@ def apply_output_contract(result: typing.Any, output_format: str | None = DEFAUL
     if normalized is None:
         return _to_structured_tool_result(result)
     if normalized == "plain":
-        return _to_plain_output(result)
+        return PlainToolOutput(_to_plain_output(result), _to_structured_payload(result))
 
     return _to_structured_tool_result(result)
 
@@ -95,7 +106,7 @@ def render_output(
     if normalized is None:
         return _to_structured_tool_result(json_payload)
     if normalized == "plain":
-        return _to_plain_output(plain)
+        return PlainToolOutput(_to_plain_output(plain), _to_structured_payload(json_payload))
     return _to_structured_tool_result(json_payload)
 
 

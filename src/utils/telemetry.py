@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING, TypeAlias
 
 from pydantic import BaseModel
 
+from src.tools.output_contract import PlainToolOutput
+
 if TYPE_CHECKING:
     from src.services.telemetry_service import TelemetryService
 
@@ -61,13 +63,17 @@ def wrap_tool_with_telemetry(tool: ToolFn, *, output_model: type[BaseModel] | No
 
 
 def _apply_mcp_output_contract(result: object, output_model: type[BaseModel]) -> object:
-    """Validate structured payloads and keep plain output text-only for MCP."""
+    """Validate successful MCP payloads, preserving plain text alongside them."""
     from fastmcp.tools.base import ToolResult
     from mcp.types import TextContent
 
-    if isinstance(result, str):
+    if isinstance(result, PlainToolOutput):
+        result = ToolResult(
+            content=[TextContent(type="text", text=str(result))], structured_content=result.structured_payload
+        )
+    elif isinstance(result, str):
         return ToolResult(content=[TextContent(type="text", text=result)])
-    if not isinstance(result, ToolResult) or result.structured_content is None:
+    if not isinstance(result, ToolResult) or result.is_error or result.structured_content is None:
         return result
 
     payload = output_model.model_validate(result.structured_content).model_dump(
