@@ -5,6 +5,9 @@ from __future__ import annotations
 import inspect
 import typing
 import unittest.mock
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import asdict, is_dataclass
 
 OutputFormat = typing.Literal["plain", "json"]
@@ -12,6 +15,17 @@ StructuredPayload = dict[str, typing.Any]
 ToolOutput = typing.Any
 SUPPORTED_OUTPUT_FORMATS: set[str] = {"plain", "json"}
 DEFAULT_OUTPUT_FORMAT: OutputFormat | None = None
+_MCP_OUTPUT_CONTEXT: ContextVar[bool] = ContextVar("lucius_mcp_output_context", default=False)
+
+
+@contextmanager
+def mcp_output_context(enabled: bool = True) -> Iterator[None]:
+    """Scope structured plain rendering to a schema-bearing MCP invocation."""
+    token = _MCP_OUTPUT_CONTEXT.set(enabled)
+    try:
+        yield
+    finally:
+        _MCP_OUTPUT_CONTEXT.reset(token)
 
 
 def _to_plain_output(result: typing.Any) -> str:
@@ -63,6 +77,21 @@ def _to_structured_tool_result(result: typing.Any) -> typing.Any:
     return ToolResult(content=[], structured_content=_to_structured_payload(result))
 
 
+def _render_plain_output(plain: typing.Any, json_payload: typing.Any) -> ToolOutput:
+    """Keep plain strings for direct calls and both presentations for MCP."""
+    text = _to_plain_output(plain)
+    if not _MCP_OUTPUT_CONTEXT.get():
+        return text
+
+    from fastmcp.tools.base import ToolResult
+    from mcp.types import TextContent
+
+    return ToolResult(
+        content=[TextContent(type="text", text=text)],
+        structured_content=_to_structured_payload(json_payload),
+    )
+
+
 def _validate_output_format(output_format: str | None) -> OutputFormat | None:
     if output_format is None:
         return None
@@ -79,7 +108,7 @@ def apply_output_contract(result: typing.Any, output_format: str | None = DEFAUL
     if normalized is None:
         return _to_structured_tool_result(result)
     if normalized == "plain":
-        return _to_plain_output(result)
+        return _render_plain_output(result, result)
 
     return _to_structured_tool_result(result)
 
@@ -95,7 +124,7 @@ def render_output(
     if normalized is None:
         return _to_structured_tool_result(json_payload)
     if normalized == "plain":
-        return _to_plain_output(plain)
+        return _render_plain_output(plain, json_payload)
     return _to_structured_tool_result(json_payload)
 
 

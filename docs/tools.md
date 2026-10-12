@@ -3,6 +3,10 @@
 Lucius provides a suite of MCP tools categorized by feature area. All tools are optimized for AI agents and return "
 Agent Hints" on failure.
 
+Successful MCP tool responses return structured content that satisfies their published output schema. The default and
+`json` formats return structured content only; `output_format="plain"` adds human-readable text alongside that same structured
+payload. CLI and direct Python calls in plain mode continue returning plain text.
+
 Supported TestOps entity responses include browser URLs alongside stable IDs in both `plain` and `json` output. URL
 coverage currently includes test cases, launches, defects, test plans, and shared steps. Settings-only and API-only
 records such as test layers, custom fields, integrations, and defect matchers keep IDs only unless a stable browser
