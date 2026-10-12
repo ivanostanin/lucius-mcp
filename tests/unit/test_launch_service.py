@@ -1,10 +1,12 @@
 """Unit tests for LaunchService."""
 
+from dataclasses import asdict
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
+from pydantic import ValidationError as PydanticValidationError
 
 from src.client import (
     AllureClient,
@@ -36,6 +38,7 @@ from src.client.generated.models.test_result_row_dto import TestResultRowDto
 from src.client.generated.models.test_result_scenario_v2_dto import TestResultScenarioV2Dto
 from src.client.generated.models.test_result_scenario_v2_dto_steps_inner import TestResultScenarioV2DtoStepsInner
 from src.client.generated.models.test_session_response_dto import TestSessionResponseDto
+from src.client.generated.models.test_status_count import TestStatusCount
 from src.services.launch_service import LaunchDeleteResult, LaunchService
 
 
@@ -116,6 +119,214 @@ def _attachment_step(attachment_id: int, name: str) -> TestResultScenarioV2DtoSt
 
 def _scenario_body_step(body: str) -> SharedStepScenarioDtoStepsInner:
     return SharedStepScenarioDtoStepsInner(actual_instance=BodyStepDto.model_construct(type="BodyStepDto", body=body))
+
+
+@pytest.fixture
+def upstream_schema_error() -> PydanticValidationError:
+    with pytest.raises(PydanticValidationError) as error:
+        TestStatusCount.from_dict({"count": 1, "status": "synthetic_future_status"})
+    assert error.value.errors()[0]["loc"] == ("status",)
+    assert error.value.errors()[0]["type"] == "enum"
+    return error.value
+
+
+@pytest.fixture
+def execution_client(mock_client: MagicMock) -> MagicMock:
+    page = SimpleNamespace(content=[], last=True, total_pages=1)
+    mock_client.get_launch_core.return_value = LaunchDetailResponse(
+        base=LaunchDto(id=12, name="Launch", project_id=1, closed=True),
+        preview=LaunchPreviewDto(statistic=[TestStatusCount(count=1, status="passed")]),
+    )
+    mock_client.get_launch_execution_section.return_value = page
+    mock_client.get_launch_result_view.return_value = {"groups": [], "leafs": []}
+    mock_client.list_launch_test_results.return_value = page
+    mock_client.list_trees.return_value = page
+    return mock_client
+
+
+def _assert_schema_diagnostic(issue: object, section: str, count: int | None = None) -> None:
+    assert asdict(issue) == {
+        "section": section,
+        "reason": "upstream_schema_error",
+        "status_code": None,
+        "message": "Optional launch execution data is unavailable",
+        "items_retrieved": count,
+    }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("section", ["duration", "result_timeline", "result_defect_tree", "statistic"])
+async def test_launch_optional_simple_schema_error_preserves_core(
+    service: LaunchService, execution_client: MagicMock, upstream_schema_error: PydanticValidationError, section: str
+) -> None:
+    async def read(read_section: str, *_args: object, **_kwargs: object) -> object:
+        if read_section == section:
+            raise upstream_schema_error
+        return SimpleNamespace(content=[], last=True)
+
+    execution_client.get_launch_execution_section.side_effect = read
+    execution_client.get_launch_result_view.side_effect = read
+
+    result = await service.get_launch(12, include_execution_results=True)
+
+    assert result.id == 12
+    assert result.partial is True
+    assert len(result.unavailable_sections) == 1
+    _assert_schema_diagnostic(result.unavailable_sections[0], section)
+    execution_client.list_launch_test_results.assert_awaited_once()
+    execution_client.list_trees.assert_awaited_once()
+    if section == "statistic":
+        assert result.statistic == execution_client.get_launch_core.return_value.preview.statistic
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "section",
+    [
+        "variables",
+        "defects",
+        "member_stats",
+        "muted_results",
+        "retries",
+        "unresolved_results",
+        "flat_test_results",
+        "core_test_result_index",
+    ],
+)
+@pytest.mark.parametrize("later_page", [False, True])
+async def test_launch_optional_page_schema_error_preserves_previous_items(
+    service: LaunchService,
+    mock_client: MagicMock,
+    upstream_schema_error: PydanticValidationError,
+    section: str,
+    later_page: bool,
+) -> None:
+    first = SimpleNamespace(content=[{"id": 99}], last=False, number=0, total_pages=2)
+    reader = (
+        mock_client.list_launch_test_results
+        if section == "flat_test_results"
+        else mock_client.get_launch_result_view
+        if section == "core_test_result_index"
+        else mock_client.get_launch_execution_section
+    )
+    reader.side_effect = [first, upstream_schema_error] if later_page else [upstream_schema_error]
+
+    items, issue = await service._collect_launch_execution_pages(section, 12)
+
+    assert items == (({"id": 99},) if later_page else ())
+    _assert_schema_diagnostic(issue, section, len(items))
+    assert reader.await_count == (2 if later_page else 1)
+
+
+@pytest.mark.asyncio
+async def test_launch_selected_tree_schema_error_returns_partial(
+    service: LaunchService, execution_client: MagicMock, upstream_schema_error: PydanticValidationError
+) -> None:
+    execution_client.get_tree.side_effect = upstream_schema_error
+
+    result = await service.get_launch(12, include_execution_results=True, tree_id=7)
+
+    assert result.id == 12
+    assert result.trees == ()
+    assert result.partial is True
+    _assert_schema_diagnostic(result.unavailable_sections[0], "trees", 0)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("later_page", [False, True])
+async def test_launch_tree_catalog_schema_error_preserves_previous_trees(
+    service: LaunchService, mock_client: MagicMock, upstream_schema_error: PydanticValidationError, later_page: bool
+) -> None:
+    first = SimpleNamespace(content=[SimpleNamespace(id=7, project_id=1)], last=False, number=0, total_pages=2)
+    mock_client.list_trees.side_effect = [first, upstream_schema_error] if later_page else [upstream_schema_error]
+    mock_client.get_launch_execution_section.return_value = SimpleNamespace(content=[], last=True)
+    mock_client.get_launch_result_tree_page.return_value = SimpleNamespace(content=[], last=True)
+
+    trees, issues = await service._collect_launch_trees(12, 1, None)
+
+    assert len(trees) == int(later_page)
+    _assert_schema_diagnostic(issues[0], "trees", len(trees))
+    assert mock_client.get_launch_result_tree_page.await_count == int(later_page)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("collector", ["widget", "hierarchy"])
+@pytest.mark.parametrize("later_page", [False, True])
+async def test_launch_tree_page_schema_error_preserves_previous_items(
+    service: LaunchService,
+    mock_client: MagicMock,
+    upstream_schema_error: PydanticValidationError,
+    collector: str,
+    later_page: bool,
+) -> None:
+    first = SimpleNamespace(content=[{"id": 99}], last=False, number=0, total_pages=2)
+    responses = [first, upstream_schema_error] if later_page else [upstream_schema_error]
+    if collector == "widget":
+        mock_client.get_launch_execution_section.side_effect = responses
+        items, issue = await service._collect_launch_widget(12, 7)
+        section = "trees.7.statistic_widget"
+    else:
+        mock_client.get_launch_result_tree_page.side_effect = responses
+        items, issues = await service._collect_launch_hierarchy(12, 7, (), set(), 0, [0])
+        issue = issues[0]
+        section = "trees.7.hierarchy.root"
+
+    assert items == (({"id": 99},) if later_page else ())
+    _assert_schema_diagnostic(issue, section, len(items))
+
+
+@pytest.mark.asyncio
+async def test_launch_hierarchy_schema_error_keeps_siblings_and_prior_diagnostics(
+    service: LaunchService, mock_client: MagicMock, upstream_schema_error: PydanticValidationError
+) -> None:
+    root = {
+        "content": [{"id": 41, "type": "GROUP"}, {"id": 42, "type": "GROUP"}],
+        "last": False,
+        "number": 0,
+        "total_pages": 2,
+    }
+    child = {"content": [{"id": 99, "type": "LEAF"}], "last": True}
+    mock_client.get_launch_result_tree_page.side_effect = [root, upstream_schema_error, child, upstream_schema_error]
+
+    nodes, issues = await service._collect_launch_hierarchy(12, 7, (), set(), 0, [0])
+
+    assert nodes[0]["children"] == ()
+    assert nodes[1]["children"] == ({"id": 99, "type": "LEAF"},)
+    assert len(issues) == 2
+    _assert_schema_diagnostic(issues[0], "trees.7.hierarchy.41", 1)
+    _assert_schema_diagnostic(issues[1], "trees.7.hierarchy.root", 3)
+
+
+@pytest.mark.asyncio
+async def test_launch_core_schema_error_remains_fatal(
+    service: LaunchService, execution_client: MagicMock, upstream_schema_error: PydanticValidationError
+) -> None:
+    execution_client.get_launch_core.side_effect = upstream_schema_error
+
+    with pytest.raises(PydanticValidationError):
+        await service.get_launch(12, include_execution_results=True)
+
+    execution_client.get_launch_execution_section.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_launch_selected_tree_project_mismatch_remains_fatal(
+    service: LaunchService, execution_client: MagicMock
+) -> None:
+    execution_client.get_tree.return_value = SimpleNamespace(id=7, project_id=2)
+
+    with pytest.raises(AllureValidationError, match="must belong to the launch project"):
+        await service.get_launch(12, include_execution_results=True, tree_id=7)
+
+
+@pytest.mark.asyncio
+async def test_launch_optional_programming_error_remains_fatal(
+    service: LaunchService, execution_client: MagicMock
+) -> None:
+    execution_client.get_launch_execution_section.side_effect = RuntimeError("unexpected implementation error")
+
+    with pytest.raises(RuntimeError, match="unexpected implementation error"):
+        await service.get_launch(12, include_execution_results=True)
 
 
 @pytest.mark.asyncio

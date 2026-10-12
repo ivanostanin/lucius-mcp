@@ -81,7 +81,10 @@ async def test_get_launch_execution_snapshot_is_opt_in(allure_client, test_run_i
 
 
 @pytest.mark.asyncio
-async def test_get_launch_execution_controlled_later_page_failure_returns_serialized_partial_response() -> None:  # noqa: C901
+@pytest.mark.parametrize("schema_failure", [False, True], ids=["api-error", "schema-error"])
+async def test_get_launch_execution_controlled_later_page_failure_returns_serialized_partial_response(  # noqa: C901
+    schema_failure: bool,
+) -> None:
     """Exercise the public tool through its real service/client stack and local HTTP upstream."""
 
     class StubTestOpsHandler(BaseHTTPRequestHandler):
@@ -96,7 +99,7 @@ async def test_get_launch_execution_controlled_later_page_failure_returns_serial
             self.end_headers()
             self.wfile.write(encoded)
 
-        def do_GET(self) -> None:
+        def do_GET(self) -> None:  # noqa: C901
             request = urlsplit(self.path)
             query = parse_qs(request.query)
             page_payload = {
@@ -127,6 +130,20 @@ async def test_get_launch_execution_controlled_later_page_failure_returns_serial
                 # Deliberately include unsafe-looking data: diagnostics must not echo it.
                 status = 503
                 payload = {"message": "Bearer secret-token at https://private.example/result"}
+            elif request.path == "/api/launch/12/memberstats" and schema_failure:
+                payload = {
+                    **page_payload,
+                    "content": [{"statistic": [{"count": 1, "status": "passed"}]}],
+                    "last": False,
+                    "totalPages": 2,
+                    "totalElements": 2,
+                }
+                if query.get("page") == ["1"]:
+                    payload = {
+                        **page_payload,
+                        "number": 1,
+                        "content": [{"statistic": [{"count": 1, "status": "synthetic_future_status"}]}],
+                    }
             elif request.path in {
                 "/api/launch/12/duration",
                 "/api/launch/12/assignees",
@@ -140,14 +157,20 @@ async def test_get_launch_execution_controlled_later_page_failure_returns_serial
                 payload = {"ready": False}
             elif request.path in {"/api/testresult/timeline", "/api/testresult/defects"}:
                 payload = {"groups": [], "leafs": []}
+            elif request.path in {"/api/testresult", "/api/v2/launch/12/test-result/flat"}:
+                payload = {
+                    **page_payload,
+                    "content": [{"id": 99, "name": "Available result", "status": "passed"}],
+                    "empty": False,
+                    "numberOfElements": 1,
+                    "totalElements": 1,
+                }
             elif request.path in {
                 "/api/launch/12/defect",
                 "/api/launch/12/memberstats",
                 "/api/launch/12/muted",
                 "/api/launch/12/retries",
                 "/api/launch/12/unresolved",
-                "/api/testresult",
-                "/api/v2/launch/12/test-result/flat",
                 "/api/v2/tree",
             }:
                 payload = page_payload
@@ -164,7 +187,11 @@ async def test_get_launch_execution_controlled_later_page_failure_returns_serial
         def log_message(self, *_args: object) -> None:
             return
 
-    server = ThreadingHTTPServer(("127.0.0.1", 0), StubTestOpsHandler)
+    class StubTestOpsServer(ThreadingHTTPServer):
+        # The aggregate opens nine concurrent optional reads.
+        request_queue_size = 32
+
+    server = StubTestOpsServer(("127.0.0.1", 0), StubTestOpsHandler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
 
@@ -180,7 +207,10 @@ async def test_get_launch_execution_controlled_later_page_failure_returns_serial
 
     try:
         with patch("src.tools.launches._launch_client_context", local_client_context):
+            basic = await get_launch_tool(launch_id=12, output_format="json")
+            assert basic.structured_content["id"] == 12
             output = await get_launch_tool(launch_id=12, include_execution_results=True, output_format="json")
+            plain = await get_launch_tool(launch_id=12, include_execution_results=True, output_format="plain")
         payload = output.structured_content
     finally:
         server.shutdown()
@@ -190,12 +220,31 @@ async def test_get_launch_execution_controlled_later_page_failure_returns_serial
     assert payload["id"] == 12
     assert payload["variables"] == [{"key": "build", "values": ["42"]}]
     assert payload["partial"] is True
+    assert "Execution partial: True" in plain
+    assert "Test Result #99: status=passed" in plain
     diagnostic = next(item for item in payload["unavailable_sections"] if item["section"] == "variables")
     assert diagnostic["items_retrieved"] == 1
     assert diagnostic["reason"] == "upstream_error"
+    if schema_failure:
+        assert len(payload["member_stats"]) == 1
+        assert payload["member_stats"][0]["statistic"] == [{"count": 1, "status": "passed"}]
+        diagnostic = next(item for item in payload["unavailable_sections"] if item["section"] == "member_stats")
+        assert diagnostic["items_retrieved"] == 1
+        assert diagnostic["reason"] == "upstream_schema_error"
+        assert diagnostic["status_code"] is None
+        assert payload["trees"] == []
+        assert "upstream_schema_error" in plain
+    for section in ("flat_test_results", "core_test_result_index"):
+        assert len(payload[section]) == 1
+        assert payload[section][0]["id"] == 99
+        assert payload[section][0]["status"] == "passed"
     serialized = json.dumps(payload)
+    assert "synthetic_future_status" not in serialized
+    assert "synthetic_future_status" not in plain
     assert "secret-token" not in serialized
+    assert "secret-token" not in plain
     assert "private.example" not in serialized
+    assert "private.example" not in plain
 
 
 # todo: revise this once launch_upload_controller is in
