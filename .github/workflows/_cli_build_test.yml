@@ -226,7 +226,7 @@ jobs:
           binary-ext: '${{ matrix.binary_ext }}'
 
       - name: Download binary artifact
-        uses: actions/download-artifact@v8.0.1
+        uses: actions/download-artifact@v8.0.2
         with:
           name: ${{ steps.artifact.outputs.artifact_name }}
           path: dist/cli/
