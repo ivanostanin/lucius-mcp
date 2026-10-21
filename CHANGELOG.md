@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.16.6] - 2026-10-21
+
+### Changed
+- Updated locked runtime and tooling dependencies, including FastMCP 4.1.0, MCP 2.2.0, Cyclopts 4.25.3, Faker 40.43.0, OpenAPI Generator CLI 7.26.0, and Ruff 0.17.0 (#449, #450).
+- Updated artifact uploads in build, test, and release workflows to actions/upload-artifact 7.0.2 (#444).
+
 ## [v0.16.5] - 2026-10-12
 
 ### Fixed
@@ -444,7 +450,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.5...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.6...HEAD
+[v0.16.6]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.5...v0.16.6
 [v0.16.5]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.4...v0.16.5
 [v0.16.4]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.3...v0.16.4
 [v0.16.3]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.2...v0.16.3
