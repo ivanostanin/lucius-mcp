@@ -172,6 +172,7 @@ jobs:
   test-cli:
     name: Test CLI on ${{ matrix.platform }} ${{ matrix.arch }}
     needs: build
+    if: ${{ !cancelled() }}
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false

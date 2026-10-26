@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import yaml
+
 from deployment.scripts.update_mcpb_runtime import (
     read_project_metadata,
     read_project_version,
@@ -47,11 +49,32 @@ def test_packaging_metadata_and_tooling_targets_supported_runtime_range() -> Non
     assert mypy.get("python_version") == "3.10"
 
 
-def test_experimental_python_lane_does_not_change_release_defaults() -> None:
-    workflow = (PROJECT_ROOT / ".github" / "workflows" / "pr-quality-gate.yml").read_text(encoding="utf-8")
-    assert "experimental-python-315:" in workflow
-    assert "continue-on-error: true" in workflow
-    assert "python-version: '3.15'" in workflow
+def test_pr_quality_gate_covers_python_315_runtime_and_all_cli_platforms() -> None:
+    workflow = yaml.safe_load((PROJECT_ROOT / ".github" / "workflows" / "pr-quality-gate.yml").read_text())
+    jobs = workflow["jobs"]
+    runtime = jobs["portable-runtime"]
+    assert "3.15" in runtime["strategy"]["matrix"]["python-version"]
+    assert runtime["uses"] == "./.github/workflows/_python_check.yml"
+    assert not runtime.get("continue-on-error", False)
+    quality_check = (PROJECT_ROOT / ".github" / "workflows" / "_python_check.yml").read_text(encoding="utf-8")
+    assert "tests/packaging/test_mcpb_manifests.py" in quality_check
+
+    cli = jobs["python-315-cli-build"]
+    assert cli["uses"] == "./.github/workflows/_cli_build_test.yml"
+    assert cli["with"]["python-version"] == "3.15"
+    assert "if" not in cli
+    assert not cli.get("continue-on-error", False)
+
+    reusable = yaml.safe_load(CLI_REUSABLE_WORKFLOW_PATH.read_text())
+    build = reusable["jobs"]["build"]
+    test = reusable["jobs"]["test-cli"]
+    expected = {(platform, arch) for platform in ("linux", "macos", "windows") for arch in ("arm64", "x86_64")}
+    for job in (build, test):
+        platforms = job["strategy"]["matrix"]["include"]
+        assert {(entry["platform"], entry["arch"]) for entry in platforms} == expected
+        assert job["strategy"]["fail-fast"] is False
+    assert test["needs"] == "build"
+    assert test["if"] == "${{ !cancelled() }}"
 
 
 def test_project_metadata_reader_ignores_non_project_toml_text(tmp_path: Path) -> None:
