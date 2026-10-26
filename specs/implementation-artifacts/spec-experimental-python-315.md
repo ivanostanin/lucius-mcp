@@ -49,7 +49,7 @@ Run relevant packaging and runtime tests with Python 3.15 and existing supported
 
 - Python 3.15.0 on macOS ARM64: locked all-extras sync succeeded; the CI test selection passed (1528 tests).
 - Python 3.14.2 on macOS ARM64: locked all-extras sync and 12 packaging contract and manifest tests passed.
-- Linux and Windows 3.15 installations and macOS x86-64 remain unverified; wheel availability limitations are documented in the development guide. The PR quality gate now runs the regular runtime checks on 3.15 and builds and tests CLI binaries on all six platform and architecture combinations.
+- Linux and Windows 3.15 installations and macOS x86-64 remain unverified; wheel availability limitations are documented in the development guide. The PR quality gate runs the regular runtime checks on 3.15; the existing CLI workflow builds and tests binaries on all six platform and architecture combinations for relevant changes.
 
 ## Suggested Review Order
 

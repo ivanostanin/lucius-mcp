@@ -31,13 +31,6 @@ jobs:
       run-lint: false
       run-typecheck: false
 
-  python-315-cli-build:
-    permissions:
-      contents: read
-    uses: ./.github/workflows/_cli_build_test.yml
-    with:
-      python-version: '3.15'
-
   nuitka-smoke:
     if: ${{ vars.BUILD_BINARY_FOR_EVERY_PR == 'true'}}
     strategy:

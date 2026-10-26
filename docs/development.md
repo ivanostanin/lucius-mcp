@@ -49,8 +49,8 @@ Before submitting a PR, ensure all checks pass:
 
 Lucius runtime compatibility is tested on Python 3.10 through 3.14. Generated MCPB manifests and the representative
 Nuitka CLI compiler matrix validate that same range. Python 3.15 is experimental: the PR runtime quality gate tests
-it on Linux x86-64, and a separate PR job builds and tests the CLI on Linux, macOS and Windows for both x86-64 and
-ARM64. Runtime tests have passed locally on macOS ARM64; other platforms have not yet been verified. PyYAML does not
+it on Linux x86-64. For relevant changes, the existing CLI workflow builds and tests it on Linux, macOS and Windows
+for both x86-64 and ARM64. Runtime tests have passed locally on macOS ARM64; other platforms have not yet been verified. PyYAML does not
 currently publish CPython 3.15 wheels, so installation can require a source build. The pinned cryptography release
 does not provide a macOS x86-64 wheel; Windows ARM64 uses an older pinned release. Build requirements and runtime
 compatibility on those platforms remain unverified. Nuitka 4.3 describes Python 3.15 support as experimental; the

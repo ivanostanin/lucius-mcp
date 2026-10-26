@@ -59,9 +59,13 @@ def test_pr_quality_gate_covers_python_315_runtime_and_all_cli_platforms() -> No
     quality_check = (PROJECT_ROOT / ".github" / "workflows" / "_python_check.yml").read_text(encoding="utf-8")
     assert "tests/packaging/test_mcpb_manifests.py" in quality_check
 
-    cli = jobs["python-315-cli-build"]
+    assert "python-315-cli-build" not in jobs
+    cli_workflow = yaml.safe_load(CLI_BUILD_WORKFLOW_PATH.read_text())
+    cli = cli_workflow["jobs"]["cli-build"]
     assert cli["uses"] == "./.github/workflows/_cli_build_test.yml"
-    assert cli["with"]["python-version"] == "3.15"
+    assert cli["with"]["python-version"] == (
+        "${{ github.event_name == 'pull_request' && '3.15' || vars.PYTHON_VERSION }}"
+    )
     assert "if" not in cli
     assert not cli.get("continue-on-error", False)
 
@@ -113,7 +117,9 @@ def test_cli_build_workflow_uses_the_caller_selected_python_version() -> None:
     assert "binary-ext: '${{ matrix.binary_ext }}'" in reusable_content
 
     assert "uses: ./.github/workflows/_cli_build_test.yml" in cli_build_content
-    assert "python-version: ${{ vars.PYTHON_VERSION }}" in cli_build_content
+    assert "python-version: ${{ github.event_name == 'pull_request' && '3.15' || vars.PYTHON_VERSION }}" in (
+        cli_build_content
+    )
     assert ".github/actions/resolve-cli-artifact-name/**" in cli_build_content
 
     assert "uses: ./.github/workflows/_cli_build_test.yml" in release_content
