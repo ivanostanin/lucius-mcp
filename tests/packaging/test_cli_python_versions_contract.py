@@ -38,13 +38,20 @@ def test_packaging_metadata_and_tooling_targets_supported_runtime_range() -> Non
     mypy = tool.get("mypy")
     assert isinstance(mypy, dict)
 
-    assert read_requires_python(PYPROJECT_PATH) == ">=3.10,<3.15"
+    assert read_requires_python(PYPROJECT_PATH) == ">=3.10,<3.16"
     classifiers = project.get("classifiers")
     assert isinstance(classifiers, list)
     for python_version in SUPPORTED_PYTHONS:
         assert f"Programming Language :: Python :: {python_version}" in classifiers
     assert ruff.get("target-version") == "py310"
     assert mypy.get("python_version") == "3.10"
+
+
+def test_experimental_python_lane_does_not_change_release_defaults() -> None:
+    workflow = (PROJECT_ROOT / ".github" / "workflows" / "pr-quality-gate.yml").read_text(encoding="utf-8")
+    assert "experimental-python-315:" in workflow
+    assert "continue-on-error: true" in workflow
+    assert "python-version: '3.15'" in workflow
 
 
 def test_project_metadata_reader_ignores_non_project_toml_text(tmp_path: Path) -> None:

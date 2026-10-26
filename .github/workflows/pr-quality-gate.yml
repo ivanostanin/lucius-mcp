@@ -15,6 +15,19 @@ permissions:
   contents: read
 
 jobs:
+  experimental-python-315:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    env:
+      XDG_CONFIG_HOME: ${{ runner.temp }}/lucius-python-315-config
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: ./.github/actions/setup-python
+        with:
+          python-version: '3.15'
+      - name: Run runtime and packaging tests
+        run: uv run --locked --python 3.15 pytest tests/unit/ tests/integration/ tests/docs/ tests/cli/ tests/packaging/test_cli_python_versions_contract.py tests/packaging/test_mcpb_manifests.py -q
+
   python-quality:
     uses: ./.github/workflows/_python_check.yml
     with:

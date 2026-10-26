@@ -48,10 +48,15 @@ Before submitting a PR, ensure all checks pass:
 ### Python compatibility
 
 Lucius runtime compatibility is tested on Python 3.10 through 3.14. Generated MCPB manifests and the representative
-Nuitka CLI compiler matrix validate that same range. To test a selected interpreter, run
+Nuitka CLI compiler matrix validate that same range. Python 3.15 is experimental: a non-blocking Linux x86-64 PR
+job attempts dependency installation and tests. The same test selection has passed locally on macOS ARM64; the other
+platforms have not been verified. PyYAML does not
+currently publish CPython 3.15 wheels, so installation can require a source build. The pinned cryptography release
+does not provide a macOS x86-64 wheel; Windows ARM64 uses an older pinned release. Build requirements and runtime
+compatibility on those platforms remain unverified. Nuitka 4.3 describes Python 3.15 support as experimental; the
+release compiler default remains Python 3.14. To test a selected interpreter, run
 `uv sync --locked --all-extras --python 3.10`, then use the relevant `uv run --python 3.10 ...` checks. Python 3.9
-cannot resolve the pinned `starlette==1.3.1` requirement, while Python 3.15 remains outside the supported range because
-the current native dependency set does not build for it.
+cannot resolve the pinned Starlette requirement.
 
 ## 🧪 Testing
 
