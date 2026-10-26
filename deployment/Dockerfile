@@ -1,5 +1,5 @@
 # Use a multi-stage build to keep the final image minimal
-FROM python:3.14-slim-bookworm AS builder
+FROM python:3.15-slim-bookworm AS builder
 
 # Install uv
 # distinct layer to cache uv installation
@@ -28,7 +28,7 @@ COPY README.md .
 RUN uv sync --frozen --no-dev
 
 # Final stage
-FROM python:3.14-slim-bookworm
+FROM python:3.15-slim-bookworm
 
 LABEL io.modelcontextprotocol.server.name="io.github.ivanostanin/lucius-mcp"
 
