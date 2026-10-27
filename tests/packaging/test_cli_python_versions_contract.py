@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import yaml
+
 from deployment.scripts.update_mcpb_runtime import (
     read_project_metadata,
     read_project_version,
@@ -38,13 +40,45 @@ def test_packaging_metadata_and_tooling_targets_supported_runtime_range() -> Non
     mypy = tool.get("mypy")
     assert isinstance(mypy, dict)
 
-    assert read_requires_python(PYPROJECT_PATH) == ">=3.10,<3.15"
+    assert read_requires_python(PYPROJECT_PATH) == ">=3.10,<3.16"
     classifiers = project.get("classifiers")
     assert isinstance(classifiers, list)
     for python_version in SUPPORTED_PYTHONS:
         assert f"Programming Language :: Python :: {python_version}" in classifiers
     assert ruff.get("target-version") == "py310"
     assert mypy.get("python_version") == "3.10"
+
+
+def test_pr_quality_gate_covers_python_315_runtime_and_all_cli_platforms() -> None:
+    workflow = yaml.safe_load((PROJECT_ROOT / ".github" / "workflows" / "pr-quality-gate.yml").read_text())
+    jobs = workflow["jobs"]
+    runtime = jobs["portable-runtime"]
+    assert "3.15" in runtime["strategy"]["matrix"]["python-version"]
+    assert runtime["uses"] == "./.github/workflows/_python_check.yml"
+    assert not runtime.get("continue-on-error", False)
+    quality_check = (PROJECT_ROOT / ".github" / "workflows" / "_python_check.yml").read_text(encoding="utf-8")
+    assert "tests/packaging/test_mcpb_manifests.py" in quality_check
+
+    assert "python-315-cli-build" not in jobs
+    cli_workflow = yaml.safe_load(CLI_BUILD_WORKFLOW_PATH.read_text())
+    cli = cli_workflow["jobs"]["cli-build"]
+    assert cli["uses"] == "./.github/workflows/_cli_build_test.yml"
+    assert cli["with"]["python-version"] == (
+        "${{ github.event_name == 'pull_request' && '3.15' || vars.PYTHON_VERSION }}"
+    )
+    assert "if" not in cli
+    assert not cli.get("continue-on-error", False)
+
+    reusable = yaml.safe_load(CLI_REUSABLE_WORKFLOW_PATH.read_text())
+    build = reusable["jobs"]["build"]
+    test = reusable["jobs"]["test-cli"]
+    expected = {(platform, arch) for platform in ("linux", "macos", "windows") for arch in ("arm64", "x86_64")}
+    for job in (build, test):
+        platforms = job["strategy"]["matrix"]["include"]
+        assert {(entry["platform"], entry["arch"]) for entry in platforms} == expected
+        assert job["strategy"]["fail-fast"] is False
+    assert test["needs"] == "build"
+    assert test["if"] == "${{ !cancelled() }}"
 
 
 def test_project_metadata_reader_ignores_non_project_toml_text(tmp_path: Path) -> None:
@@ -83,7 +117,9 @@ def test_cli_build_workflow_uses_the_caller_selected_python_version() -> None:
     assert "binary-ext: '${{ matrix.binary_ext }}'" in reusable_content
 
     assert "uses: ./.github/workflows/_cli_build_test.yml" in cli_build_content
-    assert "python-version: ${{ vars.PYTHON_VERSION }}" in cli_build_content
+    assert "python-version: ${{ github.event_name == 'pull_request' && '3.15' || vars.PYTHON_VERSION }}" in (
+        cli_build_content
+    )
     assert ".github/actions/resolve-cli-artifact-name/**" in cli_build_content
 
     assert "uses: ./.github/workflows/_cli_build_test.yml" in release_content
