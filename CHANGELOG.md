@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.16.7] - 2026-10-28
+
 ### Added
 - Experimental Python 3.15 runtime and CLI build support (#461).
 
@@ -459,7 +461,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.6...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.7...HEAD
+[v0.16.7]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.6...v0.16.7
 [v0.16.6]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.5...v0.16.6
 [v0.16.5]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.4...v0.16.5
 [v0.16.4]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.3...v0.16.4
