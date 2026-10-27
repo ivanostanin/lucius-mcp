@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Experimental Python 3.15 runtime and CLI build support (#461).
+
+### Changed
+- Updated locked runtime and tooling dependencies, including FastMCP 4.1.3, Authlib 1.9.1, and Ruff 0.17.2 (#460).
+
+### Security
+- Updated vulnerable dependencies, including filelock, virtualenv, and OpenTelemetry API (#462).
+
 ## [v0.16.6] - 2026-10-21
 
 ### Changed
