@@ -1423,7 +1423,7 @@ wheels = [
 
 [[package]]
 name = "lucius-mcp"
-version = "0.16.6"
+version = "0.16.7"
 source = { editable = "." }
 dependencies = [
     { name = "authlib" },
