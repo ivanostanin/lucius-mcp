@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.16.8] - 2026-11-02
+
 ### Changed
 - Dropped Python 3.10 runtime support; the minimum supported Python is now 3.11 so the locked filelock security update can be installed (#471).
+- Updated locked runtime and tooling dependencies, including FastMCP 4.1.4, Pydantic 2.14.2, Ruff 0.17.3, and joserfc 1.7.6 (#464, #465, #466, #467, #468, #470).
 
 ### Security
 - Updated locked filelock from 4.1.0 to 4.2.4 for the CVE-2026-112908/112911/112910/112915/112939/112909/112941 series (fixed upstream in filelock 4.2.1, which requires Python 3.11) (#471).
@@ -467,7 +470,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.7...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.8...HEAD
+[v0.16.8]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.7...v0.16.8
 [v0.16.7]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.6...v0.16.7
 [v0.16.6]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.5...v0.16.6
 [v0.16.5]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.4...v0.16.5
