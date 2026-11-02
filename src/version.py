@@ -1,13 +1,8 @@
 from __future__ import annotations
 
-import sys
+import tomllib
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    import tomli as tomllib  # type: ignore[import-not-found, unused-ignore]
 
 
 def read_project_version(pyproject_path: Path) -> str:

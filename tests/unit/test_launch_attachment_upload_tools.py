@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -20,7 +20,7 @@ async def test_attach_file_to_launch_push_prepares_a_redacted_one_use_url() -> N
 
     prepared = PreparedLaunchAttachmentUpload(
         upload_url="https://lucius.example/launch-uploads/opaque-capability",
-        expires_at=datetime(2026, 9, 22, 12, 0, tzinfo=timezone.utc),
+        expires_at=datetime(2026, 9, 22, 12, 0, tzinfo=UTC),
         max_file_bytes=1024,
     )
     with (

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -48,7 +48,7 @@ async def test_capability_expiry_and_metadata_are_enforced(tmp_path) -> None:
         runtime._entries[prepared.handle] = runtime._entries[prepared.handle].__class__(
             **{
                 **runtime._entries[prepared.handle].__dict__,
-                "expires_at": datetime.now(timezone.utc) - timedelta(seconds=1),
+                "expires_at": datetime.now(UTC) - timedelta(seconds=1),
             }
         )
         assert await runtime.claim(prepared.handle) is None

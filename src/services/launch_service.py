@@ -9,7 +9,7 @@ import uuid
 from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import asdict, dataclass, is_dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal, TypeAlias, cast
 from urllib.parse import urlsplit
 
@@ -619,7 +619,7 @@ class LaunchService:
         detail.result_timeline = values.get("result_timeline")
         detail.result_defect_tree = values.get("result_defect_tree")
         detail.execution_snapshot = {
-            "captured_at": datetime.now(timezone.utc).isoformat(),
+            "captured_at": datetime.now(UTC).isoformat(),
             "closed": detail.closed,
             "mutable": detail.closed is not True,
             "message": "This is a point-in-time mutable snapshot while the launch is open."
