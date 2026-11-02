@@ -22,7 +22,7 @@ class CustomJsonFormatter(json.JsonFormatter):
 
         # Ensure consistent timestamp format
         if not log_record.get("timestamp"):
-            now = datetime.datetime.fromtimestamp(record.created, datetime.timezone.utc)
+            now = datetime.datetime.fromtimestamp(record.created, datetime.UTC)
             log_record["timestamp"] = now.isoformat()
 
         log_record["level"] = record.levelname

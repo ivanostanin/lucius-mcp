@@ -8,7 +8,7 @@ import secrets
 import tempfile
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from src.client.exceptions import AllureValidationError
@@ -96,7 +96,7 @@ class LaunchAttachmentUploadRuntime:
         _validate_name(name)
         _validate_content_type(content_type)
         handle = secrets.token_urlsafe(32)
-        expires_at = datetime.now(timezone.utc) + timedelta(seconds=self._config.ttl_seconds)
+        expires_at = datetime.now(UTC) + timedelta(seconds=self._config.ttl_seconds)
         entry = PendingLaunchAttachmentUpload(
             handle=handle,
             launch_id=launch_id,
@@ -159,7 +159,7 @@ class LaunchAttachmentUploadRuntime:
             raise
 
     async def _remove_expired_locked(self) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         for handle in [
             handle for handle, entry in self._entries.items() if entry.expires_at <= now and handle not in self._claimed
         ]:

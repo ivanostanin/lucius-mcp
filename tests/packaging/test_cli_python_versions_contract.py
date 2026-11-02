@@ -27,7 +27,7 @@ CLI_BUILD_SCRIPTS = [
 ]
 
 
-SUPPORTED_PYTHONS = ("3.10", "3.11", "3.12", "3.13", "3.14")
+SUPPORTED_PYTHONS = ("3.11", "3.12", "3.13", "3.14")
 
 
 def test_packaging_metadata_and_tooling_targets_supported_runtime_range() -> None:
@@ -40,13 +40,13 @@ def test_packaging_metadata_and_tooling_targets_supported_runtime_range() -> Non
     mypy = tool.get("mypy")
     assert isinstance(mypy, dict)
 
-    assert read_requires_python(PYPROJECT_PATH) == ">=3.10,<3.16"
+    assert read_requires_python(PYPROJECT_PATH) == ">=3.11,<3.16"
     classifiers = project.get("classifiers")
     assert isinstance(classifiers, list)
     for python_version in SUPPORTED_PYTHONS:
         assert f"Programming Language :: Python :: {python_version}" in classifiers
-    assert ruff.get("target-version") == "py310"
-    assert mypy.get("python_version") == "3.10"
+    assert ruff.get("target-version") == "py311"
+    assert mypy.get("python_version") == "3.11"
 
 
 def test_pr_quality_gate_covers_python_315_runtime_and_all_cli_platforms() -> None:

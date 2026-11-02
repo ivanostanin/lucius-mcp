@@ -10,8 +10,8 @@ import tempfile
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from enum import Enum
+from datetime import UTC, datetime, timedelta
+from enum import StrEnum
 from pathlib import Path
 from typing import Protocol
 from urllib.parse import urlsplit
@@ -29,7 +29,7 @@ _CONTENT_TYPE_PATTERN = re.compile(r"^[A-Za-z0-9!#$&^_.+-]+/[A-Za-z0-9!#$&^_.+-]
 _UNSPECIFIED_HOST = ".".join(("0",) * 4)
 
 
-class AttachmentKind(str, Enum):
+class AttachmentKind(StrEnum):
     """Upstream attachment collections that can safely be prepared."""
 
     TEST_RESULT = "test_result"
@@ -211,7 +211,7 @@ class AttachmentDownloadRuntime:
             filename=_sanitize_filename(filename),
             content_type=_safe_content_type(content_type),
             byte_size=byte_size,
-            expires_at=datetime.now(timezone.utc) + timedelta(seconds=self._config.ttl_seconds),
+            expires_at=datetime.now(UTC) + timedelta(seconds=self._config.ttl_seconds),
         )
         async with self._lock:
             if self._closed:
@@ -275,7 +275,7 @@ class AttachmentDownloadRuntime:
             raise
 
     async def _remove_expired_locked(self) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expired = [
             handle for handle, entry in self._entries.items() if entry.expires_at <= now and handle not in self._claimed
         ]

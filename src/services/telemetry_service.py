@@ -57,7 +57,7 @@ class TelemetryService:
         self._mcp_mode = settings.MCP_MODE if mcp_mode is None else mcp_mode
         self._server_version = server_version
         self._session_id = uuid.uuid4().hex
-        self._started_at = dt.datetime.now(dt.timezone.utc).isoformat()
+        self._started_at = dt.datetime.now(dt.UTC).isoformat()
         self._pending_tasks: set[asyncio.Task[None]] = set()
         self._missing_website_warned = False
         self._umami_ready = self._configure_umami_client()
