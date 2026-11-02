@@ -8,10 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- Dropped Python 3.10 runtime support; the minimum supported Python is now 3.11 so the locked filelock security update can be installed.
+- Dropped Python 3.10 runtime support; the minimum supported Python is now 3.11 so the locked filelock security update can be installed (#471).
 
 ### Security
-- Updated locked filelock from 4.1.0 to 4.2.4 for the CVE-2026-112908/112911/112910/112915/112939/112909/112941 series (fixed upstream in filelock 4.2.1, which requires Python 3.11).
+- Updated locked filelock from 4.1.0 to 4.2.4 for the CVE-2026-112908/112911/112910/112915/112939/112909/112941 series (fixed upstream in filelock 4.2.1, which requires Python 3.11) (#471).
 
 ## [v0.16.7] - 2026-10-28
 
