@@ -151,14 +151,14 @@ fi
 OUTPUT_DIR="dist/cli"
 
 echo "Generating tool schemas..."
-uv --quiet run --python "${CLI_BUILD_PYTHON_VERSION}" --extra dev python scripts/build_tool_schema.py
+uv --quiet run --python "${CLI_BUILD_PYTHON_VERSION}" --group dev python scripts/build_tool_schema.py
 
 if [[ ! -f "src/cli/data/tool_schemas.json" ]]; then
     echo "Error: tool_schemas.json not found after generation"
     exit 1
 fi
 
-CLI_VERSION="$(uv --quiet run --python "${CLI_BUILD_PYTHON_VERSION}" --extra dev python -c "from src.version import __version__; print(__version__)")"
+CLI_VERSION="$(uv --quiet run --python "${CLI_BUILD_PYTHON_VERSION}" --group dev python -c "from src.version import __version__; print(__version__)")"
 if [[ -z "${CLI_VERSION}" ]]; then
     echo "Error: failed to resolve CLI version for onefile metadata"
     exit 1
@@ -222,7 +222,7 @@ if [[ "${TARGET_PLATFORM}" == "linux" && "${TARGET_ARCH}" == "arm64" ]]; then
     export LDFLAGS="${LDFLAGS:+${LDFLAGS} }-fuse-ld=lld"
 fi
 
-uv run --python "${CLI_BUILD_PYTHON_VERSION}" --extra dev nuitka "${nuitka_args[@]}" src/cli/cli_entry.py
+uv run --python "${CLI_BUILD_PYTHON_VERSION}" --group dev nuitka "${nuitka_args[@]}" src/cli/cli_entry.py
 
 echo "Built: ${OUTPUT_FILE}"
 echo "${TARGET_PLATFORM} ${TARGET_ARCH} build complete"

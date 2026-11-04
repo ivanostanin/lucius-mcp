@@ -84,7 +84,7 @@ exclude = [
 packages = ["src"]
 
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "allure-pytest>=2.15.3",
     "openapi-generator-cli>=7.24.0",

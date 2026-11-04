@@ -88,7 +88,7 @@ CLI command E2E tests that do not need live TestOps access run from source with
 or CLI-only rendering behavior, extend the focused shared suite:
 
 ```bash
-uv run --python 3.11 --extra dev pytest tests/e2e/test_cli_*uv_run*.py -q
+uv run --python 3.11 --group dev pytest tests/e2e/test_cli_*uv_run*.py -q
 ```
 
 Use `tests/e2e/test_cli_local_commands_uv_run.py` for top-level CLI-local
