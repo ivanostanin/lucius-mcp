@@ -31,7 +31,7 @@ runs:
       id: resolve
       shell: pwsh
       run: |
-        $cliVersion = (uv --quiet run --python "${{ inputs.python-version }}" --extra dev python -c "from src.version import __version__; print(__version__)").Trim()
+        $cliVersion = (uv --quiet run --python "${{ inputs.python-version }}" --group dev python -c "from src.version import __version__; print(__version__)").Trim()
         if (-not $cliVersion) {
           throw "Failed to resolve CLI version"
         }

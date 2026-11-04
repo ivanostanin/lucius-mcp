@@ -7,6 +7,11 @@ updates:
       day: "monday"
       time: "09:00"
     labels: ["dependencies", "python"]
+    groups:
+      python-development:
+        dependency-type: development
+      python-production:
+        dependency-type: production
     reviewers:
       - "ivanostanin"
 
@@ -17,6 +22,9 @@ updates:
       day: "monday"
       time: "09:00"
     labels: ["dependencies", "github-actions"]
+    groups:
+      github-actions:
+        patterns: ["*"]
     reviewers:
       - "ivanostanin"
 
@@ -27,5 +35,8 @@ updates:
       day: "monday"
       time: "09:00"
     labels: ["dependencies", "docker"]
+    groups:
+      docker-dependencies:
+        patterns: ["*"]
     reviewers:
       - "ivanostanin"

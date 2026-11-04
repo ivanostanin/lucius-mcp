@@ -17,13 +17,13 @@ for arg in "$@"; do
   esac
 done
 
-uv run --extra dev ruff format scripts src tests deployment
-uv run --extra dev ruff check scripts src tests deployment --fix --unsafe-fixes
-uv run --extra dev mypy src
-uv run --extra dev pytest tests/unit tests/integration --cov=src --cov-report=term-missing -v
-uv run --extra dev pytest tests/docs
+uv run --group dev ruff format scripts src tests deployment
+uv run --group dev ruff check scripts src tests deployment --fix --unsafe-fixes
+uv run --group dev mypy src
+uv run --group dev pytest tests/unit tests/integration --cov=src --cov-report=term-missing -v
+uv run --group dev pytest tests/docs
 if [[ -f .env.test ]]; then
-  uv run --extra dev --env-file .env.test pytest tests/e2e -n auto -rs
+  uv run --group dev --env-file .env.test pytest tests/e2e -n auto -rs
 else
   echo "Skipping E2E tests: .env.test not found"
 fi
@@ -40,4 +40,4 @@ else
   echo "Skipping dist/cli cleanup (--no-cleanup)"
 fi
 
-uv run --extra dev pytest tests/packaging
+uv run --group dev pytest tests/packaging
