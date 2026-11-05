@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.16.9] - 2026-11-05
+
+### Changed
+- Updated locked runtime and tooling dependencies, including Cyclopts 5.3.2, Starlette 1.10.0, python-dateutil 4.0.0, pydantic-settings 2.16.2, and pytest 9.2.0 (#474, #475).
+- Grouped Dependabot dependency updates into consolidated production and development groups (#473).
+
 ## [v0.16.8] - 2026-11-02
 
 ### Changed
@@ -470,7 +476,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.8...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.9...HEAD
+[v0.16.9]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.8...v0.16.9
 [v0.16.8]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.7...v0.16.8
 [v0.16.7]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.6...v0.16.7
 [v0.16.6]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.5...v0.16.6
