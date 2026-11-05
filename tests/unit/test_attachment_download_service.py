@@ -379,7 +379,8 @@ async def test_gateway_streams_a_claimed_entry_once_with_safe_headers(tmp_path) 
 
 
 @pytest.mark.asyncio
-async def test_interrupted_starlette_response_releases_the_claimed_entry(tmp_path) -> None:
+@pytest.mark.parametrize("spec_version", ["2.0", "2.4"])
+async def test_interrupted_starlette_response_releases_the_claimed_entry(tmp_path, spec_version: str) -> None:
     client = SimpleNamespace(
         list_test_result_attachments=AsyncMock(
             return_value=SimpleNamespace(content=[SimpleNamespace(id=23, name="evidence.txt")])
@@ -398,6 +399,7 @@ async def test_interrupted_starlette_response_releases_the_claimed_entry(tmp_pat
     route = attachment_download_route(holder)
     scope = {
         "type": "http",
+        "asgi": {"spec_version": spec_version},
         "method": "GET",
         "path": f"/downloads/{handle}",
         "raw_path": f"/downloads/{handle}".encode(),
@@ -419,10 +421,18 @@ async def test_interrupted_starlette_response_releases_the_claimed_entry(tmp_pat
         if message["type"] == "http.response.body":
             raise RuntimeError("connection dropped")
 
-    with pytest.raises(RuntimeError, match="connection dropped"):
+    if spec_version == "2.4":
+        with pytest.raises(RuntimeError, match="connection dropped"):
+            await response(scope, receive, failing_send)
+    else:
         await response(scope, receive, failing_send)
 
     assert not list(tmp_path.rglob("*.bin"))
+    runtime = await holder.get()
+    assert runtime is not None
+    assert await runtime.claim(handle) is None
+    assert handle not in runtime._entries
+    assert handle not in runtime._claimed
     await holder.close()
 
 
