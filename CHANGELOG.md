@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.17.0] - 2026-11-09
+
+### Changed
+- Updated locked runtime dependencies, including FastMCP 4.1.6, Pydantic 2.14.3, Authlib 1.9.5, Cyclopts 5.3.3, and platformdirs 4.14.5 (#479).
+- Updated locked tooling dependencies, including Ruff 0.17.4 and OpenAPI Generator CLI 7.27.0 (#478).
+- Updated release pipeline actions to docker/login-action 4.8.0 and softprops/action-gh-release 3.0.4 (#477).
+
 ## [v0.16.9] - 2026-11-05
 
 ### Changed
@@ -476,7 +483,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.9...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.17.0...HEAD
+[v0.17.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.9...v0.17.0
 [v0.16.9]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.8...v0.16.9
 [v0.16.8]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.7...v0.16.8
 [v0.16.7]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.6...v0.16.7
