@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.11, <3.16"
 resolution-markers = [
     "(python_full_version >= '3.15' and platform_machine == 'ARM64' and sys_platform == 'win32') or (python_full_version >= '3.15' and platform_machine == 'aarch64' and sys_platform == 'win32')",
@@ -9,7 +9,7 @@ resolution-markers = [
     "(python_full_version == '3.14.*' and platform_machine != 'ARM64' and platform_machine != 'aarch64' and sys_platform == 'win32') or (python_full_version == '3.14.*' and sys_platform != 'emscripten' and sys_platform != 'win32')",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
     "(python_full_version < '3.14' and platform_machine == 'ARM64' and sys_platform == 'win32') or (python_full_version < '3.14' and platform_machine == 'aarch64' and sys_platform == 'win32')",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'ARM64' and platform_machine != 'aarch64' and sys_platform == 'win32') or (python_full_version < '3.12' and platform_machine != 'ARM64' and platform_machine != 'aarch64') or (python_full_version < '3.12' and sys_platform == 'emscripten') or (python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32')",
+    "(python_full_version < '3.14' and platform_machine != 'ARM64' and platform_machine != 'aarch64' and sys_platform == 'win32') or (python_full_version < '3.12' and sys_platform == 'emscripten') or (python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32')",
 ]
 
 [[package]]
@@ -178,7 +178,7 @@ resolution-markers = [
     "(python_full_version == '3.14.*' and platform_machine != 'ARM64' and platform_machine != 'aarch64' and sys_platform == 'win32') or (python_full_version == '3.14.*' and sys_platform != 'emscripten' and sys_platform != 'win32')",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
     "(python_full_version < '3.14' and platform_machine == 'ARM64' and sys_platform == 'win32') or (python_full_version < '3.14' and platform_machine == 'aarch64' and sys_platform == 'win32')",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'ARM64' and platform_machine != 'aarch64' and sys_platform == 'win32') or (python_full_version < '3.12' and platform_machine != 'ARM64' and platform_machine != 'aarch64') or (python_full_version < '3.12' and sys_platform == 'emscripten') or (python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32')",
+    "(python_full_version < '3.14' and platform_machine != 'ARM64' and platform_machine != 'aarch64' and sys_platform == 'win32') or (python_full_version < '3.12' and sys_platform == 'emscripten') or (python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32')",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c7/94/1009e248bbfbab11397abca7193bea6626806be9a327d399810d523a07cb/beartype-0.22.9.tar.gz", hash = "sha256:8f82b54aa723a2848a56008d18875f91c1db02c32ef6a62319a002e3e25a975f", size = 1608866, upload-time = "2025-12-13T06:50:30.72Z" }
 wheels = [
@@ -582,17 +582,13 @@ resolution-markers = [
     "(python_full_version < '3.14' and platform_machine == 'ARM64' and sys_platform == 'win32') or (python_full_version < '3.14' and platform_machine == 'aarch64' and sys_platform == 'win32')",
 ]
 dependencies = [
-    { name = "cffi", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "cffi", marker = "(platform_machine == 'ARM64' and platform_python_implementation != 'PyPy' and sys_platform == 'win32') or (platform_machine == 'aarch64' and platform_python_implementation != 'PyPy' and sys_platform == 'win32')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/9f/33/c00162f49c0e2fe8064a62cb92b93e50c74a72bc370ab92f86112b33ff62/cryptography-46.0.3.tar.gz", hash = "sha256:a8b17438104fed022ce745b362294d9ce35b4c2e45c1d958ad4a4b019285f4a1", size = 749258, upload-time = "2025-10-15T23:18:31.74Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7e/bf/80fbf45253ea585a1e492a6a17efcb93467701fa79e71550a430c5e60df0/cryptography-46.0.3-cp311-abi3-win_amd64.whl", hash = "sha256:a9a3008438615669153eb86b26b61e09993921ebdd75385ddd748702c5adfddb", size = 3514451, upload-time = "2025-10-15T23:17:16.142Z" },
     { url = "https://files.pythonhosted.org/packages/2e/af/9b302da4c87b0beb9db4e756386a7c6c5b8003cd0e742277888d352ae91d/cryptography-46.0.3-cp311-abi3-win_arm64.whl", hash = "sha256:5d7f93296ee28f68447397bf5198428c9aeeab45705a55d53a6343455dcb2c3c", size = 2928007, upload-time = "2025-10-15T23:17:18.04Z" },
-    { url = "https://files.pythonhosted.org/packages/f6/30/640f34ccd4d2a1bc88367b54b926b781b5a018d65f404d409aba76a84b1c/cryptography-46.0.3-cp314-cp314t-win_amd64.whl", hash = "sha256:760f83faa07f8b64e9c33fc963d790a2edb24efb479e3520c14a45741cd9b2db", size = 3494315, upload-time = "2025-10-15T23:17:42.769Z" },
     { url = "https://files.pythonhosted.org/packages/ba/8b/88cc7e3bd0a8e7b861f26981f7b820e1f46aa9d26cc482d0feba0ecb4919/cryptography-46.0.3-cp314-cp314t-win_arm64.whl", hash = "sha256:516ea134e703e9fe26bcd1277a4b59ad30586ea90c365a87781d7887a646fe21", size = 2919331, upload-time = "2025-10-15T23:17:44.468Z" },
-    { url = "https://files.pythonhosted.org/packages/90/45/b0d691df20633eff80955a0fc7695ff9051ffce8b69741444bd9ed7bd0db/cryptography-46.0.3-cp38-abi3-win_amd64.whl", hash = "sha256:416260257577718c05135c55958b674000baef9a1c7d9e8f306ec60d71db850f", size = 3501720, upload-time = "2025-10-15T23:18:10.632Z" },
     { url = "https://files.pythonhosted.org/packages/e8/cb/2da4cc83f5edb9c3257d09e1e7ab7b23f049c7962cae8d842bbef0a9cec9/cryptography-46.0.3-cp38-abi3-win_arm64.whl", hash = "sha256:d89c3468de4cdc4f08a57e214384d0471911a3830fcdaf7a8cc587e42a866372", size = 2918740, upload-time = "2025-10-15T23:18:12.277Z" },
-    { url = "https://files.pythonhosted.org/packages/0d/c3/e90f4a4feae6410f914f8ebac129b9ae7a8c92eb60a638012dde42030a9d/cryptography-46.0.3-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:6b5063083824e5509fdba180721d55909ffacccc8adbec85268b48439423d78c", size = 3438528, upload-time = "2025-10-15T23:18:26.227Z" },
 ]
 
 [[package]]
@@ -604,10 +600,10 @@ resolution-markers = [
     "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
     "(python_full_version == '3.14.*' and platform_machine != 'ARM64' and platform_machine != 'aarch64' and sys_platform == 'win32') or (python_full_version == '3.14.*' and sys_platform != 'emscripten' and sys_platform != 'win32')",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'ARM64' and platform_machine != 'aarch64' and sys_platform == 'win32') or (python_full_version < '3.12' and platform_machine != 'ARM64' and platform_machine != 'aarch64') or (python_full_version < '3.12' and sys_platform == 'emscripten') or (python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32')",
+    "(python_full_version < '3.14' and platform_machine != 'ARM64' and platform_machine != 'aarch64' and sys_platform == 'win32') or (python_full_version < '3.12' and sys_platform == 'emscripten') or (python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32')",
 ]
 dependencies = [
-    { name = "cffi", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "cffi", marker = "(platform_machine != 'ARM64' and platform_machine != 'aarch64' and platform_python_implementation != 'PyPy') or (platform_python_implementation != 'PyPy' and sys_platform != 'win32')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/9d/af/182eb91b0df3fe75c4d9f26fe70684569566745f6ba7e5c9c73a862c5252/cryptography-50.0.2.tar.gz", hash = "sha256:7b46165bb56eb4704e2eaaf86f3c940d19154535d9b0ca7d6d590b04060e00d5", size = 880623, upload-time = "2026-09-30T15:30:04.884Z" }
 wheels = [
@@ -880,8 +876,8 @@ name = "httpcore2"
 version = "2.12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11" },
-    { name = "truststore" },
+    { name = "h11", marker = "python_full_version < '3.12' or python_full_version >= '3.15' or sys_platform != 'emscripten'" },
+    { name = "truststore", marker = "python_full_version < '3.12' or python_full_version >= '3.15' or sys_platform != 'emscripten'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/be/ad/f4f0e57345f1870f3e8cb624e058d7eca6e5a27d33bcc3311d9b618734cd/httpcore2-2.12.0.tar.gz", hash = "sha256:9293522bba0aa7c4c8e9e3f040c16575bd8868e155a77fa30c7a9085a5eae648", size = 67548, upload-time = "2026-08-18T13:22:08.211Z" }
 wheels = [
@@ -964,7 +960,7 @@ name = "importlib-metadata"
 version = "9.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "zipp" },
+    { name = "zipp", marker = "(python_full_version < '3.14' and sys_platform != 'emscripten') or (python_full_version < '3.12' and sys_platform == 'emscripten')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a9/01/15bb152d77b21318514a96f43af312635eb2500c96b55398d020c93d86ea/importlib_metadata-9.0.0.tar.gz", hash = "sha256:a4f57ab599e6a2e3016d7595cfd72eb4661a5106e787a95bcc90c7105b831efc", size = 56405, upload-time = "2026-03-20T06:42:56.999Z" }
 wheels = [
@@ -1225,7 +1221,7 @@ wheels = [
 
 [[package]]
 name = "lucius-mcp"
-version = "0.16.9"
+version = "0.17.0"
 source = { editable = "." }
 dependencies = [
     { name = "authlib" },
@@ -1253,8 +1249,8 @@ dev = [
     { name = "allure-pytest" },
     { name = "faker" },
     { name = "mypy" },
-    { name = "nuitka", version = "4.1.3", source = { registry = "https://pypi.org/simple" }, extra = ["onefile"], marker = "python_full_version < '3.15'" },
-    { name = "nuitka", version = "4.3.1", source = { registry = "https://pypi.org/simple" }, extra = ["onefile"], marker = "python_full_version >= '3.15'" },
+    { name = "nuitka", version = "4.1.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.15'" },
+    { name = "nuitka", version = "4.3.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.15'" },
     { name = "openapi-generator-cli" },
     { name = "pre-commit" },
     { name = "pytest" },
@@ -1501,14 +1497,9 @@ resolution-markers = [
     "(python_full_version == '3.14.*' and platform_machine != 'ARM64' and platform_machine != 'aarch64' and sys_platform == 'win32') or (python_full_version == '3.14.*' and sys_platform != 'emscripten' and sys_platform != 'win32')",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
     "(python_full_version < '3.14' and platform_machine == 'ARM64' and sys_platform == 'win32') or (python_full_version < '3.14' and platform_machine == 'aarch64' and sys_platform == 'win32')",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'ARM64' and platform_machine != 'aarch64' and sys_platform == 'win32') or (python_full_version < '3.12' and platform_machine != 'ARM64' and platform_machine != 'aarch64') or (python_full_version < '3.12' and sys_platform == 'emscripten') or (python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32')",
+    "(python_full_version < '3.14' and platform_machine != 'ARM64' and platform_machine != 'aarch64' and sys_platform == 'win32') or (python_full_version < '3.12' and sys_platform == 'emscripten') or (python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32')",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/3f/d8/bdb7febea4b4fe5d3d6fe2610f946771f03e792e05a5e8ec00b62c00b265/nuitka-4.1.3.tar.gz", hash = "sha256:838ff8899dc2f0b652d4fcf6c5d7466cb7ad5abcb005668ac622d1e40f4d8a8d", size = 4565475, upload-time = "2026-06-21T10:48:04.369Z" }
-
-[package.optional-dependencies]
-onefile = [
-    { name = "zstandard" },
-]
 
 [[package]]
 name = "nuitka"
@@ -1519,11 +1510,6 @@ resolution-markers = [
     "(python_full_version >= '3.15' and platform_machine != 'ARM64' and platform_machine != 'aarch64') or (python_full_version >= '3.15' and sys_platform != 'win32')",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/da/0f/db5cfdebf906a6de141bfdadcd72a7417ba710ba9c9d307be185a69a7c8d/nuitka-4.3.1.tar.gz", hash = "sha256:b9c87a694acc424cfffa06abf149fddbdfa85f6daac998df67411b5f4269df0f", size = 4771037, upload-time = "2026-10-17T16:34:00.545Z" }
-
-[package.optional-dependencies]
-onefile = [
-    { name = "zstandard" },
-]
 
 [[package]]
 name = "openapi-generator-cli"
@@ -2315,8 +2301,8 @@ name = "secretstorage"
 version = "3.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cryptography", version = "50.0.2", source = { registry = "https://pypi.org/simple" } },
-    { name = "jeepney" },
+    { name = "cryptography", version = "50.0.2", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.12' and sys_platform == 'emscripten') or (python_full_version >= '3.15' and sys_platform == 'emscripten') or (platform_machine != 'ARM64' and platform_machine != 'aarch64' and sys_platform == 'win32') or (sys_platform != 'emscripten' and sys_platform != 'win32')" },
+    { name = "jeepney", marker = "(python_full_version < '3.12' and sys_platform == 'emscripten') or (python_full_version >= '3.15' and sys_platform == 'emscripten') or (platform_machine != 'ARM64' and platform_machine != 'aarch64' and sys_platform == 'win32') or (sys_platform != 'emscripten' and sys_platform != 'win32')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/1c/03/e834bcd866f2f8a49a85eaff47340affa3bfa391ee9912a952a1faa68c7b/secretstorage-3.5.0.tar.gz", hash = "sha256:f04b8e4689cbce351744d5537bf6b1329c6fc68f91fa666f60a380edddcd11be", size = 19884, upload-time = "2025-11-23T19:02:53.191Z" }
 wheels = [
