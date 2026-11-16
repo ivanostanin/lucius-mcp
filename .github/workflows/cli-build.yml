@@ -19,6 +19,7 @@ permissions:
 
 jobs:
   cli-build:
+    if: github.actor != 'dependabot[bot]'
     permissions:
       contents: read
     uses: ./.github/workflows/_cli_build_test.yml
