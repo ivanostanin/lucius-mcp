@@ -66,7 +66,7 @@ def test_pr_quality_gate_covers_python_315_runtime_and_all_cli_platforms() -> No
     assert cli["with"]["python-version"] == (
         "${{ github.event_name == 'pull_request' && '3.15' || vars.PYTHON_VERSION }}"
     )
-    assert "if" not in cli
+    assert cli.get("if") in (None, "github.actor != 'dependabot[bot]'")
     assert not cli.get("continue-on-error", False)
 
     reusable = yaml.safe_load(CLI_REUSABLE_WORKFLOW_PATH.read_text())
