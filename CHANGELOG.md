@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.17.2] - 2026-11-20
+
+### Fixed
+- Allow Dependabot PRs to skip CLI build checks without failing the Python version contract test (#487).
+
 ## [v0.17.1] - 2026-11-16
 
 ### Changed
@@ -489,7 +494,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.17.1...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.17.2...HEAD
+[v0.17.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.17.1...v0.17.2
 [v0.17.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.17.0...v0.17.1
 [v0.17.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.9...v0.17.0
 [v0.16.9]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.8...v0.16.9
