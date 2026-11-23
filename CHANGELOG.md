@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.17.3] - 2026-11-23
+
+### Changed
+- Updated locked runtime dependencies, including Cyclopts 5.5.2, FastMCP 4.2.3, Pydantic 2.14.4, Authlib 1.9.9, platformdirs 4.14.8, pydantic-settings 2.16.3, and python-multipart 0.0.34 (#490).
+- Updated locked tooling dependencies, including Ruff 0.17.6 (#489).
+
 ## [v0.17.2] - 2026-11-20
 
 ### Fixed
@@ -494,7 +500,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release
 
-[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.17.2...HEAD
+[Unreleased]: https://github.com/ivanostanin/lucius-mcp/compare/v0.17.3...HEAD
+[v0.17.3]: https://github.com/ivanostanin/lucius-mcp/compare/v0.17.2...v0.17.3
 [v0.17.2]: https://github.com/ivanostanin/lucius-mcp/compare/v0.17.1...v0.17.2
 [v0.17.1]: https://github.com/ivanostanin/lucius-mcp/compare/v0.17.0...v0.17.1
 [v0.17.0]: https://github.com/ivanostanin/lucius-mcp/compare/v0.16.9...v0.17.0
